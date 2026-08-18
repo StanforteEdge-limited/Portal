@@ -123,7 +123,7 @@ export default function HrLeavePage() {
   const queryStatus = queryStatusMap[historyFilter] || "cleared,rejected";
 
   const { data: historyData, loading: historyLoading } = useCachedQuery(
-    `hr:leave:history:${historyPage}:${historyPerPage}:${queryStatus}`,
+    `hr:leave:history:${historyPage}:${historyPerPage}:${historyFilter}`,
     () => listHrLeaveRequestsPaged({
       status: queryStatus,
       page: historyPage,

@@ -34,7 +34,7 @@ export async function listHrLeaveRequests(params?: {
 }): Promise<RequestRecord[]> {
   const query: Record<string, unknown> = { family: "leave" };
   if (params?.status) query.status = params.status;
-  if (params?.user_id) query.user_id = params.user_id;
+  if (params?.user_id) query.created_by = params.user_id;
   if (params?.from) query.from = params.from;
   if (params?.to) query.to = params.to;
   const requests = await listRequests(query);
@@ -51,7 +51,7 @@ export async function listHrLeaveRequestsPaged(params?: {
 }) {
   const query: Record<string, unknown> = { family: "leave" };
   if (params?.status) query.status = params.status;
-  if (params?.user_id) query.user_id = params.user_id;
+  if (params?.user_id) query.created_by = params.user_id;
   if (params?.from) query.from = params.from;
   if (params?.to) query.to = params.to;
   if (params?.page) query.page = params.page;
