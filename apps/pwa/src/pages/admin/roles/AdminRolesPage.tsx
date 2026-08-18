@@ -6,16 +6,10 @@ import {
   Icon,
   PageHeader,
   SectionCard,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableHeaderRow,
-  TableRow,
   TextField,
   useToast,
 } from "@/shared";
+import { DataTable } from "@/shared/components/ui/DataTable";
 import { AppShell } from "@/shared/components/layout/AppShell";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { useCachedQuery } from "@/shared/lib/core";
@@ -173,78 +167,82 @@ export default function AdminRolesPage() {
                 {rolesLoading ? (
                   <div className="text-sm text-slate-500">Loading roles...</div>
                 ) : (
-                  <Table>
-                    <TableHead>
-                      <TableHeaderRow>
-                        <TableHeaderCell>Name</TableHeaderCell>
-                        <TableHeaderCell>Slug</TableHeaderCell>
-                        <TableHeaderCell>Permissions</TableHeaderCell>
-                        <TableHeaderCell>Users</TableHeaderCell>
-                        <TableHeaderCell>Status</TableHeaderCell>
-                        <TableHeaderCell className="text-right">Actions</TableHeaderCell>
-                      </TableHeaderRow>
-                    </TableHead>
-                    <TableBody>
-                      {roles.map((role) => (
-                        <TableRow key={role.id}>
-                          <TableCell>
+                  <DataTable
+                    columns={[
+                      {
+                        header: "Name",
+                        cell: (role) => (
+                          <>
                             <p className="font-semibold text-slate-900">{role.name}</p>
                             {role.description && (
                               <p className="text-xs text-slate-500 mt-0.5">{role.description}</p>
                             )}
-                          </TableCell>
-                          <TableCell>
-                            <code className="text-xs bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">
-                              {role.slug}
-                            </code>
-                          </TableCell>
-                          <TableCell className="text-sm text-slate-600">
+                          </>
+                        ),
+                      },
+                      {
+                        header: "Slug",
+                        cell: (role) => (
+                          <code className="text-xs bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">
+                            {role.slug}
+                          </code>
+                        ),
+                      },
+                      {
+                        header: "Permissions",
+                        cell: (role) => (
+                          <span className="text-sm text-slate-600">
                             {role.permissions?.length ?? 0}
-                          </TableCell>
-                          <TableCell className="text-sm text-slate-600">
+                          </span>
+                        ),
+                      },
+                      {
+                        header: "Users",
+                        cell: (role) => (
+                          <span className="text-sm text-slate-600">
                             {role.users?.length ?? 0}
-                          </TableCell>
-                          <TableCell>
-                            <Chip variant={role.is_active ? "success" : "neutral"}>
-                              {role.is_active ? "Active" : "Inactive"}
-                            </Chip>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-2">
+                          </span>
+                        ),
+                      },
+                      {
+                        header: "Status",
+                        cell: (role) => (
+                          <Chip variant={role.is_active ? "success" : "neutral"}>
+                            {role.is_active ? "Active" : "Inactive"}
+                          </Chip>
+                        ),
+                      },
+                      {
+                        header: "Actions",
+                        className: "text-right",
+                        cell: (role) => (
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setEditingRole(role)}
+                            >
+                              <Icon name="edit" />
+                            </Button>
+                            {role.slug !== "administrator" && role.slug !== "staff" && (
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => setEditingRole(role)}
+                                className="text-danger hover:bg-danger/5"
+                                disabled={deletingRoleId === role.id}
+                                onClick={() => void handleDeleteRole(role)}
                               >
-                                <Icon name="edit" />
+                                <Icon name="delete" />
                               </Button>
-                              {role.slug !== "administrator" && role.slug !== "staff" && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="text-danger hover:bg-danger/5"
-                                  disabled={deletingRoleId === role.id}
-                                  onClick={() => void handleDeleteRole(role)}
-                                >
-                                  <Icon name="delete" />
-                                </Button>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      {!roles.length ? (
-                        <TableRow>
-                          <TableCell colSpan={6} className="py-10 text-center">
-                            <EmptyState
-                              title="No roles found"
-                              description="Roles will appear here once created."
-                            />
-                          </TableCell>
-                        </TableRow>
-                      ) : null}
-                    </TableBody>
-                  </Table>
+                            )}
+                          </div>
+                        ),
+                      },
+                    ]}
+                    data={roles}
+                    emptyTitle="No roles found"
+                    emptyDescription="Roles will appear here once created."
+                  />
                 )}
               </SectionCard>
             </div>
@@ -269,28 +267,28 @@ export default function AdminRolesPage() {
                         <h4 className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-500 mb-2">
                           {module}
                         </h4>
-                        <Table>
-                          <TableHead>
-                            <TableHeaderRow>
-                              <TableHeaderCell>Name</TableHeaderCell>
-                              <TableHeaderCell>Slug</TableHeaderCell>
-                              <TableHeaderCell>Description</TableHeaderCell>
-                            </TableHeaderRow>
-                          </TableHead>
-                          <TableBody>
-                            {perms.map((perm) => (
-<TableRow key={perm.id} className="cursor-pointer" onClick={() => setViewingPermission(perm)}>
-                                 <TableCell className="font-medium text-slate-900">{perm.name}</TableCell>
-                                 <TableCell>
-                                   <code className="text-xs bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">
-                                     {perm.slug}
-                                   </code>
-                                 </TableCell>
-                                 <TableCell className="text-slate-500">{perm.description || "-"}</TableCell>
-                               </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
+                        <DataTable
+                          columns={[
+                            { 
+                              header: "Name", 
+                              cell: (perm) => <span className="font-medium text-slate-900">{perm.name}</span> 
+                            },
+                            {
+                              header: "Slug",
+                              cell: (perm) => (
+                                <code className="text-xs bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">
+                                  {perm.slug}
+                                </code>
+                              ),
+                            },
+                            { 
+                              header: "Description", 
+                              cell: (perm) => <span className="text-slate-500">{perm.description || "-"}</span> 
+                            },
+                          ]}
+                          data={perms}
+                          onRowClick={(perm) => setViewingPermission(perm)}
+                        />
                       </div>
                     ))}
                     {!permissions.length ? (

@@ -6,14 +6,8 @@ import {
   PageHeader,
   SectionCard,
   StatCard,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableHeaderRow,
-  TableRow,
 } from "@/shared";
+import { DataTable } from "@/shared/components/ui/DataTable";
 import { AppShell } from "@/shared/components/layout/AppShell";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { useCachedQuery } from "@/shared/lib/core";
@@ -74,41 +68,23 @@ export default function AdminPayrollAuthorizationPage() {
 
         {pendingAuth.length > 0 && (
           <SectionCard title="Awaiting Your Authorization" description="These runs have been approved by Finance and require your sign-off before payment.">
-            <Table>
-              <TableHead>
-                <TableHeaderRow>
-                  <TableHeaderCell>Run Name</TableHeaderCell>
-                  <TableHeaderCell>Period</TableHeaderCell>
-                  <TableHeaderCell>Workers</TableHeaderCell>
-                  <TableHeaderCell>Net Pay</TableHeaderCell>
-                  <TableHeaderCell>{""}</TableHeaderCell>
-                </TableHeaderRow>
-              </TableHead>
-              <TableBody>
-                {pendingAuth.map((run) => (
-                  <TableRow key={run.id}>
-                    <TableCell>
-                      <p className="font-semibold text-slate-900">{run.name}</p>
-                    </TableCell>
-                    <TableCell>
-                      {MONTH_NAMES[run.month] ?? run.month} {run.year}
-                    </TableCell>
-                    <TableCell>{run.worker_count ?? "-"}</TableCell>
-                    <TableCell>
-                      {run.net_total != null ? `${run.currency} ${run.net_total.toLocaleString()}` : "-"}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        size="sm"
-                        onClick={() => navigate(`/admin/payroll/authorize/${run.id}`)}
-                      >
-                        Review & Authorize
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <DataTable
+              columns={[
+                { header: "Run Name", cell: (run) => <p className="font-semibold text-slate-900">{run.name}</p> },
+                { header: "Period", cell: (run) => `${MONTH_NAMES[run.month] ?? run.month} ${run.year}` },
+                { header: "Workers", cell: (run) => run.worker_count ?? "-" },
+                { header: "Net Pay", cell: (run) => run.net_total != null ? `${run.currency} ${run.net_total.toLocaleString()}` : "-" },
+                { header: "", cell: (run) => (
+                  <Button
+                    size="sm"
+                    onClick={() => navigate(`/admin/payroll/authorize/${run.id}`)}
+                  >
+                    Review & Authorize
+                  </Button>
+                ) },
+              ]}
+              data={pendingAuth}
+            />
           </SectionCard>
         )}
 
@@ -116,58 +92,39 @@ export default function AdminPayrollAuthorizationPage() {
           {loading ? (
             <div className="text-sm text-slate-500">Loading...</div>
           ) : allRuns.length ? (
-            <Table>
-              <TableHead>
-                <TableHeaderRow>
-                  <TableHeaderCell>Run Name</TableHeaderCell>
-                  <TableHeaderCell>Period</TableHeaderCell>
-                  <TableHeaderCell>Workers</TableHeaderCell>
-                  <TableHeaderCell>Net Pay</TableHeaderCell>
-                  <TableHeaderCell>Status</TableHeaderCell>
-                  <TableHeaderCell>{""}</TableHeaderCell>
-                </TableHeaderRow>
-              </TableHead>
-              <TableBody>
-                {allRuns.map((run) => (
-                  <TableRow key={run.id}>
-                    <TableCell>
-                      <p className="font-semibold text-slate-900">{run.name}</p>
-                    </TableCell>
-                    <TableCell>
-                      {MONTH_NAMES[run.month] ?? run.month} {run.year}
-                    </TableCell>
-                    <TableCell>{run.worker_count ?? "-"}</TableCell>
-                    <TableCell>
-                      {run.net_total != null ? `${run.currency} ${run.net_total.toLocaleString()}` : "-"}
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        variant={
-                          run.status === "authorized" || run.status === "paid"
-                            ? "success"
-                            : run.status === "approved"
-                            ? "warning"
-                            : run.status === "rejected"
-                            ? "danger"
-                            : "neutral"
-                        }
-                      >
-                        {run.status}
-                      </Chip>
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => navigate(`/admin/payroll/authorize/${run.id}`)}
-                      >
-                        View
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <DataTable
+              columns={[
+                { header: "Run Name", cell: (run) => <p className="font-semibold text-slate-900">{run.name}</p> },
+                { header: "Period", cell: (run) => `${MONTH_NAMES[run.month] ?? run.month} ${run.year}` },
+                { header: "Workers", cell: (run) => run.worker_count ?? "-" },
+                { header: "Net Pay", cell: (run) => run.net_total != null ? `${run.currency} ${run.net_total.toLocaleString()}` : "-" },
+                { header: "Status", cell: (run) => (
+                  <Chip
+                    variant={
+                      run.status === "authorized" || run.status === "paid"
+                        ? "success"
+                        : run.status === "approved"
+                        ? "warning"
+                        : run.status === "rejected"
+                        ? "danger"
+                        : "neutral"
+                    }
+                  >
+                    {run.status}
+                  </Chip>
+                ) },
+                { header: "", cell: (run) => (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => navigate(`/admin/payroll/authorize/${run.id}`)}
+                  >
+                    View
+                  </Button>
+                ) },
+              ]}
+              data={allRuns}
+            />
           ) : (
             <EmptyState title="No payroll runs" description="No runs have been submitted yet." />
           )}

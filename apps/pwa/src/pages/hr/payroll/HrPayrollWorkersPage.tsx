@@ -12,16 +12,10 @@ import {
   SlideOverFooter,
   SlideOverHeader,
   StatCard,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableHeaderRow,
-  TableRow,
   TextField,
   useToast,
 } from "@/shared";
+import { DataTable } from "@/shared/components/ui/DataTable";
 import { AppShell } from "@/shared/components/layout/AppShell";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { useCachedQuery } from "@/shared/lib/core";
@@ -474,59 +468,42 @@ export default function HrPayrollWorkersPage() {
           {loading ? (
             <div className="text-sm text-slate-500">Loading workers...</div>
           ) : workers.length ? (
-            <Table>
-              <TableHead>
-                <TableHeaderRow>
-                  <TableHeaderCell>Name</TableHeaderCell>
-                  <TableHeaderCell>Email</TableHeaderCell>
-                  <TableHeaderCell>Type</TableHeaderCell>
-                  <TableHeaderCell>Pay Basis</TableHeaderCell>
-                  <TableHeaderCell>Currency</TableHeaderCell>
-                  <TableHeaderCell>Bank</TableHeaderCell>
-                  <TableHeaderCell>Status</TableHeaderCell>
-                  <TableHeaderCell className="text-right">Actions</TableHeaderCell>
-                </TableHeaderRow>
-              </TableHead>
-              <TableBody>
-                {workers.map((w: any) => (
-                  <TableRow key={w.id}>
-                    <TableCell>
-                      <p className="font-semibold text-slate-900">{w.full_name ?? w.name}</p>
-                      {w.staff_code ? <p className="text-xs text-slate-500">{w.staff_code}</p> : null}
-                    </TableCell>
-                    <TableCell>{w.email ?? "-"}</TableCell>
-                    <TableCell className="capitalize">{w.worker_type}</TableCell>
-                    <TableCell className="text-slate-600">{formatPayBasis(w.pay_basis)}</TableCell>
-                    <TableCell>{w.currency ?? "NGN"}</TableCell>
-                    <TableCell>
-                      {w.bank_name
-                        ? `${w.bank_name}${w.bank_account_number ? ` ···${String(w.bank_account_number).slice(-4)}` : ""}`
-                        : "-"}
-                    </TableCell>
-                    <TableCell>
-                      <Chip variant={(w.status ?? "active") === "active" ? "success" : "neutral"}>
-                        {w.status ?? "active"}
-                      </Chip>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => openEdit(w)}>
-                          <Icon name="edit" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => void handleDelete(w.id, w.full_name ?? w.name)}
-                          disabled={deletingId === w.id}
-                        >
-                          <Icon name={deletingId === w.id ? "hourglass_top" : "delete"} />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <DataTable
+              columns={[
+                { header: "Name", cell: (w: any) => (
+                  <>
+                    <p className="font-semibold text-slate-900">{w.full_name ?? w.name}</p>
+                    {w.staff_code ? <p className="text-xs text-slate-500">{w.staff_code}</p> : null}
+                  </>
+                ) },
+                { header: "Email", cell: (w: any) => w.email ?? "-" },
+                { header: "Type", className: "capitalize", cell: (w: any) => w.worker_type },
+                { header: "Pay Basis", className: "text-slate-600", cell: (w: any) => formatPayBasis(w.pay_basis) },
+                { header: "Currency", cell: (w: any) => w.currency ?? "NGN" },
+                { header: "Bank", cell: (w: any) => w.bank_name ? `${w.bank_name}${w.bank_account_number ? ` ···${String(w.bank_account_number).slice(-4)}` : ""}` : "-" },
+                { header: "Status", cell: (w: any) => (
+                  <Chip variant={(w.status ?? "active") === "active" ? "success" : "neutral"}>
+                    {w.status ?? "active"}
+                  </Chip>
+                ) },
+                { header: "Actions", className: "text-right", cell: (w: any) => (
+                  <div className="flex items-center justify-end gap-1">
+                    <Button variant="ghost" size="sm" onClick={() => openEdit(w)}>
+                      <Icon name="edit" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => void handleDelete(w.id, w.full_name ?? w.name)}
+                      disabled={deletingId === w.id}
+                    >
+                      <Icon name={deletingId === w.id ? "hourglass_top" : "delete"} />
+                    </Button>
+                  </div>
+                ) },
+              ]}
+              data={workers}
+            />
           ) : (
             <EmptyState
               title="No workers registered"

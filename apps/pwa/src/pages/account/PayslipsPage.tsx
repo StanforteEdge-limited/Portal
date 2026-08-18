@@ -4,15 +4,9 @@ import {
   Chip,
   SectionCard,
   StatCard,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableHeaderRow,
-  TableRow,
   useToast,
 } from "@/shared";
+import { DataTable } from "@/shared/components/ui/DataTable";
 import { useCachedQuery } from "@/shared/lib/core";
 import { downloadBase64File } from "@/shared/lib/download";
 import {
@@ -128,55 +122,18 @@ export default function PayslipsPage() {
             title="Payslip History"
             description="Download issued payslips or check upcoming payroll releases."
           >
-            <Table>
-              <TableHead>
-                <TableHeaderRow>
-                  <TableHeaderCell>Period</TableHeaderCell>
-                  <TableHeaderCell>Gross</TableHeaderCell>
-                  <TableHeaderCell>Net</TableHeaderCell>
-                  <TableHeaderCell>Status</TableHeaderCell>
-                  <TableHeaderCell>{""}</TableHeaderCell>
-                </TableHeaderRow>
-              </TableHead>
-              <TableBody>
-                {rows.map((row) => {
-                  const statusKey = String(row.status || "").toLowerCase();
-                  return (
-                    <TableRow key={row.id}>
-                      <TableCell className="font-semibold text-slate-900">
-                        {row.run_name} ({row.month}/{row.year})
-                      </TableCell>
-                      <TableCell>{formatMoney(row.gross_pay)}</TableCell>
-                      <TableCell>{formatMoney(row.net_pay)}</TableCell>
-                      <TableCell>
-                        <Chip variant={statusVariant[statusKey] ?? "neutral"}>
-                          {row.status}
-                        </Chip>
-                      </TableCell>
-                      <TableCell className="text-right space-x-2">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => void openDetail(row)}
-                        >
-                          View
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-                {!rows.length && !loading ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="py-10 text-center text-slate-500"
-                    >
-                      No payslips available yet.
-                    </TableCell>
-                  </TableRow>
-                ) : null}
-              </TableBody>
-            </Table>
+            <DataTable
+              columns={[
+                { header: "Period", cell: (row) => <span className="font-semibold text-slate-900">{row.run_name} ({row.month}/{row.year})</span> },
+                { header: "Gross", cell: (row) => formatMoney(row.gross_pay) },
+                { header: "Net", cell: (row) => formatMoney(row.net_pay) },
+                { header: "Status", cell: (row) => <Chip variant={statusVariant[String(row.status || "").toLowerCase()] ?? "neutral"}>{row.status}</Chip> },
+                { header: "", className: "text-right space-x-2", cell: (row) => <Button size="sm" variant="ghost" onClick={() => void openDetail(row)}>View</Button> }
+              ]}
+              data={rows}
+              emptyTitle="No payslips available yet."
+              emptyDescription="There are no records to display."
+            />
           </SectionCard>
         </div>
 

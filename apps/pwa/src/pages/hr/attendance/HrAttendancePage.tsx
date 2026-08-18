@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { useMemo, useState } from "react";
 import {
   Button,
@@ -45,6 +46,7 @@ const tabItems = [
 ];
 
 export default function HrAttendancePage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { showToast } = useToast();
 
@@ -201,8 +203,16 @@ export default function HrAttendancePage() {
     {
       header: "Staff",
       cell: (row) => (
-        <div>
-          <p className="font-semibold text-slate-900">{row.user_name}</p>
+        <div 
+          className="cursor-pointer hover:underline"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (row.user_id) {
+              navigate(`/hr/employees/${row.user_id}?tab=attendance`);
+            }
+          }}
+        >
+          <p className="font-semibold text-brand-700">{row.user_name}</p>
           <p className="text-xs text-slate-500">{row.email}</p>
         </div>
       )
@@ -261,8 +271,16 @@ export default function HrAttendancePage() {
     {
       header: "Staff",
       cell: (c) => (
-        <div>
-          <p className="font-semibold text-slate-900">{c.user_name}</p>
+        <div 
+          className="cursor-pointer hover:underline"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (c.user_id) {
+              navigate(`/hr/employees/${c.user_id}?tab=attendance`);
+            }
+          }}
+        >
+          <p className="font-semibold text-brand-700">{c.user_name}</p>
           <p className="text-xs text-slate-500">{c.email}</p>
         </div>
       )

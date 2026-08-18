@@ -11,22 +11,18 @@ import { requestCategoryFromRecord } from "@/pages/requests/request-helpers";
 
 export type { RequestRecord };
 
-export type HrLeaveBalance = {
+export type HrLeaveBalanceItem = {
   user_id: string;
-  user_name: string;
-  email: string;
-  year: number;
-  balances: Array<{
-    leave_type_key: string;
-    leave_type_name: string;
-    entitled_days: number;
-    used_days: number;
-    available_days: number;
-  }>;
+  leave_type_key: string;
+  entitled: number;
+  used: number;
+  adjustments: number;
+  available: number;
 };
 
 export type HrLeaveBalancesResponse = {
-  data: HrLeaveBalance[];
+  year: number;
+  data: HrLeaveBalanceItem[];
 };
 
 // All staff leave requests (admin view — no only_mine filter)
@@ -75,11 +71,13 @@ export async function listHrLeaveApprovals(): Promise<RequestRecord[]> {
 // Per-staff leave balances — HR-specific endpoint
 export async function getHrLeaveBalances(params?: {
   year?: number;
+  user_id?: string;
 }): Promise<HrLeaveBalancesResponse> {
   const query = new URLSearchParams();
   if (params?.year) query.set("year", String(params.year));
+  if (params?.user_id) query.set("user_id", String(params.user_id));
   const suffix = query.toString() ? `?${query.toString()}` : "";
-  return httpRequest<HrLeaveBalancesResponse>(`/hr/leave/balances${suffix}`);
+  return httpRequest<HrLeaveBalancesResponse>(`/hr/leave/balance${suffix}`);
 }
 
 // Re-export for use in the page without additional imports

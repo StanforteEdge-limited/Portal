@@ -13,6 +13,8 @@ import EmployeeOrgsTeamsTab from "@/pages/hr/employees/tabs/EmployeeOrgsTeamsTab
 import EmployeeOverviewTab from "@/pages/hr/employees/tabs/EmployeeOverviewTab";
 import EmployeeWorkTab from "@/pages/hr/employees/tabs/EmployeeWorkTab";
 import EmployeeOrgsOverviewTab from "@/pages/hr/employees/tabs/EmployeeOrgsOverviewTab";
+
+import EmployeeLeaveTab from "@/pages/hr/employees/tabs/EmployeeLeaveTab";
 import { DetailField } from "@/pages/hr/employees/tabs/DetailField";
 import { formatDate } from "@stanforte/shared";
 
@@ -28,6 +30,7 @@ const allTabs = [
   { key: 'work', label: 'Work & Employment' },
   { key: 'orgs', label: 'Organizations & Teams' },
   { key: 'attendance', label: 'Attendance' },
+  { key: 'leave', label: 'Leave & Absence' },
   { key: 'actions', label: 'Actions' },
 ] as const;
 
@@ -222,6 +225,7 @@ export default function HrEmployeeDetailPage() {
         {activeTab === 'overview' && <EmployeeOverviewTab employee={employee} />}
         {activeTab === 'work' && <EmployeeWorkTab employee={employee} />}
         {activeTab === 'attendance' && <EmployeeAttendanceTab employeeId={employee.id} />}
+        {activeTab === 'leave' && <EmployeeLeaveTab employeeId={employee.id} />}
         {activeTab === 'orgs' && (
           canManage
             ? <EmployeeOrgsTeamsTab employee={employee} onSaved={handleSaved} />

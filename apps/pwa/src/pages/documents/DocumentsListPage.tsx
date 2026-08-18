@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { AppShell, Button, Icon, PageHeader, SectionCard, useToast, Table, TableBody, TableCell, TableHead, TableHeaderCell, TableHeaderRow, TableRow } from "@/shared";
+import { AppShell, Button, Icon, PageHeader, SectionCard, useToast } from "@/shared";
+import { DataTable } from "@/shared/components/ui/DataTable";
 import { buildAppNavigation, buildAppMobileNav } from "@/shared/navigation";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { useCachedQuery, documentApi } from "@/shared/lib/core";
@@ -101,53 +102,58 @@ export default function DocumentsListPage() {
             </div>
           ) : (
             <div className="overflow-x-auto border border-slate-100 rounded-lg">
-              <Table>
-                <TableHead>
-                  <TableHeaderRow>
-                    <TableHeaderCell>Document Title</TableHeaderCell>
-                    <TableHeaderCell>Category</TableHeaderCell>
-                    <TableHeaderCell>Version</TableHeaderCell>
-                    <TableHeaderCell>Acknowledgement Required</TableHeaderCell>
-                    <TableHeaderCell className="text-right">Actions</TableHeaderCell>
-                  </TableHeaderRow>
-                </TableHead>
-                <TableBody>
-                  {documents.map((doc: any) => (
-                    <TableRow key={doc.id}>
-                      <TableCell className="font-semibold text-slate-900">
-                        <button
-                          onClick={() => navigate(`/documents/${doc.id}`)}
-                          className="hover:underline text-left text-primary font-semibold"
-                        >
-                          {doc.title}
-                        </button>
-                      </TableCell>
-                      <TableCell className="capitalize text-xs font-medium text-slate-600">
+              <DataTable
+                columns={[
+                  {
+                    header: "Document Title",
+                    cell: (doc: any) => (
+                      <button
+                        onClick={() => navigate(`/documents/${doc.id}`)}
+                        className="hover:underline text-left text-primary font-semibold"
+                      >
+                        {doc.title}
+                      </button>
+                    )
+                  },
+                  {
+                    header: "Category",
+                    cell: (doc: any) => (
+                      <span className="capitalize text-xs font-medium text-slate-600">
                         {doc.category === "job_description" ? "Job Description" : doc.category}
-                      </TableCell>
-                      <TableCell>v{doc.version || "1.0"}</TableCell>
-                      <TableCell>
-                        {doc.require_acknowledgement ? (
-                          <span className="text-amber-600 text-xs font-semibold flex items-center gap-1">
-                            <Icon name="warning" className="text-sm" /> Required
-                          </span>
-                        ) : (
-                          <span className="text-slate-400 text-xs">No</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => navigate(`/documents/${doc.id}`)}
-                        >
-                          Open
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                      </span>
+                    )
+                  },
+                  {
+                    header: "Version",
+                    cell: (doc: any) => `v${doc.version || "1.0"}`
+                  },
+                  {
+                    header: "Acknowledgement Required",
+                    cell: (doc: any) => doc.require_acknowledgement ? (
+                      <span className="text-amber-600 text-xs font-semibold flex items-center gap-1">
+                        <Icon name="warning" className="text-sm" /> Required
+                      </span>
+                    ) : (
+                      <span className="text-slate-400 text-xs">No</span>
+                    )
+                  },
+                  {
+                    header: "Actions",
+                    className: "text-right",
+                    cell: (doc: any) => (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => navigate(`/documents/${doc.id}`)}
+                      >
+                        Open
+                      </Button>
+                    )
+                  }
+                ]}
+                data={documents}
+                loading={loading}
+              />
             </div>
           )}
         </SectionCard>

@@ -7,13 +7,7 @@ import {
   PageHeader,
   SectionCard,
   StatCard,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableHeaderRow,
-  TableRow,
+  DataTable,
 } from "@/shared";
 import { AppShell } from "@/shared/components/layout/AppShell";
 import { useAuth } from "@/shared/context/AuthProvider";
@@ -222,78 +216,70 @@ export default function AdminGroupsPage() {
                 </Button>
               }
             >
-                {groupsLoading ? (
-                <div className="rounded-2xl bg-slate-50 px-4 py-6 text-sm text-slate-500">
-                  Loading groups...
-                </div>
-              ) : (
                 <div className="overflow-x-auto rounded-[22px] border border-slate-200 bg-white">
-                  <Table>
-                    <TableHead>
-                      <TableHeaderRow>
-                        <TableHeaderCell>Name</TableHeaderCell>
-                        <TableHeaderCell>Type</TableHeaderCell>
-                        <TableHeaderCell>Status</TableHeaderCell>
-                        <TableHeaderCell>Organizations</TableHeaderCell>
-                        <TableHeaderCell>Members</TableHeaderCell>
-                        <TableHeaderCell className="text-right">
-                          Actions
-                        </TableHeaderCell>
-                      </TableHeaderRow>
-                    </TableHead>
-                    <TableBody>
-                      {filteredGroups.map((group) => (
-                        <TableRow key={group.id}>
-                          <TableCell className="rounded-l-2xl">
-                            <p className="font-semibold text-slate-900">
-                              {group.name}
+                <DataTable
+                  loading={groupsLoading}
+                  columns={[
+                    {
+                      header: "Name",
+                      className: "rounded-l-2xl",
+                      cell: (group) => (
+                        <>
+                          <p className="font-semibold text-slate-900">
+                            {group.name}
+                          </p>
+                          {group.description && (
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              {group.description}
                             </p>
-                            {group.description && (
-                              <p className="text-xs text-slate-500 mt-0.5">
-                                {group.description}
-                              </p>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Chip variant="neutral">
-                              {group.groupType || "team"}
-                            </Chip>
-                          </TableCell>
-                          <TableCell>
-                            <Chip
-                              variant={group.isActive ? "success" : "neutral"}
-                            >
-                              {group.isActive ? "Active" : "Inactive"}
-                            </Chip>
-                          </TableCell>
-                          <TableCell>
-                            {group.organizationMappings?.length ??
-                              group.organizationIds?.length ??
-                              0}
-                          </TableCell>
-                          <TableCell>{group.members?.length ?? 0}</TableCell>
-                          <TableCell className="rounded-r-2xl text-right">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setEditingGroup(group)}
-                            >
-                              <Icon name="edit" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      {!filteredGroups.length ? (
-                        <TableRow>
-                          <TableCell colSpan={6} className="py-10 text-center">
-                            <p className="text-slate-500">No groups found.</p>
-                          </TableCell>
-                        </TableRow>
-                      ) : null}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
+                          )}
+                        </>
+                      ),
+                    },
+                    {
+                      header: "Type",
+                      cell: (group) => (
+                        <Chip variant="neutral">{group.groupType || "team"}</Chip>
+                      ),
+                    },
+                    {
+                      header: "Status",
+                      cell: (group) => (
+                        <Chip variant={group.isActive ? "success" : "neutral"}>
+                          {group.isActive ? "Active" : "Inactive"}
+                        </Chip>
+                      ),
+                    },
+                    {
+                      header: "Organizations",
+                      cell: (group) =>
+                        group.organizationMappings?.length ??
+                        group.organizationIds?.length ??
+                        0,
+                    },
+                    {
+                      header: "Members",
+                      cell: (group) => group.members?.length ?? 0,
+                    },
+                    {
+                      header: "Actions",
+                      className: "rounded-r-2xl text-right",
+                      cell: (group) => (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditingGroup(group)}
+                        >
+                          <Icon name="edit" />
+                        </Button>
+                      ),
+                    },
+                  ]}
+                  data={filteredGroups}
+                  emptyTitle="No groups found."
+                  emptyDescription=""
+                />
+              </div>
             </SectionCard>
           </>
         )}
@@ -331,46 +317,51 @@ export default function AdminGroupsPage() {
               }
             >
               <div className="overflow-x-auto rounded-[22px] border border-slate-200 bg-white">
-                <Table>
-                  <TableHead>
-                    <TableHeaderRow>
-                      <TableHeaderCell>Name</TableHeaderCell>
-                      <TableHeaderCell>Slug</TableHeaderCell>
-                      <TableHeaderCell>Description</TableHeaderCell>
-                      <TableHeaderCell className="text-right">
-                        Actions
-                      </TableHeaderCell>
-                    </TableHeaderRow>
-                  </TableHead>
-                  <TableBody>
-                    {groupTypes.map((type) => (
-                      <TableRow key={type.id}>
-                        <TableCell className="rounded-l-2xl">
-                          <p className="font-semibold text-slate-900">
-                            {type.name}
-                          </p>
-                        </TableCell>
-                        <TableCell>
-                          <code className="text-xs bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">
-                            {type.slug}
-                          </code>
-                        </TableCell>
-                        <TableCell className="text-slate-500">
+                <DataTable
+                  columns={[
+                    {
+                      header: "Name",
+                      className: "rounded-l-2xl",
+                      cell: (type) => (
+                        <p className="font-semibold text-slate-900">
+                          {type.name}
+                        </p>
+                      ),
+                    },
+                    {
+                      header: "Slug",
+                      cell: (type) => (
+                        <code className="text-xs bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">
+                          {type.slug}
+                        </code>
+                      ),
+                    },
+                    {
+                      header: "Description",
+                      cell: (type) => (
+                        <span className="text-slate-500">
                           {type.description}
-                        </TableCell>
-                        <TableCell className="rounded-r-2xl text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setEditingType(type)}
-                          >
-                            <Icon name="edit" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                        </span>
+                      ),
+                    },
+                    {
+                      header: "Actions",
+                      className: "rounded-r-2xl text-right",
+                      cell: (type) => (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditingType(type)}
+                        >
+                          <Icon name="edit" />
+                        </Button>
+                      ),
+                    },
+                  ]}
+                  data={groupTypes}
+                  emptyTitle="No group types found."
+                  emptyDescription=""
+                />
               </div>
             </SectionCard>
           </>

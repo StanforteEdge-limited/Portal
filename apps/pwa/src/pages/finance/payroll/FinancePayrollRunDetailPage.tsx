@@ -7,16 +7,10 @@ import {
   PageHeader,
   SectionCard,
   StatCard,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableHeaderRow,
-  TableRow,
   TextAreaField,
   useToast,
 } from "@/shared";
+import { DataTable } from "@/shared/components/ui/DataTable";
 import { AppShell } from "@/shared/components/layout/AppShell";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { useCachedQuery } from "@/shared/lib/core";
@@ -315,42 +309,20 @@ export default function FinancePayrollRunDetailPage() {
 
         <SectionCard title="Payroll Items" description="Employee breakdown for this run.">
           {items.length ? (
-            <Table>
-              <TableHead>
-                <TableHeaderRow>
-                  <TableHeaderCell>Employee</TableHeaderCell>
-                  <TableHeaderCell>Gross Pay</TableHeaderCell>
-                  <TableHeaderCell>Deductions</TableHeaderCell>
-                  <TableHeaderCell>Net Pay</TableHeaderCell>
-                  <TableHeaderCell>Payment</TableHeaderCell>
-                </TableHeaderRow>
-              </TableHead>
-              <TableBody>
-                {items.map((item: any) => (
-                  <TableRow key={item.id}>
-                    <TableCell>
-                      <p className="font-semibold text-slate-900">
-                        {item.worker?.fullName ?? item.worker_name ?? "-"}
-                      </p>
-                    </TableCell>
-                    <TableCell>{formatCurrency(item.grossPay ?? item.gross_pay ?? 0, run.currency)}</TableCell>
-                    <TableCell>{formatCurrency(item.totalDeductions ?? item.total_deductions ?? 0, run.currency)}</TableCell>
-                    <TableCell>
-                      <span className="font-semibold">
-                        {formatCurrency(item.netPay ?? item.net_pay ?? 0, run.currency)}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        variant={(item.paymentStatus ?? item.payment_status ?? "pending") === "paid" ? "success" : "neutral"}
-                      >
-                        {item.paymentStatus ?? item.payment_status ?? "pending"}
-                      </Chip>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <DataTable
+              columns={[
+                { header: "Employee", cell: (item: any) => <p className="font-semibold text-slate-900">{item.worker?.fullName ?? item.worker_name ?? "-"}</p> },
+                { header: "Gross Pay", cell: (item: any) => formatCurrency(item.grossPay ?? item.gross_pay ?? 0, run.currency) },
+                { header: "Deductions", cell: (item: any) => formatCurrency(item.totalDeductions ?? item.total_deductions ?? 0, run.currency) },
+                { header: "Net Pay", cell: (item: any) => <span className="font-semibold">{formatCurrency(item.netPay ?? item.net_pay ?? 0, run.currency)}</span> },
+                { header: "Payment", cell: (item: any) => (
+                  <Chip variant={(item.paymentStatus ?? item.payment_status ?? "pending") === "paid" ? "success" : "neutral"}>
+                    {item.paymentStatus ?? item.payment_status ?? "pending"}
+                  </Chip>
+                ) },
+              ]}
+              data={items}
+            />
           ) : (
             <EmptyState title="No items" description="No payroll items found for this run." />
           )}

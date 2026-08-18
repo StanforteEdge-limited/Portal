@@ -6,18 +6,12 @@ import {
   Chip,
   Icon,
   SectionCard,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableHeaderRow,
-  TableRow,
   TextField,
   SelectField,
   TextAreaField,
   useToast,
 } from "@/shared";
+import { DataTable } from "@/shared/components/ui/DataTable";
 import { buildAppNavigation, buildAppMobileNav } from "@/shared/navigation";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { cacheStore, requestApi, httpRequest } from "@/shared/lib/core";
@@ -339,43 +333,30 @@ export default function AdminSettingsPage() {
                     {loading ? (
                       <div className="text-sm text-slate-500">Loading request types...</div>
                     ) : types.length > 0 ? (
-                      <Table>
-                        <TableHead>
-                          <TableHeaderRow>
-                            <TableHeaderCell>Name</TableHeaderCell>
-                            <TableHeaderCell>Slug/Prefix</TableHeaderCell>
-                            <TableHeaderCell>Module</TableHeaderCell>
-                            <TableHeaderCell>Category</TableHeaderCell>
-                            <TableHeaderCell>Status</TableHeaderCell>
-                            <TableHeaderCell className="text-right">Actions</TableHeaderCell>
-                          </TableHeaderRow>
-                        </TableHead>
-                        <TableBody>
-                          {types.map((t) => (
-                            <TableRow key={t.id}>
-                              <TableCell className="font-bold text-slate-900">{t.name}</TableCell>
-                              <TableCell className="font-mono text-xs">{t.slug}</TableCell>
-                              <TableCell className="text-xs text-slate-500">-</TableCell>
-                              <TableCell className="capitalize">{t.category || "General"}</TableCell>
-                              <TableCell>
-                                <Chip variant={t.is_active ? "success" : "neutral"}>
-                                  {t.is_active ? "Active" : "Disabled"}
-                                </Chip>
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex items-center justify-end gap-2">
-                                  <Button variant="ghost" size="sm" onClick={() => setEditingType(t)}>
-                                    <Icon name="edit" />
-                                  </Button>
-                                  <Button variant="ghost" size="sm" className="text-danger hover:bg-danger/5" onClick={() => void handleDeleteType(t)}>
-                                    <Icon name="delete" />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                      <DataTable
+                        columns={[
+                          { header: "Name", className: "font-bold text-slate-900", cell: (t) => t.name },
+                          { header: "Slug/Prefix", className: "font-mono text-xs", cell: (t) => t.slug },
+                          { header: "Module", className: "text-xs text-slate-500", cell: () => "-" },
+                          { header: "Category", className: "capitalize", cell: (t) => t.category || "General" },
+                          { header: "Status", cell: (t) => (
+                            <Chip variant={t.is_active ? "success" : "neutral"}>
+                              {t.is_active ? "Active" : "Disabled"}
+                            </Chip>
+                          )},
+                          { header: "Actions", className: "text-right", cell: (t) => (
+                            <div className="flex items-center justify-end gap-2">
+                              <Button variant="ghost" size="sm" onClick={() => setEditingType(t)}>
+                                <Icon name="edit" />
+                              </Button>
+                              <Button variant="ghost" size="sm" className="text-danger hover:bg-danger/5" onClick={() => void handleDeleteType(t)}>
+                                <Icon name="delete" />
+                              </Button>
+                            </div>
+                          )}
+                        ]}
+                        data={types}
+                      />
                     ) : (
                       <div className="py-10 text-center text-slate-400">
                         No request types found.
@@ -450,41 +431,29 @@ export default function AdminSettingsPage() {
                           </SelectField>
                         </div>
                         {categories.length > 0 ? (
-                          <Table>
-                            <TableHead>
-                              <TableHeaderRow>
-                                <TableHeaderCell>Name</TableHeaderCell>
-                                <TableHeaderCell>Code</TableHeaderCell>
-                                <TableHeaderCell>Module</TableHeaderCell>
-                                <TableHeaderCell>Status</TableHeaderCell>
-                                <TableHeaderCell className="text-right">Actions</TableHeaderCell>
-                              </TableHeaderRow>
-                            </TableHead>
-                            <TableBody>
-                              {categories.map((cat) => (
-                                <TableRow key={cat.id}>
-                                  <TableCell className="font-bold text-slate-900">{cat.name}</TableCell>
-                                  <TableCell className="font-mono text-xs">{cat.code}</TableCell>
-                                  <TableCell className="text-xs text-slate-500">{groupMap[cat.groupId] || "-"}</TableCell>
-                                  <TableCell>
-                                    <Chip variant={cat.isActive !== false ? "success" : "neutral"}>
-                                      {cat.isActive !== false ? "Active" : "Disabled"}
-                                    </Chip>
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    <div className="flex items-center justify-end gap-2">
-                                      <Button variant="ghost" size="sm" onClick={() => openEditCategory(cat)}>
-                                        <Icon name="edit" />
-                                      </Button>
-                                      <Button variant="ghost" size="sm" className="text-danger hover:bg-danger/5" onClick={() => void handleDeleteCategory(cat)}>
-                                        <Icon name="delete" />
-                                      </Button>
-                                    </div>
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
+                          <DataTable
+                            columns={[
+                              { header: "Name", className: "font-bold text-slate-900", cell: (cat) => cat.name },
+                              { header: "Code", className: "font-mono text-xs", cell: (cat) => cat.code },
+                              { header: "Module", className: "text-xs text-slate-500", cell: (cat) => groupMap[cat.groupId] || "-" },
+                              { header: "Status", cell: (cat) => (
+                                <Chip variant={cat.isActive !== false ? "success" : "neutral"}>
+                                  {cat.isActive !== false ? "Active" : "Disabled"}
+                                </Chip>
+                              )},
+                              { header: "Actions", className: "text-right", cell: (cat) => (
+                                <div className="flex items-center justify-end gap-2">
+                                  <Button variant="ghost" size="sm" onClick={() => openEditCategory(cat)}>
+                                    <Icon name="edit" />
+                                  </Button>
+                                  <Button variant="ghost" size="sm" className="text-danger hover:bg-danger/5" onClick={() => void handleDeleteCategory(cat)}>
+                                    <Icon name="delete" />
+                                  </Button>
+                                </div>
+                              )}
+                            ]}
+                            data={categories}
+                          />
                         ) : (
                           <div className="py-10 text-center text-slate-400">
                             No categories found.
@@ -500,43 +469,30 @@ export default function AdminSettingsPage() {
             {activeTab === "taxonomy" && (
               <div className="space-y-4">
                 {taxonomies.length > 0 ? (
-                  <Table>
-                    <TableHead>
-                      <TableHeaderRow>
-                        <TableHeaderCell>Name</TableHeaderCell>
-                        <TableHeaderCell>Key</TableHeaderCell>
-                        <TableHeaderCell>Module</TableHeaderCell>
-                        <TableHeaderCell>Terms</TableHeaderCell>
-                        <TableHeaderCell>Status</TableHeaderCell>
-                        <TableHeaderCell className="text-right">Actions</TableHeaderCell>
-                      </TableHeaderRow>
-                    </TableHead>
-                    <TableBody>
-                      {taxonomies.map((tax) => (
-                        <TableRow key={tax.id}>
-                          <TableCell className="font-bold text-slate-900">{tax.name}</TableCell>
-                          <TableCell className="font-mono text-xs">{tax.key}</TableCell>
-                          <TableCell className="text-xs text-slate-500">{tax.module || "-"}</TableCell>
-                          <TableCell className="text-xs text-slate-500">{tax.terms.length}</TableCell>
-                          <TableCell>
-                            <Chip variant={tax.is_active ? "success" : "neutral"}>
-                              {tax.is_active ? "Active" : "Disabled"}
-                            </Chip>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <Button variant="ghost" size="sm" onClick={() => setEditingTaxonomy(tax)}>
-                                <Icon name="edit" />
-                              </Button>
-                              <Button variant="ghost" size="sm" className="text-danger hover:bg-danger/5" onClick={() => void handleDeleteTaxonomy(tax)}>
-                                <Icon name="delete" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                  <DataTable
+                    columns={[
+                      { header: "Name", className: "font-bold text-slate-900", cell: (tax) => tax.name },
+                      { header: "Key", className: "font-mono text-xs", cell: (tax) => tax.key },
+                      { header: "Module", className: "text-xs text-slate-500", cell: (tax) => tax.module || "-" },
+                      { header: "Terms", className: "text-xs text-slate-500", cell: (tax) => tax.terms.length },
+                      { header: "Status", cell: (tax) => (
+                        <Chip variant={tax.is_active ? "success" : "neutral"}>
+                          {tax.is_active ? "Active" : "Disabled"}
+                        </Chip>
+                      )},
+                      { header: "Actions", className: "text-right", cell: (tax) => (
+                        <div className="flex items-center justify-end gap-2">
+                          <Button variant="ghost" size="sm" onClick={() => setEditingTaxonomy(tax)}>
+                            <Icon name="edit" />
+                          </Button>
+                          <Button variant="ghost" size="sm" className="text-danger hover:bg-danger/5" onClick={() => void handleDeleteTaxonomy(tax)}>
+                            <Icon name="delete" />
+                          </Button>
+                        </div>
+                      )}
+                    ]}
+                    data={taxonomies}
+                  />
                 ) : (
                   <div className="py-10 text-center text-slate-400">
                     No taxonomies found.

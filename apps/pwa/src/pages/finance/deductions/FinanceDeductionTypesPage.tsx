@@ -12,12 +12,7 @@ import {
   SlideOverHeader,
   SlideOverContent,
   SlideOverFooter,
-  Table,
-  TableHeaderRow,
-  TableHeaderCell,
-  TableBody,
-  TableRow,
-  TableCell,
+  DataTable,
   useToast,
 } from "@/shared";
 import { AppShell } from "@/shared/components/layout/AppShell";
@@ -192,57 +187,58 @@ export default function FinanceDeductionTypesPage() {
               <p className="text-slate-500">No deduction types found.</p>
             </div>
           ) : (
-            <Table>
-              <TableHeaderRow>
-                <TableHeaderCell>Name</TableHeaderCell>
-                <TableHeaderCell>Code</TableHeaderCell>
-                <TableHeaderCell>Rate</TableHeaderCell>
-                <TableHeaderCell>GL Account</TableHeaderCell>
-                <TableHeaderCell>Status</TableHeaderCell>
-                <TableHeaderCell className="text-right">Actions</TableHeaderCell>
-              </TableHeaderRow>
-              <TableBody>
-                {types.map((dt: any) => {
-                  const glAccount = glAccounts.find((a: any) => a.id === dt.gl_account_id);
-                  return (
-                    <TableRow key={dt.id}>
-                      <TableCell>
-                        <p className="font-medium text-slate-900">{dt.name}</p>
-                        <p className="text-xs text-slate-400 capitalize">{dt.applies_to || "-"}</p>
-                      </TableCell>
-                      <TableCell>
-                        <code className="text-xs bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">
-                          {dt.code || "-"}
-                        </code>
-                      </TableCell>
-                      <TableCell>
-                        <span className="font-medium text-slate-900">
-                          {dt.rate != null ? `${(dt.rate * 100).toFixed(2)}%` : "-"}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-slate-600">
-                        {glAccount ? glAccount.name : "-"}
-                      </TableCell>
-                      <TableCell>
-                        <Chip variant={dt.is_active ? "success" : "neutral"}>
-                          {dt.is_active ? "Active" : "Inactive"}
-                        </Chip>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="sm" onClick={() => openEdit(dt)}>
-                            <Icon name="edit" />
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => void handleToggleActive(dt)}>
-                            <Icon name={dt.is_active ? "toggle_on" : "toggle_off"} />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+            <DataTable
+              columns={[
+                {
+                  header: "Name", cell: (dt: any) => (
+                    <>
+                      <p className="font-medium text-slate-900">{dt.name}</p>
+                      <p className="text-xs text-slate-400 capitalize">{dt.applies_to || "-"}</p>
+                    </>
+                  )
+                },
+                {
+                  header: "Code", cell: (dt: any) => (
+                    <code className="text-xs bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">
+                      {dt.code || "-"}
+                    </code>
+                  )
+                },
+                {
+                  header: "Rate", cell: (dt: any) => (
+                    <span className="font-medium text-slate-900">
+                      {dt.rate != null ? `${(dt.rate * 100).toFixed(2)}%` : "-"}
+                    </span>
+                  )
+                },
+                {
+                  header: "GL Account", cell: (dt: any) => {
+                    const glAccount = glAccounts.find((a: any) => a.id === dt.gl_account_id);
+                    return <span className="text-slate-600">{glAccount ? glAccount.name : "-"}</span>;
+                  }
+                },
+                {
+                  header: "Status", cell: (dt: any) => (
+                    <Chip variant={dt.is_active ? "success" : "neutral"}>
+                      {dt.is_active ? "Active" : "Inactive"}
+                    </Chip>
+                  )
+                },
+                {
+                  header: "Actions", className: "text-right", cell: (dt: any) => (
+                    <div className="flex justify-end gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => openEdit(dt)}>
+                        <Icon name="edit" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => void handleToggleActive(dt)}>
+                        <Icon name={dt.is_active ? "toggle_on" : "toggle_off"} />
+                      </Button>
+                    </div>
+                  )
+                },
+              ]}
+              data={types}
+            />
           )}
         </SectionCard>
       </div>

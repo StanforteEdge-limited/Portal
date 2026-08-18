@@ -3,14 +3,8 @@ import {
   Button,
   Chip,
   SectionCard,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableHeaderRow,
-  TableRow,
 } from "@/shared";
+import { DataTable } from "@/shared/components/ui/DataTable";
 import { SlideOver, SlideOverHeader, SlideOverContent } from "@/shared/components/ui/SlideOver";
 import { attendanceApi, useCachedQuery } from "@/shared/lib/core";
 import { type AttendanceDaily } from "@stanforte/shared";
@@ -56,46 +50,21 @@ export default function StaffAttendanceSlideOver({
           <div className="text-sm text-danger">{error}</div>
         ) : (
           <SectionCard title="Daily Records">
-            <Table>
-              <TableHead>
-                <TableHeaderRow>
-                  <TableHeaderCell>Date</TableHeaderCell>
-                  <TableHeaderCell>Clock In</TableHeaderCell>
-                  <TableHeaderCell>Clock Out</TableHeaderCell>
-                  <TableHeaderCell>Worked</TableHeaderCell>
-                  <TableHeaderCell>Late</TableHeaderCell>
-                  <TableHeaderCell>Status</TableHeaderCell>
-                </TableHeaderRow>
-              </TableHead>
-              <TableBody>
-                {daily.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell>{formatDate(row.work_date)}</TableCell>
-                    <TableCell>{formatTime(row.first_in_at)}</TableCell>
-                    <TableCell><TimeWithNextDay time={row.last_out_at} referenceDate={row.first_in_at} /></TableCell>
-                    <TableCell>{formatDuration(row.worked_minutes)}</TableCell>
-                    <TableCell>
-                      {row.late_minutes > 0 ? formatDuration(row.late_minutes) : "-"}
-                    </TableCell>
-                    <TableCell>
-                      <Chip variant={toneFromStatus(deriveAttendanceStatus(row))}>
-                        {humanize(deriveAttendanceStatus(row))}
-                      </Chip>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {!daily.length ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={6}
-                      className="py-8 text-center text-slate-500"
-                    >
-                      No records in this period.
-                    </TableCell>
-                  </TableRow>
-                ) : null}
-              </TableBody>
-            </Table>
+            <DataTable
+              columns={[
+                { header: "Date", cell: (row) => formatDate(row.work_date) },
+                { header: "Clock In", cell: (row) => formatTime(row.first_in_at) },
+                { header: "Clock Out", cell: (row) => <TimeWithNextDay time={row.last_out_at} referenceDate={row.first_in_at} /> },
+                { header: "Worked", cell: (row) => formatDuration(row.worked_minutes) },
+                { header: "Late", cell: (row) => row.late_minutes > 0 ? formatDuration(row.late_minutes) : "-" },
+                { header: "Status", cell: (row) => (
+                  <Chip variant={toneFromStatus(deriveAttendanceStatus(row))}>
+                    {humanize(deriveAttendanceStatus(row))}
+                  </Chip>
+                ) },
+              ]}
+              data={daily}
+            />
           </SectionCard>
         )}
       </SlideOverContent>

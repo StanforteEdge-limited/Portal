@@ -8,16 +8,10 @@ import {
   Icon,
   SelectField,
   StatCard,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableHeaderRow,
-  TableRow,
   TextField,
   useToast,
 } from "@/shared";
+import { DataTable } from "@/shared/components/ui/DataTable";
 import {
   SlideOver,
   SlideOverContent,
@@ -326,46 +320,31 @@ export default function NonprofitSetupTab() {
         {donors.length === 0 ? (
           <EmptyState title="No donors yet" description="Add your first donor to get started." />
         ) : (
-          <Table>
-            <TableHead>
-              <TableHeaderRow>
-                <TableHeaderCell>Name</TableHeaderCell>
-                <TableHeaderCell>Type</TableHeaderCell>
-                <TableHeaderCell>Email</TableHeaderCell>
-                <TableHeaderCell>Phone</TableHeaderCell>
-                <TableHeaderCell>Status</TableHeaderCell>
-                <TableHeaderCell>{""}</TableHeaderCell>
-              </TableHeaderRow>
-            </TableHead>
-            <TableBody>
-              {donors.map((d) => (
-                <TableRow key={d.id}>
-                  <TableCell className="font-medium">{d.name}</TableCell>
-                  <TableCell>{d.donor_type ?? "—"}</TableCell>
-                  <TableCell>{d.email ?? "—"}</TableCell>
-                  <TableCell>{d.phone ?? "—"}</TableCell>
-                  <TableCell>
-                    <Chip variant={d.is_active ? "success" : "neutral"}>{d.is_active ? "Active" : "Inactive"}</Chip>
-                  </TableCell>
-                  <TableCell>
-                    {confirmDelete?.id === d.id ? (
-                      <span className="flex gap-2">
-                        <Button variant="danger" size="sm" onClick={() => void handleConfirmDelete()} disabled={deleting}>
-                          {deleting ? "Deleting..." : "Confirm"}
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(null)}>Cancel</Button>
-                      </span>
-                    ) : (
-                      <span className="flex gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => openEditDonor(d)}>Edit</Button>
-                        <Button variant="ghost" size="sm" onClick={() => setConfirmDelete({ type: "donor", id: d.id, name: d.name })}>Delete</Button>
-                      </span>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <DataTable
+            columns={[
+              { header: "Name", className: "font-medium", cell: (d) => d.name },
+              { header: "Type", cell: (d) => d.donor_type ?? "—" },
+              { header: "Email", cell: (d) => d.email ?? "—" },
+              { header: "Phone", cell: (d) => d.phone ?? "—" },
+              { header: "Status", cell: (d) => <Chip variant={d.is_active ? "success" : "neutral"}>{d.is_active ? "Active" : "Inactive"}</Chip> },
+              { header: "", cell: (d) => (
+                confirmDelete?.id === d.id ? (
+                  <span className="flex gap-2">
+                    <Button variant="danger" size="sm" onClick={() => void handleConfirmDelete()} disabled={deleting}>
+                      {deleting ? "Deleting..." : "Confirm"}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(null)}>Cancel</Button>
+                  </span>
+                ) : (
+                  <span className="flex gap-2">
+                    <Button variant="ghost" size="sm" onClick={() => openEditDonor(d)}>Edit</Button>
+                    <Button variant="ghost" size="sm" onClick={() => setConfirmDelete({ type: "donor", id: d.id, name: d.name })}>Delete</Button>
+                  </span>
+                )
+              ) }
+            ]}
+            data={donors}
+          />
         )}
       </div>
 
@@ -378,48 +357,32 @@ export default function NonprofitSetupTab() {
         {funds.length === 0 ? (
           <EmptyState title="No funds yet" description="Add your first fund to get started." />
         ) : (
-          <Table>
-            <TableHead>
-              <TableHeaderRow>
-                <TableHeaderCell>Code</TableHeaderCell>
-                <TableHeaderCell>Name</TableHeaderCell>
-                <TableHeaderCell>Type</TableHeaderCell>
-                <TableHeaderCell>Restriction</TableHeaderCell>
-                <TableHeaderCell>Donor</TableHeaderCell>
-                <TableHeaderCell>Status</TableHeaderCell>
-                <TableHeaderCell>{""}</TableHeaderCell>
-              </TableHeaderRow>
-            </TableHead>
-            <TableBody>
-              {funds.map((f) => (
-                <TableRow key={f.id}>
-                  <TableCell className="font-mono text-xs">{f.code}</TableCell>
-                  <TableCell className="font-medium">{f.name}</TableCell>
-                  <TableCell>{f.fund_type ?? "—"}</TableCell>
-                  <TableCell>{f.restriction_type ?? "—"}</TableCell>
-                  <TableCell>{f.donor?.name ?? "—"}</TableCell>
-                  <TableCell>
-                    <Chip variant={f.is_active ? "success" : "neutral"}>{f.is_active ? "Active" : "Inactive"}</Chip>
-                  </TableCell>
-                  <TableCell>
-                    {confirmDelete?.id === f.id ? (
-                      <span className="flex gap-2">
-                        <Button variant="danger" size="sm" onClick={() => void handleConfirmDelete()} disabled={deleting}>
-                          {deleting ? "Deleting..." : "Confirm"}
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(null)}>Cancel</Button>
-                      </span>
-                    ) : (
-                      <span className="flex gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => openEditFund(f)}>Edit</Button>
-                        <Button variant="ghost" size="sm" onClick={() => setConfirmDelete({ type: "fund", id: f.id, name: f.name })}>Delete</Button>
-                      </span>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <DataTable
+            columns={[
+              { header: "Code", className: "font-mono text-xs", cell: (f) => f.code },
+              { header: "Name", className: "font-medium", cell: (f) => f.name },
+              { header: "Type", cell: (f) => f.fund_type ?? "—" },
+              { header: "Restriction", cell: (f) => f.restriction_type ?? "—" },
+              { header: "Donor", cell: (f) => f.donor?.name ?? "—" },
+              { header: "Status", cell: (f) => <Chip variant={f.is_active ? "success" : "neutral"}>{f.is_active ? "Active" : "Inactive"}</Chip> },
+              { header: "", cell: (f) => (
+                confirmDelete?.id === f.id ? (
+                  <span className="flex gap-2">
+                    <Button variant="danger" size="sm" onClick={() => void handleConfirmDelete()} disabled={deleting}>
+                      {deleting ? "Deleting..." : "Confirm"}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(null)}>Cancel</Button>
+                  </span>
+                ) : (
+                  <span className="flex gap-2">
+                    <Button variant="ghost" size="sm" onClick={() => openEditFund(f)}>Edit</Button>
+                    <Button variant="ghost" size="sm" onClick={() => setConfirmDelete({ type: "fund", id: f.id, name: f.name })}>Delete</Button>
+                  </span>
+                )
+              ) }
+            ]}
+            data={funds}
+          />
         )}
       </div>
 
@@ -432,48 +395,31 @@ export default function NonprofitSetupTab() {
         {grants.length === 0 ? (
           <EmptyState title="No grants yet" description="Add your first grant to get started." />
         ) : (
-          <Table>
-            <TableHead>
-              <TableHeaderRow>
-                <TableHeaderCell>Code</TableHeaderCell>
-                <TableHeaderCell>Name</TableHeaderCell>
-                <TableHeaderCell>Donor</TableHeaderCell>
-                <TableHeaderCell>Fund</TableHeaderCell>
-                <TableHeaderCell>Status</TableHeaderCell>
-                <TableHeaderCell>{""}</TableHeaderCell>
-              </TableHeaderRow>
-            </TableHead>
-            <TableBody>
-              {grants.map((g) => (
-                <TableRow key={g.id}>
-                  <TableCell className="font-mono text-xs">{g.code}</TableCell>
-                  <TableCell className="font-medium">{g.name}</TableCell>
-                  <TableCell>{g.donor?.name ?? "—"}</TableCell>
-                  <TableCell>{g.fund?.name ?? "—"}</TableCell>
-                  <TableCell>
-                    <Chip variant={g.status === "active" ? "success" : g.status === "closed" ? "neutral" : "warning"}>
-                      {g.status ?? "unknown"}
-                    </Chip>
-                  </TableCell>
-                  <TableCell>
-                    {confirmDelete?.id === g.id ? (
-                      <span className="flex gap-2">
-                        <Button variant="danger" size="sm" onClick={() => void handleConfirmDelete()} disabled={deleting}>
-                          {deleting ? "Deleting..." : "Confirm"}
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(null)}>Cancel</Button>
-                      </span>
-                    ) : (
-                      <span className="flex gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => openEditGrant(g)}>Edit</Button>
-                        <Button variant="ghost" size="sm" onClick={() => setConfirmDelete({ type: "grant", id: g.id, name: g.name })}>Delete</Button>
-                      </span>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <DataTable
+            columns={[
+              { header: "Code", className: "font-mono text-xs", cell: (g) => g.code },
+              { header: "Name", className: "font-medium", cell: (g) => g.name },
+              { header: "Donor", cell: (g) => g.donor?.name ?? "—" },
+              { header: "Fund", cell: (g) => g.fund?.name ?? "—" },
+              { header: "Status", cell: (g) => <Chip variant={g.status === "active" ? "success" : g.status === "closed" ? "neutral" : "warning"}>{g.status ?? "unknown"}</Chip> },
+              { header: "", cell: (g) => (
+                confirmDelete?.id === g.id ? (
+                  <span className="flex gap-2">
+                    <Button variant="danger" size="sm" onClick={() => void handleConfirmDelete()} disabled={deleting}>
+                      {deleting ? "Deleting..." : "Confirm"}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(null)}>Cancel</Button>
+                  </span>
+                ) : (
+                  <span className="flex gap-2">
+                    <Button variant="ghost" size="sm" onClick={() => openEditGrant(g)}>Edit</Button>
+                    <Button variant="ghost" size="sm" onClick={() => setConfirmDelete({ type: "grant", id: g.id, name: g.name })}>Delete</Button>
+                  </span>
+                )
+              ) }
+            ]}
+            data={grants}
+          />
         )}
       </div>
 

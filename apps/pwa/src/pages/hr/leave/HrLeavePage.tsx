@@ -74,9 +74,14 @@ function isCurrentlyOnLeave(record: RequestRecord): boolean {
 
 function matchesHistoryFilter(record: RequestRecord, filter: HistoryFilter) {
   const workflowStatus = deriveRequestWorkflowStatus(record);
+  
   if (filter === "approved_or_completed") {
-    return workflowStatus === "approved" || workflowStatus === "completed";
+    return workflowStatus === "approved" || workflowStatus === "completed" || workflowStatus === "cleared";
   }
+  if (filter === "approved") {
+    return workflowStatus === "approved" || workflowStatus === "cleared";
+  }
+  
   return workflowStatus === filter;
 }
 
@@ -203,8 +208,16 @@ export default function HrLeavePage() {
         const d = r.data ?? {};
         const name = creatorName(r);
         return (
-          <div>
-            <p className="font-semibold text-slate-900">{name}</p>
+          <div
+            className="cursor-pointer hover:underline"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (r.creator?.id) {
+                navigate(`/hr/employees/${r.creator.id}?tab=leave`);
+              }
+            }}
+          >
+            <p className="font-semibold text-brand-700">{name}</p>
             <p className="text-xs text-slate-500">{r.creator?.email ?? ""}</p>
           </div>
         );
@@ -260,8 +273,16 @@ export default function HrLeavePage() {
         const d = r.data ?? {};
         const name = creatorName(r);
         return (
-          <div>
-            <p className="font-semibold text-slate-900">{name}</p>
+          <div
+            className="cursor-pointer hover:underline"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (r.creator?.id) {
+                navigate(`/hr/employees/${r.creator.id}?tab=leave`);
+              }
+            }}
+          >
+            <p className="font-semibold text-brand-700">{name}</p>
             <p className="text-xs text-slate-500">{r.creator?.email ?? ""}</p>
           </div>
         );

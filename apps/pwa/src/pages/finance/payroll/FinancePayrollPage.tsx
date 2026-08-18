@@ -6,14 +6,8 @@ import {
   PageHeader,
   SectionCard,
   StatCard,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableHeaderRow,
-  TableRow,
 } from "@/shared";
+import { DataTable } from "@/shared/components/ui/DataTable";
 import { AppShell } from "@/shared/components/layout/AppShell";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { useCachedQuery } from "@/shared/lib/core";
@@ -134,49 +128,26 @@ export default function FinancePayrollPage() {
             title="Pending Review"
             description="Runs awaiting Finance review."
           >
-            <Table>
-              <TableHead>
-                <TableHeaderRow>
-                  <TableHeaderCell>Name</TableHeaderCell>
-                  <TableHeaderCell>Period</TableHeaderCell>
-                  <TableHeaderCell>Workers</TableHeaderCell>
-                  <TableHeaderCell>Net Pay</TableHeaderCell>
-                  <TableHeaderCell>Status</TableHeaderCell>
-                  <TableHeaderCell>{""}</TableHeaderCell>
-                </TableHeaderRow>
-              </TableHead>
-              <TableBody>
-                {pendingReview.map((run: any) => (
-                  <TableRow key={run.id}>
-                    <TableCell>
-                      <p className="font-semibold text-slate-900">{run.name}</p>
-                    </TableCell>
-                    <TableCell>
-                      {MONTH_NAMES[run.month] ?? run.month} {run.year}
-                    </TableCell>
-                    <TableCell>{run.item_count ?? "-"}</TableCell>
-                    <TableCell>
-                      {run.totals?.net != null
-                        ? formatCurrency(run.totals.net, run.currency)
-                        : "-"}
-                    </TableCell>
-                    <TableCell>
-                      <Chip variant={runStatusTone(run.status)}>{formatRunStatus(run.status)}</Chip>
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        requiredPermissions={["payroll.approve"]}
-                        onClick={() => navigate(`/finance/payroll/runs/${run.id}`)}
-                      >
-                        Review
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <DataTable
+              columns={[
+                { header: "Name", cell: (run: any) => <p className="font-semibold text-slate-900">{run.name}</p> },
+                { header: "Period", cell: (run: any) => `${MONTH_NAMES[run.month] ?? run.month} ${run.year}` },
+                { header: "Workers", cell: (run: any) => run.item_count ?? "-" },
+                { header: "Net Pay", cell: (run: any) => run.totals?.net != null ? formatCurrency(run.totals.net, run.currency) : "-" },
+                { header: "Status", cell: (run: any) => <Chip variant={runStatusTone(run.status)}>{formatRunStatus(run.status)}</Chip> },
+                { header: "", cell: (run: any) => (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    requiredPermissions={["payroll.approve"]}
+                    onClick={() => navigate(`/finance/payroll/runs/${run.id}`)}
+                  >
+                    Review
+                  </Button>
+                ) },
+              ]}
+              data={pendingReview}
+            />
           </SectionCard>
         )}
 
@@ -187,52 +158,25 @@ export default function FinancePayrollPage() {
           {loading ? (
             <div className="text-sm text-slate-500">Loading runs...</div>
           ) : allRuns.length ? (
-            <Table>
-              <TableHead>
-                <TableHeaderRow>
-                  <TableHeaderCell>Name</TableHeaderCell>
-                  <TableHeaderCell>Period</TableHeaderCell>
-                  <TableHeaderCell>Gross</TableHeaderCell>
-                  <TableHeaderCell>Net</TableHeaderCell>
-                  <TableHeaderCell>Status</TableHeaderCell>
-                  <TableHeaderCell>{""}</TableHeaderCell>
-                </TableHeaderRow>
-              </TableHead>
-              <TableBody>
-                {allRuns.map((run: any) => (
-                  <TableRow key={run.id}>
-                    <TableCell>
-                      <p className="font-semibold text-slate-900">{run.name}</p>
-                    </TableCell>
-                    <TableCell>
-                      {MONTH_NAMES[run.month] ?? run.month} {run.year}
-                    </TableCell>
-                    <TableCell>
-                      {run.totals?.gross != null
-                        ? formatCurrency(run.totals.gross, run.currency)
-                        : "-"}
-                    </TableCell>
-                    <TableCell>
-                      {run.totals?.net != null
-                        ? formatCurrency(run.totals.net, run.currency)
-                        : "-"}
-                    </TableCell>
-                    <TableCell>
-                      <Chip variant={runStatusTone(run.status)}>{formatRunStatus(run.status)}</Chip>
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => navigate(`/finance/payroll/runs/${run.id}`)}
-                      >
-                        Open
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <DataTable
+              columns={[
+                { header: "Name", cell: (run: any) => <p className="font-semibold text-slate-900">{run.name}</p> },
+                { header: "Period", cell: (run: any) => `${MONTH_NAMES[run.month] ?? run.month} ${run.year}` },
+                { header: "Gross", cell: (run: any) => run.totals?.gross != null ? formatCurrency(run.totals.gross, run.currency) : "-" },
+                { header: "Net", cell: (run: any) => run.totals?.net != null ? formatCurrency(run.totals.net, run.currency) : "-" },
+                { header: "Status", cell: (run: any) => <Chip variant={runStatusTone(run.status)}>{formatRunStatus(run.status)}</Chip> },
+                { header: "", cell: (run: any) => (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => navigate(`/finance/payroll/runs/${run.id}`)}
+                  >
+                    Open
+                  </Button>
+                ) },
+              ]}
+              data={allRuns}
+            />
           ) : (
             <EmptyState
               title="No payroll runs"

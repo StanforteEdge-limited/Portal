@@ -8,14 +8,8 @@ import {
   SectionCard,
   SelectField,
   StatCard,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableHeaderRow,
-  TableRow,
 } from "@/shared";
+import { DataTable } from "@/shared/components/ui/DataTable";
 import { AppShell } from "@/shared/components/layout/AppShell";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { useCachedQuery } from "@/shared/lib/core";
@@ -158,54 +152,22 @@ export default function HrPayrollPage() {
           {loading ? (
             <div className="text-sm text-slate-500">Loading runs...</div>
           ) : filteredRuns.length ? (
-            <Table>
-              <TableHead>
-                <TableHeaderRow>
-                  <TableHeaderCell>Name</TableHeaderCell>
-                  <TableHeaderCell>Period</TableHeaderCell>
-                  <TableHeaderCell>Workers</TableHeaderCell>
-                  <TableHeaderCell>Gross</TableHeaderCell>
-                  <TableHeaderCell>Net</TableHeaderCell>
-                  <TableHeaderCell>Status</TableHeaderCell>
-                  <TableHeaderCell>{""}</TableHeaderCell>
-                </TableHeaderRow>
-              </TableHead>
-              <TableBody>
-                {filteredRuns.map((run: any) => (
-                  <TableRow key={run.id}>
-                    <TableCell>
-                      <p className="font-semibold text-slate-900">{run.name}</p>
-                    </TableCell>
-                    <TableCell>{periodLabel(run)}</TableCell>
-                    <TableCell>{run.item_count ?? "-"}</TableCell>
-                    <TableCell>
-                      {run.totals?.gross != null
-                        ? formatCurrency(run.totals.gross, run.currency)
-                        : "-"}
-                    </TableCell>
-                    <TableCell>
-                      {run.totals?.net != null
-                        ? formatCurrency(run.totals.net, run.currency)
-                        : "-"}
-                    </TableCell>
-                    <TableCell>
-                      <Chip variant={runStatusTone(run.status)}>
-                        {run.status}
-                      </Chip>
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => navigate(`/hr/payroll/runs/${run.id}`)}
-                      >
-                        Open
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <DataTable
+              columns={[
+                { header: "Name", cell: (run: any) => <p className="font-semibold text-slate-900">{run.name}</p> },
+                { header: "Period", cell: (run: any) => periodLabel(run) },
+                { header: "Workers", cell: (run: any) => run.item_count ?? "-" },
+                { header: "Gross", cell: (run: any) => run.totals?.gross != null ? formatCurrency(run.totals.gross, run.currency) : "-" },
+                { header: "Net", cell: (run: any) => run.totals?.net != null ? formatCurrency(run.totals.net, run.currency) : "-" },
+                { header: "Status", cell: (run: any) => <Chip variant={runStatusTone(run.status)}>{run.status}</Chip> },
+                { header: "", cell: (run: any) => (
+                  <Button size="sm" variant="ghost" onClick={() => navigate(`/hr/payroll/runs/${run.id}`)}>
+                    Open
+                  </Button>
+                ) },
+              ]}
+              data={filteredRuns}
+            />
           ) : (
             <EmptyState
               title="No payroll runs"

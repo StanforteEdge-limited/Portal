@@ -4,15 +4,9 @@ import {
   Button,
   Icon,
   SectionCard,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableHeaderRow,
-  TableRow,
   useToast,
 } from "@/shared";
+import { DataTable } from "@/shared/components/ui/DataTable";
 
 export interface BulkColumnSchema {
   key: string;
@@ -430,79 +424,78 @@ export function BulkImportDashboard<T extends Record<string, any>>({
         {rows.length > 0 ? (
           <div className="space-y-4">
             <div className="overflow-x-auto border border-slate-100 rounded-lg">
-              <Table>
-                <TableHead>
-                  <TableHeaderRow>
-                    {columns.map((col) => (
-                      <TableHeaderCell key={col.key} style={{ minWidth: col.minWidth || "120px" }}>
-                        {col.label} {col.required && <span className="text-danger">*</span>}
-                      </TableHeaderCell>
-                    ))}
-                    <TableHeaderCell className="w-16 text-right">Actions</TableHeaderCell>
-                  </TableHeaderRow>
-                </TableHead>
-                <TableBody>
-                  {rows.map((row, rowIndex) => (
-                    <TableRow key={rowIndex} className={errors[rowIndex] ? "bg-danger/5" : ""}>
-                      {columns.map((col) => (
-                        <TableCell key={col.key} className="p-2" style={{ minWidth: col.minWidth || "120px" }}>
-                          {col.type === "select" ? (
-                            <select
-                              value={String(row[col.key] ?? "")}
-                              onChange={(e) =>
-                                handleCellChange(rowIndex, col.key, e.target.value)
-                              }
-                              className="w-full text-sm border-slate-200 rounded-md focus:border-primary focus:ring-1 focus:ring-primary p-1 bg-white"
-                            >
-                              {col.options?.map((opt) => (
-                                <option key={opt.value} value={opt.value}>
-                                  {opt.label}
-                                </option>
-                              ))}
-                            </select>
-                          ) : col.type === "checkbox" ? (
-                            <div className="flex justify-center items-center py-1">
-                              <input
-                                type="checkbox"
-                                checked={Boolean(row[col.key] ?? false)}
-                                onChange={(e) =>
-                                  handleCellChange(rowIndex, col.key, e.target.checked)
-                                }
-                                className="h-4 w-4 text-brand-900 border-slate-300 rounded focus:ring-brand-900 cursor-pointer"
-                              />
-                            </div>
-                          ) : col.type === "multiselect" ? (
-                            <MultiSelectCell
-                              options={col.options || []}
-                              selectedValues={
-                                Array.isArray(row[col.key])
-                                  ? (row[col.key] as string[])
-                                  : typeof row[col.key] === "string"
-                                  ? String(row[col.key])
-                                      .split(",")
-                                      .map((s) => s.trim())
-                                      .filter(Boolean)
-                                  : []
-                              }
-                              onChange={(vals) => handleCellChange(rowIndex, col.key, vals)}
-                            />
-                          ) : (
-                            <input
-                              type="text"
-                              value={String(row[col.key] ?? "")}
-                              onChange={(e) =>
-                                handleCellChange(rowIndex, col.key, e.target.value)
-                              }
-                              placeholder={col.placeholder || ""}
-                              className="w-full text-sm border-slate-200 rounded-md focus:border-primary focus:ring-1 focus:ring-primary p-1"
-                            />
-                          )}
+              <DataTable
+                columns={[
+                  ...columns.map(col => ({
+                    header: <>{col.label} {col.required && <span className="text-danger">*</span>}</>,
+                    className: "p-2",
+                    style: { minWidth: col.minWidth || "120px" },
+                    cell: (row: any) => {
+                      const rowIndex = rows.indexOf(row);
+                      return col.type === "select" ? (
+                        <select
+                          value={String(row[col.key] ?? "")}
+                          onChange={(e) =>
+                            handleCellChange(rowIndex, col.key, e.target.value)
+                          }
+                          className="w-full text-sm border-slate-200 rounded-md focus:border-primary focus:ring-1 focus:ring-primary p-1 bg-white"
+                        >
+                          {col.options?.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      ) : col.type === "checkbox" ? (
+                        <div className="flex justify-center items-center py-1">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(row[col.key] ?? false)}
+                            onChange={(e) =>
+                              handleCellChange(rowIndex, col.key, e.target.checked)
+                            }
+                            className="h-4 w-4 text-brand-900 border-slate-300 rounded focus:ring-brand-900 cursor-pointer"
+                          />
+                        </div>
+                      ) : col.type === "multiselect" ? (
+                        <MultiSelectCell
+                          options={col.options || []}
+                          selectedValues={
+                            Array.isArray(row[col.key])
+                              ? (row[col.key] as string[])
+                              : typeof row[col.key] === "string"
+                              ? String(row[col.key])
+                                  .split(",")
+                                  .map((s) => s.trim())
+                                  .filter(Boolean)
+                              : []
+                          }
+                          onChange={(vals) => handleCellChange(rowIndex, col.key, vals)}
+                        />
+                      ) : (
+                        <div>
+                          <input
+                            type="text"
+                            value={String(row[col.key] ?? "")}
+                            onChange={(e) =>
+                              handleCellChange(rowIndex, col.key, e.target.value)
+                            }
+                            placeholder={col.placeholder || ""}
+                            className="w-full text-sm border-slate-200 rounded-md focus:border-primary focus:ring-1 focus:ring-primary p-1"
+                          />
                           {errors[rowIndex] && col.required && !String(row[col.key] ?? "").trim() && (
                             <div className="text-xs text-danger mt-1">{errors[rowIndex]}</div>
                           )}
-                        </TableCell>
-                      ))}
-                      <TableCell className="text-right p-2">
+                        </div>
+                      );
+                    }
+                  })),
+                  {
+                    header: "Actions",
+                    className: "w-16 text-right p-2",
+                    cell: (row: any) => {
+                      const rowIndex = rows.indexOf(row);
+                      return (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -511,11 +504,12 @@ export function BulkImportDashboard<T extends Record<string, any>>({
                         >
                           <Icon name="delete" />
                         </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                      );
+                    }
+                  }
+                ]}
+                data={rows}
+              />
             </div>
 
             <div className="flex justify-start">

@@ -1,4 +1,5 @@
-import { Button, Icon, Table, TableBody, TableCell, TableHead, TableHeaderCell, TableHeaderRow, TableRow, useToast } from "@/shared";
+import { Button, Icon, useToast } from "@/shared";
+import { DataTable } from "@/shared/components/ui/DataTable";
 import { hrApi, useCachedQuery } from "@/shared/lib/core";
 import { useState } from "react";
 
@@ -53,52 +54,40 @@ export default function DesignationsTab({ onEditDesignation }: DesignationsTabPr
         </div>
       ) : (
         <div className="overflow-x-auto border border-slate-100 rounded-lg">
-          <Table>
-            <TableHead>
-              <TableHeaderRow>
-                <TableHeaderCell>Name</TableHeaderCell>
-                <TableHeaderCell>Code</TableHeaderCell>
-                <TableHeaderCell>Description</TableHeaderCell>
-                <TableHeaderCell>Job Description Template</TableHeaderCell>
-                <TableHeaderCell className="text-right">Actions</TableHeaderCell>
-              </TableHeaderRow>
-            </TableHead>
-            <TableBody>
-              {list.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell className="font-semibold text-slate-900">{item.name}</TableCell>
-                  <TableCell>{item.code || "-"}</TableCell>
-                  <TableCell>{item.description || "-"}</TableCell>
-                  <TableCell>
-                    {item.job_description ? (
-                      <span className="text-success text-xs font-semibold flex items-center gap-1">
-                        <Icon name="check_circle" className="text-sm" /> Configured
-                      </span>
-                    ) : (
-                      <span className="text-slate-400 text-xs">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right space-x-2">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => onEditDesignation(item)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="text-danger hover:bg-danger/5"
-                      onClick={() => void handleDelete(item.id)}
-                    >
-                      <Icon name="delete" className="text-sm" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <DataTable
+            columns={[
+              { header: "Name", className: "font-semibold text-slate-900", cell: (item: any) => item.name },
+              { header: "Code", cell: (item: any) => item.code || "-" },
+              { header: "Description", cell: (item: any) => item.description || "-" },
+              { header: "Job Description Template", cell: (item: any) => item.job_description ? (
+                <span className="text-success text-xs font-semibold flex items-center gap-1">
+                  <Icon name="check_circle" className="text-sm" /> Configured
+                </span>
+              ) : (
+                <span className="text-slate-400 text-xs">-</span>
+              ) },
+              { header: "Actions", className: "text-right space-x-2", cell: (item: any) => (
+                <>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => onEditDesignation(item)}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="text-danger hover:bg-danger/5"
+                    onClick={() => void handleDelete(item.id)}
+                  >
+                    <Icon name="delete" className="text-sm" />
+                  </Button>
+                </>
+              ) },
+            ]}
+            data={list}
+          />
         </div>
       )}
     </div>

@@ -7,16 +7,10 @@ import {
   PageHeader,
   SectionCard,
   StatCard,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableHeaderRow,
-  TableRow,
   TextField,
   useToast,
 } from "@/shared";
+import { DataTable } from "@/shared/components/ui/DataTable";
 import { AppShell } from "@/shared/components/layout/AppShell";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { useCachedQuery } from "@/shared/lib/core";
@@ -201,30 +195,15 @@ export default function AdminPayrollRunAuthorizePage() {
 
         <SectionCard title="Payroll Items" description="Per-employee summary. Download the full breakdown for component-level detail.">
           {items.length ? (
-            <Table>
-              <TableHead>
-                <TableHeaderRow>
-                  <TableHeaderCell>Employee</TableHeaderCell>
-                  <TableHeaderCell>Gross Pay</TableHeaderCell>
-                  <TableHeaderCell>Deductions</TableHeaderCell>
-                  <TableHeaderCell>Net Pay</TableHeaderCell>
-                </TableHeaderRow>
-              </TableHead>
-              <TableBody>
-                {items.map((item: any) => (
-                  <TableRow key={item.id}>
-                    <TableCell>
-                      <p className="font-semibold text-slate-900">{item.worker_name ?? "-"}</p>
-                    </TableCell>
-                    <TableCell>{`${run.currency} ${item.gross_pay?.toLocaleString() ?? "-"}`}</TableCell>
-                    <TableCell>{`${run.currency} ${item.total_deductions?.toLocaleString() ?? "-"}`}</TableCell>
-                    <TableCell>
-                      <span className="font-semibold">{`${run.currency} ${item.net_pay?.toLocaleString() ?? "-"}`}</span>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <DataTable
+              columns={[
+                { header: "Employee", cell: (item: any) => <p className="font-semibold text-slate-900">{item.worker_name ?? "-"}</p> },
+                { header: "Gross Pay", cell: (item: any) => `${run.currency} ${item.gross_pay?.toLocaleString() ?? "-"}` },
+                { header: "Deductions", cell: (item: any) => `${run.currency} ${item.total_deductions?.toLocaleString() ?? "-"}` },
+                { header: "Net Pay", cell: (item: any) => <span className="font-semibold">{`${run.currency} ${item.net_pay?.toLocaleString() ?? "-"}`}</span> },
+              ]}
+              data={items}
+            />
           ) : (
             <EmptyState title="No items" description="No payroll items for this run." />
           )}
