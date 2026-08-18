@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { AppShell, Button, Icon, PageHeader, SectionCard, Table, TableBody, TableCell, TableHead, TableHeaderCell, TableHeaderRow, TableRow } from "@/shared";
+import { AppShell, Button, Icon, PageHeader, SectionCard } from "@/shared";
+import { DataTable } from "@/shared/components/ui/DataTable";
 import { buildAppNavigation, buildAppMobileNav } from "@/shared/navigation";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { useCachedQuery, documentApi } from "@/shared/lib/core";
@@ -66,53 +67,57 @@ export default function PoliciesListPage() {
             </div>
           ) : (
             <div className="overflow-x-auto border border-slate-100 rounded-lg">
-              <Table>
-                <TableHead>
-                  <TableHeaderRow>
-                    <TableHeaderCell>Policy Name</TableHeaderCell>
-                    <TableHeaderCell>Version</TableHeaderCell>
-                    <TableHeaderCell>Status</TableHeaderCell>
-                    <TableHeaderCell>Last Updated</TableHeaderCell>
-                    <TableHeaderCell className="text-right">Actions</TableHeaderCell>
-                  </TableHeaderRow>
-                </TableHead>
-                <TableBody>
-                  {list.map((doc: any) => {
-                    const ack = Array.isArray(doc.acknowledgements) ? doc.acknowledgements[0] : null;
-                    const isSigned = !!ack;
-
-                    return (
-                      <TableRow key={doc.id}>
-                        <TableCell className="font-semibold text-slate-900">{doc.title}</TableCell>
-                        <TableCell>v{doc.version || "1.0"}</TableCell>
-                        <TableCell>
-                          {isSigned ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-success/10 text-success">
-                              <Icon name="check" className="text-xs" /> Acknowledged
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
-                              <Icon name="warning" className="text-xs" /> Pending Signature
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {doc.effective_date ? new Date(doc.effective_date).toLocaleDateString() : "-"}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => navigate(`/documents/${doc.id}`)}
-                          >
-                            {isSigned ? "View" : "Sign Off"}
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+              <DataTable
+                columns={[
+                  {
+                    header: "Policy Name",
+                    cell: (doc: any) => <span className="font-semibold text-slate-900">{doc.title}</span>
+                  },
+                  {
+                    header: "Version",
+                    cell: (doc: any) => `v${doc.version || "1.0"}`
+                  },
+                  {
+                    header: "Status",
+                    cell: (doc: any) => {
+                      const ack = Array.isArray(doc.acknowledgements) ? doc.acknowledgements[0] : null;
+                      const isSigned = !!ack;
+                      return isSigned ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-success/10 text-success">
+                          <Icon name="check" className="text-xs" /> Acknowledged
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
+                          <Icon name="warning" className="text-xs" /> Pending Signature
+                        </span>
+                      );
+                    }
+                  },
+                  {
+                    header: "Last Updated",
+                    cell: (doc: any) => doc.effective_date ? new Date(doc.effective_date).toLocaleDateString() : "-"
+                  },
+                  {
+                    header: "Actions",
+                    className: "text-right",
+                    cell: (doc: any) => {
+                      const ack = Array.isArray(doc.acknowledgements) ? doc.acknowledgements[0] : null;
+                      const isSigned = !!ack;
+                      return (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => navigate(`/documents/${doc.id}`)}
+                        >
+                          {isSigned ? "View" : "Sign Off"}
+                        </Button>
+                      );
+                    }
+                  }
+                ]}
+                data={list}
+                loading={loading}
+              />
             </div>
           )}
         </SectionCard>

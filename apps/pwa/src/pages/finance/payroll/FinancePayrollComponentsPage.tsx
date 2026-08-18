@@ -11,16 +11,10 @@ import {
   SlideOverContent,
   SlideOverFooter,
   SlideOverHeader,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableHeaderRow,
-  TableRow,
   TextField,
   useToast,
 } from "@/shared";
+import { DataTable } from "@/shared/components/ui/DataTable";
 import { AppShell } from "@/shared/components/layout/AppShell";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { useCachedQuery } from "@/shared/lib/core";
@@ -177,57 +171,28 @@ export default function FinancePayrollComponentsPage() {
         {loading ? (
           <div className="text-sm text-slate-500">Loading...</div>
         ) : components.length ? (
-          <Table>
-            <TableHead>
-              <TableHeaderRow>
-                <TableHeaderCell>Code</TableHeaderCell>
-                <TableHeaderCell>Name</TableHeaderCell>
-                <TableHeaderCell>Type</TableHeaderCell>
-                <TableHeaderCell>Calculation</TableHeaderCell>
-                <TableHeaderCell>Amount / Rate</TableHeaderCell>
-                <TableHeaderCell>Taxable</TableHeaderCell>
-                <TableHeaderCell>Statutory</TableHeaderCell>
-                <TableHeaderCell className="text-right">Actions</TableHeaderCell>
-              </TableHeaderRow>
-            </TableHead>
-            <TableBody>
-              {components.map((c) => (
-                <TableRow key={c.id}>
-                  <TableCell>
-                    <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-mono">{c.code}</code>
-                  </TableCell>
-                  <TableCell>
-                    <p className="font-semibold text-slate-900">{c.name}</p>
-                  </TableCell>
-                  <TableCell>
-                    <Chip variant={COMPONENT_TYPE_TONE[c.component_type] ?? "neutral"}>
-                      {c.component_type.replace("_", " ")}
-                    </Chip>
-                  </TableCell>
-                  <TableCell className="capitalize">{c.calculation_type.replace("_", " ")}</TableCell>
-                  <TableCell>
-                    {c.calculation_type === "fixed" && c.amount != null
-                      ? c.amount.toLocaleString()
-                      : c.rate != null
-                      ? `${c.rate}%`
-                      : "-"}
-                  </TableCell>
-                  <TableCell>{c.taxable ? "Yes" : "No"}</TableCell>
-                  <TableCell>{c.statutory ? "Yes" : "No"}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => openEdit(c)}>
-                        <Icon name="edit" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => void handleDelete(c)}>
-                        <Icon name="delete" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <DataTable
+            columns={[
+              { header: "Code", cell: (c: any) => <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-mono">{c.code}</code> },
+              { header: "Name", cell: (c: any) => <p className="font-semibold text-slate-900">{c.name}</p> },
+              { header: "Type", cell: (c: any) => <Chip variant={COMPONENT_TYPE_TONE[c.component_type] ?? "neutral"}>{c.component_type.replace("_", " ")}</Chip> },
+              { header: "Calculation", cell: (c: any) => <span className="capitalize">{c.calculation_type.replace("_", " ")}</span> },
+              { header: "Amount / Rate", cell: (c: any) => c.calculation_type === "fixed" && c.amount != null ? c.amount.toLocaleString() : c.rate != null ? `${c.rate}%` : "-" },
+              { header: "Taxable", cell: (c: any) => c.taxable ? "Yes" : "No" },
+              { header: "Statutory", cell: (c: any) => c.statutory ? "Yes" : "No" },
+              { header: "Actions", className: "text-right", cell: (c: any) => (
+                <div className="flex justify-end gap-1">
+                  <Button variant="ghost" size="sm" onClick={() => openEdit(c)}>
+                    <Icon name="edit" />
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => void handleDelete(c)}>
+                    <Icon name="delete" />
+                  </Button>
+                </div>
+              ) },
+            ]}
+            data={components}
+          />
         ) : (
           <EmptyState
             title="No components"

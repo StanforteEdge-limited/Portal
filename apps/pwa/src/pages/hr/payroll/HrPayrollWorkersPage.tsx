@@ -12,16 +12,10 @@ import {
   SlideOverFooter,
   SlideOverHeader,
   StatCard,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableHeaderRow,
-  TableRow,
   TextField,
   useToast,
 } from "@/shared";
+import { DataTable } from "@/shared/components/ui/DataTable";
 import { AppShell } from "@/shared/components/layout/AppShell";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { useCachedQuery } from "@/shared/lib/core";
@@ -44,6 +38,37 @@ import {
 let _profileComponentKey = 0;
 function nextPcKey() {
   return ++_profileComponentKey;
+}
+
+function formatPayBasis(value?: string | null) {
+  switch (value) {
+    case "monthly_fixed":
+      return "Monthly Fixed";
+    case "hourly_timesheet":
+      return "Hourly / Timesheet";
+    case "daily_rate":
+      return "Daily Rate";
+    case "retainer":
+      return "Retainer";
+    case "manual":
+      return "Manual";
+    default:
+      return value ?? "-";
+  }
+}
+
+function readableWorkerError(message: string) {
+  if (message.includes("profile.base_amount")) {
+    return "Base amount must be a valid number greater than or equal to 0.";
+  }
+  return message;
+}
+
+function isWithholdingComponent(component?: PayrollComponent | null) {
+  if (!component) return false;
+  const code = String(component.code ?? "").toLowerCase();
+  const name = String(component.name ?? "").toLowerCase();
+  return code === "withholding_tax" || name.includes("withholding");
 }
 
 const EMPTY_FORM: UpsertWorkerPayload = {
@@ -296,6 +321,21 @@ export default function HrPayrollWorkersPage() {
         })
         .filter((pc) => pc.amount !== undefined || pc.rate !== undefined || pc.formula);
 
+      const hasWithholdingComponent = profileComponents.some((pc) => {
+        const component = components.find((x) => x.id === pc.component_id);
+        return isWithholdingComponent(component);
+      });
+
+      if ((form.worker_type ?? "employee") === "consultant" && withholdingRate && hasWithholdingComponent) {
+        showToast({
+          tone: "danger",
+          title: "Choose one WHT method",
+          message: "Use either Withholding Rate Override or a recurring Withholding Tax component for this consultant, not both.",
+        });
+        setSaving(false);
+        return;
+      }
+
       const hasProfileFields = baseAmount || effectiveFrom || componentRows.length > 0;
 
       const payload: UpsertWorkerPayload = {
@@ -357,7 +397,7 @@ export default function HrPayrollWorkersPage() {
       setShowSlideOver(false);
       setListKey((k) => k + 1);
     } catch (err) {
-      showToast({ tone: "danger", title: "Save failed", message: err instanceof Error ? err.message : "Unable to save worker." });
+      showToast({ tone: "danger", title: "Save failed", message: err instanceof Error ? readableWorkerError(err.message) : "Unable to save worker." });
     } finally {
       setSaving(false);
     }
@@ -428,59 +468,42 @@ export default function HrPayrollWorkersPage() {
           {loading ? (
             <div className="text-sm text-slate-500">Loading workers...</div>
           ) : workers.length ? (
-            <Table>
-              <TableHead>
-                <TableHeaderRow>
-                  <TableHeaderCell>Name</TableHeaderCell>
-                  <TableHeaderCell>Email</TableHeaderCell>
-                  <TableHeaderCell>Type</TableHeaderCell>
-                  <TableHeaderCell>Pay Basis</TableHeaderCell>
-                  <TableHeaderCell>Currency</TableHeaderCell>
-                  <TableHeaderCell>Bank</TableHeaderCell>
-                  <TableHeaderCell>Status</TableHeaderCell>
-                  <TableHeaderCell className="text-right">Actions</TableHeaderCell>
-                </TableHeaderRow>
-              </TableHead>
-              <TableBody>
-                {workers.map((w: any) => (
-                  <TableRow key={w.id}>
-                    <TableCell>
-                      <p className="font-semibold text-slate-900">{w.full_name ?? w.name}</p>
-                      {w.staff_code ? <p className="text-xs text-slate-500">{w.staff_code}</p> : null}
-                    </TableCell>
-                    <TableCell>{w.email ?? "-"}</TableCell>
-                    <TableCell className="capitalize">{w.worker_type}</TableCell>
-                    <TableCell className="text-slate-600">{w.pay_basis ?? "-"}</TableCell>
-                    <TableCell>{w.currency ?? "NGN"}</TableCell>
-                    <TableCell>
-                      {w.bank_name
-                        ? `${w.bank_name}${w.bank_account_number ? ` ···${String(w.bank_account_number).slice(-4)}` : ""}`
-                        : "-"}
-                    </TableCell>
-                    <TableCell>
-                      <Chip variant={(w.status ?? "active") === "active" ? "success" : "neutral"}>
-                        {w.status ?? "active"}
-                      </Chip>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => openEdit(w)}>
-                          <Icon name="edit" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => void handleDelete(w.id, w.full_name ?? w.name)}
-                          disabled={deletingId === w.id}
-                        >
-                          <Icon name={deletingId === w.id ? "hourglass_top" : "delete"} />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <DataTable
+              columns={[
+                { header: "Name", cell: (w: any) => (
+                  <>
+                    <p className="font-semibold text-slate-900">{w.full_name ?? w.name}</p>
+                    {w.staff_code ? <p className="text-xs text-slate-500">{w.staff_code}</p> : null}
+                  </>
+                ) },
+                { header: "Email", cell: (w: any) => w.email ?? "-" },
+                { header: "Type", className: "capitalize", cell: (w: any) => w.worker_type },
+                { header: "Pay Basis", className: "text-slate-600", cell: (w: any) => formatPayBasis(w.pay_basis) },
+                { header: "Currency", cell: (w: any) => w.currency ?? "NGN" },
+                { header: "Bank", cell: (w: any) => w.bank_name ? `${w.bank_name}${w.bank_account_number ? ` ···${String(w.bank_account_number).slice(-4)}` : ""}` : "-" },
+                { header: "Status", cell: (w: any) => (
+                  <Chip variant={(w.status ?? "active") === "active" ? "success" : "neutral"}>
+                    {w.status ?? "active"}
+                  </Chip>
+                ) },
+                { header: "Actions", className: "text-right", cell: (w: any) => (
+                  <div className="flex items-center justify-end gap-1">
+                    <Button variant="ghost" size="sm" onClick={() => openEdit(w)}>
+                      <Icon name="edit" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => void handleDelete(w.id, w.full_name ?? w.name)}
+                      disabled={deletingId === w.id}
+                    >
+                      <Icon name={deletingId === w.id ? "hourglass_top" : "delete"} />
+                    </Button>
+                  </div>
+                ) },
+              ]}
+              data={workers}
+            />
           ) : (
             <EmptyState
               title="No workers registered"
@@ -624,7 +647,12 @@ export default function HrPayrollWorkersPage() {
                     onChange={(e) => setBaseAmount(e.target.value)}
                     placeholder="0.00"
                   />
-                  <TextField label="Payment Mode" value={paymentMode} onChange={(e) => setPaymentMode(e.target.value)} placeholder="bank_transfer" />
+                  <SelectField label="Payment Mode" value={paymentMode} onChange={(e) => setPaymentMode(e.target.value)}>
+                    <option value="bank_transfer">Bank Transfer</option>
+                    <option value="cash">Cash</option>
+                    <option value="cheque">Cheque</option>
+                    <option value="mobile_money">Mobile Money</option>
+                  </SelectField>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <TextField label="Effective From" type="date" value={effectiveFrom} onChange={(e) => setEffectiveFrom(e.target.value)} />
@@ -912,7 +940,7 @@ export default function HrPayrollWorkersPage() {
                 </div>
                 {(form.worker_type ?? "employee") === "consultant" ? (
                   <div className="grid grid-cols-2 gap-4">
-                    <TextField label="Withholding Rate Override" type="number" value={withholdingRate} onChange={(e) => setWithholdingRate(e.target.value)} placeholder="e.g. 0.05" />
+                    <TextField label="Withholding Rate Override" type="number" value={withholdingRate} onChange={(e) => setWithholdingRate(e.target.value)} placeholder="e.g. 0.05" helpText="Use this only if you are not adding a recurring Withholding Tax component in Pay Profile." />
                     <TextField label="Consultant Pension Override" type="number" value={consultantPensionRate} onChange={(e) => setConsultantPensionRate(e.target.value)} placeholder="e.g. 0.00" />
                   </div>
                 ) : null}

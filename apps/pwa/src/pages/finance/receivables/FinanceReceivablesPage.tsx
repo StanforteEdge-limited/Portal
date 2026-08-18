@@ -9,13 +9,7 @@ import {
   SectionCard,
   SelectField,
   StatCard,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableHeaderRow,
-  TableRow,
+  DataTable,
   TextField,
 } from "@/shared";
 import { buildAppMobileNav, buildRequestsNavigation } from "@/pages/requests/requests-data";
@@ -113,31 +107,19 @@ export default function FinanceReceivablesPage() {
         </div>
 
         <SectionCard title="Invoice Information">
-          <Table>
-            <TableBody>
-              <TableRow>
-                <TableCell className="w-40 font-medium text-slate-500">Invoice Number</TableCell>
-                <TableCell className="font-semibold">{invoice.invoice_number || "-"}</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="w-40 font-medium text-slate-500">Customer</TableCell>
-                <TableCell className="font-semibold">{invoice.customer_name || "-"}</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="w-40 font-medium text-slate-500">Issue Date</TableCell>
-                <TableCell>{asDate(invoice.issue_date)}</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="w-40 font-medium text-slate-500">Due Date</TableCell>
-                <TableCell>{asDate(invoice.due_date)}</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="w-40 font-medium text-slate-500">Currency</TableCell>
-                <TableCell>{invoice.currency || "NGN"}</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="w-40 font-medium text-slate-500">Status</TableCell>
-                <TableCell>
+          <DataTable
+            columns={[
+              { header: "Field", className: "w-40 font-medium text-slate-500", cell: (r) => r.field },
+              { header: "Value", cell: (r) => r.value },
+            ]}
+            data={[
+              { field: "Invoice Number", value: <span className="font-semibold">{invoice.invoice_number || "-"}</span> },
+              { field: "Customer", value: <span className="font-semibold">{invoice.customer_name || "-"}</span> },
+              { field: "Issue Date", value: asDate(invoice.issue_date) },
+              { field: "Due Date", value: asDate(invoice.due_date) },
+              { field: "Currency", value: invoice.currency || "NGN" },
+              {
+                field: "Status", value: (
                   <Chip
                     variant={
                       invoice.status === "paid"
@@ -151,10 +133,10 @@ export default function FinanceReceivablesPage() {
                   >
                     {invoice.status || "draft"}
                   </Chip>
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
+                )
+              },
+            ]}
+          />
         </SectionCard>
       </AppShell>
     );
@@ -203,45 +185,27 @@ export default function FinanceReceivablesPage() {
         {loading ? <p className="text-sm text-slate-500">Loading invoices...</p> : null}
         {error ? <p className="text-sm text-danger">{error}</p> : null}
         {rows.length ? (
-          <Table caption="Receivables list">
-            <TableHead>
-              <TableHeaderRow>
-                <TableHeaderCell>Invoice</TableHeaderCell>
-                <TableHeaderCell>Customer</TableHeaderCell>
-                <TableHeaderCell>Issue Date</TableHeaderCell>
-                <TableHeaderCell>Due Date</TableHeaderCell>
-                <TableHeaderCell>Status</TableHeaderCell>
-                <TableHeaderCell className="text-right">Outstanding</TableHeaderCell>
-              </TableHeaderRow>
-            </TableHead>
-            <TableBody>
-              {rows.map((row: FinanceInvoiceRecord) => {
-                const statusKey = String(row.status || "draft").toLowerCase();
-                return (
-                  <TableRow
-                    key={row.id}
-                    className="cursor-pointer hover:bg-slate-50"
-                      onClick={() => navigate(`/finance/receivables/${row.id}`)}
-                  >
-                    <TableCell>{row.invoice_number || row.id.slice(0, 8)}</TableCell>
-                    <TableCell>{row.customer_name || "-"}</TableCell>
-                    <TableCell>{asDate(row.issue_date)}</TableCell>
-                    <TableCell>{asDate(row.due_date)}</TableCell>
-                    <TableCell>
-                      <Chip
-                        variant={statusKey === "paid" ? "success" : statusKey === "overdue" ? "danger" : "pending"}
-                      >
-                        {statusKey}
-                      </Chip>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {asMoney(row.outstanding_amount, String(row.currency || "NGN"))}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+          <DataTable
+            columns={[
+              { header: "Invoice", cell: (row) => row.invoice_number || row.id.slice(0, 8) },
+              { header: "Customer", cell: (row) => row.customer_name || "-" },
+              { header: "Issue Date", cell: (row) => asDate(row.issue_date) },
+              { header: "Due Date", cell: (row) => asDate(row.due_date) },
+              {
+                header: "Status", cell: (row) => {
+                  const statusKey = String(row.status || "draft").toLowerCase();
+                  return (
+                    <Chip variant={statusKey === "paid" ? "success" : statusKey === "overdue" ? "danger" : "pending"}>
+                      {statusKey}
+                    </Chip>
+                  );
+                }
+              },
+              { header: "Outstanding", className: "text-right", cell: (row) => asMoney(row.outstanding_amount, String(row.currency || "NGN")) },
+            ]}
+            data={rows}
+            onRowClick={(row) => navigate(`/finance/receivables/${row.id}`)}
+          />
         ) : !loading ? (
           <EmptyState title="No receivables" description="Customer invoices will appear here once created." />
         ) : null}

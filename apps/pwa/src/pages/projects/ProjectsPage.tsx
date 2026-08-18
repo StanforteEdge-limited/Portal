@@ -6,14 +6,8 @@ import {
   PageHeader,
   SectionCard,
   StatCard,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableHeaderRow,
-  TableRow,
 } from "@/shared";
+import { DataTable } from "@/shared/components/ui/DataTable";
 import { AppShell } from "@/shared/components/layout/AppShell";
 import { formatDate } from "@stanforte/shared";
 import { useAuth } from "@/shared/context/AuthProvider";
@@ -92,60 +86,60 @@ export default function ProjectsPage() {
             </div>
           ) : (
             <div className="overflow-x-auto rounded-[22px] border border-slate-200 bg-white">
-              <Table>
-                <TableHead>
-                  <TableHeaderRow>
-                    <TableHeaderCell>Project</TableHeaderCell>
-                    <TableHeaderCell>Code</TableHeaderCell>
-                    <TableHeaderCell>Status</TableHeaderCell>
-                    <TableHeaderCell>Start Date</TableHeaderCell>
-                    <TableHeaderCell>End Date</TableHeaderCell>
-                    <TableHeaderCell className="text-right">Actions</TableHeaderCell>
-                  </TableHeaderRow>
-                </TableHead>
-                <TableBody>
-                  {projects.map((project: any) => {
-                    const status = project.governance?.governance_status || (project.isActive ? "active" : "archived");
-                    return (
-                      <TableRow key={project.id}>
-                        <TableCell className="rounded-l-2xl font-semibold text-slate-900">
-                          {project.name}
-                        </TableCell>
-                        <TableCell>
-                          <code className="text-xs bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">
-                            {project.governance?.project_code || "-"}
-                          </code>
-                        </TableCell>
-                        <TableCell>
-                          <Chip variant={status === "active" ? "success" : status === "archived" ? "neutral" : "warning"}>
-                            {status.replace("_", " ")}
-                          </Chip>
-                        </TableCell>
-                        <TableCell>{formatDate(project.governance?.start_date) || "-"}</TableCell>
-                        <TableCell>{formatDate(project.governance?.end_date) || "-"}</TableCell>
-                        <TableCell className="rounded-r-2xl text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              window.location.href = `/projects/${project.id}`;
-                            }}
-                          >
-                            <Icon name="visibility" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                  {!projects.length ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="py-10 text-center">
-                        <p className="text-slate-500">No projects found.</p>
-                      </TableCell>
-                    </TableRow>
-                  ) : null}
-                </TableBody>
-              </Table>
+              <DataTable
+                columns={[
+                  {
+                    header: "Project",
+                    cell: (project: any) => (
+                      <span className="font-semibold text-slate-900">{project.name}</span>
+                    ),
+                    className: "rounded-l-2xl"
+                  },
+                  {
+                    header: "Code",
+                    cell: (project: any) => (
+                      <code className="text-xs bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">
+                        {project.governance?.project_code || "-"}
+                      </code>
+                    )
+                  },
+                  {
+                    header: "Status",
+                    cell: (project: any) => {
+                      const status = project.governance?.governance_status || (project.isActive ? "active" : "archived");
+                      return (
+                        <Chip variant={status === "active" ? "success" : status === "archived" ? "neutral" : "warning"}>
+                          {status.replace("_", " ")}
+                        </Chip>
+                      );
+                    }
+                  },
+                  {
+                    header: "Start Date",
+                    cell: (project: any) => formatDate(project.governance?.start_date) || "-"
+                  },
+                  {
+                    header: "End Date",
+                    cell: (project: any) => formatDate(project.governance?.end_date) || "-"
+                  },
+                  {
+                    header: "Actions",
+                    className: "rounded-r-2xl text-right",
+                    cell: (project: any) => (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          window.location.href = `/projects/${project.id}`;
+                        }}
+                      >
+                        <Icon name="visibility" />
+                      </Button>
+                    )
+                  }
+                ]}
+                data={projects}
+              />
             </div>
           )}
         </SectionCard>

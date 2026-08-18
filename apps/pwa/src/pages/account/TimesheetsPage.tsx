@@ -4,16 +4,10 @@ import {
   Chip,
   SectionCard,
   StatCard,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableHeaderRow,
-  TableRow,
   useToast,
   Icon,
 } from "@/shared";
+import { DataTable } from "@/shared/components/ui/DataTable";
 import { useCachedQuery, httpRequest } from "@/shared/lib/core";
 import { formatDisplayDate } from "@stanforte/shared";
 import {
@@ -84,60 +78,67 @@ export default function TimesheetsPage() {
           </div>
 
           <SectionCard>
-            <Table>
-              <TableHead>
-                <TableHeaderRow>
-                  <TableHeaderCell>Date & Desc</TableHeaderCell>
-                  <TableHeaderCell>Project / Fund</TableHeaderCell>
-                  <TableHeaderCell>Hours</TableHeaderCell>
-                  <TableHeaderCell>Status</TableHeaderCell>
-                  <TableHeaderCell className="text-right">Actions</TableHeaderCell>
-                </TableHeaderRow>
-              </TableHead>
-              <TableBody>
-                {timesheets.map((row: any) => {
-                  const statusKey = String(row.status || "").toLowerCase();
-                  const isDraftOrRejected = ["draft", "rejected"].includes(statusKey);
-                  return (
-                    <TableRow key={row.id}>
-                      <TableCell>
-                        <div className="font-semibold text-slate-900">{row.work_date ? formatDisplayDate(row.work_date) : "-"}</div>
-                        <div className="text-xs text-slate-500 line-clamp-1 max-w-[200px]" title={row.description}>{row.description || "No description"}</div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="font-medium text-slate-800">{row.project?.name || "General"}</div>
-                        <div className="text-xs text-slate-500">{row.fund?.name || "No fund"} • {row.grant?.name || "No grant"}</div>
-                      </TableCell>
-                      <TableCell>{Number(row.hours).toFixed(1)}</TableCell>
-                      <TableCell>
-                        <Chip variant={statusVariant[statusKey] ?? "neutral"} className="capitalize">
-                          {row.status?.replace("_", " ") || "Draft"}
-                        </Chip>
-                      </TableCell>
-                      <TableCell className="text-right space-x-2">
+            <DataTable
+              columns={[
+                {
+                  header: "Date & Desc",
+                  cell: (row: any) => (
+                    <>
+                      <div className="font-semibold text-slate-900">{row.work_date ? formatDisplayDate(row.work_date) : "-"}</div>
+                      <div className="text-xs text-slate-500 line-clamp-1 max-w-[200px]" title={row.description}>{row.description || "No description"}</div>
+                    </>
+                  )
+                },
+                {
+                  header: "Project / Fund",
+                  cell: (row: any) => (
+                    <>
+                      <div className="font-medium text-slate-800">{row.project?.name || "General"}</div>
+                      <div className="text-xs text-slate-500">{row.fund?.name || "No fund"} • {row.grant?.name || "No grant"}</div>
+                    </>
+                  )
+                },
+                {
+                  header: "Hours",
+                  cell: (row: any) => Number(row.hours).toFixed(1)
+                },
+                {
+                  header: "Status",
+                  cell: (row: any) => {
+                    const statusKey = String(row.status || "").toLowerCase();
+                    return (
+                      <Chip variant={statusVariant[statusKey] ?? "neutral"} className="capitalize">
+                        {row.status?.replace("_", " ") || "Draft"}
+                      </Chip>
+                    );
+                  }
+                },
+                {
+                  header: "Actions",
+                  className: "text-right",
+                  cell: (row: any) => {
+                    const statusKey = String(row.status || "").toLowerCase();
+                    const isDraftOrRejected = ["draft", "rejected"].includes(statusKey);
+                    return (
+                      <div className="space-x-2">
                         {isDraftOrRejected && (
                           <>
-                            <Button size="sm" variant="ghost" onClick={() => { setEditingId(row.id); setEditorOpen(true); }}>
+                            <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setEditingId(row.id); setEditorOpen(true); }}>
                               <Icon name="edit" />
                             </Button>
-                            <Button size="sm" variant="ghost" onClick={() => void submitTimesheet(row.id)}>
+                            <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); void submitTimesheet(row.id); }}>
                               <Icon name="send" />
                             </Button>
                           </>
                         )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-                {!timesheets.length && !loading ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="py-10 text-center text-slate-500">
-                      No timesheet entries yet.
-                    </TableCell>
-                  </TableRow>
-                ) : null}
-              </TableBody>
-            </Table>
+                      </div>
+                    );
+                  }
+                }
+              ]}
+              data={timesheets}
+              loading={loading}
+            />
           </SectionCard>
         </div>
 

@@ -11,16 +11,10 @@ import {
   SlideOverContent,
   SlideOverFooter,
   SlideOverHeader,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableHeaderRow,
-  TableRow,
   TextField,
   useToast,
 } from "@/shared";
+import { DataTable } from "@/shared/components/ui/DataTable";
 import { AppShell } from "@/shared/components/layout/AppShell";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { useCachedQuery } from "@/shared/lib/core";
@@ -136,34 +130,21 @@ export default function FinancePayrollTaxTablesPage() {
 
       <SectionCard title="Tax Tables" description="Active tax tables for payroll calculations.">
         {loading ? <div className="text-sm text-slate-500">Loading...</div> : tables.length ? (
-          <Table>
-            <TableHead>
-              <TableHeaderRow>
-                <TableHeaderCell>Name</TableHeaderCell>
-                <TableHeaderCell>Worker Type</TableHeaderCell>
-                <TableHeaderCell>Effective</TableHeaderCell>
-                <TableHeaderCell>Bands</TableHeaderCell>
-                <TableHeaderCell>Active</TableHeaderCell>
-                <TableHeaderCell className="text-right">Actions</TableHeaderCell>
-              </TableHeaderRow>
-            </TableHead>
-            <TableBody>
-              {tables.map((t) => (
-                <TableRow key={t.id}>
-                  <TableCell><p className="font-semibold">{t.name}</p></TableCell>
-                  <TableCell>{t.worker_type || "-"}</TableCell>
-                  <TableCell>{t.effective_date}</TableCell>
-                  <TableCell>{t.bands?.length || 0} bands</TableCell>
-                  <TableCell><Chip variant={t.is_active ? "success" : "neutral"}>{t.is_active ? "Yes" : "No"}</Chip></TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => openEdit(t)}><Icon name="edit" /></Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <DataTable
+            columns={[
+              { header: "Name", cell: (t: any) => <p className="font-semibold">{t.name}</p> },
+              { header: "Worker Type", cell: (t: any) => t.worker_type || "-" },
+              { header: "Effective", cell: (t: any) => t.effective_date },
+              { header: "Bands", cell: (t: any) => `${t.bands?.length || 0} bands` },
+              { header: "Active", cell: (t: any) => <Chip variant={t.is_active ? "success" : "neutral"}>{t.is_active ? "Yes" : "No"}</Chip> },
+              { header: "Actions", className: "text-right", cell: (t: any) => (
+                <div className="flex justify-end gap-1">
+                  <Button variant="ghost" size="sm" onClick={() => openEdit(t)}><Icon name="edit" /></Button>
+                </div>
+              ) },
+            ]}
+            data={tables}
+          />
         ) : <EmptyState title="No tax tables" description="Add tax tables for payroll." action={<Button onClick={openCreate}>Add Table</Button>} />}
       </SectionCard>
 

@@ -7,16 +7,10 @@ import {
   PageHeader,
   SectionCard,
   StatCard,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableHeaderRow,
-  TableRow,
   TextField,
   useToast,
 } from "@/shared";
+import { DataTable } from "@/shared/components/ui/DataTable";
 import { AppShell } from "@/shared/components/layout/AppShell";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { useCachedQuery } from "@/shared/lib/core";
@@ -25,6 +19,7 @@ import { getWorkspaceProfile } from "@/shared/api/workspace-api";
 import {
   getPayrollRun,
   authorizePayrollRun,
+  rejectPayrollRun,
   downloadMonthlyBreakdown,
 } from "@/shared/api/payroll-api";
 
@@ -76,6 +71,26 @@ export default function AdminPayrollRunAuthorizePage() {
       refetch();
     } catch (err) {
       showToast({ tone: "danger", title: "Authorization failed", message: err instanceof Error ? err.message : "Unable to authorize." });
+    } finally {
+      setActing(null);
+    }
+  }
+
+  async function handleReturnToFinance() {
+    if (!id) return;
+    const trimmed = notes.trim();
+    if (!trimmed) {
+      showToast({ tone: "danger", title: "Comment required", message: "Add a comment before returning this run to Finance/HR." });
+      return;
+    }
+    setActing("reject");
+    try {
+      await rejectPayrollRun(id, { note: trimmed });
+      showToast({ tone: "success", title: "Returned", message: "Payroll run returned for correction." });
+      setNotes("");
+      refetch();
+    } catch (err) {
+      showToast({ tone: "danger", title: "Return failed", message: err instanceof Error ? err.message : "Unable to return run." });
     } finally {
       setActing(null);
     }
@@ -135,9 +150,14 @@ export default function AdminPayrollRunAuthorizePage() {
               {acting === "export" ? "Exporting..." : "Download Breakdown"}
             </Button>
             {canAuthorize && (
-              <Button size="sm" disabled={acting === "authorize"} onClick={() => void handleAuthorize()}>
-                {acting === "authorize" ? "Authorizing..." : "Authorize Payment"}
-              </Button>
+              <>
+                <Button variant="ghost" size="sm" disabled={acting === "reject"} onClick={() => void handleReturnToFinance()}>
+                  {acting === "reject" ? "Returning..." : "Return for Correction"}
+                </Button>
+                <Button size="sm" disabled={acting === "authorize"} onClick={() => void handleAuthorize()}>
+                  {acting === "authorize" ? "Authorizing..." : "Authorize Payment"}
+                </Button>
+              </>
             )}
           </div>
         }
@@ -161,7 +181,7 @@ export default function AdminPayrollRunAuthorizePage() {
                 label="Authorization Notes (optional)"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="e.g. Approved for May cycle — all figures verified."
+                placeholder="Add approval notes, or explain what must be corrected before this returns."
               />
             </div>
           </SectionCard>
@@ -175,30 +195,15 @@ export default function AdminPayrollRunAuthorizePage() {
 
         <SectionCard title="Payroll Items" description="Per-employee summary. Download the full breakdown for component-level detail.">
           {items.length ? (
-            <Table>
-              <TableHead>
-                <TableHeaderRow>
-                  <TableHeaderCell>Employee</TableHeaderCell>
-                  <TableHeaderCell>Gross Pay</TableHeaderCell>
-                  <TableHeaderCell>Deductions</TableHeaderCell>
-                  <TableHeaderCell>Net Pay</TableHeaderCell>
-                </TableHeaderRow>
-              </TableHead>
-              <TableBody>
-                {items.map((item: any) => (
-                  <TableRow key={item.id}>
-                    <TableCell>
-                      <p className="font-semibold text-slate-900">{item.worker_name ?? "-"}</p>
-                    </TableCell>
-                    <TableCell>{`${run.currency} ${item.gross_pay?.toLocaleString() ?? "-"}`}</TableCell>
-                    <TableCell>{`${run.currency} ${item.total_deductions?.toLocaleString() ?? "-"}`}</TableCell>
-                    <TableCell>
-                      <span className="font-semibold">{`${run.currency} ${item.net_pay?.toLocaleString() ?? "-"}`}</span>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <DataTable
+              columns={[
+                { header: "Employee", cell: (item: any) => <p className="font-semibold text-slate-900">{item.worker_name ?? "-"}</p> },
+                { header: "Gross Pay", cell: (item: any) => `${run.currency} ${item.gross_pay?.toLocaleString() ?? "-"}` },
+                { header: "Deductions", cell: (item: any) => `${run.currency} ${item.total_deductions?.toLocaleString() ?? "-"}` },
+                { header: "Net Pay", cell: (item: any) => <span className="font-semibold">{`${run.currency} ${item.net_pay?.toLocaleString() ?? "-"}`}</span> },
+              ]}
+              data={items}
+            />
           ) : (
             <EmptyState title="No items" description="No payroll items for this run." />
           )}

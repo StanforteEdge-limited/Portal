@@ -12,17 +12,11 @@ import {
   SlideOverFooter,
   SlideOverHeader,
   StatCard,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableHeaderRow,
-  TableRow,
   TextField,
   TextAreaField,
   useToast,
 } from "@/shared";
+import { DataTable } from "@/shared/components/ui/DataTable";
 import { AppShell } from "@/shared/components/layout/AppShell";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { useCachedQuery } from "@/shared/lib/core";
@@ -358,162 +352,118 @@ export default function HrPayrollLoansPage() {
           {loading ? (
             <div className="text-sm text-slate-500 py-4">Loading loans ledger...</div>
           ) : loans.length ? (
-            <Table>
-              <TableHead>
-                <TableHeaderRow>
-                  <TableHeaderCell>Worker</TableHeaderCell>
-                  <TableHeaderCell>Request</TableHeaderCell>
-                  <TableHeaderCell>Title</TableHeaderCell>
-                  <TableHeaderCell>Type</TableHeaderCell>
-                  <TableHeaderCell>Principal</TableHeaderCell>
-                  <TableHeaderCell>Outstanding</TableHeaderCell>
-                  <TableHeaderCell>Monthly Repayment</TableHeaderCell>
-                  <TableHeaderCell>Start Month</TableHeaderCell>
-                  <TableHeaderCell>Status</TableHeaderCell>
-                  <TableHeaderCell className="text-right">Actions</TableHeaderCell>
-                </TableHeaderRow>
-              </TableHead>
-              <TableBody>
-                {loans.map((l: PayrollLoan) => {
-                  const workerName = l.worker?.full_name || "Unknown Worker";
-                  const startRecovery = l.start_recovery_date
-                    ? new Date(l.start_recovery_date).toLocaleDateString("en-US", { month: "short", year: "numeric" })
-                    : "-";
-                  return (
-                    <TableRow key={l.id}>
-                      <TableCell>
-                        <p className="font-semibold text-slate-900">{workerName}</p>
-                      </TableCell>
-                      <TableCell>
-                        {l.request_id ? (
-                          <a
-                            href={`/requests/details?id=${l.request_id}`}
-                            className="text-xs text-blue-600 hover:underline flex items-center gap-0.5"
-                          >
-                            <Icon name="link" className="text-[12px]" /> #{l.request_id}
-                          </a>
-                        ) : (
-                          <span className="text-xs text-slate-400">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <p className="font-medium text-slate-800">{l.title}</p>
-                      </TableCell>
-                      <TableCell className="capitalize">
-                        <Chip variant={l.loan_type === "loan" ? "pending" : "neutral"}>
-                          {l.loan_type === "loan" ? "Loan" : "Advance"}
-                        </Chip>
-                      </TableCell>
-                      <TableCell>{formatCurrency(l.principal_amount)}</TableCell>
-                      <TableCell className="font-semibold text-slate-900">
-                        {formatCurrency(l.outstanding_amount)}
-                      </TableCell>
-                      <TableCell>{formatCurrency(l.monthly_recovery_amount ?? 0)}</TableCell>
-                      <TableCell>{startRecovery}</TableCell>
-                      <TableCell>
-                        <Chip
-                          variant={
-                            l.status === "active"
-                              ? "success"
-                              : l.status === "paused"
-                              ? "warning"
-                              : "neutral"
-                          }
+            <DataTable
+              columns={[
+                { header: "Worker", cell: (l: PayrollLoan) => <p className="font-semibold text-slate-900">{l.worker?.full_name || "Unknown Worker"}</p> },
+                { header: "Request", cell: (l: PayrollLoan) => l.request_id ? (
+                  <a href={`/requests/details?id=${l.request_id}`} className="text-xs text-blue-600 hover:underline flex items-center gap-0.5">
+                    <Icon name="link" className="text-[12px]" /> #{l.request_id}
+                  </a>
+                ) : <span className="text-xs text-slate-400">—</span> },
+                { header: "Title", cell: (l: PayrollLoan) => <p className="font-medium text-slate-800">{l.title}</p> },
+                { header: "Type", className: "capitalize", cell: (l: PayrollLoan) => (
+                  <Chip variant={l.loan_type === "loan" ? "pending" : "neutral"}>
+                    {l.loan_type === "loan" ? "Loan" : "Advance"}
+                  </Chip>
+                ) },
+                { header: "Principal", cell: (l: PayrollLoan) => formatCurrency(l.principal_amount) },
+                { header: "Outstanding", className: "font-semibold text-slate-900", cell: (l: PayrollLoan) => formatCurrency(l.outstanding_amount ?? 0) },
+                { header: "Monthly Repayment", cell: (l: PayrollLoan) => formatCurrency(l.monthly_recovery_amount ?? 0) },
+                { header: "Start Month", cell: (l: PayrollLoan) => l.start_recovery_date ? new Date(l.start_recovery_date).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "-" },
+                { header: "Status", cell: (l: PayrollLoan) => (
+                  <Chip variant={l.status === "active" ? "success" : l.status === "paused" ? "warning" : "neutral"}>
+                    {l.status}
+                  </Chip>
+                ) },
+                { header: "Actions", className: "text-right", cell: (l: PayrollLoan) => (
+                  <div className="relative flex justify-end" ref={openMenuId === l.id ? menuRef : undefined}>
+                    <button
+                      type="button"
+                      className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-900/20"
+                      onClick={() => setOpenMenuId(openMenuId === l.id ? null : l.id)}
+                      aria-haspopup="menu"
+                      aria-expanded={openMenuId === l.id}
+                      aria-label="Loan actions"
+                    >
+                      <Icon name="more_vert" />
+                    </button>
+
+                    {openMenuId === l.id && (
+                      <div
+                        role="menu"
+                        aria-label="Loan actions"
+                        className="absolute right-0 top-[calc(100%+4px)] z-50 w-52 rounded-2xl border border-slate-200 bg-white py-2 shadow-card"
+                      >
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                          onClick={() => { closeMenu(); setViewingLoan(l); }}
                         >
-                          {l.status}
-                        </Chip>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="relative flex justify-end" ref={openMenuId === l.id ? menuRef : undefined}>
+                          <Icon name="history" className="text-[18px] text-slate-500" />
+                          View Repayments
+                        </button>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                          onClick={() => { closeMenu(); setRepayingLoan(l); setManualRepaymentAmount(""); setManualRepaymentNotes(""); }}
+                        >
+                          <Icon name="payments" className="text-[18px] text-slate-500" />
+                          Log Repayment
+                        </button>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                          onClick={() => { closeMenu(); openEdit(l); }}
+                        >
+                          <Icon name="edit" className="text-[18px] text-slate-500" />
+                          Edit Loan
+                        </button>
+                        {l.status === "active" && (
                           <button
                             type="button"
-                            className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-900/20"
-                            onClick={() => setOpenMenuId(openMenuId === l.id ? null : l.id)}
-                            aria-haspopup="menu"
-                            aria-expanded={openMenuId === l.id}
-                            aria-label="Loan actions"
+                            role="menuitem"
+                            className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-orange-600 transition hover:bg-orange-50"
+                            onClick={() => { closeMenu(); void handleStatusChange(l, "paused"); }}
                           >
-                            <Icon name="more_vert" />
+                            <Icon name="pause" className="text-[18px]" />
+                            Pause Recovery
                           </button>
-
-                          {openMenuId === l.id && (
-                            <div
-                              role="menu"
-                              aria-label="Loan actions"
-                              className="absolute right-0 top-[calc(100%+4px)] z-50 w-52 rounded-2xl border border-slate-200 bg-white py-2 shadow-card"
+                        )}
+                        {l.status === "paused" && (
+                          <button
+                            type="button"
+                            role="menuitem"
+                            className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-green-600 transition hover:bg-green-50"
+                            onClick={() => { closeMenu(); void handleStatusChange(l, "active"); }}
+                          >
+                            <Icon name="play_arrow" className="text-[18px]" />
+                            Resume Recovery
+                          </button>
+                        )}
+                        {l.status !== "closed" && (
+                          <>
+                            <div className="my-1 border-t border-slate-100" />
+                            <button
+                              type="button"
+                              role="menuitem"
+                              className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-slate-500 transition hover:bg-slate-50"
+                              onClick={() => { closeMenu(); void handleStatusChange(l, "closed"); }}
                             >
-                              <button
-                                type="button"
-                                role="menuitem"
-                                className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                                onClick={() => { closeMenu(); setViewingLoan(l); }}
-                              >
-                                <Icon name="history" className="text-[18px] text-slate-500" />
-                                View Repayments
-                              </button>
-                              <button
-                                type="button"
-                                role="menuitem"
-                                className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                                onClick={() => { closeMenu(); setRepayingLoan(l); setManualRepaymentAmount(""); setManualRepaymentNotes(""); }}
-                              >
-                                <Icon name="payments" className="text-[18px] text-slate-500" />
-                                Log Repayment
-                              </button>
-                              <button
-                                type="button"
-                                role="menuitem"
-                                className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                                onClick={() => { closeMenu(); openEdit(l); }}
-                              >
-                                <Icon name="edit" className="text-[18px] text-slate-500" />
-                                Edit Loan
-                              </button>
-                              {l.status === "active" && (
-                                <button
-                                  type="button"
-                                  role="menuitem"
-                                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-orange-600 transition hover:bg-orange-50"
-                                  onClick={() => { closeMenu(); void handleStatusChange(l, "paused"); }}
-                                >
-                                  <Icon name="pause" className="text-[18px]" />
-                                  Pause Recovery
-                                </button>
-                              )}
-                              {l.status === "paused" && (
-                                <button
-                                  type="button"
-                                  role="menuitem"
-                                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-green-600 transition hover:bg-green-50"
-                                  onClick={() => { closeMenu(); void handleStatusChange(l, "active"); }}
-                                >
-                                  <Icon name="play_arrow" className="text-[18px]" />
-                                  Resume Recovery
-                                </button>
-                              )}
-                              {l.status !== "closed" && (
-                                <>
-                                  <div className="my-1 border-t border-slate-100" />
-                                  <button
-                                    type="button"
-                                    role="menuitem"
-                                    className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-slate-500 transition hover:bg-slate-50"
-                                    onClick={() => { closeMenu(); void handleStatusChange(l, "closed"); }}
-                                  >
-                                    <Icon name="check_circle" className="text-[18px]" />
-                                    Close / Settle Loan
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                              <Icon name="check_circle" className="text-[18px]" />
+                              Close / Settle Loan
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) },
+              ]}
+              data={loans}
+            />
           ) : (
             <EmptyState
               title="No loans registered"
@@ -671,30 +621,14 @@ export default function HrPayrollLoansPage() {
               <div>
                 <h4 className="text-sm font-semibold text-slate-900 mb-3">Repayment History</h4>
                 {viewingLoan.repayments && viewingLoan.repayments.length > 0 ? (
-                  <Table>
-                    <TableHead>
-                      <TableHeaderRow>
-                        <TableHeaderCell>Date</TableHeaderCell>
-                        <TableHeaderCell>Amount Recovered</TableHeaderCell>
-                        <TableHeaderCell>Status</TableHeaderCell>
-                      </TableHeaderRow>
-                    </TableHead>
-                    <TableBody>
-                      {viewingLoan.repayments.map((rep) => (
-                        <TableRow key={rep.id}>
-                          <TableCell>
-                            {new Date(rep.created_at).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })}
-                          </TableCell>
-                          <TableCell className="font-semibold text-slate-900">
-                            {formatCurrency(rep.amount)}
-                          </TableCell>
-                          <TableCell>
-                            <Chip variant="success">{rep.status}</Chip>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                  <DataTable
+                    columns={[
+                      { header: "Date", cell: (rep: any) => new Date(rep.created_at).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" }) },
+                      { header: "Amount Recovered", className: "font-semibold text-slate-900", cell: (rep: any) => formatCurrency(rep.amount) },
+                      { header: "Status", cell: (rep: any) => <Chip variant="success">{rep.status}</Chip> },
+                    ]}
+                    data={viewingLoan.repayments}
+                  />
                 ) : (
                   <p className="text-sm text-slate-500 bg-slate-50 border border-dashed border-slate-200 rounded-lg p-6 text-center">
                     No recovery repayments recorded yet. Recovery will start in the first payroll run on or after the start month.

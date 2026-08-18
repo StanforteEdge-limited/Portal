@@ -1409,7 +1409,7 @@ export class RequestsService {
 
       if (current?.status === 'returned') {
         const serialized = this.serializeRequest(current);
-        serialized.approvals = { done: [], pending: [] };
+        serialized.approvals = { done: [], pending: [], required_steps: [] };
         return serialized;
       }
 
@@ -1460,7 +1460,17 @@ export class RequestsService {
       })
     ]);
 
-    const items = data.map((item) => this.serializeRequest(item));
+    const items = await Promise.all(
+      data.map(async (item) => {
+        const ser = this.serializeRequest(item);
+        if (item.workflowInstanceId) {
+          ser.approvals = await this.getApprovalSummary(item.workflowInstanceId);
+        } else {
+          ser.approvals = { done: [], pending: [], required_steps: [] };
+        }
+        return ser;
+      })
+    );
     return paginatedResponse(items, { page, per_page: limit, total });
   }
 
@@ -1474,7 +1484,24 @@ export class RequestsService {
     if (request.workflowInstanceId) {
       serialized.approvals = await this.getApprovalSummary(request.workflowInstanceId);
     } else {
-      serialized.approvals = { done: [], pending: [] };
+      const approvals: any = { done: [], pending: [], required_steps: [] };
+      const data = request.data as Record<string, any>;
+      if (data?.manual_approvals && Array.isArray(data.manual_approvals)) {
+        approvals.done = data.manual_approvals.map((m: any) => ({
+          action: m.done ? 'approve' : 'pending',
+          step: m.role || 'Unknown',
+          performed_by_name: m.name ?? null,
+          performed_by_email: null,
+          comment: m.comment ?? null,
+          at: m.date ?? request.createdAt.toISOString()
+        }));
+        approvals.required_steps = data.manual_approvals.map((m: any) => ({
+          step: m.role || 'Unknown',
+          role: m.role || null,
+          approver: null
+        }));
+      }
+      serialized.approvals = approvals;
     }
     return serialized;
   }
@@ -1634,7 +1661,17 @@ export class RequestsService {
       }
     }
 
-    const serialized = await Promise.all(data.map((item) => this.serializeRequest(item)));
+    const serialized = await Promise.all(
+      data.map(async (item) => {
+        const ser = this.serializeRequest(item);
+        if (item.workflowInstanceId) {
+          ser.approvals = await this.getApprovalSummary(item.workflowInstanceId);
+        } else {
+          ser.approvals = { done: [], pending: [], required_steps: [] };
+        }
+        return ser;
+      })
+    );
     const decorated = await Promise.all(
       serialized.map(async (item) => {
         const instanceId = data.find((row) => row.id.toString() === item.id)?.workflowInstanceId ?? null;
@@ -2998,7 +3035,15 @@ export class RequestsService {
           }))
         : [];
 
-    return { done, pending };
+    const required_steps = instance.workflow.steps
+      .sort((a, b) => a.order - b.order)
+      .map((step) => ({
+        step: step.name,
+        role: (step.config as Record<string, any>)?.role ?? null,
+        approver: (step.config as Record<string, any>)?.approver ?? null,
+      }));
+
+    return { done, pending, required_steps };
   }
 
   private async ensureFileAssetsExist(tx: Prisma.TransactionClient | PrismaService, fileIds: string[]) {
@@ -3282,13 +3327,7 @@ export class RequestsService {
       });
       if (hasPermission > 0) return true;
 
-      const isAdmin = await this.prisma.userRole.count({
-        where: {
-          profileId: toBigInt(userId),
-          role: { slug: { in: ['administrator', 'admin'] } },
-        },
-      });
-      if (isAdmin > 0) return true;
+
     }
 
     return false;
@@ -3363,16 +3402,11 @@ export class RequestsService {
               : approverId;
       const permissionUsers = await this.prisma.userRole.findMany({
         where: {
-          OR: [
-            { role: { slug: { in: ['administrator', 'admin'] } } },
-            {
-              role: {
-                permissions: {
-                  some: { permission: { slug: permissionSlug } },
-                },
-              },
+          role: {
+            permissions: {
+              some: { permission: { slug: permissionSlug } },
             },
-          ],
+          },
         },
         select: { profileId: true },
       });

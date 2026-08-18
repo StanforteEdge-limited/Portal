@@ -2,15 +2,9 @@ import { useState } from "react";
 import {
   Chip,
   StatCard,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableHeaderRow,
-  TableRow,
   TextField,
 } from "@/shared";
+import { DataTable } from "@/shared/components/ui/DataTable";
 import { attendanceApi, useCachedQuery } from "@/shared/lib/core";
 import { formatDate, formatTime, formatDuration } from "@stanforte/shared";
 import { TimeWithNextDay } from "@/shared/components/ui/TimeWithNextDay";
@@ -47,6 +41,34 @@ export default function EmployeeAttendanceTab({ employeeId }: Props) {
     return acc;
   }, { total: 0, present: 0, late: 0, absent: 0, workedMins: 0 });
 
+  const [exportingCsv, setExportingCsv] = useState(false);
+
+  const handleExportCsv = async () => {
+    try {
+      setExportingCsv(true);
+      const res = await attendanceApi.listRecords({ from, to, user_id: employeeId, page: 1, per_page: 5000 });
+      const csvRows = ["Date,Clock In,Clock Out,Worked Minutes,Late Minutes,Status"];
+      for (const row of res.items) {
+        csvRows.push(`${row.work_date},${row.first_in_at || ''},${row.last_out_at || ''},${row.worked_minutes},${row.late_minutes},${row.status}`);
+      }
+      const csv = csvRows.join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `attendance_${employeeId}_${from}_${to}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error(e);
+      alert("Failed to export CSV");
+    } finally {
+      setExportingCsv(false);
+    }
+  };
+
   return (
     <div className="space-y-8">
       <div className="grid gap-4 md:grid-cols-4">
@@ -56,50 +78,41 @@ export default function EmployeeAttendanceTab({ employeeId }: Props) {
         <StatCard label="Worked Time" value={formatDuration(stats.workedMins)} icon="timer" />
       </div>
 
-      <div className="flex flex-wrap items-end gap-3 bg-slate-50 p-4 rounded-3xl border border-slate-100">
-        <TextField label="From" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
-        <TextField label="To" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+      <div className="flex flex-wrap items-end justify-between gap-3 bg-slate-50 p-4 rounded-3xl border border-slate-100">
+        <div className="flex flex-wrap items-end gap-3">
+          <TextField label="From" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+          <TextField label="To" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+        </div>
+        <button
+          onClick={handleExportCsv}
+          disabled={exportingCsv}
+          className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:opacity-50"
+        >
+          <span className="material-symbols-outlined text-[18px]">download</span>
+          {exportingCsv ? "Exporting..." : "Export CSV"}
+        </button>
       </div>
 
       {loading ? (
         <div className="p-8 text-center text-slate-500">Loading history...</div>
       ) : (
         <div className="overflow-x-auto rounded-[22px] border border-slate-200">
-          <Table>
-            <TableHead>
-              <TableHeaderRow>
-                <TableHeaderCell>Date</TableHeaderCell>
-                <TableHeaderCell>Clock In</TableHeaderCell>
-                <TableHeaderCell>Clock Out</TableHeaderCell>
-                <TableHeaderCell>Worked</TableHeaderCell>
-                <TableHeaderCell>Late</TableHeaderCell>
-                <TableHeaderCell>Status</TableHeaderCell>
-              </TableHeaderRow>
-            </TableHead>
-            <TableBody>
-              {rows.map((row) => (
-                <TableRow key={row.work_date}>
-                  <TableCell className="font-medium text-slate-900">{formatDate(row.work_date)}</TableCell>
-                  <TableCell>{formatTime(row.first_in_at)}</TableCell>
-                  <TableCell><TimeWithNextDay time={row.last_out_at} referenceDate={row.first_in_at} /></TableCell>
-                  <TableCell>{formatDuration(row.worked_minutes)}</TableCell>
-                  <TableCell>{row.late_minutes > 0 ? formatDuration(row.late_minutes) : "-"}</TableCell>
-                  <TableCell>
-                    <Chip variant={statusVariant[row.status] ?? "neutral"}>
-                      {row.status}
-                    </Chip>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {!rows.length && (
-                <TableRow>
-                  <TableCell colSpan={6} className="py-12 text-center text-slate-400 italic">
-                    No attendance records found for this period.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+          <DataTable
+            columns={[
+              { header: "Date", className: "font-medium text-slate-900", cell: (row) => formatDate(row.work_date) },
+              { header: "Clock In", cell: (row) => formatTime(row.first_in_at) },
+              { header: "Clock Out", cell: (row) => <TimeWithNextDay time={row.last_out_at} referenceDate={row.first_in_at} /> },
+              { header: "Worked", cell: (row) => formatDuration(row.worked_minutes) },
+              { header: "Late", cell: (row) => row.late_minutes > 0 ? formatDuration(row.late_minutes) : "-" },
+              { header: "Status", cell: (row) => (
+                <Chip variant={statusVariant[row.status] ?? "neutral"}>
+                  {row.status}
+                </Chip>
+              ) },
+            ]}
+            data={rows}
+            loading={loading}
+          />
         </div>
       )}
     </div>

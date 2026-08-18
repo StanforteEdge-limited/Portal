@@ -6,7 +6,7 @@ Here's the complete payroll run testing guide:
 Ensure your test user has the right permissions/roles assigned:
 
 - HR: must have payroll.manage
-- Finance: must have payroll.approve + finance.manage + finance.view
+- Finance: must have payroll.approve + finance.view
 - COO/ED (Admin): must have payroll.authorize
 - Also ensure at least 1 organization exists with staff assigned to it
 
@@ -42,10 +42,10 @@ Ensure your test user has the right permissions/roles assigned:
 5. Click "Create Run"
 6. You're taken to the run detail page — status is draft
 7. Click "Generate Items" — this creates pay items for **all active workers** whose date range overlaps with this run's period
-   - Status changes to prepared ("generated" in UI)
+   - Status changes to `prepared`
 8. Review the generated items if needed
 9. Click "Submit to Finance"
-   - Status changes to under_review ("submitted" in UI)
+   - Status changes to `under_review`
      You can also Delete a run while it's still in draft/prepared status.
 
 ---
@@ -57,7 +57,7 @@ Ensure your test user has the right permissions/roles assigned:
 3. The run should appear under "Pending Review"
 4. Click "Review" to open the run detail
 5. Review the payroll items
-6. Click "Mark Reviewed" (optional step, confirms review)
+6. Click "Mark Reviewed" (optional, keeps the run in `under_review` while recording the review action)
 7. Click "Approve" to approve the run
    - Status changes to approved
 8. An amber banner appears: "Awaiting ED/COO Authorization"
@@ -115,7 +115,7 @@ draft ──→ prepared ──→ under_review ──→ approved ──→ aut
 |--------|-----------|-----|
 | Create/Generate/Submit/Delete/Reopen run | `payroll.manage` | HR |
 | Manage workers | `payroll.manage` | HR |
-| Review/Approve/Reject/Pay/Close run | `finance.manage` | Finance |
+| Review/Approve/Reject/Pay/Close run | `payroll.approve` | Finance |
 | Manage setup (components, tax tables, settings, loans, import) | `finance.manage` | Finance |
 | View dashboard/inbox/reports/workers | `finance.view` | Finance |
 | Authorize payment | `payroll.authorize` | COO/ED |
@@ -124,7 +124,7 @@ draft ──→ prepared ──→ under_review ──→ approved ──→ aut
 # Things to watch for while testing
 
 1. Org isolation — Does Finance see runs from Org A when looking at Org B's data?
-2. Status filtering — HR sees only draft,prepared,rejected. Finance sees only under_review,approved. Verify the correct runs appear.
+2. Status filtering — HR sees only `draft`, `prepared`, `rejected`. Finance sees `under_review` and `approved` runs, then returns to handle `authorized` runs for payment. Verify the correct runs appear.
 3. Authorization gate — Can Finance authorize without payroll.authorize? (Should fail with 403)
 4. Delete guard — Can HR delete an approved run? (Should fail — only draft/prepared)
 5. Worker scope — Generate Items should only pull workers belonging to the run's organization

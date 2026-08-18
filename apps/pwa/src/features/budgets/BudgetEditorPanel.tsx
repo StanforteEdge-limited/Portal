@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Button, TextField, SelectField, TextAreaField, Table, TableBody, TableCell, TableHead, TableHeaderCell, TableHeaderRow, TableRow } from '@/shared';
+import { Button, TextField, SelectField, TextAreaField } from '@/shared';
+import { DataTable } from '@/shared/components/ui/DataTable';
 import { useCachedQuery } from '@/shared/lib/core';
 import { budgetApi } from './budget-api';
 import type { BudgetScopeContext, BudgetRecord } from './budget-types';
@@ -158,26 +159,15 @@ export default function BudgetEditorPanel({ context, budgetId, onSaved, onCancel
             <Button variant="secondary" onClick={() => setLines([...lines, { ...emptyLine }])}>+ Add Row</Button>
           </div>
           <div style={{ overflowX: 'auto' }}>
-            <Table>
-              <TableHead>
-                <TableHeaderRow>
-                  <TableHeaderCell>Group Name</TableHeaderCell>
-                  <TableHeaderCell>Line Name</TableHeaderCell>
-                  <TableHeaderCell>Total Amount</TableHeaderCell>
-                  <TableHeaderCell>Actions</TableHeaderCell>
-                </TableHeaderRow>
-              </TableHead>
-              <TableBody>
-                {lines.map((line, idx) => (
-                  <TableRow key={idx}>
-                    <TableCell><TextField label="" value={line.group_name || ''} onChange={(e) => { const u = [...lines]; u[idx].group_name = e.target.value; setLines(u); }} /></TableCell>
-                    <TableCell><TextField label="" value={line.line_name || ''} onChange={(e) => { const u = [...lines]; u[idx].line_name = e.target.value; setLines(u); }} /></TableCell>
-                    <TableCell><TextField label="" type="number" value={line.total_amount || ''} onChange={(e) => { const u = [...lines]; u[idx].total_amount = e.target.value; setLines(u); }} /></TableCell>
-                    <TableCell><Button variant="danger" onClick={() => setLines(lines.filter((_, i) => i !== idx))}>Remove</Button></TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <DataTable
+              columns={[
+                { header: "Group Name", cell: (line: any) => { const idx = lines.indexOf(line); return <TextField label="" value={line.group_name || ''} onChange={(e) => { const u = [...lines]; u[idx].group_name = e.target.value; setLines(u); }} />; } },
+                { header: "Line Name", cell: (line: any) => { const idx = lines.indexOf(line); return <TextField label="" value={line.line_name || ''} onChange={(e) => { const u = [...lines]; u[idx].line_name = e.target.value; setLines(u); }} />; } },
+                { header: "Total Amount", cell: (line: any) => { const idx = lines.indexOf(line); return <TextField label="" type="number" value={line.total_amount || ''} onChange={(e) => { const u = [...lines]; u[idx].total_amount = e.target.value; setLines(u); }} />; } },
+                { header: "Actions", cell: (line: any) => { const idx = lines.indexOf(line); return <Button variant="danger" onClick={() => setLines(lines.filter((_, i) => i !== idx))}>Remove</Button>; } }
+              ]}
+              data={lines}
+            />
           </div>
         </div>
       )}
@@ -188,26 +178,15 @@ export default function BudgetEditorPanel({ context, budgetId, onSaved, onCancel
             <div style={{ fontSize: '14px', fontWeight: 700, color: '#1e293b' }}>Assumptions</div>
             <Button variant="secondary" onClick={() => setAssumptions([...assumptions, { ...emptyAssumption }])}>+ Add Assumption</Button>
           </div>
-          <Table>
-            <TableHead>
-              <TableHeaderRow>
-                <TableHeaderCell>Label</TableHeaderCell>
-                <TableHeaderCell>Value</TableHeaderCell>
-                <TableHeaderCell>Notes</TableHeaderCell>
-                <TableHeaderCell>Actions</TableHeaderCell>
-              </TableHeaderRow>
-            </TableHead>
-            <TableBody>
-              {assumptions.map((asm, idx) => (
-                <TableRow key={idx}>
-                  <TableCell><TextField label="" value={asm.label || ''} onChange={(e) => { const u = [...assumptions]; u[idx].label = e.target.value; setAssumptions(u); }} /></TableCell>
-                  <TableCell><TextField label="" value={asm.value || ''} onChange={(e) => { const u = [...assumptions]; u[idx].value = e.target.value; setAssumptions(u); }} /></TableCell>
-                  <TableCell><TextField label="" value={asm.notes || ''} onChange={(e) => { const u = [...assumptions]; u[idx].notes = e.target.value; setAssumptions(u); }} /></TableCell>
-                  <TableCell><Button variant="danger" onClick={() => setAssumptions(assumptions.filter((_, i) => i !== idx))}>Remove</Button></TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <DataTable
+            columns={[
+              { header: "Label", cell: (asm: any) => { const idx = assumptions.indexOf(asm); return <TextField label="" value={asm.label || ''} onChange={(e) => { const u = [...assumptions]; u[idx].label = e.target.value; setAssumptions(u); }} />; } },
+              { header: "Value", cell: (asm: any) => { const idx = assumptions.indexOf(asm); return <TextField label="" value={asm.value || ''} onChange={(e) => { const u = [...assumptions]; u[idx].value = e.target.value; setAssumptions(u); }} />; } },
+              { header: "Notes", cell: (asm: any) => { const idx = assumptions.indexOf(asm); return <TextField label="" value={asm.notes || ''} onChange={(e) => { const u = [...assumptions]; u[idx].notes = e.target.value; setAssumptions(u); }} />; } },
+              { header: "Actions", cell: (asm: any) => { const idx = assumptions.indexOf(asm); return <Button variant="danger" onClick={() => setAssumptions(assumptions.filter((_, i) => i !== idx))}>Remove</Button>; } }
+            ]}
+            data={assumptions}
+          />
         </div>
       )}
 
@@ -217,32 +196,21 @@ export default function BudgetEditorPanel({ context, budgetId, onSaved, onCancel
             <div style={{ fontSize: '14px', fontWeight: 700, color: '#1e293b' }}>Portfolio Integrations</div>
             <Button variant="secondary" onClick={() => setPortfolio([...portfolio, { ...emptyPortfolio }])}>+ Add Portfolio</Button>
           </div>
-          <Table>
-            <TableHead>
-              <TableHeaderRow>
-                <TableHeaderCell>Funder Name</TableHeaderCell>
-                <TableHeaderCell>Status</TableHeaderCell>
-                <TableHeaderCell>Total Budget</TableHeaderCell>
-                <TableHeaderCell>Actions</TableHeaderCell>
-              </TableHeaderRow>
-            </TableHead>
-            <TableBody>
-              {portfolio.map((port, idx) => (
-                <TableRow key={idx}>
-                  <TableCell><TextField label="" value={port.funder_name || ''} onChange={(e) => { const u = [...portfolio]; u[idx].funder_name = e.target.value; setPortfolio(u); }} /></TableCell>
-                  <TableCell>
-                    <SelectField label="" value={port.status || 'active'} onChange={(e) => { const u = [...portfolio]; u[idx].status = e.target.value; setPortfolio(u); }}>
-                      <option value="active">Active</option>
-                      <option value="pipeline">Pipeline</option>
-                      <option value="closed">Closed</option>
-                    </SelectField>
-                  </TableCell>
-                  <TableCell><TextField label="" type="number" value={port.total_budget || ''} onChange={(e) => { const u = [...portfolio]; u[idx].total_budget = e.target.value; setPortfolio(u); }} /></TableCell>
-                  <TableCell><Button variant="danger" onClick={() => setPortfolio(portfolio.filter((_, i) => i !== idx))}>Remove</Button></TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <DataTable
+            columns={[
+              { header: "Funder Name", cell: (port: any) => { const idx = portfolio.indexOf(port); return <TextField label="" value={port.funder_name || ''} onChange={(e) => { const u = [...portfolio]; u[idx].funder_name = e.target.value; setPortfolio(u); }} />; } },
+              { header: "Status", cell: (port: any) => { const idx = portfolio.indexOf(port); return (
+                <SelectField label="" value={port.status || 'active'} onChange={(e) => { const u = [...portfolio]; u[idx].status = e.target.value; setPortfolio(u); }}>
+                  <option value="active">Active</option>
+                  <option value="pipeline">Pipeline</option>
+                  <option value="closed">Closed</option>
+                </SelectField>
+              ); } },
+              { header: "Total Budget", cell: (port: any) => { const idx = portfolio.indexOf(port); return <TextField label="" type="number" value={port.total_budget || ''} onChange={(e) => { const u = [...portfolio]; u[idx].total_budget = e.target.value; setPortfolio(u); }} />; } },
+              { header: "Actions", cell: (port: any) => { const idx = portfolio.indexOf(port); return <Button variant="danger" onClick={() => setPortfolio(portfolio.filter((_, i) => i !== idx))}>Remove</Button>; } }
+            ]}
+            data={portfolio}
+          />
         </div>
       )}
 

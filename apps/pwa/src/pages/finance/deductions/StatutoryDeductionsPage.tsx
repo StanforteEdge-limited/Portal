@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Button, Icon, PageHeader,
-  Table, TableHead, TableHeaderRow, TableHeaderCell,
-  TableRow, TableCell, TableBody,
+  DataTable,
   TextField, SelectField, useToast, SlideOver,
   SectionCard, Chip,
 } from "@/shared";
@@ -438,39 +437,19 @@ export default function StatutoryDeductionsPage() {
         </div>
 
           <div className="rounded-[22px] border border-slate-200 bg-white overflow-x-auto">
-            <Table>
-            <TableHead>
-              <TableHeaderRow>
-                <TableHeaderCell>
-                  <input
-                    type="checkbox"
-                    checked={pendingRows.length > 0 && selectedIds.size === pendingRows.length}
-                    onChange={toggleAll}
-                    aria-label="Select all pending"
-                  />
-                </TableHeaderCell>
-                <TableHeaderCell>Request</TableHeaderCell>
-                <TableHeaderCell>Deduction Type</TableHeaderCell>
-                <TableHeaderCell>Gross</TableHeaderCell>
-                <TableHeaderCell>Withheld</TableHeaderCell>
-                <TableHeaderCell>Status</TableHeaderCell>
-                <TableHeaderCell>TRM Ref</TableHeaderCell>
-                <TableHeaderCell>Remitted</TableHeaderCell>
-                <TableHeaderCell>Account</TableHeaderCell>
-                <TableHeaderCell>{" "}</TableHeaderCell>
-              </TableHeaderRow>
-            </TableHead>
-            <TableBody>
-              {deductions.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={10} className="text-center text-slate-400 py-8">
-                    {loading ? "Loading..." : "No deductions found."}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                deductions.map((d) => (
-                  <TableRow key={d.id} onClick={() => setSelectedDeduction(d)}>
-                    <TableCell onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+            <DataTable
+              columns={[
+                {
+                  header: (
+                    <input
+                      type="checkbox"
+                      checked={pendingRows.length > 0 && selectedIds.size === pendingRows.length}
+                      onChange={toggleAll}
+                      aria-label="Select all pending"
+                    />
+                  ),
+                  cell: (d) => (
+                    <div onClick={(e: React.MouseEvent) => e.stopPropagation()}>
                       <input
                         type="checkbox"
                         checked={selectedIds.has(d.id)}
@@ -478,67 +457,79 @@ export default function StatutoryDeductionsPage() {
                         disabled={d.status === "remitted"}
                         aria-label={`Select ${d.id}`}
                       />
-                    </TableCell>
-                    <TableCell>
-                      <button
-                        className="text-brand-700 underline text-sm font-medium"
-                        onClick={(e: React.MouseEvent) => {
-                          e.stopPropagation();
-                          navigate(`/requests/${d.request_id}`);
-                        }}
-                      >
-                        {d.request_number || d.request_id}
-                      </button>
-                    </TableCell>
-                    <TableCell>
+                    </div>
+                  )
+                },
+                {
+                  header: "Request", cell: (d) => (
+                    <button
+                      className="text-brand-700 underline text-sm font-medium"
+                      onClick={(e: React.MouseEvent) => {
+                        e.stopPropagation();
+                        navigate(`/requests/${d.request_id}`);
+                      }}
+                    >
+                      {d.request_number || d.request_id}
+                    </button>
+                  )
+                },
+                {
+                  header: "Deduction Type", cell: (d) => (
+                    <>
                       <p className="text-sm">{d.deduction_type_name}</p>
                       <p className="text-xs text-slate-400">{d.deduction_type_code}</p>
-                    </TableCell>
-                    <TableCell className="text-sm">{formatCurrency(d.gross_amount, "NGN")}</TableCell>
-                    <TableCell className="text-sm font-medium">{formatCurrency(d.amount, "NGN")}</TableCell>
-                    <TableCell>
-                      <Chip variant={d.status === "remitted" ? "success" : "warning"}>
-                        {d.status === "remitted" ? "Remitted" : "Pending"}
-                      </Chip>
-                    </TableCell>
-                    <TableCell>
+                    </>
+                  )
+                },
+                { header: "Gross", cell: (d) => <span className="text-sm">{formatCurrency(d.gross_amount, "NGN")}</span> },
+                { header: "Withheld", cell: (d) => <span className="text-sm font-medium">{formatCurrency(d.amount, "NGN")}</span> },
+                {
+                  header: "Status", cell: (d) => (
+                    <Chip variant={d.status === "remitted" ? "success" : "warning"}>
+                      {d.status === "remitted" ? "Remitted" : "Pending"}
+                    </Chip>
+                  )
+                },
+                {
+                  header: "TRM Ref", cell: (d) => (
+                    <>
                       {d.remittance_number ? (
                         <p className="text-sm font-mono font-semibold text-slate-800">{d.remittance_number}</p>
                       ) : "—"}
                       {d.remittance_ref && (
                         <p className="text-xs text-slate-400 mt-0.5">{d.remittance_ref}</p>
                       )}
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {d.remitted_at ? formatDisplayDate(d.remitted_at) : "—"}
-                    </TableCell>
-                    <TableCell className="text-sm text-slate-600">
-                      {d.paid_from_account?.name ?? "—"}
-                    </TableCell>
-                    <TableCell onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-                      <div className="flex gap-2 items-center">
-                        {d.status === "pending" && (
-                          <button className="text-xs font-semibold text-brand-700 hover:underline" onClick={() => openEditDeduction(d)}>Edit</button>
-                        )}
-                        {d.status === "remitted" && d.remittance_number && (
-                          <button className="text-xs font-semibold text-brand-700 hover:underline" onClick={() => openEditRemittance(d)}>Edit Remit</button>
-                        )}
-                        {d.status === "remitted" && d.remittance_number && (
-                          <button
-                            type="button"
-                            onClick={() => void handleDownloadTrm(d.id)}
-                            className="text-xs font-semibold text-brand-700 hover:underline whitespace-nowrap"
-                          >
-                            TRM Slip
-                          </button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-            </Table>
+                    </>
+                  )
+                },
+                { header: "Remitted", cell: (d) => <span className="text-sm">{d.remitted_at ? formatDisplayDate(d.remitted_at) : "—"}</span> },
+                { header: "Account", cell: (d) => <span className="text-sm text-slate-600">{d.paid_from_account?.name ?? "—"}</span> },
+                {
+                  header: " ", cell: (d) => (
+                    <div className="flex gap-2 items-center" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+                      {d.status === "pending" && (
+                        <button className="text-xs font-semibold text-brand-700 hover:underline" onClick={() => openEditDeduction(d)}>Edit</button>
+                      )}
+                      {d.status === "remitted" && d.remittance_number && (
+                        <button className="text-xs font-semibold text-brand-700 hover:underline" onClick={() => openEditRemittance(d)}>Edit Remit</button>
+                      )}
+                      {d.status === "remitted" && d.remittance_number && (
+                        <button
+                          type="button"
+                          onClick={() => void handleDownloadTrm(d.id)}
+                          className="text-xs font-semibold text-brand-700 hover:underline whitespace-nowrap"
+                        >
+                          TRM Slip
+                        </button>
+                      )}
+                    </div>
+                  )
+                }
+              ]}
+              data={deductions}
+              loading={loading}
+              onRowClick={(d) => setSelectedDeduction(d)}
+            />
           </div>
 
           {pagination && pagination.total_pages > 1 && (
@@ -564,44 +555,31 @@ export default function StatutoryDeductionsPage() {
             />
           </div>
           <div className="rounded-[22px] border border-slate-200 bg-white overflow-x-auto">
-            <Table>
-              <TableHead>
-                <TableHeaderRow>
-                  <TableHeaderCell>TRM</TableHeaderCell>
-                  <TableHeaderCell>Total</TableHeaderCell>
-                  <TableHeaderCell>Allocated</TableHeaderCell>
-                  <TableHeaderCell>Unallocated</TableHeaderCell>
-                  <TableHeaderCell>Deductions</TableHeaderCell>
-                  <TableHeaderCell>{" "}</TableHeaderCell>
-                </TableHeaderRow>
-              </TableHead>
-              <TableBody>
-                {filteredRemittances.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center text-slate-400 py-8">No remittances found.</TableCell>
-                  </TableRow>
-                ) : (
-                  filteredRemittances.map((item: FinanceRequestRemittanceRecord) => (
-                    <TableRow key={item.id}>
-                      <TableCell>
-                        <div className="text-sm font-mono font-semibold text-slate-800">{item.remittance_number}</div>
-                        <div className="text-xs text-slate-400">{item.reference || "—"}</div>
-                      </TableCell>
-                      <TableCell className="text-sm">{formatCurrency(item.total_amount, "NGN")}</TableCell>
-                      <TableCell className="text-sm">{formatCurrency(item.allocated_amount, "NGN")}</TableCell>
-                      <TableCell className="text-sm">{formatCurrency(item.unallocated_amount, "NGN")}</TableCell>
-                      <TableCell className="text-sm">{item.deductions.length}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-2 items-center">
-                          <button className="text-xs font-semibold text-brand-700 hover:underline" onClick={() => openRemittanceRecord(item)}>Open</button>
-                          <button className="text-xs font-semibold text-brand-700 hover:underline" onClick={() => void handleDownloadTrm(item.id)}>TRM Slip</button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+            <DataTable
+              columns={[
+                {
+                  header: "TRM", cell: (item: FinanceRequestRemittanceRecord) => (
+                    <>
+                      <div className="text-sm font-mono font-semibold text-slate-800">{item.remittance_number}</div>
+                      <div className="text-xs text-slate-400">{item.reference || "—"}</div>
+                    </>
+                  )
+                },
+                { header: "Total", cell: (item: FinanceRequestRemittanceRecord) => <span className="text-sm">{formatCurrency(item.total_amount, "NGN")}</span> },
+                { header: "Allocated", cell: (item: FinanceRequestRemittanceRecord) => <span className="text-sm">{formatCurrency(item.allocated_amount, "NGN")}</span> },
+                { header: "Unallocated", cell: (item: FinanceRequestRemittanceRecord) => <span className="text-sm">{formatCurrency(item.unallocated_amount, "NGN")}</span> },
+                { header: "Deductions", cell: (item: FinanceRequestRemittanceRecord) => <span className="text-sm">{item.deductions.length}</span> },
+                {
+                  header: " ", cell: (item: FinanceRequestRemittanceRecord) => (
+                    <div className="flex gap-2 items-center">
+                      <button className="text-xs font-semibold text-brand-700 hover:underline" onClick={() => openRemittanceRecord(item)}>Open</button>
+                      <button className="text-xs font-semibold text-brand-700 hover:underline" onClick={() => void handleDownloadTrm(item.id)}>TRM Slip</button>
+                    </div>
+                  )
+                }
+              ]}
+              data={filteredRemittances}
+            />
           </div>
         </SectionCard>
       </div>

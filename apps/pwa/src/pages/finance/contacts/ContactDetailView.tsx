@@ -6,12 +6,8 @@ import {
   PageHeader,
   SectionCard,
   StatCard,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeaderRow,
-  TableRow,
 } from "@/shared";
+import { DataTable } from "@/shared/components/ui/DataTable";
 import { financeApi, useCachedQuery } from "@/shared/lib/core";
 import type { ContactRecord } from "@stanforte/shared";
 import { asMoney } from "./helpers";
@@ -99,86 +95,41 @@ export function ContactDetailView({ contactId, contactType, onEdit, transactions
 
       {activeTab === "info" ? (
         <SectionCard>
-          <Table>
-            <TableBody>
-              {c.company_name && (
-                <TableRow>
-                  <TableCell className="w-40 font-medium text-slate-500">Company Name</TableCell>
-                  <TableCell className="font-semibold">{c.company_name}</TableCell>
-                </TableRow>
-              )}
-              <TableRow>
-                <TableCell className="w-40 font-medium text-slate-500">Contact Name</TableCell>
-                <TableCell className="font-semibold">{c.name || "-"}</TableCell>
-              </TableRow>
-              {c.legal_name && (
-                <TableRow>
-                  <TableCell className="w-40 font-medium text-slate-500">Legal Name</TableCell>
-                  <TableCell>{c.legal_name}</TableCell>
-                </TableRow>
-              )}
-              <TableRow>
-                <TableCell className="w-40 font-medium text-slate-500">Email</TableCell>
-                <TableCell>{c.email || "-"}</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="w-40 font-medium text-slate-500">Phone</TableCell>
-                <TableCell>{c.phone || "-"}</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="w-40 font-medium text-slate-500">Address</TableCell>
-                <TableCell>{c.address || "-"}</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="w-40 font-medium text-slate-500">Tax Number</TableCell>
-                <TableCell>{c.tax_number || "-"}</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="w-40 font-medium text-slate-500">Website</TableCell>
-                <TableCell>{c.website || "-"}</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="w-40 font-medium text-slate-500">Payment Terms</TableCell>
-                <TableCell>{c.payment_terms ? `${c.payment_terms} days` : "-"}</TableCell>
-              </TableRow>
-              {primaryPerson && (
-                <TableRow>
-                  <TableCell className="w-40 font-medium text-slate-500">Primary Contact</TableCell>
-                  <TableCell>{[primaryPerson.first_name, primaryPerson.last_name].filter(Boolean).join(" ") || "-"} {primaryPerson.email ? `(${primaryPerson.email})` : ""}</TableCell>
-                </TableRow>
-              )}
-              <TableRow>
-                <TableCell className="w-40 font-medium text-slate-500">Type</TableCell>
-                <TableCell><Chip variant="neutral">{c.contact_type}</Chip></TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="w-40 font-medium text-slate-500">Taxable</TableCell>
-                <TableCell>{c.is_taxable ? "Yes" : "No"}</TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
+          <DataTable
+            columns={[
+              { header: "", className: "w-40 font-medium text-slate-500", cell: (r) => r.field },
+              { header: "", className: "font-medium", cell: (r) => r.value }
+            ]}
+            data={[
+              c.company_name && { field: "Company Name", value: <span className="font-semibold">{c.company_name}</span> },
+              { field: "Contact Name", value: <span className="font-semibold">{c.name || "-"}</span> },
+              c.legal_name && { field: "Legal Name", value: c.legal_name },
+              { field: "Email", value: c.email || "-" },
+              { field: "Phone", value: c.phone || "-" },
+              { field: "Address", value: c.address || "-" },
+              { field: "Tax Number", value: c.tax_number || "-" },
+              { field: "Website", value: c.website || "-" },
+              { field: "Payment Terms", value: c.payment_terms ? `${c.payment_terms} days` : "-" },
+              primaryPerson && { field: "Primary Contact", value: `${[primaryPerson.first_name, primaryPerson.last_name].filter(Boolean).join(" ") || "-"} ${primaryPerson.email ? `(${primaryPerson.email})` : ""}` },
+              { field: "Type", value: <Chip variant="neutral">{c.contact_type}</Chip> },
+              { field: "Taxable", value: c.is_taxable ? "Yes" : "No" }
+            ].filter(Boolean) as { field: string; value: React.ReactNode }[]}
+          />
         </SectionCard>
       ) : activeTab === "contacts" ? (
         <SectionCard title="Contact Persons">
           {c.contact_persons?.length ? (
-            <Table caption="Contact Persons">
-              <TableHeaderRow>
-                <TableCell className="font-medium">Name</TableCell>
-                <TableCell className="font-medium">Email</TableCell>
-                <TableCell className="font-medium">Phone</TableCell>
-                <TableCell className="font-medium">Designation</TableCell>
-                <TableCell className="font-medium">Primary</TableCell>
-              </TableHeaderRow>
-              {c.contact_persons.map((p) => (
-                <TableRow key={p.id}>
-                  <TableCell>{[p.salutation, p.first_name, p.last_name].filter(Boolean).join(" ")}</TableCell>
-                  <TableCell>{p.email || "-"}</TableCell>
-                  <TableCell>{p.phone || p.mobile || "-"}</TableCell>
-                  <TableCell>{p.designation || "-"}</TableCell>
-                  <TableCell>{p.is_primary ? <Chip variant="success">Yes</Chip> : "No"}</TableCell>
-                </TableRow>
-              ))}
-            </Table>
+            <DataTable
+              caption="Contact Persons"
+              columns={[
+                { header: "Name", cell: (p) => [p.salutation, p.first_name, p.last_name].filter(Boolean).join(" ") },
+                { header: "Email", cell: (p) => p.email || "-" },
+                { header: "Phone", cell: (p) => p.phone || p.mobile || "-" },
+                { header: "Designation", cell: (p) => p.designation || "-" },
+                { header: "Primary", cell: (p) => p.is_primary ? <Chip variant="success">Yes</Chip> : "No" }
+              ]}
+              data={c.contact_persons}
+            />
           ) : (
             <p className="text-sm text-slate-500">No contact persons.</p>
           )}

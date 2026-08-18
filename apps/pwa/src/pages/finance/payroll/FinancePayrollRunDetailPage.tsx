@@ -7,16 +7,10 @@ import {
   PageHeader,
   SectionCard,
   StatCard,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableHeaderRow,
-  TableRow,
   TextAreaField,
   useToast,
 } from "@/shared";
+import { DataTable } from "@/shared/components/ui/DataTable";
 import { AppShell } from "@/shared/components/layout/AppShell";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { useCachedQuery } from "@/shared/lib/core";
@@ -41,13 +35,32 @@ const MONTH_NAMES = [
 
 function runStatusTone(status: string): "neutral" | "warning" | "success" | "danger" {
   switch (status) {
-    case "submitted": return "warning";
-    case "reviewed": return "warning";
+    case "under_review": return "warning";
     case "approved": return "success";
+    case "authorized": return "success";
     case "paid": return "success";
     case "closed": return "neutral";
     case "rejected": return "danger";
     default: return "neutral";
+  }
+}
+
+function formatRunStatus(status: string) {
+  switch (status) {
+    case "under_review":
+      return "Pending Finance Review";
+    case "approved":
+      return "Approved";
+    case "authorized":
+      return "Authorized for Payment";
+    case "paid":
+      return "Paid";
+    case "closed":
+      return "Closed";
+    case "rejected":
+      return "Returned to HR";
+    default:
+      return status;
   }
 }
 
@@ -123,13 +136,11 @@ export default function FinancePayrollRunDetailPage() {
   const period = `${MONTH_NAMES[run.month] ?? run.month} ${run.year}`;
   const items = run.items ?? [];
 
-  const canReview = run.status === "submitted";
-  const canApprove = run.status === "submitted" || run.status === "reviewed";
-  const canReject = ["submitted", "reviewed", "approved"].includes(run.status);
+  const canReview = false;
+  const canApprove = run.status === "under_review";
+  const canReject = ["under_review", "approved"].includes(run.status);
   const canPay = run.status === "authorized";
   const canClose = run.status === "paid";
-  const canReopen = run.status === "rejected" || run.status === "closed";
-
   return (
     <AppShell
       navigation={buildAppNavigation()}
@@ -150,18 +161,6 @@ export default function FinancePayrollRunDetailPage() {
         description={`${period} · ${run.currency}`}
         actions={
           <div className="flex flex-wrap gap-2">
-            {canReview && (
-              <Button
-                size="sm"
-                requiredPermissions={["payroll.approve"]}
-                disabled={acting === "review"}
-                onClick={() =>
-                  act("review", () => reviewPayrollRun(id!, {}), "Run marked as reviewed")
-                }
-              >
-                {acting === "review" ? "Reviewing..." : "Mark Reviewed"}
-              </Button>
-            )}
             {canApprove && (
               <Button
                 size="sm"
@@ -172,6 +171,24 @@ export default function FinancePayrollRunDetailPage() {
                 }
               >
                 {acting === "approve" ? "Approving..." : "Approve"}
+              </Button>
+            )}
+            {canReject && (
+              <Button
+                size="sm"
+                variant="ghost"
+                requiredPermissions={["payroll.approve"]}
+                disabled={acting === "reject"}
+                onClick={() => {
+                  const trimmed = note.trim();
+                  if (!trimmed) {
+                    showToast({ message: "Add a comment before returning this run to HR.", tone: "danger" });
+                    return;
+                  }
+                  void act("reject", () => rejectPayrollRun(id!, { note: trimmed }), "Run returned to HR for correction");
+                }}
+              >
+                {acting === "reject" ? "Returning..." : "Return to HR"}
               </Button>
             )}
             {canPay && (
@@ -232,7 +249,7 @@ export default function FinancePayrollRunDetailPage() {
         <div className="grid gap-4 md:grid-cols-3">
           <StatCard
             label="Status"
-            value={run.status}
+            value={formatRunStatus(run.status)}
             tone={runStatusTone(run.status)}
             icon="info"
           />
@@ -281,9 +298,9 @@ export default function FinancePayrollRunDetailPage() {
           </SectionCard>
         )}
 
-        <SectionCard title="Review Note">
+        <SectionCard title="Finance Comment">
           <TextAreaField
-            label="Note (optional — attached to any action you take above)"
+            label="Comment (required when returning to HR)"
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Add a note for HR or the audit trail..."
@@ -292,42 +309,20 @@ export default function FinancePayrollRunDetailPage() {
 
         <SectionCard title="Payroll Items" description="Employee breakdown for this run.">
           {items.length ? (
-            <Table>
-              <TableHead>
-                <TableHeaderRow>
-                  <TableHeaderCell>Employee</TableHeaderCell>
-                  <TableHeaderCell>Gross Pay</TableHeaderCell>
-                  <TableHeaderCell>Deductions</TableHeaderCell>
-                  <TableHeaderCell>Net Pay</TableHeaderCell>
-                  <TableHeaderCell>Payment</TableHeaderCell>
-                </TableHeaderRow>
-              </TableHead>
-              <TableBody>
-                {items.map((item: any) => (
-                  <TableRow key={item.id}>
-                    <TableCell>
-                      <p className="font-semibold text-slate-900">
-                        {item.worker?.fullName ?? item.worker_name ?? "-"}
-                      </p>
-                    </TableCell>
-                    <TableCell>{formatCurrency(item.grossPay ?? item.gross_pay ?? 0, run.currency)}</TableCell>
-                    <TableCell>{formatCurrency(item.totalDeductions ?? item.total_deductions ?? 0, run.currency)}</TableCell>
-                    <TableCell>
-                      <span className="font-semibold">
-                        {formatCurrency(item.netPay ?? item.net_pay ?? 0, run.currency)}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        variant={(item.paymentStatus ?? item.payment_status ?? "pending") === "paid" ? "success" : "neutral"}
-                      >
-                        {item.paymentStatus ?? item.payment_status ?? "pending"}
-                      </Chip>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <DataTable
+              columns={[
+                { header: "Employee", cell: (item: any) => <p className="font-semibold text-slate-900">{item.worker?.fullName ?? item.worker_name ?? "-"}</p> },
+                { header: "Gross Pay", cell: (item: any) => formatCurrency(item.grossPay ?? item.gross_pay ?? 0, run.currency) },
+                { header: "Deductions", cell: (item: any) => formatCurrency(item.totalDeductions ?? item.total_deductions ?? 0, run.currency) },
+                { header: "Net Pay", cell: (item: any) => <span className="font-semibold">{formatCurrency(item.netPay ?? item.net_pay ?? 0, run.currency)}</span> },
+                { header: "Payment", cell: (item: any) => (
+                  <Chip variant={(item.paymentStatus ?? item.payment_status ?? "pending") === "paid" ? "success" : "neutral"}>
+                    {item.paymentStatus ?? item.payment_status ?? "pending"}
+                  </Chip>
+                ) },
+              ]}
+              data={items}
+            />
           ) : (
             <EmptyState title="No items" description="No payroll items found for this run." />
           )}

@@ -304,6 +304,7 @@ export default function RequestTypeSlideOver({ requestType, onClose, onSaved }: 
             steps={approvalSteps}
             onChange={setApprovalSteps}
             roleOptions={["team_lead", "accountant", "hr", "coo", "ed", "ceo"]}
+            workflowType={workflowType}
           />
         </SectionCard>
       </SlideOverContent>

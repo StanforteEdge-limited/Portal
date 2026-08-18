@@ -3,17 +3,11 @@ import {
   Button,
   TextField,
   SelectField,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableHeaderRow,
-  TableRow,
   useToast,
   Chip,
   Icon,
 } from "@/shared";
+import { DataTable } from "@/shared/components/ui/DataTable";
 import { policyApi } from "@/shared/lib/core";
 import { type PolicyRecord } from "@stanforte/shared";
 
@@ -198,50 +192,34 @@ export default function AttendanceSettingsTab({ onEditPolicy }: Props) {
           </Button>
         </div>
 
-        <Table>
-          <TableHead>
-            <TableHeaderRow>
-              <TableHeaderCell>Target</TableHeaderCell>
-              <TableHeaderCell>Scope</TableHeaderCell>
-              <TableHeaderCell>Priority</TableHeaderCell>
-              <TableHeaderCell>Status</TableHeaderCell>
-              <TableHeaderCell>Action</TableHeaderCell>
-            </TableHeaderRow>
-          </TableHead>
-          <TableBody>
-            {overrides.length > 0 ? overrides.map((row) => (
-              <TableRow key={row.id}>
-                <TableCell className="font-medium text-slate-900">{row.scope_id || "-"}</TableCell>
-                <TableCell><Chip variant="neutral">{row.scope_type}</Chip></TableCell>
-                <TableCell>{row.priority}</TableCell>
-                <TableCell>
-                  <Chip variant={row.is_active ? "success" : "neutral"}>
-                    {row.is_active ? "Active" : "Disabled"}
-                  </Chip>
-                </TableCell>
-                <TableCell>
-                  <Button variant="ghost" size="sm" onClick={() => onEditPolicy(row)}>
-                    Edit
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={() => handleDelete(row.id)}
-                    className="ml-2 text-danger hover:text-danger"
-                  >
-                    Delete
-                  </Button>
-                </TableCell>
-              </TableRow>
-            )) : (
-              <TableRow>
-                <TableCell colSpan={5} className="py-8 text-center text-slate-400 text-sm italic">
-                  No active overrides found.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+        <DataTable
+          columns={[
+            { header: "Target", className: "font-medium text-slate-900", cell: (row: any) => row.scope_id || "-" },
+            { header: "Scope", cell: (row: any) => <Chip variant="neutral">{row.scope_type}</Chip> },
+            { header: "Priority", cell: (row: any) => row.priority },
+            { header: "Status", cell: (row: any) => (
+              <Chip variant={row.is_active ? "success" : "neutral"}>
+                {row.is_active ? "Active" : "Disabled"}
+              </Chip>
+            ) },
+            { header: "Action", cell: (row: any) => (
+              <>
+                <Button variant="ghost" size="sm" onClick={() => onEditPolicy(row)}>
+                  Edit
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => handleDelete(row.id)}
+                  className="ml-2 text-danger hover:text-danger"
+                >
+                  Delete
+                </Button>
+              </>
+            ) },
+          ]}
+          data={overrides}
+        />
       </div>
       </div>
   );

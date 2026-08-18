@@ -7,15 +7,9 @@ import {
   PageHeader,
   SectionCard,
   StatCard,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableHeaderRow,
-  TableRow,
   useToast,
 } from "@/shared";
+import { DataTable } from "@/shared/components/ui/DataTable";
 import { AppShell } from "@/shared/components/layout/AppShell";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { useCachedQuery } from "@/shared/lib/core";
@@ -40,10 +34,10 @@ function runStatusTone(
 ): "neutral" | "warning" | "success" | "danger" {
   switch (status) {
     case "draft": return "neutral";
-    case "generated": return "neutral";
-    case "submitted": return "warning";
-    case "reviewed": return "warning";
+    case "prepared": return "neutral";
+    case "under_review": return "warning";
     case "approved": return "success";
+    case "authorized": return "success";
     case "paid": return "success";
     case "closed": return "neutral";
     case "rejected": return "danger";
@@ -100,8 +94,8 @@ export default function HrPayrollRunDetailPage() {
       await submitPayrollRun(id);
       showToast({ message: "Run submitted to Finance for approval", tone: "success" });
       refetch();
-    } catch {
-      showToast({ message: "Failed to submit run", tone: "danger" });
+    } catch (err) {
+      showToast({ message: err instanceof Error ? err.message : "Failed to submit run", tone: "danger" });
     } finally {
       setActing(null);
     }
@@ -149,9 +143,9 @@ export default function HrPayrollRunDetailPage() {
   }
 
   const period = `${MONTH_NAMES[run.month] ?? run.month} ${run.year}`;
-  const canGenerate = run.status === "draft";
-  const canSubmit = run.status === "generated";
-  const canDelete = ["draft", "generated"].includes(run.status);
+  const canGenerate = run.status === "draft" || run.status === "prepared";
+  const canSubmit = run.status === "prepared";
+  const canDelete = ["draft", "prepared"].includes(run.status);
   const canEdit = ["draft"].includes(run.status);
   const items = run.items ?? [];
 
@@ -255,46 +249,20 @@ export default function HrPayrollRunDetailPage() {
           }
         >
           {items.length ? (
-            <Table>
-              <TableHead>
-                <TableHeaderRow>
-                  <TableHeaderCell>Employee</TableHeaderCell>
-                  <TableHeaderCell>Gross Pay</TableHeaderCell>
-                  <TableHeaderCell>Deductions</TableHeaderCell>
-                  <TableHeaderCell>Net Pay</TableHeaderCell>
-                  <TableHeaderCell>Payment</TableHeaderCell>
-                </TableHeaderRow>
-              </TableHead>
-              <TableBody>
-                {items.map((item: any) => (
-                  <TableRow key={item.id}>
-                    <TableCell>
-                      <p className="font-semibold text-slate-900">
-                        {item.worker?.fullName ?? item.worker?.full_name ?? item.worker_name ?? "-"}
-                      </p>
-                    </TableCell>
-                    <TableCell>
-                      {formatCurrency(item.grossPay ?? item.gross_pay ?? 0, run.currency)}
-                    </TableCell>
-                    <TableCell>
-                      {formatCurrency(item.totalDeductions ?? item.total_deductions ?? 0, run.currency)}
-                    </TableCell>
-                    <TableCell>
-                      <span className="font-semibold">
-                        {formatCurrency(item.netPay ?? item.net_pay ?? 0, run.currency)}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        variant={(item.paymentStatus ?? item.payment_status ?? "pending") === "paid" ? "success" : "neutral"}
-                      >
-                        {item.paymentStatus ?? item.payment_status ?? "pending"}
-                      </Chip>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <DataTable
+              columns={[
+                { header: "Employee", cell: (item: any) => <p className="font-semibold text-slate-900">{item.worker?.fullName ?? item.worker?.full_name ?? item.worker_name ?? "-"}</p> },
+                { header: "Gross Pay", cell: (item: any) => formatCurrency(item.grossPay ?? item.gross_pay ?? 0, run.currency) },
+                { header: "Deductions", cell: (item: any) => formatCurrency(item.totalDeductions ?? item.total_deductions ?? 0, run.currency) },
+                { header: "Net Pay", cell: (item: any) => <span className="font-semibold">{formatCurrency(item.netPay ?? item.net_pay ?? 0, run.currency)}</span> },
+                { header: "Payment", cell: (item: any) => (
+                  <Chip variant={(item.paymentStatus ?? item.payment_status ?? "pending") === "paid" ? "success" : "neutral"}>
+                    {item.paymentStatus ?? item.payment_status ?? "pending"}
+                  </Chip>
+                ) },
+              ]}
+              data={items}
+            />
           ) : (
             <EmptyState
               title="No items yet"

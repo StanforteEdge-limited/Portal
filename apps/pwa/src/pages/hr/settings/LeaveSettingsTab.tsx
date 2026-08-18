@@ -3,18 +3,12 @@ import {
   Button,
   TextField,
   SelectField,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableHeaderRow,
-  TableRow,
   useToast,
   Chip,
   EmptyState,
   Icon,
 } from "@/shared";
+import { DataTable } from "@/shared/components/ui/DataTable";
 import { cacheStore, policyApi, requestApi, useCachedQuery } from "@/shared/lib/core";
 import { type PolicyRecord, type RequestType } from "@stanforte/shared";
 
@@ -95,37 +89,28 @@ export default function LeaveSettingsTab({ onEditPolicy, onEditType }: Props) {
           </Button>
         </div>
 
-        <Table>
-          <TableHead>
-            <TableHeaderRow>
-              <TableHeaderCell>Name</TableHeaderCell>
-              <TableHeaderCell>Slug</TableHeaderCell>
-              <TableHeaderCell>Status</TableHeaderCell>
-              <TableHeaderCell className="text-right">Actions</TableHeaderCell>
-            </TableHeaderRow>
-          </TableHead>
-          <TableBody>
-            {(requestTypes ?? []).map((type: RequestType) => (
-              <TableRow key={type.id}>
-                <TableCell className="font-medium text-slate-900">{type.name}</TableCell>
-                <TableCell className="text-slate-500">{type.slug}</TableCell>
-                <TableCell>
-                  <Chip variant={type.is_active ? "success" : "neutral"}>
-                    {type.is_active ? "Active" : "Inactive"}
-                  </Chip>
-                </TableCell>
-                <TableCell className="text-right space-x-2">
-                  <Button variant="ghost" size="sm" onClick={() => onEditType(type)}>
-                    <Icon name="edit" />
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => void handleDeleteType(type.id)} className="text-danger hover:bg-danger/5">
-                    <Icon name="delete" />
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <DataTable
+          columns={[
+            { header: "Name", className: "font-medium text-slate-900", cell: (type: any) => type.name },
+            { header: "Slug", className: "text-slate-500", cell: (type: any) => type.slug },
+            { header: "Status", cell: (type: any) => (
+              <Chip variant={type.is_active ? "success" : "neutral"}>
+                {type.is_active ? "Active" : "Inactive"}
+              </Chip>
+            ) },
+            { header: "Actions", className: "text-right space-x-2", cell: (type: any) => (
+              <>
+                <Button variant="ghost" size="sm" onClick={() => onEditType(type)}>
+                  <Icon name="edit" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => void handleDeleteType(type.id)} className="text-danger hover:bg-danger/5">
+                  <Icon name="delete" />
+                </Button>
+              </>
+            ) },
+          ]}
+          data={requestTypes ?? []}
+        />
       </div>
 
       <div className="pt-8 border-t border-slate-100">
@@ -140,47 +125,28 @@ export default function LeaveSettingsTab({ onEditPolicy, onEditType }: Props) {
           </Button>
         </div>
 
-        <Table>
-          <TableHead>
-            <TableHeaderRow>
-              <TableHeaderCell>Target</TableHeaderCell>
-              <TableHeaderCell>Scope</TableHeaderCell>
-              <TableHeaderCell>Rules</TableHeaderCell>
-              <TableHeaderCell>Priority</TableHeaderCell>
-              <TableHeaderCell>Action</TableHeaderCell>
-            </TableHeaderRow>
-          </TableHead>
-          <TableBody>
-            {overrides.length > 0 ? overrides.map((row) => (
-              <TableRow key={row.id}>
-                <TableCell className="font-medium text-slate-900">{row.scope_id || "-"}</TableCell>
-                <TableCell><Chip variant="neutral">{row.scope_type}</Chip></TableCell>
-                <TableCell>
-                  <div className="flex flex-wrap gap-1">
-                    {Object.entries(row.config_json || {}).map(([key, val]) => (
-                      <Chip key={key} variant="neutral">{key}: {String(val)}d</Chip>
-                    ))}
-                  </div>
-                </TableCell>
-                <TableCell>{row.priority}</TableCell>
-                <TableCell className="text-right">
-                  <Button variant="ghost" size="sm" onClick={() => onEditPolicy(row)}>
-                    <Icon name="edit" />
-                  </Button>
-                </TableCell>
-              </TableRow>
-            )) : (
-              <TableRow>
-                <TableCell colSpan={5} className="py-12 text-center">
-                  <EmptyState 
-                    title="No leave overrides" 
-                    description="Global entitlements are being used for everyone."
-                  />
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+        <DataTable
+          columns={[
+            { header: "Target", className: "font-medium text-slate-900", cell: (row: any) => row.scope_id || "-" },
+            { header: "Scope", cell: (row: any) => <Chip variant="neutral">{row.scope_type}</Chip> },
+            { header: "Rules", cell: (row: any) => (
+              <div className="flex flex-wrap gap-1">
+                {Object.entries(row.config_json || {}).map(([key, val]) => (
+                  <Chip key={key} variant="neutral">{key}: {String(val)}d</Chip>
+                ))}
+              </div>
+            ) },
+            { header: "Priority", cell: (row: any) => row.priority },
+            { header: "Action", className: "text-right", cell: (row: any) => (
+              <Button variant="ghost" size="sm" onClick={() => onEditPolicy(row)}>
+                <Icon name="edit" />
+              </Button>
+            ) },
+          ]}
+          data={overrides}
+          emptyTitle="No leave overrides" 
+          emptyDescription="Global entitlements are being used for everyone."
+        />
       </div>
     </div>
   );

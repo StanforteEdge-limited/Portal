@@ -9,15 +9,9 @@ import {
   SectionCard,
   SelectField,
   StatCard,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableHeaderRow,
-  TableRow,
   TextField,
 } from "@/shared";
+import { DataTable } from "@/shared/components/ui/DataTable";
 import { AppShell } from "@/shared/components/layout/AppShell";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { adminUsersApi, resourceApi, useCachedQuery, httpRequest } from "@/shared/lib/core";
@@ -189,26 +183,22 @@ export default function AdminUsersPage() {
             </SelectField>
           </div>
 
-          {loading ? (
-            <div className="text-sm text-slate-500">Loading users...</div>
-          ) : error ? (
-            <div className="rounded-2xl border border-danger/20 bg-danger/10 px-4 py-4 text-sm text-danger">
-              {(error as any)?.message || String(error)}
-            </div>
-          ) : (
-            <Table>
-              <TableHead>
-                <TableHeaderRow>
-                  <TableHeaderCell>User</TableHeaderCell>
-                  <TableHeaderCell>Organization</TableHeaderCell>
-                  <TableHeaderCell>Type</TableHeaderCell>
-                  <TableHeaderCell>Status</TableHeaderCell>
-                  <TableHeaderCell>Created</TableHeaderCell>
-                  <TableHeaderCell className="text-right">{""}</TableHeaderCell>
-                </TableHeaderRow>
-              </TableHead>
-              <TableBody>
-                {users.map((u) => {
+          <DataTable
+            columns={[
+              {
+                header: "User",
+                cell: (u) => (
+                  <div>
+                    <p className="font-semibold text-slate-900">
+                      {[u.first_name, u.last_name].filter(Boolean).join(" ") || "-"}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-0.5">{u.email}</p>
+                  </div>
+                )
+              },
+              {
+                header: "Organization",
+                cell: (u) => {
                   const primaryFromMembership = (u.organizations ?? []).find(
                     (org) => org.id === u.primary_organization_id || org.is_primary,
                   );
@@ -220,53 +210,48 @@ export default function AdminUsersPage() {
                     u.primary_organization?.name ||
                     ""
                   );
-                  return (
-                    <TableRow key={u.id}>
-                      <TableCell>
-                        <div>
-                          <p className="font-semibold text-slate-900">
-                            {[u.first_name, u.last_name].filter(Boolean).join(" ") || "-"}
-                          </p>
-                          <p className="text-xs text-slate-500 mt-0.5">{u.email}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {orgName ? (
-                          <span className="text-sm">{orgName}</span>
-                        ) : (
-                          <span className="text-sm text-slate-400">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>{typeLabel[u.type] ?? u.type}</TableCell>
-                      <TableCell>
-                        <Chip variant={statusVariant[u.status] ?? "neutral"}>
-                          {u.status}
-                        </Chip>
-                      </TableCell>
-                      <TableCell>{formatDate(u.created_at)}</TableCell>
-                      <TableCell className="text-right">
-                        <Link to={`/admin/users/${u.id}`}>
-                          <Button size="sm" variant="ghost" className="gap-2 text-brand-900">
-                            View <Icon name="arrow_forward" className="text-[16px]" />
-                          </Button>
-                        </Link>
-                      </TableCell>
-                    </TableRow>
+                  return orgName ? (
+                    <span className="text-sm">{orgName}</span>
+                  ) : (
+                    <span className="text-sm text-slate-400">-</span>
                   );
-                })}
-                {!users.length ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="py-10 text-center">
-                      <EmptyState
-                        title="No users found"
-                        description="Try adjusting your filters or add a new user."
-                      />
-                    </TableCell>
-                  </TableRow>
-                ) : null}
-              </TableBody>
-            </Table>
-          )}
+                }
+              },
+              {
+                header: "Type",
+                cell: (u) => typeLabel[u.type] ?? u.type
+              },
+              {
+                header: "Status",
+                cell: (u) => (
+                  <Chip variant={statusVariant[u.status] ?? "neutral"}>
+                    {u.status}
+                  </Chip>
+                )
+              },
+              {
+                header: "Created",
+                cell: (u) => formatDate(u.created_at)
+              },
+              {
+                header: "",
+                className: "text-right",
+                cell: (u) => (
+                  <Link to={`/admin/users/${u.id}`} onClick={(e) => e.stopPropagation()}>
+                    <Button size="sm" variant="ghost" className="gap-2 text-brand-900">
+                      View <Icon name="arrow_forward" className="text-[16px]" />
+                    </Button>
+                  </Link>
+                )
+              }
+            ]}
+            data={users}
+            loading={loading}
+            error={error}
+            onRowClick={(u) => navigate(`/admin/users/${u.id}`)}
+            emptyTitle="No users found"
+            emptyDescription="Try adjusting your filters or add a new user."
+          />
         </SectionCard>
       </div>
 

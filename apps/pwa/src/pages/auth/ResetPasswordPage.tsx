@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { Button, Icon } from "@/shared";
 import { authApi } from "@/shared/lib/core";
 import brandLogo from "../../../../shared/assets/brand/stanforte-logo.png";
 
 export default function ResetPasswordPage() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const token = useMemo(() => searchParams.get("token") ?? "", [searchParams]);
 
@@ -75,9 +76,12 @@ export default function ResetPasswordPage() {
               setLoading(true);
               try {
                 await authApi.resetPassword(token, newPassword);
-                setSuccess("Password updated successfully. You can sign in now.");
+                setSuccess("Password updated successfully. Redirecting to login...");
                 setNewPassword("");
                 setConfirmPassword("");
+                setTimeout(() => {
+                  navigate("/login");
+                }, 2000);
               } catch (requestError) {
                 setError(requestError instanceof Error ? requestError.message : "Unable to reset password.");
               } finally {

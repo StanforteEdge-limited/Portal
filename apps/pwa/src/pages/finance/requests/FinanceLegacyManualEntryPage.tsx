@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import { useNavigate } from "react-router-dom";
-import { AppShell, Button, Icon, PageHeader, Table, TableHead, TableHeaderRow, TableHeaderCell, TableRow, TableCell, TableBody, TextField, SelectField, TextAreaField, useToast, SlideOver } from "@/shared";
+import { AppShell, Button, Icon, PageHeader, TextField, SelectField, TextAreaField, useToast, SlideOver } from "@/shared";
+import { DataTable } from "@/shared/components/ui/DataTable";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { httpRequest } from "@/shared/lib/core";
 import { requestApi, adminUsersApi, resourceApi, financeApi } from "@/shared/lib/core";
@@ -1719,27 +1720,20 @@ function FinanceManualEntryPage() {
             Review each row before import. Existing request IDs default to <strong>Update</strong>. New ones default to <strong>Create</strong>. Conflict rows should be set to <strong>Skip</strong>.
           </div>
           <div className="max-h-[60vh] overflow-auto border rounded-md">
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableHeaderCell>Request ID</TableHeaderCell>
-                  <TableHeaderCell>Type</TableHeaderCell>
-                  <TableHeaderCell>Staff</TableHeaderCell>
-                  <TableHeaderCell>Existing</TableHeaderCell>
-                  <TableHeaderCell>Action</TableHeaderCell>
-                  <TableHeaderCell>Issues</TableHeaderCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {importRows.map((row, index) => (
-                  <TableRow key={`${row.rowKey}-${index}`}>
-                    <TableCell>{row.requestIdText}</TableCell>
-                    <TableCell>{row.requestTypeText || "-"}</TableCell>
-                    <TableCell>{row.staffText || "-"}</TableCell>
-                    <TableCell>{row.existingRequestId || "-"}</TableCell>
-                    <TableCell>
+            <DataTable
+              columns={[
+                { header: "Request ID", cell: (row) => row.requestIdText },
+                { header: "Type", cell: (row) => row.requestTypeText || "-" },
+                { header: "Staff", cell: (row) => row.staffText || "-" },
+                { header: "Existing", cell: (row) => row.existingRequestId || "-" },
+                {
+                  header: "Action",
+                  cell: (row) => {
+                    const index = importRows.findIndex(r => r === row);
+                    return (
                       <SelectField
- label=""                        value={row.action}
+                        label=""
+                        value={row.action}
                         onChange={(e) =>
                           setImportRows((prev) =>
                             prev.map((entry, entryIndex) =>
@@ -1754,22 +1748,24 @@ function FinanceManualEntryPage() {
                           </option>
                         ))}
                       </SelectField>
-                    </TableCell>
-                    <TableCell>
-                      {row.issues.length ? (
-                        <div className="text-xs text-red-500">
-                          {row.issues.map((issue, issueIndex) => (
-                            <div key={`${row.rowKey}-issue-${issueIndex}`}>{issue}</div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="text-xs text-green-500">Ready</div>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                    );
+                  }
+                },
+                {
+                  header: "Issues",
+                  cell: (row) => row.issues.length ? (
+                    <div className="text-xs text-red-500">
+                      {row.issues.map((issue, issueIndex) => (
+                        <div key={`${row.rowKey}-issue-${issueIndex}`}>{issue}</div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-green-500">Ready</div>
+                  )
+                }
+              ]}
+              data={importRows}
+            />
           </div>
           <div className="mt-8 flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setShowImportDialog(false)} className="mr-2">

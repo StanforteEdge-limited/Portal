@@ -2,18 +2,12 @@ import { useState, useEffect } from "react";
 import {
   Button,
   TextField,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableHeaderRow,
-  TableRow,
   useToast,
   Chip,
   EmptyState,
   Icon,
 } from "@/shared";
+import { DataTable } from "@/shared/components/ui/DataTable";
 import { attendanceApi } from "@/shared/lib/core";
 import { type OfficeLocation } from "@stanforte/shared";
 
@@ -57,60 +51,40 @@ export default function OfficeLocationsTab({ onEditLocation }: Props) {
         </Button>
       </div>
 
-      <Table>
-        <TableHead>
-          <TableHeaderRow>
-            <TableHeaderCell>Name</TableHeaderCell>
-            <TableHeaderCell>Coordinates</TableHeaderCell>
-            <TableHeaderCell>Radius</TableHeaderCell>
-            <TableHeaderCell>Organizations</TableHeaderCell>
-            <TableHeaderCell>Status</TableHeaderCell>
-            <TableHeaderCell>Action</TableHeaderCell>
-          </TableHeaderRow>
-        </TableHead>
-        <TableBody>
-          {locations.length > 0 ? locations.map((loc) => (
-            <TableRow key={loc.id}>
-              <TableCell>
-                <p className="font-bold text-slate-900">{loc.name}</p>
-                <p className="text-xs text-slate-500">{loc.address || "No address provided"}</p>
-              </TableCell>
-              <TableCell className="font-mono text-[11px] text-slate-600">
-                {loc.latitude.toFixed(4)}, {loc.longitude.toFixed(4)}
-              </TableCell>
-              <TableCell>{loc.radius_meters}m</TableCell>
-              <TableCell>
-                <div className="flex flex-wrap gap-1">
-                  {loc.organizations.map(org => (
-                    <Chip key={org.id} variant={org.is_primary ? "warning" : "neutral"}>
-                      {org.name}
-                    </Chip>
-                  ))}
-                </div>
-              </TableCell>
-              <TableCell>
-                <Chip variant={loc.is_active ? "success" : "neutral"}>
-                  {loc.is_active ? "Active" : "Inactive"}
+      <DataTable
+        columns={[
+          { header: "Name", cell: (loc: any) => (
+            <>
+              <p className="font-bold text-slate-900">{loc.name}</p>
+              <p className="text-xs text-slate-500">{loc.address || "No address provided"}</p>
+            </>
+          ) },
+          { header: "Coordinates", className: "font-mono text-[11px] text-slate-600", cell: (loc: any) => `${loc.latitude.toFixed(4)}, ${loc.longitude.toFixed(4)}` },
+          { header: "Radius", cell: (loc: any) => `${loc.radius_meters}m` },
+          { header: "Organizations", cell: (loc: any) => (
+            <div className="flex flex-wrap gap-1">
+              {loc.organizations.map((org: any) => (
+                <Chip key={org.id} variant={org.is_primary ? "warning" : "neutral"}>
+                  {org.name}
                 </Chip>
-              </TableCell>
-              <TableCell className="text-right">
-                <Button variant="ghost" size="sm" onClick={() => onEditLocation(loc)}>
-                  <Icon name="edit" />
-                </Button>
-              </TableCell>
-            </TableRow>
-          )) : (
-            <TableRow>
-              <TableCell colSpan={6} className="py-20 text-center">
-                <EmptyState 
-                  title="No office locations" 
-                  description="Register at least one location to enable geofenced attendance."
-                />
-              </TableCell>
-            </TableRow>
-          )}
-</TableBody>
-      </Table>
+              ))}
+            </div>
+          ) },
+          { header: "Status", cell: (loc: any) => (
+            <Chip variant={loc.is_active ? "success" : "neutral"}>
+              {loc.is_active ? "Active" : "Inactive"}
+            </Chip>
+          ) },
+          { header: "Action", className: "text-right", cell: (loc: any) => (
+            <Button variant="ghost" size="sm" onClick={() => onEditLocation(loc)}>
+              <Icon name="edit" />
+            </Button>
+          ) },
+        ]}
+        data={locations}
+        emptyTitle="No office locations" 
+        emptyDescription="Register at least one location to enable geofenced attendance."
+      />
     </div>
   );
 }

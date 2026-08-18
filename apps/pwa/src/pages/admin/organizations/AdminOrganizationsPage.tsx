@@ -5,15 +5,9 @@ import {
   Icon,
   PageHeader,
   SectionCard,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableHeaderRow,
-  TableRow,
   useToast,
 } from "@/shared";
+import { DataTable } from "@/shared/components/ui/DataTable";
 import { AppShell } from "@/shared/components/layout/AppShell";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { httpRequest } from "@/shared/lib/core";
@@ -78,60 +72,39 @@ export default function AdminOrganizationsPage() {
         />
 
         <SectionCard>
-          {loading ? (
-            <div className="py-10 text-center text-slate-400">Loading organizations...</div>
-          ) : orgs.length > 0 ? (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHead>
-                  <TableHeaderRow>
-                    <TableHeaderCell>Name</TableHeaderCell>
-                    <TableHeaderCell>Code</TableHeaderCell>
-                    <TableHeaderCell>Type</TableHeaderCell>
-                    <TableHeaderCell>Status</TableHeaderCell>
-                    <TableHeaderCell className="text-right">Actions</TableHeaderCell>
-                  </TableHeaderRow>
-                </TableHead>
-                <TableBody>
-                  {orgs.map((org) => (
-                    <TableRow key={org.id}>
-                      <TableCell className="font-semibold text-slate-900">{org.name}</TableCell>
-                      <TableCell className="text-slate-500">{org.code}</TableCell>
-                      <TableCell className="text-slate-600 capitalize">
-                        {String(org.organizationType ?? "venture").replace(/_/g, " ")}
-                      </TableCell>
-                      <TableCell>
-                        <Chip variant={org.isActive ? "success" : "danger"}>
-                          {org.isActive ? "Active" : "Inactive"}
-                        </Chip>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => setEditingOrg(org)}
-                          >
-                            <Icon name="edit" className="mr-1" /> Edit
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-danger hover:bg-danger/5"
-                            onClick={() => handleDelete(org.id)}
-                          >
-                            <Icon name="delete" className="mr-1" /> Delete
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            <div className="py-10 text-center text-slate-400">No organizations found.</div>
-          )}
+          <DataTable
+            columns={[
+              { header: "Name", cell: (org: any) => <span className="font-semibold text-slate-900">{org.name}</span> },
+              { header: "Code", cell: (org: any) => <span className="text-slate-500">{org.code}</span> },
+              { header: "Type", cell: (org: any) => <span className="text-slate-600 capitalize">{String(org.organizationType ?? "venture").replace(/_/g, " ")}</span> },
+              { header: "Status", cell: (org: any) => (
+                <Chip variant={org.isActive ? "success" : "danger"}>
+                  {org.isActive ? "Active" : "Inactive"}
+                </Chip>
+              )},
+              { header: "Actions", className: "text-right", cell: (org: any) => (
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setEditingOrg(org)}
+                  >
+                    <Icon name="edit" className="mr-1" /> Edit
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-danger hover:bg-danger/5"
+                    onClick={() => handleDelete(org.id)}
+                  >
+                    <Icon name="delete" className="mr-1" /> Delete
+                  </Button>
+                </div>
+              )}
+            ]}
+            data={orgs}
+            loading={loading}
+          />
         </SectionCard>
       </div>
 

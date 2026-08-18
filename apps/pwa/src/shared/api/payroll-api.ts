@@ -196,7 +196,7 @@ export async function approvePayrollRun(id: string, payload: { notes?: string })
   return httpRequest<any>(`/payroll/runs/${id}/approve`, { method: "POST", body: payload });
 }
 
-export async function rejectPayrollRun(id: string, payload: { reason: string }) {
+export async function rejectPayrollRun(id: string, payload: { reason?: string; note?: string; notes?: string }) {
   return httpRequest<any>(`/payroll/runs/${id}/reject`, { method: "POST", body: payload });
 }
 

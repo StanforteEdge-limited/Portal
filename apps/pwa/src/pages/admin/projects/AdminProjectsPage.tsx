@@ -8,14 +8,8 @@ import {
   PageHeader,
   SectionCard,
   StatCard,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableHeaderRow,
-  TableRow,
 } from "@/shared";
+import { DataTable } from "@/shared/components/ui/DataTable";
 import { AppShell } from "@/shared/components/layout/AppShell";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { useCachedQuery } from "@/shared/lib/core";
@@ -183,58 +177,55 @@ export default function AdminProjectsPage() {
             </div>
           ) : (
             <div className="overflow-x-auto rounded-[22px] border border-slate-200 bg-white">
-              <Table>
-                <TableHead>
-                  <TableHeaderRow>
-                    <TableHeaderCell>Name</TableHeaderCell>
-                    <TableHeaderCell>Code</TableHeaderCell>
-                    <TableHeaderCell>Status</TableHeaderCell>
-                    <TableHeaderCell>Start Date</TableHeaderCell>
-                    <TableHeaderCell>End Date</TableHeaderCell>
-                    <TableHeaderCell className="text-right">Actions</TableHeaderCell>
-                  </TableHeaderRow>
-                </TableHead>
-                <TableBody>
-                  {filteredProjects.map((project) => {
-                    const status = project.governance?.governance_status || (project.isActive ? "active" : "archived");
-                    return (
-                      <TableRow key={project.id}>
-                        <TableCell className="rounded-l-2xl font-semibold text-slate-900">
-                          {project.name}
-                        </TableCell>
-                        <TableCell>
-                          <code className="text-xs bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">
-                            {project.governance?.project_code || "-"}
-                          </code>
-                        </TableCell>
-                        <TableCell>
-                          <Chip variant={status === "active" ? "success" : status === "archived" ? "neutral" : "warning"}>
-                            {status.replace("_", " ")}
-                          </Chip>
-                        </TableCell>
-                        <TableCell>{project.governance?.start_date || "-"}</TableCell>
-                        <TableCell>{project.governance?.end_date || "-"}</TableCell>
-                        <TableCell className="rounded-r-2xl text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setEditingProject(project)}
-                          >
-                            <Icon name="edit" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                  {!filteredProjects.length ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="py-10 text-center">
-                        <p className="text-slate-500">No projects found.</p>
-                      </TableCell>
-                    </TableRow>
-                  ) : null}
-                </TableBody>
-              </Table>
+              <DataTable
+                columns={[
+                  {
+                    header: "Name",
+                    cell: (project) => <span className="font-semibold text-slate-900">{project.name}</span>,
+                  },
+                  {
+                    header: "Code",
+                    cell: (project) => (
+                      <code className="text-xs bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">
+                        {project.governance?.project_code || "-"}
+                      </code>
+                    ),
+                  },
+                  {
+                    header: "Status",
+                    cell: (project) => {
+                      const status = project.governance?.governance_status || (project.isActive ? "active" : "archived");
+                      return (
+                        <Chip variant={status === "active" ? "success" : status === "archived" ? "neutral" : "warning"}>
+                          {status.replace("_", " ")}
+                        </Chip>
+                      );
+                    },
+                  },
+                  {
+                    header: "Start Date",
+                    cell: (project) => project.governance?.start_date || "-",
+                  },
+                  {
+                    header: "End Date",
+                    cell: (project) => project.governance?.end_date || "-",
+                  },
+                  {
+                    header: "Actions",
+                    className: "text-right",
+                    cell: (project) => (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setEditingProject(project)}
+                      >
+                        <Icon name="edit" />
+                      </Button>
+                    ),
+                  },
+                ]}
+                data={filteredProjects}
+              />
             </div>
           )}
         </SectionCard>

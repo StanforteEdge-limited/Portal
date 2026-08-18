@@ -71,6 +71,7 @@ export type RequestRecord = {
   approvals?: {
     done: Array<{ action: string; step: string; performed_by_name: string | null; performed_by_email: string | null; comment: string | null; at: string }>;
     pending: Array<{ step: string; approver_type: string; approver_id: string | null }>;
+    required_steps?: Array<any>;
   };
 };
 

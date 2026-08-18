@@ -24,6 +24,7 @@ export class WorkflowService {
       select: {
         workflowInstanceId: true,
         teamId: true,
+        data: true,
         requestType: { select: { name: true, taxonomyKeys: true, approvalFlowJson: true } }
       }
     });
@@ -44,7 +45,11 @@ export class WorkflowService {
       });
     }
 
-    const baseSteps = this.extractApprovalSteps(existing.requestType.approvalFlowJson, params.amount ?? undefined);
+    const baseSteps = this.extractApprovalSteps(
+      existing.requestType.approvalFlowJson,
+      params.amount ?? undefined,
+      (existing.data as Record<string, any>) || {}
+    );
     const steps = this.normalizeStepsForLeave(existing.requestType.taxonomyKeys as string[] | null, baseSteps);
     if (steps.length === 0) {
       return { instanceId: null, workflowStatus: 'none' as const };
@@ -196,8 +201,9 @@ export class WorkflowService {
     initiatedBy: string;
     amount?: number | null;
     name?: string;
+    data?: Record<string, any>;
   }) {
-    const baseSteps = this.extractApprovalSteps(params.approvalFlowJson, params.amount ?? undefined);
+    const baseSteps = this.extractApprovalSteps(params.approvalFlowJson, params.amount ?? undefined, params.data || {});
     if (baseSteps.length === 0) {
       return { instanceId: null, workflowStatus: 'none' as const };
     }
@@ -392,16 +398,51 @@ export class WorkflowService {
     });
   }
 
-  private extractApprovalSteps(flowJson: unknown, amount?: number): WorkflowStepConfig[] {
+  private extractApprovalSteps(flowJson: unknown, amount?: number, data?: Record<string, any>): WorkflowStepConfig[] {
     if (!flowJson || typeof flowJson !== 'object') return [];
     const maybeSteps = (flowJson as { steps?: WorkflowStepConfig[] }).steps;
     if (!Array.isArray(maybeSteps)) return [];
 
     return maybeSteps.filter((step) => {
-      if (step.min_amount !== undefined && amount !== undefined && amount < step.min_amount) return false;
-      if (step.approval_limit !== undefined && amount !== undefined && amount > step.approval_limit) return false;
+      const effectiveAmount = amount ?? 0;
+      if (step.min_amount !== undefined && effectiveAmount < step.min_amount) return false;
+      if (step.approval_limit !== undefined && effectiveAmount > step.approval_limit) return false;
+      
+      if (step.conditions && Array.isArray(step.conditions)) {
+        for (const cond of step.conditions) {
+          const actualValue = data?.[cond.field];
+          if (!this.evaluateCondition(actualValue, cond.operator, cond.value)) {
+            return false;
+          }
+        }
+      }
       return true;
     });
+  }
+
+  private evaluateCondition(actualValue: any, operator: string, expectedValue: any): boolean {
+    if (actualValue === undefined || actualValue === null) return false;
+    
+    const actStr = String(actualValue).toLowerCase();
+    const expStr = String(expectedValue).toLowerCase();
+    
+    const actDate = Date.parse(String(actualValue));
+    const expDate = Date.parse(String(expectedValue));
+    const isDateCompare = !isNaN(actDate) && !isNaN(expDate) && 
+      String(actualValue).match(/^\d{4}-\d{2}-\d{2}/) && 
+      String(expectedValue).match(/^\d{4}-\d{2}-\d{2}/);
+
+    const actNum = isDateCompare ? actDate : Number(actualValue);
+    const expNum = isDateCompare ? expDate : Number(expectedValue);
+
+    switch (operator) {
+      case 'equals': return actStr === expStr;
+      case 'not_equals': return actStr !== expStr;
+      case 'greater_than': return !isNaN(actNum) && !isNaN(expNum) && actNum > expNum;
+      case 'less_than': return !isNaN(actNum) && !isNaN(expNum) && actNum < expNum;
+      case 'contains': return actStr.includes(expStr);
+      default: return false;
+    }
   }
 
   private normalizeStepsForLeave(taxonomyKeys: string[] | null, steps: WorkflowStepConfig[]) {
@@ -512,14 +553,6 @@ export class WorkflowService {
           }
         });
         if (hasPermission > 0) return true;
-
-        const isAdmin = await this.prisma.userRole.count({
-          where: {
-            profileId: toBigInt(userId),
-            role: { slug: { in: ['administrator', 'admin'] } }
-          }
-        });
-        if (isAdmin > 0) return true;
       }
     }
 

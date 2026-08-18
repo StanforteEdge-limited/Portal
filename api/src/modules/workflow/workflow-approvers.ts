@@ -11,6 +11,11 @@ export type WorkflowStepConfig = {
     type?: WorkflowApproverType;
     value?: string;
   };
+  conditions?: Array<{
+    field: string;
+    operator: 'equals' | 'not_equals' | 'greater_than' | 'less_than' | 'contains';
+    value: any;
+  }>;
 };
 
 export type NormalizedWorkflowApprover = {

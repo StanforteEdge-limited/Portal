@@ -5,15 +5,9 @@ import {
   EmptyState,
   Icon,
   SectionCard,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableHeaderRow,
-  TableRow,
   useToast,
 } from "@/shared";
+import { DataTable } from "@/shared/components/ui/DataTable";
 import { requestApi } from "@/shared/lib/core";
 import { type RequestType } from "@stanforte/shared";
 
@@ -57,42 +51,25 @@ export default function RequestTypesTab() {
         </Button>
       </div>
 
-      <Table>
-        <TableHead>
-          <TableHeaderRow>
-            <TableHeaderCell>Name</TableHeaderCell>
-            <TableHeaderCell>Slug</TableHeaderCell>
-            <TableHeaderCell>Category</TableHeaderCell>
-            <TableHeaderCell>Status</TableHeaderCell>
-            <TableHeaderCell>Action</TableHeaderCell>
-          </TableHeaderRow>
-        </TableHead>
-        <TableBody>
-          {types.length > 0 ? types.map((t) => (
-            <TableRow key={t.id}>
-              <TableCell className="font-bold text-slate-900">{t.name}</TableCell>
-              <TableCell className="font-mono text-xs">{t.slug}</TableCell>
-              <TableCell className="capitalize">{t.category || "General"}</TableCell>
-              <TableCell>
-                <Chip variant={t.is_active ? "success" : "neutral"}>
-                  {t.is_active ? "Active" : "Disabled"}
-                </Chip>
-              </TableCell>
-              <TableCell className="text-right">
-                <Button variant="ghost" size="sm" disabled>
-                  Edit
-                </Button>
-              </TableCell>
-            </TableRow>
-          )) : (
-            <TableRow>
-              <TableCell colSpan={5} className="py-20 text-center text-slate-400">
-                {loading ? "Loading..." : "No request types found."}
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
+      <DataTable
+        columns={[
+          { header: "Name", className: "font-bold text-slate-900", cell: (t: any) => t.name },
+          { header: "Slug", className: "font-mono text-xs", cell: (t: any) => t.slug },
+          { header: "Category", className: "capitalize", cell: (t: any) => t.category || "General" },
+          { header: "Status", cell: (t: any) => (
+            <Chip variant={t.is_active ? "success" : "neutral"}>
+              {t.is_active ? "Active" : "Disabled"}
+            </Chip>
+          ) },
+          { header: "Action", className: "text-right", cell: (t: any) => (
+            <Button variant="ghost" size="sm" disabled>
+              Edit
+            </Button>
+          ) },
+        ]}
+        data={types}
+        loading={loading}
+      />
       
       <p className="text-xs text-slate-400 p-4 bg-slate-50 rounded-2xl border border-slate-100 italic">
         Note: Complex request workflow editing (form building) will be available in the next phase of the migration.

@@ -266,11 +266,13 @@ export function buildWorkflow(
   const doneEntries = Array.isArray(request?.approvals?.done)
     ? request.approvals.done
     : [];
-  const requestTypeSteps = Array.isArray(
-    request?.request_type?.approval_flow_json?.steps,
-  )
-    ? request.request_type.approval_flow_json.steps
-    : [];
+  const requestTypeSteps = Array.isArray(request?.approvals?.required_steps) && request.approvals.required_steps.length > 0
+    ? request.approvals.required_steps
+    : Array.isArray(
+        request?.request_type?.approval_flow_json?.steps,
+      )
+      ? request.request_type.approval_flow_json.steps
+      : [];
   const approvalStepsSource = requestTypeSteps.length
     ? requestTypeSteps
     : [{ role: "team_lead" }, { role: "accountant" }];
@@ -418,11 +420,13 @@ export function buildLeaveWorkflow(
   const doneEntries = Array.isArray(request?.approvals?.done)
     ? request.approvals.done
     : [];
-  const requestTypeSteps = Array.isArray(
-    request?.request_type?.approval_flow_json?.steps,
-  )
-    ? request.request_type.approval_flow_json.steps
-    : [];
+  const requestTypeSteps = Array.isArray(request?.approvals?.required_steps) && request.approvals.required_steps.length > 0
+    ? request.approvals.required_steps
+    : Array.isArray(
+        request?.request_type?.approval_flow_json?.steps,
+      )
+      ? request.request_type.approval_flow_json.steps
+      : [];
   const approvalStepsSource = requestTypeSteps.length
     ? requestTypeSteps
     : [{ role: "team_lead" }, { role: "hr" }];
@@ -491,11 +495,13 @@ export function buildLoanWorkflow(
   const doneEntries = Array.isArray(request?.approvals?.done)
     ? request.approvals.done
     : [];
-  const requestTypeSteps = Array.isArray(
-    request?.request_type?.approval_flow_json?.steps,
-  )
-    ? request.request_type.approval_flow_json.steps
-    : [];
+  const requestTypeSteps = Array.isArray(request?.approvals?.required_steps) && request.approvals.required_steps.length > 0
+    ? request.approvals.required_steps
+    : Array.isArray(
+        request?.request_type?.approval_flow_json?.steps,
+      )
+      ? request.request_type.approval_flow_json.steps
+      : [];
   const approvalStepsSource = requestTypeSteps.length
     ? requestTypeSteps
     : [{ role: "team_lead" }, { role: "hr" }];

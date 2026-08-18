@@ -9,13 +9,7 @@ import {
   SectionCard,
   SelectField,
   StatCard,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableHeaderRow,
-  TableRow,
+  DataTable,
   TextField,
 } from "@/shared";
 import { buildAppMobileNav, buildRequestsNavigation } from "@/pages/requests/requests-data";
@@ -114,31 +108,19 @@ export default function FinancePayablesPage() {
         </div>
 
         <SectionCard title="Bill Information">
-          <Table>
-            <TableBody>
-              <TableRow>
-                <TableCell className="w-40 font-medium text-slate-500">Bill Number</TableCell>
-                <TableCell className="font-semibold">{bill.bill_number || "-"}</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="w-40 font-medium text-slate-500">Vendor</TableCell>
-                <TableCell className="font-semibold">{bill.vendor_name || "-"}</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="w-40 font-medium text-slate-500">Bill Date</TableCell>
-                <TableCell>{asDate(bill.bill_date)}</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="w-40 font-medium text-slate-500">Due Date</TableCell>
-                <TableCell>{asDate(bill.due_date)}</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="w-40 font-medium text-slate-500">Currency</TableCell>
-                <TableCell>{bill.currency || "NGN"}</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="w-40 font-medium text-slate-500">Status</TableCell>
-                <TableCell>
+          <DataTable
+            columns={[
+              { header: "Field", className: "w-40 font-medium text-slate-500", cell: (r) => r.field },
+              { header: "Value", cell: (r) => r.value },
+            ]}
+            data={[
+              { field: "Bill Number", value: <span className="font-semibold">{bill.bill_number || "-"}</span> },
+              { field: "Vendor", value: <span className="font-semibold">{bill.vendor_name || "-"}</span> },
+              { field: "Bill Date", value: asDate(bill.bill_date) },
+              { field: "Due Date", value: asDate(bill.due_date) },
+              { field: "Currency", value: bill.currency || "NGN" },
+              {
+                field: "Status", value: (
                   <Chip
                     variant={
                       bill.status === "paid"
@@ -152,10 +134,10 @@ export default function FinancePayablesPage() {
                   >
                     {bill.status || "draft"}
                   </Chip>
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
+                )
+              },
+            ]}
+          />
         </SectionCard>
       </AppShell>
     );
@@ -199,37 +181,27 @@ export default function FinancePayablesPage() {
         {loading ? <p className="text-sm text-slate-500">Loading bills...</p> : null}
         {error ? <p className="text-sm text-danger">{error}</p> : null}
         {rows.length ? (
-          <Table caption="Payables list">
-            <TableHead>
-              <TableHeaderRow>
-                <TableHeaderCell>Bill</TableHeaderCell>
-                <TableHeaderCell>Vendor</TableHeaderCell>
-                <TableHeaderCell>Bill Date</TableHeaderCell>
-                <TableHeaderCell>Due Date</TableHeaderCell>
-                <TableHeaderCell>Status</TableHeaderCell>
-                <TableHeaderCell className="text-right">Outstanding</TableHeaderCell>
-              </TableHeaderRow>
-            </TableHead>
-            <TableBody>
-              {rows.map((row: FinanceBillRecord) => {
-                const statusKey = String(row.status || "draft").toLowerCase();
-                return (
-                  <TableRow key={row.id} onClick={() => setSearchParams({ id: row.id })}>
-                    <TableCell>{row.bill_number || row.id.slice(0, 8)}</TableCell>
-                    <TableCell>{row.vendor_name || "-"}</TableCell>
-                    <TableCell>{asDate(row.bill_date)}</TableCell>
-                    <TableCell>{asDate(row.due_date)}</TableCell>
-                    <TableCell>
-                      <Chip variant={statusKey === "paid" ? "success" : statusKey === "overdue" ? "danger" : "pending"}>
-                        {statusKey}
-                      </Chip>
-                    </TableCell>
-                    <TableCell className="text-right">{asMoney(row.outstanding_amount, String(row.currency || "NGN"))}</TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+          <DataTable
+            columns={[
+              { header: "Bill", cell: (row) => row.bill_number || row.id.slice(0, 8) },
+              { header: "Vendor", cell: (row) => row.vendor_name || "-" },
+              { header: "Bill Date", cell: (row) => asDate(row.bill_date) },
+              { header: "Due Date", cell: (row) => asDate(row.due_date) },
+              {
+                header: "Status", cell: (row) => {
+                  const statusKey = String(row.status || "draft").toLowerCase();
+                  return (
+                    <Chip variant={statusKey === "paid" ? "success" : statusKey === "overdue" ? "danger" : "pending"}>
+                      {statusKey}
+                    </Chip>
+                  );
+                }
+              },
+              { header: "Outstanding", className: "text-right", cell: (row) => asMoney(row.outstanding_amount, String(row.currency || "NGN")) },
+            ]}
+            data={rows}
+            onRowClick={(row) => setSearchParams({ id: row.id })}
+          />
         ) : !loading ? (
           <EmptyState title="No payables" description="Vendor bills will appear here once created." />
         ) : null}

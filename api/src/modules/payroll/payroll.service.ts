@@ -1044,13 +1044,14 @@ export class PayrollService {
           });
         }
 
+        const componentBaseAmount = baseEarningsAmount || Number(profile?.baseAmount || 0);
         for (const row of profile?.components || []) {
           if (!row.isEnabled) continue;
           const component = row.component;
           const amount = row.amount
             ? Number(row.amount)
-            : row.rate && (baseEarningsAmount || Number(profile?.baseAmount || 0))
-              ? (baseEarningsAmount || Number(profile?.baseAmount || 0)) * Number(row.rate)
+            : row.rate && componentBaseAmount
+              ? componentBaseAmount * Number(row.rate)
               : 0;
           if (!amount) continue;
           lines.push(...this.expandProfileComponentLines(component, amount, row.rate == null ? null : Number(row.rate), row.formula || null));
@@ -1304,7 +1305,11 @@ export class PayrollService {
   async submitRun(id: string, actorId?: string) {
     const run = await this.prisma.payrollRun.findUnique({ where: { id }, include: { items: true } });
     if (!run) throw new NotFoundException('Payroll run not found');
-    if (run.items.length === 0) throw new BadRequestException('Generate payroll items before submitting');
+    if (run.items.length === 0) {
+      throw new BadRequestException(
+        'This payroll run has no payroll items to submit. Add eligible payroll workers or pay profiles for this organization and period, then click Generate Items again.'
+      );
+    }
     if (!['prepared', 'draft'].includes(run.status)) throw new BadRequestException('Run cannot be submitted in its current status');
     await this.prisma.payrollRun.update({
       where: { id },
@@ -1318,6 +1323,9 @@ export class PayrollService {
       title: `Payroll run submitted`,
       message: `${run.name} is ready for review.`,
       onlyPreparedBy: false,
+      link: `/finance/payroll/runs/${id}`,
+      includePermissionRecipients: ['payroll.approve'],
+      includeRoleRecipients: ['finance_manager', 'accountant'],
     });
     return this.getRun(id);
   }
@@ -1366,6 +1374,9 @@ export class PayrollService {
       title: `Payroll run approved`,
       message: `${run.name} has been approved and is ready for payment.`,
       onlyPreparedBy: true,
+      link: `/admin/payroll/authorize/${id}`,
+      includePermissionRecipients: ['payroll.authorize'],
+      includeRoleRecipients: ['executive_director', 'coo'],
     });
     return this.getRun(id);
   }
@@ -4185,6 +4196,8 @@ export class PayrollService {
       category?: string;
       link?: string;
       data?: Record<string, any>;
+      includePermissionRecipients?: string[];
+      includeRoleRecipients?: string[];
     }
   ) {
     const run = await this.prisma.payrollRun.findUnique({
@@ -4214,7 +4227,7 @@ export class PayrollService {
           type: input.type,
           title: input.title,
           message: input.message,
-          link: input.link || `/app/finance/payroll/runs?run_id=${run.id}`,
+          link: input.link || `/finance/payroll/runs/${run.id}`,
           notifiableType: 'payroll_run',
           data: {
             run_id: run.id,
