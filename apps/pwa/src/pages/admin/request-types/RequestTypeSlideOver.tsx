@@ -290,12 +290,20 @@ export default function RequestTypeSlideOver({ requestType, onClose, onSaved }: 
               <option value="loan">Loan</option>
               <option value="other">Other</option>
             </SelectField>
-            <TextField
-              label="Handler Role Label"
-              value={handlerRoleLabel}
-              onChange={(e) => setHandlerRoleLabel(e.target.value)}
-              placeholder="e.g. Accountant, HR Officer"
-            />
+            <div>
+              <TextField
+                label="Handler Role Label"
+                value={handlerRoleLabel}
+                onChange={(e) => setHandlerRoleLabel(e.target.value)}
+                placeholder="e.g. Accountant, HR Officer"
+                list="roles-list"
+              />
+              <datalist id="roles-list">
+                {roles.map((r) => (
+                  <option key={r.id} value={r.name} />
+                ))}
+              </datalist>
+            </div>
           </div>
         </SectionCard>
 
@@ -303,7 +311,7 @@ export default function RequestTypeSlideOver({ requestType, onClose, onSaved }: 
           <ApprovalFlowBuilder
             steps={approvalSteps}
             onChange={setApprovalSteps}
-            roleOptions={["team_lead", "accountant", "hr", "coo", "ed", "ceo"]}
+            roleOptions={roles.length > 0 ? roles.map((r) => r.slug) : ["team_lead", "accountant", "hr", "coo", "ed", "ceo"]}
             workflowType={workflowType}
           />
         </SectionCard>

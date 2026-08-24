@@ -439,7 +439,7 @@ export function buildLeaveWorkflow(
     pendingSteps.length > 0
       ? Math.min(approvalDoneCount, Math.max(0, approvalLabels.length - 1))
       : -1;
-  const requestComplete = ["approved", "completed"].includes(String(status));
+  const requestComplete = ["approved", "completed", "cleared"].includes(String(status));
   const requestRejected = String(status) === "rejected";
   const showDraftStep = options?.showDraftStep ?? true;
 

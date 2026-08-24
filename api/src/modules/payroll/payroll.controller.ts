@@ -210,7 +210,7 @@ export class PayrollController {
   }
 
   @Get('components')
-  @Permissions('finance.view')
+  @Permissions('finance.view', 'payroll.manage')
   listComponents(@Query() query: Record<string, any>) {
     return this.payrollService.listComponents(query);
   }
