@@ -380,10 +380,8 @@ export type PayrollComponent = {
   name: string;
   component_type: "earning" | "deduction" | "employer_cost";
   calculation_type: string;
-  amount?: number | null;
-  rate?: number | null;
-  taxable: boolean;
-  statutory: boolean;
+  is_taxable: boolean;
+  is_statutory: boolean;
   is_active: boolean;
 };
 
@@ -392,10 +390,8 @@ export type UpsertComponentPayload = {
   name: string;
   component_type: "earning" | "deduction" | "employer_cost";
   calculation_type: string;
-  amount?: number;
-  rate?: number;
-  taxable?: boolean;
-  statutory?: boolean;
+  is_taxable?: boolean;
+  is_statutory?: boolean;
   notes?: string;
 };
 

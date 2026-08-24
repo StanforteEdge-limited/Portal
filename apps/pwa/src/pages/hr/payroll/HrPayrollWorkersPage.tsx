@@ -252,7 +252,7 @@ export default function HrPayrollWorkersPage() {
       profile?.components?.map((c: any, i: number) => ({
         component_id: c.component_id,
         amount: String(c.amount ?? ""),
-        rate: c.rate != null ? String(c.rate) : "",
+        rate: c.rate != null ? String(Number(c.rate) * 100) : "",
         formula: c.formula || "",
         _key: nextPcKey(),
       })) || [],
@@ -278,9 +278,9 @@ export default function HrPayrollWorkersPage() {
     setApplyPension(w.metadata?.apply_pension !== false);
     setEmployerCoversPaye(w.metadata?.employer_covers_paye === true);
     setTaxTableId(w.tax_table_id || "");
-    setPensionRate(w.metadata?.pension_rate != null ? String(w.metadata.pension_rate) : "");
-    setWithholdingRate(w.metadata?.withholding_rate != null ? String(w.metadata.withholding_rate) : "");
-    setConsultantPensionRate(w.metadata?.consultant_pension_rate != null ? String(w.metadata.consultant_pension_rate) : "");
+    setPensionRate(w.metadata?.pension_rate != null ? String(Number(w.metadata.pension_rate) * 100) : "");
+    setWithholdingRate(w.metadata?.withholding_rate != null ? String(Number(w.metadata.withholding_rate) * 100) : "");
+    setConsultantPensionRate(w.metadata?.consultant_pension_rate != null ? String(Number(w.metadata.consultant_pension_rate) * 100) : "");
     setEditorStep("identity");
     setShowSlideOver(true);
     listPayrollComponents().then((r) => setComponents(r.items)).catch(() => showToast({ tone: "danger", title: "Error", message: "Failed to load payroll components." }));
@@ -315,7 +315,7 @@ export default function HrPayrollWorkersPage() {
           return {
             component_id: pc.component_id,
             amount: calcType === "fixed" && pc.amount !== "" ? Number(pc.amount) : undefined,
-            rate: calcType === "percentage" && pc.rate !== "" ? Number(pc.rate) : undefined,
+            rate: calcType === "percentage" && pc.rate !== "" ? Number(pc.rate) / 100 : undefined,
             formula: calcType === "formula" && pc.formula?.trim() ? pc.formula.trim() : undefined,
           };
         })
@@ -382,9 +382,9 @@ export default function HrPayrollWorkersPage() {
           apply_tax: applyTax,
           apply_pension: applyPension,
           employer_covers_paye: employerCoversPaye,
-          ...(pensionRate ? { pension_rate: Number(pensionRate) } : {}),
-          ...(withholdingRate ? { withholding_rate: Number(withholdingRate) } : {}),
-          ...(consultantPensionRate ? { consultant_pension_rate: Number(consultantPensionRate) } : {}),
+          ...(pensionRate ? { pension_rate: Number(pensionRate) / 100 } : {}),
+          ...(withholdingRate ? { withholding_rate: Number(withholdingRate) / 100 } : {}),
+          ...(consultantPensionRate ? { consultant_pension_rate: Number(consultantPensionRate) / 100 } : {}),
         },
       };
       if (editingWorker) {
@@ -936,12 +936,12 @@ export default function HrPayrollWorkersPage() {
                       <option key={t.id} value={t.id}>{t.name}</option>
                     ))}
                   </SelectField>
-                  <TextField label="Pension Rate Override" type="number" value={pensionRate} onChange={(e) => setPensionRate(e.target.value)} placeholder="e.g. 0.08" />
+                  <TextField label="Pension Rate Override (%)" type="number" value={pensionRate} onChange={(e) => setPensionRate(e.target.value)} placeholder="e.g. 8" />
                 </div>
                 {(form.worker_type ?? "employee") === "consultant" ? (
                   <div className="grid grid-cols-2 gap-4">
-                    <TextField label="Withholding Rate Override" type="number" value={withholdingRate} onChange={(e) => setWithholdingRate(e.target.value)} placeholder="e.g. 0.05" helpText="Use this only if you are not adding a recurring Withholding Tax component in Pay Profile." />
-                    <TextField label="Consultant Pension Override" type="number" value={consultantPensionRate} onChange={(e) => setConsultantPensionRate(e.target.value)} placeholder="e.g. 0.00" />
+                    <TextField label="Withholding Rate Override (%)" type="number" value={withholdingRate} onChange={(e) => setWithholdingRate(e.target.value)} placeholder="e.g. 5" helpText="Use this only if you are not adding a recurring Withholding Tax component in Pay Profile." />
+                    <TextField label="Consultant Pension Override (%)" type="number" value={consultantPensionRate} onChange={(e) => setConsultantPensionRate(e.target.value)} placeholder="e.g. 0" />
                   </div>
                 ) : null}
               </div>

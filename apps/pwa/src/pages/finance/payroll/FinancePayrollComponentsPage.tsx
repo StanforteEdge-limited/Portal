@@ -34,10 +34,8 @@ const EMPTY_FORM: UpsertComponentPayload = {
   name: "",
   component_type: "earning",
   calculation_type: "fixed",
-  amount: undefined,
-  rate: undefined,
-  taxable: false,
-  statutory: false,
+  is_taxable: false,
+  is_statutory: false,
 };
 
 const COMPONENT_TYPE_TONE: Record<string, "success" | "danger" | "neutral"> = {
@@ -87,10 +85,8 @@ export default function FinancePayrollComponentsPage() {
       name: c.name,
       component_type: c.component_type,
       calculation_type: c.calculation_type,
-      amount: c.amount ?? undefined,
-      rate: c.rate ?? undefined,
-      taxable: c.taxable,
-      statutory: c.statutory,
+      is_taxable: c.is_taxable,
+      is_statutory: c.is_statutory,
     });
     setShowSlideOver(true);
   };
@@ -177,9 +173,8 @@ export default function FinancePayrollComponentsPage() {
               { header: "Name", cell: (c: any) => <p className="font-semibold text-slate-900">{c.name}</p> },
               { header: "Type", cell: (c: any) => <Chip variant={COMPONENT_TYPE_TONE[c.component_type] ?? "neutral"}>{c.component_type.replace("_", " ")}</Chip> },
               { header: "Calculation", cell: (c: any) => <span className="capitalize">{c.calculation_type.replace("_", " ")}</span> },
-              { header: "Amount / Rate", cell: (c: any) => c.calculation_type === "fixed" && c.amount != null ? c.amount.toLocaleString() : c.rate != null ? `${c.rate}%` : "-" },
-              { header: "Taxable", cell: (c: any) => c.taxable ? "Yes" : "No" },
-              { header: "Statutory", cell: (c: any) => c.statutory ? "Yes" : "No" },
+              { header: "Taxable", cell: (c: any) => c.is_taxable ? "Yes" : "No" },
+              { header: "Statutory", cell: (c: any) => c.is_statutory ? "Yes" : "No" },
               { header: "Actions", className: "text-right", cell: (c: any) => (
                 <div className="flex justify-end gap-1">
                   <Button variant="ghost" size="sm" onClick={() => openEdit(c)}>
@@ -227,18 +222,12 @@ export default function FinancePayrollComponentsPage() {
                 <option value="manual">Manual</option>
               </SelectField>
             </div>
-            {form.calculation_type === "fixed" && (
-              <TextField label="Fixed Amount" type="number" value={String(form.amount ?? "")} onChange={(e) => setForm((f) => ({ ...f, amount: Number(e.target.value) || undefined }))} placeholder="0.00" />
-            )}
-            {form.calculation_type === "percentage" && (
-              <TextField label="Rate (%)" type="number" value={String(form.rate ?? "")} onChange={(e) => setForm((f) => ({ ...f, rate: Number(e.target.value) || undefined }))} placeholder="0.00" />
-            )}
             <div className="grid grid-cols-2 gap-4">
-              <SelectField label="Taxable" value={form.taxable ? "yes" : "no"} onChange={(e) => setForm((f) => ({ ...f, taxable: e.target.value === "yes" }))}>
+              <SelectField label="Taxable" value={form.is_taxable ? "yes" : "no"} onChange={(e) => setForm((f) => ({ ...f, is_taxable: e.target.value === "yes" }))}>
                 <option value="yes">Yes</option>
                 <option value="no">No</option>
               </SelectField>
-              <SelectField label="Statutory" value={form.statutory ? "yes" : "no"} onChange={(e) => setForm((f) => ({ ...f, statutory: e.target.value === "yes" }))}>
+              <SelectField label="Statutory" value={form.is_statutory ? "yes" : "no"} onChange={(e) => setForm((f) => ({ ...f, is_statutory: e.target.value === "yes" }))}>
                 <option value="yes">Yes</option>
                 <option value="no">No</option>
               </SelectField>
