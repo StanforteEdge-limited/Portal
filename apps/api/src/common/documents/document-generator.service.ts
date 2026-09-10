@@ -8,7 +8,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PdfService } from '../pdf/pdf.service';
 import { MailService } from '../mail/mail.service';
-import { DeductionService } from '../../modules/finance/deduction.service';
+import { DeductionService } from '../../modules/finance/finance/deduction.service';
 import { toBigInt } from '../utils/ids';
 import {
   Document,
