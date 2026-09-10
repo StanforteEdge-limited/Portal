@@ -1,14 +1,14 @@
 import { Body, Controller, Delete, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../../common/auth/jwt-auth.guard';
-import { Permissions } from '../../../common/auth/permissions.decorator';
-import { PermissionsGuard } from '../../../common/auth/permissions.guard';
-import { CreateTaxonomyDto } from './dto/create-taxonomy.dto';
-import { SyncTaxonomyTermsDto } from './dto/sync-taxonomy-terms.dto';
-import { UpdateTaxonomyDto } from './dto/update-taxonomy.dto';
-import { UpdateFieldOptionsDto } from './dto/update-field-options.dto';
-import { UpsertTagTermDto } from './dto/upsert-tag-term.dto';
-import { ReplaceEntityTagsDto } from './dto/replace-entity-tags.dto';
+import { JwtAuthGuard } from '$common/auth/jwt-auth.guard';
+import { Permissions } from '$common/auth/permissions.decorator';
+import { PermissionsGuard } from '$common/auth/permissions.guard';
+import { CreateTaxonomyDto } from '$modules/requests/taxonomy/dto/create-taxonomy.dto';
+import { SyncTaxonomyTermsDto } from '$modules/requests/taxonomy/dto/sync-taxonomy-terms.dto';
+import { UpdateTaxonomyDto } from '$modules/requests/taxonomy/dto/update-taxonomy.dto';
+import { UpdateFieldOptionsDto } from '$modules/requests/taxonomy/dto/update-field-options.dto';
+import { UpsertTagTermDto } from '$modules/requests/taxonomy/dto/upsert-tag-term.dto';
+import { ReplaceEntityTagsDto } from '$modules/requests/taxonomy/dto/replace-entity-tags.dto';
 import { TaxonomyService } from './taxonomy.service';
 
 @Controller('taxonomy')

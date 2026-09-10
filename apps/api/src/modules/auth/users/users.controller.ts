@@ -1,14 +1,14 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../../common/auth/jwt-auth.guard';
-import { Permissions } from '../../../common/auth/permissions.decorator';
-import { PermissionsGuard } from '../../../common/auth/permissions.guard';
-import { UpdateProfileDto } from './dto/update-profile.dto';
+import { JwtAuthGuard } from '$common/auth/jwt-auth.guard';
+import { Permissions } from '$common/auth/permissions.decorator';
+import { PermissionsGuard } from '$common/auth/permissions.guard';
+import { UpdateProfileDto } from '$modules/auth/users/dto/update-profile.dto';
 import { UsersService } from './users.service';
-import { CreateUserDto } from './dto/create-user.dto';
-import { AssignUserRolesDto } from './dto/assign-user-roles.dto';
-import { InviteUserDto } from './dto/invite-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+import { CreateUserDto } from '$modules/auth/users/dto/create-user.dto';
+import { AssignUserRolesDto } from '$modules/auth/users/dto/assign-user-roles.dto';
+import { InviteUserDto } from '$modules/auth/users/dto/invite-user.dto';
+import { UpdateUserDto } from '$modules/auth/users/dto/update-user.dto';
 
 @Controller()
 @ApiTags('Users')

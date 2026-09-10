@@ -1,8 +1,8 @@
 import { Body, Controller, Delete, Get, Param, Post, Put, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../../common/auth/jwt-auth.guard';
-import { Permissions } from '../../../common/auth/permissions.decorator';
-import { PermissionsGuard } from '../../../common/auth/permissions.guard';
+import { JwtAuthGuard } from '$common/auth/jwt-auth.guard';
+import { Permissions } from '$common/auth/permissions.decorator';
+import { PermissionsGuard } from '$common/auth/permissions.guard';
 import { DesignationsService } from './designations.service';
 
 @Controller('hr/designations')

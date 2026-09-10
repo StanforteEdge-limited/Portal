@@ -1,11 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, Policy } from '@prisma/client';
-import { PrismaService } from '../../../common/prisma/prisma.service';
-import { toBigInt } from '../../../common/utils/ids';
-import { CreatePolicyDto } from './dto/create-policy.dto';
-import { ResolvePolicyDto } from './dto/resolve-policy.dto';
-import { UpdatePolicyDto } from './dto/update-policy.dto';
-import { paginatedResponse } from '../../../common/helpers/paginated-response';
+import { PrismaService } from '$common/prisma/prisma.service';
+import { toBigInt } from '$common/utils/ids';
+import { CreatePolicyDto } from '$modules/requests/policies/dto/create-policy.dto';
+import { ResolvePolicyDto } from '$modules/requests/policies/dto/resolve-policy.dto';
+import { UpdatePolicyDto } from '$modules/requests/policies/dto/update-policy.dto';
+import { paginatedResponse } from '$common/helpers/paginated-response';
 
 type PolicyContext = {
   organization_id?: string;

@@ -1,11 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, WorkLogApprovalStatus, WorkItemStatus } from '@prisma/client';
-import { PrismaService } from '../../../common/prisma/prisma.service';
-import { paginatedResponse } from '../../../common/helpers/paginated-response';
-import { toBigInt } from '../../../common/utils/ids';
-import { UpsertTeamGoalDto, UpsertTeamKpiDto, UpsertTeamObjectiveDto } from './dto/upsert-team-goal.dto';
-import { UpsertWorkItemDto } from './dto/upsert-work-item.dto';
-import { UpsertWorkLogDto } from './dto/upsert-work-log.dto';
+import { PrismaService } from '$common/prisma/prisma.service';
+import { paginatedResponse } from '$common/helpers/paginated-response';
+import { toBigInt } from '$common/utils/ids';
+import { UpsertTeamGoalDto, UpsertTeamKpiDto, UpsertTeamObjectiveDto } from '$modules/operations/work/dto/upsert-team-goal.dto';
+import { UpsertWorkItemDto } from '$modules/operations/work/dto/upsert-work-item.dto';
+import { UpsertWorkLogDto } from '$modules/operations/work/dto/upsert-work-log.dto';
 
 @Injectable()
 export class WorkService {

@@ -1,13 +1,13 @@
 import { Body, Controller, Delete, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../../common/auth/jwt-auth.guard';
-import { Permissions } from '../../../common/auth/permissions.decorator';
-import { PermissionsGuard } from '../../../common/auth/permissions.guard';
-import { AddGroupMemberDto } from './dto/add-group-member.dto';
-import { CreateTeamDto } from './dto/create-team.dto';
-import { SetGroupMemberScopesDto } from './dto/set-group-member-scopes.dto';
-import { SetGroupOrganizationsDto } from './dto/set-group-organizations.dto';
-import { UpdateTeamDto } from './dto/update-team.dto';
+import { JwtAuthGuard } from '$common/auth/jwt-auth.guard';
+import { Permissions } from '$common/auth/permissions.decorator';
+import { PermissionsGuard } from '$common/auth/permissions.guard';
+import { AddGroupMemberDto } from '$modules/directory/groups/dto/add-group-member.dto';
+import { CreateTeamDto } from '$modules/directory/groups/dto/create-team.dto';
+import { SetGroupMemberScopesDto } from '$modules/directory/groups/dto/set-group-member-scopes.dto';
+import { SetGroupOrganizationsDto } from '$modules/directory/groups/dto/set-group-organizations.dto';
+import { UpdateTeamDto } from '$modules/directory/groups/dto/update-team.dto';
 import { GroupsService } from './groups.service';
 
 @Controller('groups')

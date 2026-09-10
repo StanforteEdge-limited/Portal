@@ -1,13 +1,13 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { PrismaService } from '../../../common/prisma/prisma.service';
-import { paginatedResponse } from '../../../common/helpers/paginated-response';
-import { CreateTaxonomyDto } from './dto/create-taxonomy.dto';
-import { SyncTaxonomyTermsDto } from './dto/sync-taxonomy-terms.dto';
-import { UpdateTaxonomyDto } from './dto/update-taxonomy.dto';
-import { UpdateFieldOptionsDto } from './dto/update-field-options.dto';
-import { UpsertTagTermDto } from './dto/upsert-tag-term.dto';
-import { ReplaceEntityTagsDto } from './dto/replace-entity-tags.dto';
+import { PrismaService } from '$common/prisma/prisma.service';
+import { paginatedResponse } from '$common/helpers/paginated-response';
+import { CreateTaxonomyDto } from '$modules/requests/taxonomy/dto/create-taxonomy.dto';
+import { SyncTaxonomyTermsDto } from '$modules/requests/taxonomy/dto/sync-taxonomy-terms.dto';
+import { UpdateTaxonomyDto } from '$modules/requests/taxonomy/dto/update-taxonomy.dto';
+import { UpdateFieldOptionsDto } from '$modules/requests/taxonomy/dto/update-field-options.dto';
+import { UpsertTagTermDto } from '$modules/requests/taxonomy/dto/upsert-tag-term.dto';
+import { ReplaceEntityTagsDto } from '$modules/requests/taxonomy/dto/replace-entity-tags.dto';
 
 @Injectable()
 export class TaxonomyService {

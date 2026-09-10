@@ -1,5 +1,5 @@
 import { IsOptional, IsString, Matches, MinLength } from 'class-validator';
-import { PASSWORD_POLICY_MESSAGE, PASSWORD_POLICY_REGEX } from '../../../../common/validation/password-policy';
+import { PASSWORD_POLICY_MESSAGE, PASSWORD_POLICY_REGEX } from '$common/validation/password-policy';
 
 export class ChangePasswordDto {
   @IsString()

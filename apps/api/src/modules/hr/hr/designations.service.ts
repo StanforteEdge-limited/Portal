@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../../common/prisma/prisma.service';
-import { toBigInt } from '../../../common/utils/ids';
+import { PrismaService } from '$common/prisma/prisma.service';
+import { toBigInt } from '$common/utils/ids';
 
 @Injectable()
 export class DesignationsService {

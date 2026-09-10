@@ -1,11 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { PrismaService } from '../../../common/prisma/prisma.service';
-import { toBigInt } from '../../../common/utils/ids';
-import { CreateAcknowledgementDto } from './dto/create-acknowledgement.dto';
-import { ListAcknowledgementsDto } from './dto/list-acknowledgements.dto';
-import { RevokeAcknowledgementDto } from './dto/revoke-acknowledgement.dto';
-import { paginatedResponse } from '../../../common/helpers/paginated-response';
+import { PrismaService } from '$common/prisma/prisma.service';
+import { toBigInt } from '$common/utils/ids';
+import { CreateAcknowledgementDto } from '$modules/requests/acknowledgements/dto/create-acknowledgement.dto';
+import { ListAcknowledgementsDto } from '$modules/requests/acknowledgements/dto/list-acknowledgements.dto';
+import { RevokeAcknowledgementDto } from '$modules/requests/acknowledgements/dto/revoke-acknowledgement.dto';
+import { paginatedResponse } from '$common/helpers/paginated-response';
 
 @Injectable()
 export class AcknowledgementsService {

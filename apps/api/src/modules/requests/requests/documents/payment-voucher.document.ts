@@ -1,5 +1,5 @@
-import { DocumentGeneratorService } from '../../../../common/documents/document-generator.service';
-import { Document, DocumentIds, DocumentOutput, RequestThread } from '../../../../common/documents/document.types';
+import { DocumentGeneratorService } from '$common/documents/document-generator.service';
+import { Document, DocumentIds, DocumentOutput, RequestThread } from '$common/documents/document.types';
 
 type PaymentVoucherContext = {
   request: any;

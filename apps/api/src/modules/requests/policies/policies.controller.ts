@@ -1,11 +1,11 @@
 import { Body, Controller, Delete, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../../common/auth/jwt-auth.guard';
-import { Permissions } from '../../../common/auth/permissions.decorator';
-import { PermissionsGuard } from '../../../common/auth/permissions.guard';
-import { CreatePolicyDto } from './dto/create-policy.dto';
-import { ResolvePolicyDto } from './dto/resolve-policy.dto';
-import { UpdatePolicyDto } from './dto/update-policy.dto';
+import { JwtAuthGuard } from '$common/auth/jwt-auth.guard';
+import { Permissions } from '$common/auth/permissions.decorator';
+import { PermissionsGuard } from '$common/auth/permissions.guard';
+import { CreatePolicyDto } from '$modules/requests/policies/dto/create-policy.dto';
+import { ResolvePolicyDto } from '$modules/requests/policies/dto/resolve-policy.dto';
+import { UpdatePolicyDto } from '$modules/requests/policies/dto/update-policy.dto';
 import { PoliciesService } from './policies.service';
 
 @Controller('policies')

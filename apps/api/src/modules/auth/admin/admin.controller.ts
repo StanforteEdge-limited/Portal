@@ -1,11 +1,11 @@
 import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../../common/auth/jwt-auth.guard';
-import { Permissions } from '../../../common/auth/permissions.decorator';
-import { PermissionsGuard } from '../../../common/auth/permissions.guard';
-import { CreateAdminUserDto } from './dto/create-admin-user.dto';
-import { UpdateAdminUserDto } from './dto/update-admin-user.dto';
-import { UpdateUserStatusDto } from './dto/update-user-status.dto';
+import { JwtAuthGuard } from '$common/auth/jwt-auth.guard';
+import { Permissions } from '$common/auth/permissions.decorator';
+import { PermissionsGuard } from '$common/auth/permissions.guard';
+import { CreateAdminUserDto } from '$modules/auth/admin/dto/create-admin-user.dto';
+import { UpdateAdminUserDto } from '$modules/auth/admin/dto/update-admin-user.dto';
+import { UpdateUserStatusDto } from '$modules/auth/admin/dto/update-user-status.dto';
 import { AdminService } from './admin.service';
 
 @Controller('admin/users')

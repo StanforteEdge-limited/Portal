@@ -2,20 +2,20 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import * as bcrypt from 'bcryptjs';
 import { Prisma, EmploymentStatus, EmploymentType, GroupUserRole } from '@prisma/client';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
-import { PrismaService } from '../../../common/prisma/prisma.service';
-import { randomToken } from '../../../common/utils/crypto';
-import { toBigInt } from '../../../common/utils/ids';
-import { paginatedResponse } from '../../../common/helpers/paginated-response';
-import { generateUniqueUsername, makeUsernameSeed } from '../../../common/utils/username';
-import { SetPrimaryOrganizationDto } from './dto/set-primary-organization.dto';
-import { EmployeeActionDto, UpsertEmployeeDto } from './dto/upsert-employee.dto';
-import { AdjustLeaveBalanceDto } from './dto/leave-balance.dto';
+import { PrismaService } from '$common/prisma/prisma.service';
+import { randomToken } from '$common/utils/crypto';
+import { toBigInt } from '$common/utils/ids';
+import { paginatedResponse } from '$common/helpers/paginated-response';
+import { generateUniqueUsername, makeUsernameSeed } from '$common/utils/username';
+import { SetPrimaryOrganizationDto } from '$modules/hr/hr/dto/set-primary-organization.dto';
+import { EmployeeActionDto, UpsertEmployeeDto } from '$modules/hr/hr/dto/upsert-employee.dto';
+import { AdjustLeaveBalanceDto } from '$modules/hr/hr/dto/leave-balance.dto';
 import {
   AssignEmployeeOrganizationDto,
   AssignEmployeeTeamDto,
   AssignOnboardingFormDto,
   UpdateOnboardingFormAssignmentDto
-} from './dto/manage-employee-links.dto';
+} from '$modules/hr/hr/dto/manage-employee-links.dto';
 
 @Injectable()
 export class HrService {

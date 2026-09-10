@@ -1,15 +1,15 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { PrismaService } from '../../../common/prisma/prisma.service';
-import { paginatedResponse } from '../../../common/helpers/paginated-response';
+import { PrismaService } from '$common/prisma/prisma.service';
+import { paginatedResponse } from '$common/helpers/paginated-response';
 import {
   CreateFormAssignmentDto,
   CreateFormDto,
   CreateFormFieldDto,
   UpdateFormDto,
   UpdateFormFieldDto
-} from './dto/manage-forms.dto';
-import { toBigInt } from '../../../common/utils/ids';
+} from '$modules/requests/forms/dto/manage-forms.dto';
+import { toBigInt } from '$common/utils/ids';
 
 @Injectable()
 export class FormsService {

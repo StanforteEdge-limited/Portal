@@ -8,8 +8,8 @@ import { resolve } from 'node:path';
 import { existsSync, mkdirSync } from 'node:fs';
 import { config as loadEnv } from 'dotenv';
 import { AppModule } from './app.module';
-import { AllExceptionsFilter } from './common/http/all-exceptions.filter';
-import { ResponseEnvelopeInterceptor } from './common/http/response-envelope.interceptor';
+import { AllExceptionsFilter } from '$common/http/all-exceptions.filter';
+import { ResponseEnvelopeInterceptor } from '$common/http/response-envelope.interceptor';
 
 const envCandidates = [
   resolve(process.cwd(), '.env'),

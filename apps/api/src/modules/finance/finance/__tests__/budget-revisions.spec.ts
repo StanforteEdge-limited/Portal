@@ -1,5 +1,5 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { FinanceService } from '../finance.service';
+import { FinanceService } from '$modules/finance/finance/finance.service';
 
 describe('FinanceService budget revisions', () => {
   const prisma: any = {

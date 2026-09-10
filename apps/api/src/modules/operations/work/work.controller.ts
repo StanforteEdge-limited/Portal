@@ -1,11 +1,11 @@
 import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../../common/auth/jwt-auth.guard';
-import { Permissions } from '../../../common/auth/permissions.decorator';
-import { PermissionsGuard } from '../../../common/auth/permissions.guard';
-import { UpsertTeamGoalDto, UpsertTeamKpiDto, UpsertTeamObjectiveDto } from './dto/upsert-team-goal.dto';
-import { UpsertWorkItemDto } from './dto/upsert-work-item.dto';
-import { UpsertWorkLogDto } from './dto/upsert-work-log.dto';
+import { JwtAuthGuard } from '$common/auth/jwt-auth.guard';
+import { Permissions } from '$common/auth/permissions.decorator';
+import { PermissionsGuard } from '$common/auth/permissions.guard';
+import { UpsertTeamGoalDto, UpsertTeamKpiDto, UpsertTeamObjectiveDto } from '$modules/operations/work/dto/upsert-team-goal.dto';
+import { UpsertWorkItemDto } from '$modules/operations/work/dto/upsert-work-item.dto';
+import { UpsertWorkLogDto } from '$modules/operations/work/dto/upsert-work-log.dto';
 import { WorkService } from './work.service';
 
 @Controller('work')

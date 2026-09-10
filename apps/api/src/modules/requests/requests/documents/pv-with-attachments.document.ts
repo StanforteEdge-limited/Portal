@@ -1,8 +1,8 @@
 import { NotFoundException } from '@nestjs/common';
-import { DocumentGeneratorService } from '../../../../common/documents/document-generator.service';
-import { Document, DocumentIds, DocumentOutput } from '../../../../common/documents/document.types';
+import { DocumentGeneratorService } from '$common/documents/document-generator.service';
+import { Document, DocumentIds, DocumentOutput } from '$common/documents/document.types';
 import { PaymentVoucherDocument } from './payment-voucher.document';
-import { toBigInt } from '../../../../common/utils/ids';
+import { toBigInt } from '$common/utils/ids';
 
 type PVWithAttachmentsContext = {
   voucher: any;

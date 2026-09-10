@@ -1,16 +1,16 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { PrismaService } from '../../../common/prisma/prisma.service';
-import { WorkflowService } from '../../requests/workflow/workflow.service';
-import { NotificationsService } from '../../platform/notifications/notifications.service';
-import { MailService } from '../../../common/mail/mail.service';
-import { DocumentGeneratorService } from '../../../common/documents/document-generator.service';
-import { toBigInt } from '../../../common/utils/ids';
-import { CreatePrDto } from './dto/create-pr.dto';
-import { CreatePoDto } from './dto/create-po.dto';
-import { CreateGrnDto } from './dto/create-grn.dto';
-import { ConfirmGrnDto } from './dto/confirm-grn.dto';
-import { AttachProcurementFileDto } from './dto/attach-procurement-file.dto';
-import { PurchaseOrderDocument } from './documents/purchase-order.document';
+import { PrismaService } from '$common/prisma/prisma.service';
+import { WorkflowService } from '$modules/requests/workflow/workflow.service';
+import { NotificationsService } from '$modules/platform/notifications/notifications.service';
+import { MailService } from '$common/mail/mail.service';
+import { DocumentGeneratorService } from '$common/documents/document-generator.service';
+import { toBigInt } from '$common/utils/ids';
+import { CreatePrDto } from '$modules/finance/procurement/dto/create-pr.dto';
+import { CreatePoDto } from '$modules/finance/procurement/dto/create-po.dto';
+import { CreateGrnDto } from '$modules/finance/procurement/dto/create-grn.dto';
+import { ConfirmGrnDto } from '$modules/finance/procurement/dto/confirm-grn.dto';
+import { AttachProcurementFileDto } from '$modules/finance/procurement/dto/attach-procurement-file.dto';
+import { PurchaseOrderDocument } from '$modules/finance/procurement/documents/purchase-order.document';
 
 @Injectable()
 export class ProcurementService {

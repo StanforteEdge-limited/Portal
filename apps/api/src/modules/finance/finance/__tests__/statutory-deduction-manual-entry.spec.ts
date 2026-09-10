@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import { FinanceService } from '../finance.service';
+import { FinanceService } from '$modules/finance/finance/finance.service';
 
 function createService(prisma) {
   return new FinanceService(prisma, {} as any, {} as any, {} as any);

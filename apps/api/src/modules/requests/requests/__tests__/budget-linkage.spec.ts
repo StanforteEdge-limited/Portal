@@ -1,4 +1,4 @@
-import { RequestsService } from '../requests.service';
+import { RequestsService } from '$modules/requests/requests/requests.service';
 
 describe('RequestsService budget linkage', () => {
   const prisma: any = {

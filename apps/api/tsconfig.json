@@ -3,6 +3,12 @@
     "target": "ES2021",
     "module": "CommonJS",
     "moduleResolution": "Node",
+    "baseUrl": "src",
+    "paths": {
+      "$app/*": ["*"],
+      "$modules/*": ["modules/*"],
+      "$common/*": ["common/*"]
+    },
     "outDir": "dist",
     "rootDir": "src",
     "strict": true,

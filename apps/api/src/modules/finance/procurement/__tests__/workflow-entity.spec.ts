@@ -1,5 +1,5 @@
-import { WorkflowService } from '../../../requests/workflow/workflow.service';
-import { PrismaService } from '../../../../common/prisma/prisma.service';
+import { WorkflowService } from '$modules/requests/workflow/workflow.service';
+import { PrismaService } from '$common/prisma/prisma.service';
 
 describe('WorkflowService.startForEntity', () => {
   let service: WorkflowService;

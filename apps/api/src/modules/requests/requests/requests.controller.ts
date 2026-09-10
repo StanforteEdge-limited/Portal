@@ -1,24 +1,24 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { RequestsService } from './requests.service';
-import { CreateCategoryDto } from './dto/create-category.dto';
-import { UpdateCategoryDto } from './dto/update-category.dto';
-import { CreateGroupDto } from './dto/create-group.dto';
-import { UpdateGroupDto } from './dto/update-group.dto';
-import { CreateTypeDto } from './dto/create-type.dto';
-import { UpdateTypeDto } from './dto/update-type.dto';
-import { CreateRequestDto } from './dto/create-request.dto';
-import { UpdateRequestDto } from './dto/update-request.dto';
-import { SubmitRequestDto } from './dto/submit-request.dto';
-import { ActionRequestDto } from './dto/action-request.dto';
-import { RequestResponseDto } from './dto/request-response.dto';
-import { RetireRequestDto } from './dto/retire-request.dto';
-import { CreateManualRequestDto } from './dto/create-manual-request.dto';
-import { UpdateManualRequestDto } from './dto/update-manual-request.dto';
-import { DownloadRequestDto } from './dto/download-request.dto';
-import { JwtAuthGuard } from '../../../common/auth/jwt-auth.guard';
-import { Permissions } from '../../../common/auth/permissions.decorator';
-import { PermissionsGuard } from '../../../common/auth/permissions.guard';
+import { CreateCategoryDto } from '$modules/requests/requests/dto/create-category.dto';
+import { UpdateCategoryDto } from '$modules/requests/requests/dto/update-category.dto';
+import { CreateGroupDto } from '$modules/requests/requests/dto/create-group.dto';
+import { UpdateGroupDto } from '$modules/requests/requests/dto/update-group.dto';
+import { CreateTypeDto } from '$modules/requests/requests/dto/create-type.dto';
+import { UpdateTypeDto } from '$modules/requests/requests/dto/update-type.dto';
+import { CreateRequestDto } from '$modules/requests/requests/dto/create-request.dto';
+import { UpdateRequestDto } from '$modules/requests/requests/dto/update-request.dto';
+import { SubmitRequestDto } from '$modules/requests/requests/dto/submit-request.dto';
+import { ActionRequestDto } from '$modules/requests/requests/dto/action-request.dto';
+import { RequestResponseDto } from '$modules/requests/requests/dto/request-response.dto';
+import { RetireRequestDto } from '$modules/requests/requests/dto/retire-request.dto';
+import { CreateManualRequestDto } from '$modules/requests/requests/dto/create-manual-request.dto';
+import { UpdateManualRequestDto } from '$modules/requests/requests/dto/update-manual-request.dto';
+import { DownloadRequestDto } from '$modules/requests/requests/dto/download-request.dto';
+import { JwtAuthGuard } from '$common/auth/jwt-auth.guard';
+import { Permissions } from '$common/auth/permissions.decorator';
+import { PermissionsGuard } from '$common/auth/permissions.guard';
 
 @Controller('requests')
 @UseGuards(JwtAuthGuard, PermissionsGuard)

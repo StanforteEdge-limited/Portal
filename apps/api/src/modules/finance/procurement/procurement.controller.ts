@@ -1,14 +1,14 @@
 import { Controller, Post, Get, Param, Body, Req, UseGuards } from '@nestjs/common';
 import { ProcurementService } from './procurement.service';
-import { CreatePrDto } from './dto/create-pr.dto';
-import { ActionPrDto } from './dto/action-pr.dto';
-import { CreatePoDto } from './dto/create-po.dto';
-import { ActionPoDto } from './dto/action-po.dto';
-import { CreateGrnDto } from './dto/create-grn.dto';
-import { ConfirmGrnDto } from './dto/confirm-grn.dto';
-import { CreateProcurementCaseDto } from './dto/create-procurement-case.dto';
-import { AttachProcurementFileDto } from './dto/attach-procurement-file.dto';
-import { JwtAuthGuard } from '../../../common/auth/jwt-auth.guard';
+import { CreatePrDto } from '$modules/finance/procurement/dto/create-pr.dto';
+import { ActionPrDto } from '$modules/finance/procurement/dto/action-pr.dto';
+import { CreatePoDto } from '$modules/finance/procurement/dto/create-po.dto';
+import { ActionPoDto } from '$modules/finance/procurement/dto/action-po.dto';
+import { CreateGrnDto } from '$modules/finance/procurement/dto/create-grn.dto';
+import { ConfirmGrnDto } from '$modules/finance/procurement/dto/confirm-grn.dto';
+import { CreateProcurementCaseDto } from '$modules/finance/procurement/dto/create-procurement-case.dto';
+import { AttachProcurementFileDto } from '$modules/finance/procurement/dto/attach-procurement-file.dto';
+import { JwtAuthGuard } from '$common/auth/jwt-auth.guard';
 
 @Controller('procurement')
 @UseGuards(JwtAuthGuard)

@@ -1,9 +1,9 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../../common/prisma/prisma.service';
-import { toBigInt } from '../../../common/utils/ids';
-import { CreateContactDto } from './dto/create-contact.dto';
-import { UpdateContactDto } from './dto/update-contact.dto';
-import { paginatedResponse } from '../../../common/helpers/paginated-response';
+import { PrismaService } from '$common/prisma/prisma.service';
+import { toBigInt } from '$common/utils/ids';
+import { CreateContactDto } from '$modules/directory/contacts/dto/create-contact.dto';
+import { UpdateContactDto } from '$modules/directory/contacts/dto/update-contact.dto';
+import { paginatedResponse } from '$common/helpers/paginated-response';
 
 @Injectable()
 export class ContactsService {

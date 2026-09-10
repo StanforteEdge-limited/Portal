@@ -1,13 +1,13 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../../common/prisma/prisma.service';
-import { paginatedResponse } from '../../../common/helpers/paginated-response';
-import { toBigInt } from '../../../common/utils/ids';
-import { AssignUserRolesDto } from './dto/assign-user-roles.dto';
-import { CreatePermissionDto } from './dto/create-permission.dto';
-import { CreateRoleDto } from './dto/create-role.dto';
-import { SetRolePermissionsDto } from './dto/set-role-permissions.dto';
-import { UpdatePermissionDto } from './dto/update-permission.dto';
-import { UpdateRoleDto } from './dto/update-role.dto';
+import { PrismaService } from '$common/prisma/prisma.service';
+import { paginatedResponse } from '$common/helpers/paginated-response';
+import { toBigInt } from '$common/utils/ids';
+import { AssignUserRolesDto } from '$modules/auth/rbac/dto/assign-user-roles.dto';
+import { CreatePermissionDto } from '$modules/auth/rbac/dto/create-permission.dto';
+import { CreateRoleDto } from '$modules/auth/rbac/dto/create-role.dto';
+import { SetRolePermissionsDto } from '$modules/auth/rbac/dto/set-role-permissions.dto';
+import { UpdatePermissionDto } from '$modules/auth/rbac/dto/update-permission.dto';
+import { UpdateRoleDto } from '$modules/auth/rbac/dto/update-role.dto';
 
 @Injectable()
 export class RbacService {

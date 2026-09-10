@@ -1,9 +1,9 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { PrismaService } from '../../../common/prisma/prisma.service';
-import { toBigInt } from '../../../common/utils/ids';
-import { CreateAuditEventDto } from './dto/create-audit-event.dto';
-import { paginatedResponse } from '../../../common/helpers/paginated-response';
+import { PrismaService } from '$common/prisma/prisma.service';
+import { toBigInt } from '$common/utils/ids';
+import { CreateAuditEventDto } from '$modules/auth/audit/dto/create-audit-event.dto';
+import { paginatedResponse } from '$common/helpers/paginated-response';
 
 @Injectable()
 export class AuditService {

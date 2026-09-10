@@ -1,14 +1,14 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../../common/auth/jwt-auth.guard';
-import { Permissions } from '../../../common/auth/permissions.decorator';
-import { PermissionsGuard } from '../../../common/auth/permissions.guard';
-import { ClockAttendanceDto } from './dto/attendance.dto';
-import { CreateAttendanceCorrectionDto } from './dto/create-attendance-correction.dto';
-import { CreateAttendanceExceptionDto } from './dto/create-attendance-exception.dto';
-import { ReviewAttendanceCorrectionDto } from './dto/review-attendance-correction.dto';
-import { ReviewAttendanceExceptionDto } from './dto/review-attendance-exception.dto';
-import { UpsertOfficeLocationDto } from './dto/upsert-office-location.dto';
+import { JwtAuthGuard } from '$common/auth/jwt-auth.guard';
+import { Permissions } from '$common/auth/permissions.decorator';
+import { PermissionsGuard } from '$common/auth/permissions.guard';
+import { ClockAttendanceDto } from '$modules/hr/hr/dto/attendance.dto';
+import { CreateAttendanceCorrectionDto } from '$modules/hr/hr/dto/create-attendance-correction.dto';
+import { CreateAttendanceExceptionDto } from '$modules/hr/hr/dto/create-attendance-exception.dto';
+import { ReviewAttendanceCorrectionDto } from '$modules/hr/hr/dto/review-attendance-correction.dto';
+import { ReviewAttendanceExceptionDto } from '$modules/hr/hr/dto/review-attendance-exception.dto';
+import { UpsertOfficeLocationDto } from '$modules/hr/hr/dto/upsert-office-location.dto';
 import { AttendanceService } from './attendance.service';
 
 @Controller('hr/attendance')

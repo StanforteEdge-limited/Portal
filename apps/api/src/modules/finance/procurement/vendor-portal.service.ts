@@ -1,8 +1,8 @@
 import { Injectable, UnauthorizedException, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { PrismaService } from '../../../common/prisma/prisma.service';
+import { PrismaService } from '$common/prisma/prisma.service';
 import * as bcrypt from 'bcryptjs';
-import { VendorLoginDto, VendorAcknowledgeDto } from './dto/vendor-login.dto';
+import { VendorLoginDto, VendorAcknowledgeDto } from '$modules/finance/procurement/dto/vendor-login.dto';
 
 @Injectable()
 export class VendorPortalService {

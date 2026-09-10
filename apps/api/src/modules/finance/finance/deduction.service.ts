@@ -9,14 +9,14 @@ import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { extname, resolve } from 'node:path';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
-import { paginatedResponse } from '../../../common/helpers/paginated-response';
-import { PrismaService } from '../../../common/prisma/prisma.service';
-import { toBigInt } from '../../../common/utils/ids';
-import { UpsertDeductionTypeDto } from './dto/upsert-deduction-type.dto';
-import { ApplyPVDeductionsDto } from './dto/apply-pv-deductions.dto';
-import { CreateWHTRemittanceDto } from './dto/create-wht-remittance.dto';
-import { RequestRemittancesQueryDto, StatutoryDeductionsQueryDto, RemitStatutoryDeductionsDto } from './dto/statutory-deductions.dto';
-import { PdfService } from '../../../common/pdf/pdf.service';
+import { paginatedResponse } from '$common/helpers/paginated-response';
+import { PrismaService } from '$common/prisma/prisma.service';
+import { toBigInt } from '$common/utils/ids';
+import { UpsertDeductionTypeDto } from '$modules/finance/finance/dto/upsert-deduction-type.dto';
+import { ApplyPVDeductionsDto } from '$modules/finance/finance/dto/apply-pv-deductions.dto';
+import { CreateWHTRemittanceDto } from '$modules/finance/finance/dto/create-wht-remittance.dto';
+import { RequestRemittancesQueryDto, StatutoryDeductionsQueryDto, RemitStatutoryDeductionsDto } from '$modules/finance/finance/dto/statutory-deductions.dto';
+import { PdfService } from '$common/pdf/pdf.service';
 
 @Injectable()
 export class DeductionService {

@@ -1,11 +1,11 @@
 import { Body, Controller, Delete, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../../common/auth/jwt-auth.guard';
-import { Permissions } from '../../../common/auth/permissions.decorator';
-import { PermissionsGuard } from '../../../common/auth/permissions.guard';
-import { AddProjectMemberDto } from './dto/add-project-member.dto';
-import { CreateProjectDto } from './dto/create-project.dto';
-import { UpdateProjectDto } from './dto/update-project.dto';
+import { JwtAuthGuard } from '$common/auth/jwt-auth.guard';
+import { Permissions } from '$common/auth/permissions.decorator';
+import { PermissionsGuard } from '$common/auth/permissions.guard';
+import { AddProjectMemberDto } from '$modules/operations/projects/dto/add-project-member.dto';
+import { CreateProjectDto } from '$modules/operations/projects/dto/create-project.dto';
+import { UpdateProjectDto } from '$modules/operations/projects/dto/update-project.dto';
 import { ProjectsService } from './projects.service';
 
 @Controller('projects')

@@ -2,7 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { AuthService } from './auth.service';
-import { AUTH_ACCESS_COOKIE, parseCookieHeader } from '../../../common/auth/cookies';
+import { AUTH_ACCESS_COOKIE, parseCookieHeader } from '$common/auth/cookies';
 
 function extractJwtFromCookie(req: any): string | null {
   const cookieValue = parseCookieHeader(req?.headers?.cookie)?.[AUTH_ACCESS_COOKIE];

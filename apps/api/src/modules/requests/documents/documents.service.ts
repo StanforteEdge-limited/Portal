@@ -1,11 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { PrismaService } from '../../../common/prisma/prisma.service';
-import { toBigInt } from '../../../common/utils/ids';
-import { AcknowledgeDocumentDto } from './dto/acknowledge-document.dto';
-import { CreateDocumentDto } from './dto/create-document.dto';
-import { UpdateDocumentDto } from './dto/update-document.dto';
-import { paginatedResponse } from '../../../common/helpers/paginated-response';
+import { PrismaService } from '$common/prisma/prisma.service';
+import { toBigInt } from '$common/utils/ids';
+import { AcknowledgeDocumentDto } from '$modules/requests/documents/dto/acknowledge-document.dto';
+import { CreateDocumentDto } from '$modules/requests/documents/dto/create-document.dto';
+import { UpdateDocumentDto } from '$modules/requests/documents/dto/update-document.dto';
+import { paginatedResponse } from '$common/helpers/paginated-response';
 
 @Injectable()
 export class DocumentsService {

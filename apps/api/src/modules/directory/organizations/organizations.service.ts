@@ -1,10 +1,10 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { OrganizationType, Prisma } from '@prisma/client';
-import { PrismaService } from '../../../common/prisma/prisma.service';
-import { paginatedResponse } from '../../../common/helpers/paginated-response';
-import { toBigInt } from '../../../common/utils/ids';
-import { CreateOrganizationDto } from './dto/create-organization.dto';
-import { UpdateOrganizationDto } from './dto/update-organization.dto';
+import { PrismaService } from '$common/prisma/prisma.service';
+import { paginatedResponse } from '$common/helpers/paginated-response';
+import { toBigInt } from '$common/utils/ids';
+import { CreateOrganizationDto } from '$modules/directory/organizations/dto/create-organization.dto';
+import { UpdateOrganizationDto } from '$modules/directory/organizations/dto/update-organization.dto';
 
 @Injectable()
 export class OrganizationsService {

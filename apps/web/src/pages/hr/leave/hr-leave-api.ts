@@ -1,4 +1,4 @@
-// apps/pwa/src/modules/hr/leave/hr-leave-api.ts
+// apps/web/src/pages/hr/leave/hr-leave-api.ts
 import { httpRequest } from "@/shared/lib/core";
 import {
   listRequests,

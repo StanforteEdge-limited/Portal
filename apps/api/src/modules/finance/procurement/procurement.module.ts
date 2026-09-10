@@ -4,11 +4,11 @@ import { ProcurementController } from './procurement.controller';
 import { ProcurementService } from './procurement.service';
 import { VendorPortalController } from './vendor-portal.controller';
 import { VendorPortalService } from './vendor-portal.service';
-import { WorkflowModule } from '../../requests/workflow/workflow.module';
-import { NotificationsModule } from '../../platform/notifications/notifications.module';
-import { MailModule } from '../../../common/mail/mail.module';
-import { PdfModule } from '../../../common/pdf/pdf.module';
-import { DocumentGeneratorService } from '../../../common/documents/document-generator.service';
+import { WorkflowModule } from '$modules/requests/workflow/workflow.module';
+import { NotificationsModule } from '$modules/platform/notifications/notifications.module';
+import { MailModule } from '$common/mail/mail.module';
+import { PdfModule } from '$common/pdf/pdf.module';
+import { DocumentGeneratorService } from '$common/documents/document-generator.service';
 
 @Module({
   imports: [

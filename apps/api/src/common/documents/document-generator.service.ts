@@ -5,11 +5,11 @@ import { extname, resolve } from 'node:path';
 import JSZip from 'jszip';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 import { Prisma } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
-import { PdfService } from '../pdf/pdf.service';
-import { MailService } from '../mail/mail.service';
-import { DeductionService } from '../../modules/finance/finance/deduction.service';
-import { toBigInt } from '../utils/ids';
+import { PrismaService } from '$common/prisma/prisma.service';
+import { PdfService } from '$common/pdf/pdf.service';
+import { MailService } from '$common/mail/mail.service';
+import { DeductionService } from '$modules/finance/finance/deduction.service';
+import { toBigInt } from '$common/utils/ids';
 import {
   Document,
   DocumentIds,

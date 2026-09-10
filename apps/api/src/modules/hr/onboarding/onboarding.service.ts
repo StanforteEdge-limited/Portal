@@ -1,8 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { PrismaService } from '../../../common/prisma/prisma.service';
-import { toBigInt } from '../../../common/utils/ids';
-import { SubmitOnboardingFormDto, UpdateOnboardingDto } from './dto/onboarding.dto';
+import { PrismaService } from '$common/prisma/prisma.service';
+import { toBigInt } from '$common/utils/ids';
+import { SubmitOnboardingFormDto, UpdateOnboardingDto } from '$modules/hr/onboarding/dto/onboarding.dto';
 
 @Injectable()
 export class OnboardingService {

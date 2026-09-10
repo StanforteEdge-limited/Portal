@@ -2,24 +2,24 @@ import { Injectable, NotFoundException, UnauthorizedException, BadRequestExcepti
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import type { Response } from 'express';
-import { PrismaService } from '../../../common/prisma/prisma.service';
-import { LoginDto } from './dto/login.dto';
-import { ChangePasswordDto } from './dto/change-password.dto';
-import { RefreshDto } from './dto/refresh.dto';
-import { ForgotPasswordDto } from './dto/forgot-password.dto';
-import { ResetPasswordDto } from './dto/reset-password.dto';
-import { sha256, randomToken } from '../../../common/utils/crypto';
-import { toBigInt } from '../../../common/utils/ids';
-import { AuthStatusResponseDto, LoginResponseDto } from './dto/auth-response.dto';
-import { AcceptInviteDto } from './dto/accept-invite.dto';
-import { MailService } from '../../../common/mail/mail.service';
+import { PrismaService } from '$common/prisma/prisma.service';
+import { LoginDto } from '$modules/auth/auth/dto/login.dto';
+import { ChangePasswordDto } from '$modules/auth/auth/dto/change-password.dto';
+import { RefreshDto } from '$modules/auth/auth/dto/refresh.dto';
+import { ForgotPasswordDto } from '$modules/auth/auth/dto/forgot-password.dto';
+import { ResetPasswordDto } from '$modules/auth/auth/dto/reset-password.dto';
+import { sha256, randomToken } from '$common/utils/crypto';
+import { toBigInt } from '$common/utils/ids';
+import { AuthStatusResponseDto, LoginResponseDto } from '$modules/auth/auth/dto/auth-response.dto';
+import { AcceptInviteDto } from '$modules/auth/auth/dto/accept-invite.dto';
+import { MailService } from '$common/mail/mail.service';
 import {
   AUTH_ACCESS_COOKIE,
   AUTH_REFRESH_COOKIE,
   authCookieOptions,
   clearAuthCookieOptions,
   parseCookieHeader
-} from '../../../common/auth/cookies';
+} from '$common/auth/cookies';
 
 const ACCESS_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m';
 const REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '30d';

@@ -1,8 +1,8 @@
 import { Body, Controller, Get, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../../common/auth/jwt-auth.guard';
+import { JwtAuthGuard } from '$common/auth/jwt-auth.guard';
 import { OnboardingService } from './onboarding.service';
-import { SubmitOnboardingFormDto, UpdateOnboardingDto } from './dto/onboarding.dto';
+import { SubmitOnboardingFormDto, UpdateOnboardingDto } from '$modules/hr/onboarding/dto/onboarding.dto';
 
 @Controller('onboarding')
 @UseGuards(JwtAuthGuard)

@@ -4,9 +4,9 @@
   "private": true,
   "description": "StanforteEdge Portal API (NestJS + Postgres)",
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src/main.ts",
+    "dev": "ts-node-dev -r ./path-alias-register.js --respawn --transpile-only src/main.ts",
     "build": "NODE_OPTIONS=--max-old-space-size=4096 tsc -p tsconfig.build.json",
-    "start": "node dist/main.js",
+    "start": "node -r ./path-alias-register.js dist/main.js",
     "prepare:runtime": "prisma migrate deploy && prisma generate && npm run seed:version",
     "deploy:server": "npm run prepare:runtime && npm run build",
     "db:seed": "node scripts/seed-rbac.js",

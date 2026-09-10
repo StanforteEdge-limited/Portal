@@ -1,4 +1,4 @@
-// apps/pwa/src/modules/hr/attendance/StaffAttendanceSlideOver.tsx
+// apps/web/src/pages/hr/attendance/StaffAttendanceSlideOver.tsx
 import {
   Button,
   Chip,

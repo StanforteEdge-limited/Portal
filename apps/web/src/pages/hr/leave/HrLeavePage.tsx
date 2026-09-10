@@ -1,4 +1,4 @@
-// apps/pwa/src/modules/hr/leave/HrLeavePage.tsx
+// apps/web/src/pages/hr/leave/HrLeavePage.tsx
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {

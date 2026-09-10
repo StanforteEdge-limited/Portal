@@ -1,5 +1,5 @@
 import { GroupUserRole } from '@prisma/client';
-import { ProjectsService } from '../projects.service';
+import { ProjectsService } from '$modules/operations/projects/projects.service';
 
 describe('ProjectsService transaction boundaries', () => {
   const prisma: any = {

@@ -2,25 +2,25 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { Prisma } from '@prisma/client';
 import JSZip from 'jszip';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
-import { PdfService } from '../../../common/pdf/pdf.service';
+import { PdfService } from '$common/pdf/pdf.service';
 import { existsSync, readFileSync } from 'node:fs';
 import { extname, resolve } from 'node:path';
-import { MailService } from '../../../common/mail/mail.service';
-import { PrismaService } from '../../../common/prisma/prisma.service';
-import { toBigInt } from '../../../common/utils/ids';
-import { NotificationsService } from '../../platform/notifications/notifications.service';
-import { CreatePayrollRunDto } from './dto/create-payroll-run.dto';
-import { GeneratePayrollPayslipTemplateDto, GeneratePayrollSummaryTemplateDto } from './dto/generate-payroll-template.dto';
-import { PayPayrollRunDto } from './dto/pay-payroll-run.dto';
-import { PayrollImportDto } from './dto/payroll-import.dto';
-import { UpdatePayrollRunAllocationsDto } from './dto/update-payroll-run-allocations.dto';
-import { UpdatePayrollRunItemDto } from './dto/update-payroll-run-item.dto';
-import { UpdatePayrollRunTimesheetAllocationsDto } from './dto/update-payroll-run-timesheet-allocations.dto';
-import { UpsertPayrollComponentDto } from './dto/upsert-payroll-component.dto';
-import { UpsertPayrollSettingDto } from './dto/upsert-payroll-setting.dto';
-import { UpsertPayrollTaxTableDto } from './dto/upsert-payroll-tax-table.dto';
-import { UpsertPayrollWorkerDto } from './dto/upsert-payroll-worker.dto';
-import { paginatedResponse } from '../../../common/helpers/paginated-response';
+import { MailService } from '$common/mail/mail.service';
+import { PrismaService } from '$common/prisma/prisma.service';
+import { toBigInt } from '$common/utils/ids';
+import { NotificationsService } from '$modules/platform/notifications/notifications.service';
+import { CreatePayrollRunDto } from '$modules/hr/payroll/dto/create-payroll-run.dto';
+import { GeneratePayrollPayslipTemplateDto, GeneratePayrollSummaryTemplateDto } from '$modules/hr/payroll/dto/generate-payroll-template.dto';
+import { PayPayrollRunDto } from '$modules/hr/payroll/dto/pay-payroll-run.dto';
+import { PayrollImportDto } from '$modules/hr/payroll/dto/payroll-import.dto';
+import { UpdatePayrollRunAllocationsDto } from '$modules/hr/payroll/dto/update-payroll-run-allocations.dto';
+import { UpdatePayrollRunItemDto } from '$modules/hr/payroll/dto/update-payroll-run-item.dto';
+import { UpdatePayrollRunTimesheetAllocationsDto } from '$modules/hr/payroll/dto/update-payroll-run-timesheet-allocations.dto';
+import { UpsertPayrollComponentDto } from '$modules/hr/payroll/dto/upsert-payroll-component.dto';
+import { UpsertPayrollSettingDto } from '$modules/hr/payroll/dto/upsert-payroll-setting.dto';
+import { UpsertPayrollTaxTableDto } from '$modules/hr/payroll/dto/upsert-payroll-tax-table.dto';
+import { UpsertPayrollWorkerDto } from '$modules/hr/payroll/dto/upsert-payroll-worker.dto';
+import { paginatedResponse } from '$common/helpers/paginated-response';
 
 @Injectable()
 export class PayrollService {

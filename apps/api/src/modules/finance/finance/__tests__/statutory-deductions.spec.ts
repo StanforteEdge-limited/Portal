@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { DeductionService } from '../deduction.service';
-import { PrismaService } from '../../../../common/prisma/prisma.service';
-import { StatutoryDeductionsQueryDto, RemitStatutoryDeductionsDto } from '../dto/statutory-deductions.dto';
+import { DeductionService } from '$modules/finance/finance/deduction.service';
+import { PrismaService } from '$common/prisma/prisma.service';
+import { StatutoryDeductionsQueryDto, RemitStatutoryDeductionsDto } from '$modules/finance/finance/dto/statutory-deductions.dto';
 
 const mockDeductions = [
   {

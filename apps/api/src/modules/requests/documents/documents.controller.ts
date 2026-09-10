@@ -1,11 +1,11 @@
 import { Body, Controller, ForbiddenException, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../../common/auth/jwt-auth.guard';
-import { Permissions } from '../../../common/auth/permissions.decorator';
-import { PermissionsGuard } from '../../../common/auth/permissions.guard';
-import { AcknowledgeDocumentDto } from './dto/acknowledge-document.dto';
-import { CreateDocumentDto } from './dto/create-document.dto';
-import { UpdateDocumentDto } from './dto/update-document.dto';
+import { JwtAuthGuard } from '$common/auth/jwt-auth.guard';
+import { Permissions } from '$common/auth/permissions.decorator';
+import { PermissionsGuard } from '$common/auth/permissions.guard';
+import { AcknowledgeDocumentDto } from '$modules/requests/documents/dto/acknowledge-document.dto';
+import { CreateDocumentDto } from '$modules/requests/documents/dto/create-document.dto';
+import { UpdateDocumentDto } from '$modules/requests/documents/dto/update-document.dto';
 import { DocumentsService } from './documents.service';
 
 @Controller('documents')

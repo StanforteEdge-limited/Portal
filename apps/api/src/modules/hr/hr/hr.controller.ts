@@ -1,22 +1,22 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../../common/auth/jwt-auth.guard';
-import { Permissions } from '../../../common/auth/permissions.decorator';
-import { PermissionsGuard } from '../../../common/auth/permissions.guard';
-import { SetPrimaryOrganizationDto } from './dto/set-primary-organization.dto';
+import { JwtAuthGuard } from '$common/auth/jwt-auth.guard';
+import { Permissions } from '$common/auth/permissions.decorator';
+import { PermissionsGuard } from '$common/auth/permissions.guard';
+import { SetPrimaryOrganizationDto } from '$modules/hr/hr/dto/set-primary-organization.dto';
 import { HrService } from './hr.service';
-import { EmployeeActionDto, UpsertEmployeeDto } from './dto/upsert-employee.dto';
-import { AdjustLeaveBalanceDto } from './dto/leave-balance.dto';
+import { EmployeeActionDto, UpsertEmployeeDto } from '$modules/hr/hr/dto/upsert-employee.dto';
+import { AdjustLeaveBalanceDto } from '$modules/hr/hr/dto/leave-balance.dto';
 import {
   AssignEmployeeOrganizationDto,
   AssignEmployeeTeamDto,
   AssignOnboardingFormDto,
   UpdateOnboardingFormAssignmentDto
-} from './dto/manage-employee-links.dto';
-import { PoliciesService } from '../../requests/policies/policies.service';
-import { CreatePolicyDto } from '../../requests/policies/dto/create-policy.dto';
-import { UpdatePolicyDto } from '../../requests/policies/dto/update-policy.dto';
-import { ResolvePolicyDto } from '../../requests/policies/dto/resolve-policy.dto';
+} from '$modules/hr/hr/dto/manage-employee-links.dto';
+import { PoliciesService } from '$modules/requests/policies/policies.service';
+import { CreatePolicyDto } from '$modules/requests/policies/dto/create-policy.dto';
+import { UpdatePolicyDto } from '$modules/requests/policies/dto/update-policy.dto';
+import { ResolvePolicyDto } from '$modules/requests/policies/dto/resolve-policy.dto';
 
 const HR_POLICY_MODULES = ['hr', 'attendance', 'leave', 'work'];
 

@@ -1,6 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { FinanceService } from '../finance.service';
-import { DeductionService } from '../deduction.service';
+import { FinanceService } from '$modules/finance/finance/finance.service';
+import { DeductionService } from '$modules/finance/finance/deduction.service';
 
 function createFinanceService(prisma: any) {
   return new FinanceService(prisma, {} as any, {} as any, {} as any);

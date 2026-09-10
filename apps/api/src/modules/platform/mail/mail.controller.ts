@@ -3,13 +3,13 @@ import {
   Param, Body, Query, Req, Res, UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags, ApiQuery } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../../common/auth/jwt-auth.guard';
-import { PrismaService } from '../../../common/prisma/prisma.service';
+import { JwtAuthGuard } from '$common/auth/jwt-auth.guard';
+import { PrismaService } from '$common/prisma/prisma.service';
 import { MailAccountService } from './mail-account.service';
 import { MailSyncService } from './mail-sync.service';
 import { MailImapService } from './mail-imap.service';
 import { MailSmtpService } from './mail-smtp.service';
-import { SendMessageDto } from './dto/send-message.dto';
+import { SendMessageDto } from '$modules/platform/mail/dto/send-message.dto';
 import type { Response } from 'express';
 
 @ApiTags('Mail')

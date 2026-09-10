@@ -1,13 +1,13 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
-import { PrismaService } from '../../../common/prisma/prisma.service';
-import { toBigInt } from '../../../common/utils/ids';
-import { CreateAdminUserDto } from './dto/create-admin-user.dto';
-import { UpdateAdminUserDto } from './dto/update-admin-user.dto';
-import { UpdateUserStatusDto } from './dto/update-user-status.dto';
-import { generateUniqueUsername, makeUsernameSeed } from '../../../common/utils/username';
-import { paginatedResponse } from '../../../common/helpers/paginated-response';
-import { UsersService } from '../users/users.service';
+import { PrismaService } from '$common/prisma/prisma.service';
+import { toBigInt } from '$common/utils/ids';
+import { CreateAdminUserDto } from '$modules/auth/admin/dto/create-admin-user.dto';
+import { UpdateAdminUserDto } from '$modules/auth/admin/dto/update-admin-user.dto';
+import { UpdateUserStatusDto } from '$modules/auth/admin/dto/update-user-status.dto';
+import { generateUniqueUsername, makeUsernameSeed } from '$common/utils/username';
+import { paginatedResponse } from '$common/helpers/paginated-response';
+import { UsersService } from '$modules/auth/users/users.service';
 
 @Injectable()
 export class AdminService {

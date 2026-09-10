@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import nodemailer from 'nodemailer';
-import { PrismaService } from '../prisma/prisma.service';
-import { toBigInt } from '../utils/ids';
+import { PrismaService } from '$common/prisma/prisma.service';
+import { toBigInt } from '$common/utils/ids';
 
 type SendMailInput = {
   to: string;

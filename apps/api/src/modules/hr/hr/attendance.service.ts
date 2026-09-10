@@ -1,13 +1,13 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { PrismaService } from '../../../common/prisma/prisma.service';
-import { paginatedResponse } from '../../../common/helpers/paginated-response';
-import { toBigInt } from '../../../common/utils/ids';
-import { CreateAttendanceCorrectionDto } from './dto/create-attendance-correction.dto';
-import { CreateAttendanceExceptionDto } from './dto/create-attendance-exception.dto';
-import { ReviewAttendanceCorrectionDto } from './dto/review-attendance-correction.dto';
-import { ReviewAttendanceExceptionDto } from './dto/review-attendance-exception.dto';
-import { UpsertOfficeLocationDto } from './dto/upsert-office-location.dto';
+import { PrismaService } from '$common/prisma/prisma.service';
+import { paginatedResponse } from '$common/helpers/paginated-response';
+import { toBigInt } from '$common/utils/ids';
+import { CreateAttendanceCorrectionDto } from '$modules/hr/hr/dto/create-attendance-correction.dto';
+import { CreateAttendanceExceptionDto } from '$modules/hr/hr/dto/create-attendance-exception.dto';
+import { ReviewAttendanceCorrectionDto } from '$modules/hr/hr/dto/review-attendance-correction.dto';
+import { ReviewAttendanceExceptionDto } from '$modules/hr/hr/dto/review-attendance-exception.dto';
+import { UpsertOfficeLocationDto } from '$modules/hr/hr/dto/upsert-office-location.dto';
 
 type AttendanceMode = 'onsite' | 'remote' | 'field';
 type GeofenceStatus = 'inside' | 'outside' | 'unknown' | 'not_applicable';

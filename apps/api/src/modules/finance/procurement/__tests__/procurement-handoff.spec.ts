@@ -1,4 +1,4 @@
-import { ProcurementService } from '../procurement.service';
+import { ProcurementService } from '$modules/finance/procurement/procurement.service';
 
 describe('ProcurementService handoff', () => {
   const prisma: any = {

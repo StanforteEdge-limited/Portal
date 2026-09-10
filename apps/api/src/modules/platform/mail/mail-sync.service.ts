@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../../common/prisma/prisma.service';
+import { PrismaService } from '$common/prisma/prisma.service';
 import { MailAccountService } from './mail-account.service';
 import { MailImapService } from './mail-imap.service';
-import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationsService } from '$modules/platform/notifications/notifications.service';
 import type { MailAccount } from '@prisma/client';
-import type { SyncResultDto } from './dto/sync-result.dto';
+import type { SyncResultDto } from '$modules/platform/mail/dto/sync-result.dto';
 
 const DEFAULT_FOLDERS: Record<string, string[]> = {
   GOOGLE: ['INBOX', '[Gmail]/Sent Mail', '[Gmail]/Drafts', '[Gmail]/Spam', '[Gmail]/Trash'],

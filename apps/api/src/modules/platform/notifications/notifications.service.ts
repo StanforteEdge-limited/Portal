@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../../common/prisma/prisma.service';
-import { toBigInt } from '../../../common/utils/ids';
+import { PrismaService } from '$common/prisma/prisma.service';
+import { toBigInt } from '$common/utils/ids';
 import { Prisma } from '@prisma/client';
-import { MailService } from '../../../common/mail/mail.service';
+import { MailService } from '$common/mail/mail.service';
 
 type NotificationInput = {
   userId: string | bigint;

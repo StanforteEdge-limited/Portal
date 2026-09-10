@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsService } from './notifications.service';
-import { MailModule } from '../../../common/mail/mail.module';
+import { MailModule } from '$common/mail/mail.module';
 
 @Module({
   imports: [MailModule],

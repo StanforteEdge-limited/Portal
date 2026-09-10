@@ -1,11 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { GroupUserRole, Prisma } from '@prisma/client';
-import { PrismaService } from '../../../common/prisma/prisma.service';
-import { paginatedResponse } from '../../../common/helpers/paginated-response';
-import { toBigInt } from '../../../common/utils/ids';
-import { AddProjectMemberDto } from './dto/add-project-member.dto';
-import { CreateProjectDto } from './dto/create-project.dto';
-import { UpdateProjectDto } from './dto/update-project.dto';
+import { PrismaService } from '$common/prisma/prisma.service';
+import { paginatedResponse } from '$common/helpers/paginated-response';
+import { toBigInt } from '$common/utils/ids';
+import { AddProjectMemberDto } from '$modules/operations/projects/dto/add-project-member.dto';
+import { CreateProjectDto } from '$modules/operations/projects/dto/create-project.dto';
+import { UpdateProjectDto } from '$modules/operations/projects/dto/update-project.dto';
 
 @Injectable()
 export class ProjectsService {

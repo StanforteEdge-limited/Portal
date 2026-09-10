@@ -1,8 +1,8 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../../common/auth/jwt-auth.guard';
-import { Permissions } from '../../../common/auth/permissions.decorator';
-import { PermissionsGuard } from '../../../common/auth/permissions.guard';
+import { JwtAuthGuard } from '$common/auth/jwt-auth.guard';
+import { Permissions } from '$common/auth/permissions.decorator';
+import { PermissionsGuard } from '$common/auth/permissions.guard';
 import { FormsService } from './forms.service';
 import {
   CreateFormAssignmentDto,
@@ -10,7 +10,7 @@ import {
   CreateFormFieldDto,
   UpdateFormDto,
   UpdateFormFieldDto
-} from './dto/manage-forms.dto';
+} from '$modules/requests/forms/dto/manage-forms.dto';
 
 @Controller('forms')
 @ApiTags('Forms')

@@ -1,17 +1,17 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
-import { PrismaService } from '../../../common/prisma/prisma.service';
-import { toBigInt } from '../../../common/utils/ids';
-import { UpdateProfileDto } from './dto/update-profile.dto';
-import { CreateUserDto } from './dto/create-user.dto';
-import { ProfileResponseDto } from './dto/profile-response.dto';
-import { AssignUserRolesDto } from './dto/assign-user-roles.dto';
-import { InviteUserDto } from './dto/invite-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
-import { randomToken, sha256 } from '../../../common/utils/crypto';
-import { MailService } from '../../../common/mail/mail.service';
-import { generateUniqueUsername, makeUsernameSeed } from '../../../common/utils/username';
-import { paginatedResponse } from '../../../common/helpers/paginated-response';
+import { PrismaService } from '$common/prisma/prisma.service';
+import { toBigInt } from '$common/utils/ids';
+import { UpdateProfileDto } from '$modules/auth/users/dto/update-profile.dto';
+import { CreateUserDto } from '$modules/auth/users/dto/create-user.dto';
+import { ProfileResponseDto } from '$modules/auth/users/dto/profile-response.dto';
+import { AssignUserRolesDto } from '$modules/auth/users/dto/assign-user-roles.dto';
+import { InviteUserDto } from '$modules/auth/users/dto/invite-user.dto';
+import { UpdateUserDto } from '$modules/auth/users/dto/update-user.dto';
+import { randomToken, sha256 } from '$common/utils/crypto';
+import { MailService } from '$common/mail/mail.service';
+import { generateUniqueUsername, makeUsernameSeed } from '$common/utils/username';
+import { paginatedResponse } from '$common/helpers/paginated-response';
 
 @Injectable()
 export class UsersService {

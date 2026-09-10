@@ -1,12 +1,12 @@
 import { Body, Controller, Delete, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../../common/auth/jwt-auth.guard';
-import { Permissions } from '../../../common/auth/permissions.decorator';
-import { PermissionsGuard } from '../../../common/auth/permissions.guard';
-import { AssignUserRolesDto } from './dto/assign-user-roles.dto';
-import { CreateRoleDto } from './dto/create-role.dto';
-import { SetRolePermissionsDto } from './dto/set-role-permissions.dto';
-import { UpdateRoleDto } from './dto/update-role.dto';
+import { JwtAuthGuard } from '$common/auth/jwt-auth.guard';
+import { Permissions } from '$common/auth/permissions.decorator';
+import { PermissionsGuard } from '$common/auth/permissions.guard';
+import { AssignUserRolesDto } from '$modules/auth/rbac/dto/assign-user-roles.dto';
+import { CreateRoleDto } from '$modules/auth/rbac/dto/create-role.dto';
+import { SetRolePermissionsDto } from '$modules/auth/rbac/dto/set-role-permissions.dto';
+import { UpdateRoleDto } from '$modules/auth/rbac/dto/update-role.dto';
 import { RbacService } from './rbac.service';
 
 @Controller('admin/rbac')
