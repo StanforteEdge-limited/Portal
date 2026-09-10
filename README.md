@@ -6,8 +6,9 @@ Staff portal for StanforteEdge — a monorepo with a NestJS API backend and two 
 
 | Workspace | Path | Stack |
 |-----------|------|-------|
-| **API** | `api/` | NestJS, TypeScript, Prisma (Postgres), JWT auth, Swagger |
-| **PWA (new)** | `apps/pwa/` | React 18, Vite, Tailwind, Tauri (desktop) |
+| **API** | `apps/api/` | NestJS, TypeScript, Prisma (Postgres), JWT auth, Swagger |
+| **Web (PWA)** | `apps/web/` | React 18, Vite, Tailwind — browser app, no Tauri code |
+| **Desktop** | `apps/desktop/` | React 18, Vite, Tailwind + Tauri 2 (native shell, tray, updates, deep links) |
 | **PWA (legacy)** | `PWA/` | React 18, Vite, Redux, CKEditor, FullCalendar |
 | **Shared** | `apps/shared/` | Shared TypeScript types, API clients, utilities |
 
@@ -17,9 +18,9 @@ Staff portal for StanforteEdge — a monorepo with a NestJS API backend and two 
 
 ## Architecture
 
-### API (`api/`)
+### API (`apps/api/`)
 
-NestJS application bootstrapped in `api/src/main.ts` with:
+NestJS application bootstrapped in `apps/api/src/main.ts` with:
 - Global prefix `/v1`
 - Swagger docs at `/docs`
 - JWT auth (access + refresh tokens)
@@ -27,7 +28,7 @@ NestJS application bootstrapped in `api/src/main.ts` with:
 - CORS configured for localhost dev origins + `CORS_ORIGINS` env
 - Response envelope interceptor + global exception filter
 
-**Modules** (24 NestJS modules in `api/src/modules/`):
+**Modules** (24 NestJS modules in `apps/api/src/modules/`):
 
 | Module | Purpose |
 |--------|---------|
@@ -54,7 +55,7 @@ NestJS application bootstrapped in `api/src/main.ts` with:
 | `admin` | Admin endpoints |
 | `health` | Health check |
 
-**Shared infrastructure** (`api/src/common/`):
+**Shared infrastructure** (`apps/api/src/common/`):
 - `prisma/` — Database client
 - `auth/` — JWT guards, decorators
 - `mail/` — Nodemailer SMTP
@@ -72,11 +73,11 @@ Both PWAs consume the same API via `apps/shared/`, which provides typed API clie
 - **pnpm** 10.33+ (`corepack enable && corepack prepare pnpm@10.33.0 --activate`)
 - **PostgreSQL** running locally
 - **(Optional) Google Chrome** for PDF generation via Puppeteer
-- **(Optional) Rust** for Tauri desktop builds (`apps/pwa/`) — install via `rustup.rs`
+- **(Optional) Rust** for Tauri desktop builds (`apps/desktop/`) — install via `rustup.rs`
 
 ### Tauri (desktop) prerequisites
 
-If building the Tauri desktop app (`pnpm run tauri:build`), you also need:
+If building the Tauri desktop app (`pnpm run tauri:build` in `apps/desktop/`), you also need:
 - Rust toolchain (`rustup` + `cargo`)
 - System libs: `webkit2gtk`, `libappindicator`, etc.
 - See [Tauri prerequisites docs](https://v2.tauri.app/start/prerequisites/)
@@ -98,15 +99,16 @@ Runs through all prerequisites and flags missing items.
 pnpm install
 
 # Configure environments
-cp api/.env.example api/.env
-cp apps/pwa/.env.example apps/pwa/.env.local
-# Edit api/.env — set DATABASE_URL, JWT_SECRET, JWT_REFRESH_SECRET
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env.local
+cp apps/desktop/.env.example apps/desktop/.env.local
+# Edit apps/api/.env — set DATABASE_URL, JWT_SECRET, JWT_REFRESH_SECRET
 
 # Run database migrations
-pnpm run prisma:migrate -w api
+pnpm --filter portal-api prisma:migrate
 
 # Seed RBAC roles & permissions
-pnpm run seed:rbac -w api
+pnpm --filter portal-api seed:rbac
 ```
 
 ### Development
@@ -117,6 +119,9 @@ pnpm run dev:api
 
 # Start new PWA (http://localhost:5173)
 pnpm run dev:pwa2
+
+# Start desktop app (Tauri, Vite on http://localhost:5174)
+pnpm run tauri:dev
 
 # Start legacy PWA (http://localhost:5173)
 pnpm run dev:pwa
@@ -134,15 +139,15 @@ Pushes to `development` trigger the `Development CI` workflow before promotion t
 ### Seeding
 
 ```bash
-pnpm run seed:rbac -w api           # RBAC roles & permissions
-pnpm run seed:first-user -w api     # Initial admin user
-pnpm run seed:request-categories -w api
-pnpm run seed:finance-requests -w api
-pnpm run seed:hr-leave-system -w api
-pnpm run seed:loans-system -w api
-pnpm run seed:documents -w api
-pnpm run seed:hr-onboarding-forms -w api
-pnpm run seed:release-baseline -w api
+pnpm --filter portal-api seed:rbac           # RBAC roles & permissions
+pnpm --filter portal-api seed:first-user     # Initial admin user
+pnpm --filter portal-api seed:request-categories
+pnpm --filter portal-api seed:finance-requests
+pnpm --filter portal-api seed:hr-leave-system
+pnpm --filter portal-api seed:loans-system
+pnpm --filter portal-api seed:documents
+pnpm --filter portal-api seed:hr-onboarding-forms
+pnpm --filter portal-api seed:release-baseline
 ```
 
 ## Scripts
@@ -151,18 +156,21 @@ pnpm run seed:release-baseline -w api
 |---------|-------------|
 | `pnpm run dev:api` | Start API dev server |
 | `pnpm run dev:pwa` | Start legacy PWA |
-| `pnpm run dev:pwa2` | Start new PWA |
+| `pnpm run dev:pwa2` | Start web PWA |
+| `pnpm run dev:web` | Start web PWA |
+| `pnpm run dev:desktop` | Start desktop frontend only |
 | `pnpm run build:api` | Build API |
 | `pnpm run build:pwa` | Build legacy PWA |
-| `pnpm run build:pwa2` | Build new PWA |
+| `pnpm run build:pwa2` | Build web PWA |
+| `pnpm run build:desktop` | Build desktop frontend |
 | `pnpm run tauri:dev` | Start Tauri dev (desktop) |
 | `pnpm run tauri:build` | Build Tauri (desktop) |
-| `pnpm run prisma:migrate -w api` | Run dev migrations |
-| `pnpm run prisma:generate -w api` | Regenerate Prisma client |
+| `pnpm --filter portal-api prisma:migrate` | Run dev migrations |
+| `pnpm --filter portal-api prisma:generate` | Regenerate Prisma client |
 
 ## Testing
 
-Tests use Playwright against the new PWA (`apps/pwa/`). They assume the API and PWA are running locally.
+Tests use Playwright against the web PWA (`apps/web/`). They assume the API and PWA are running locally.
 
 ```bash
 # Run all e2e tests
@@ -187,10 +195,10 @@ npx playwright test e2e/payroll.spec.ts
 Three GitHub Actions workflows trigger on push to `main`:
 
 ### `deploy-api.yml`
-- Trigger: changes to `api/**`, `package.json`, or the workflow itself
+- Trigger: changes to `apps/api/**`, `package.json`, or the workflow itself
 - Steps: install deps, generate Prisma client, build API, SCP to server, run migrations + seeds, reload PM2
 - Required secrets: `API_SSH_HOST`, `API_SSH_USER`, `API_SSH_PRIVATE_KEY`, `API_APP_DIR`
-- Runs via PM2 (`api/ecosystem.config.cjs`) — single instance, fork mode, 500MB limit
+- Runs via PM2 (`apps/api/ecosystem.config.cjs`) — single instance, fork mode, 500MB limit
 
 ### `deploy-pwa.yml` (legacy PWA)
 - Trigger: changes to `PWA/**` or the workflow
@@ -198,7 +206,7 @@ Three GitHub Actions workflows trigger on push to `main`:
 - Required secrets: `PWA_SSH_HOST`, `PWA_SSH_USER`, `PWA_SSH_PRIVATE_KEY`, `PWA_WEB_DIR`, `PWA_API_BASE_URL`, `PWA_BASE_PATH`
 
 ### `deploy-pwa2.yml` (new PWA)
-- Trigger: changes to `apps/pwa/**`, `apps/shared/**`, or the workflow
+- Trigger: changes to `apps/web/**`, `apps/shared/**`, or the workflow
 - Steps: install deps, build with env vars, write `version.json`, SCP `dist/` to web server
 - Required secrets: same as legacy PWA plus `PWA2_WEB_DIR`, `PWA2_BASE_PATH`
 
@@ -208,19 +216,19 @@ Three GitHub Actions workflows trigger on push to `main`:
 
 Prisma client needs to be regenerated after schema changes:
 ```bash
-pnpm run prisma:generate -w api
+pnpm --filter portal-api prisma:generate
 ```
 
 ### Prisma migration fails
 
-Ensure PostgreSQL is running and `DATABASE_URL` in `api/.env` is correct. Test connectivity:
+Ensure PostgreSQL is running and `DATABASE_URL` in `apps/api/.env` is correct. Test connectivity:
 ```bash
-psql "$(grep DATABASE_URL api/.env | cut -d= -f2-)"
+psql "$(grep DATABASE_URL apps/api/.env | cut -d= -f2-)"
 ```
 
 ### Puppeteer fails to generate PDF
 
-Set `PDF_BROWSER_PATH` in `api/.env` to a valid Chrome/Chromium path. On macOS:
+Set `PDF_BROWSER_PATH` in `apps/api/.env` to a valid Chrome/Chromium path. On macOS:
 ```
 PDF_BROWSER_PATH=/Applications/Google Chrome.app/Contents/MacOS/Google Chrome
 ```
@@ -234,11 +242,11 @@ corepack enable && corepack prepare pnpm@10.33.0 --activate
 
 ### "JWT secret must be set to non-default values"
 
-The API refuses to start in production with default secrets. Set `JWT_SECRET` and `JWT_REFRESH_SECRET` in `api/.env`.
+The API refuses to start in production with default secrets. Set `JWT_SECRET` and `JWT_REFRESH_SECRET` in `apps/api/.env`.
 
 ### Port conflicts
 
-- API defaults to port 3000 (`PORT` in `api/.env`)
+- API defaults to port 3000 (`PORT` in `apps/api/.env`)
 - PWA dev servers default to 5173 (Vite)
 - Change via env vars if ports are occupied
 
@@ -250,11 +258,11 @@ Ensure Rust is installed (`rustc --version`) and system dependencies are met. Se
 
 - **Swagger UI** (dev): `http://localhost:3000/docs` — interactive API docs, try endpoints live
 - **OpenAPI JSON**: `http://localhost:3000/docs-json`
-- **Postman collection**: `api/postman/` — finance flow collection with env preset
+- **Postman collection**: `apps/api/postman/` — finance flow collection with env preset
 
 ## Database
 
-See [api/prisma/README.md](./api/prisma/README.md) for the model reference (118 models, 13 domains).
+See [apps/api/prisma/README.md](./apps/api/prisma/README.md) for the model reference (118 models, 13 domains).
 
 ## Design System
 
@@ -269,7 +277,7 @@ See [docs/design/DESIGN.md](./docs/design/DESIGN.md) — "Precision Hospitality"
 | Release checklist | [docs/release-checklist.md](./docs/release-checklist.md) | Pre-launch QA checklist |
 | Smoke test | [docs/launch-smoke-15min.md](./docs/launch-smoke-15min.md) | 15-min post-deploy sanity check |
 | Payroll instructions | [docs/instructions/payroll.md](./docs/instructions/payroll.md) | Payroll module usage |
-| Postman | [api/postman/README.md](./api/postman/README.md) | Finance flow API testing |
+| Postman | [apps/api/postman/README.md](./apps/api/postman/README.md) | Finance flow API testing |
 
 ## Contributing
 

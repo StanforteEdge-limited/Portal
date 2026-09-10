@@ -1,0 +1,7 @@
+# Ignore binary artifacts — copy built files here manually after tauri build
+*.dmg
+*.exe
+*.AppImage
+*.msi
+*.deb
+*.rpm

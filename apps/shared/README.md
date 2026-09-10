@@ -11,6 +11,6 @@ Shared TypeScript package consumed by both PWA and PWA2.
 
 ## Usage
 
-Referenced via workspace path `@stanforte/shared` in both `apps/pwa/package.json` and `PWA/package.json`.
+Referenced via workspace path `@stanforte/shared` in `apps/web/package.json`, `apps/desktop/package.json`, and `PWA/package.json`.
 
 Deployment trigger note: README-only update for CI and release-path verification.

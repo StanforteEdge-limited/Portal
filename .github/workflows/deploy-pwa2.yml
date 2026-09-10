@@ -9,8 +9,8 @@ jobs:
     steps:
       - name: PWA2 deploy moved to Cloudflare Pages
         run: |
-          echo "apps/pwa production deploys now run in Cloudflare Pages."
+          echo "apps/web production deploys now run in Cloudflare Pages."
           echo "Production branch: main"
           echo "Build root: repository root"
           echo "Build command: npm ci && npm run build:pwa2"
-          echo "Build output: apps/pwa/dist"
+          echo "Build output: apps/web/dist"

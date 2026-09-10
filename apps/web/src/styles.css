@@ -1,0 +1,116 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html {
+    @apply bg-slate-50 text-slate-950;
+  }
+
+  body {
+    @apply min-h-screen bg-slate-50 font-sans antialiased text-slate-950;
+  }
+
+  #root {
+    @apply min-h-screen;
+  }
+
+  ::selection {
+    background: rgba(3, 71, 133, 0.16);
+  }
+}
+
+@layer components {
+  .app-shell {
+    background:
+      radial-gradient(circle at top left, rgba(3, 71, 133, 0.12), transparent 30%),
+      radial-gradient(circle at top right, rgba(53, 109, 157, 0.08), transparent 26%),
+      linear-gradient(180deg, #f7f9fc 0%, #eef4fb 100%);
+  }
+
+  .shell-panel {
+    @apply rounded-[28px] border border-white/70 bg-white/80 shadow-card backdrop-blur-xl;
+  }
+
+  .section-card {
+    @apply rounded-[28px] border border-white/70 bg-white/80 shadow-card backdrop-blur-xl;
+  }
+
+  .section-kicker {
+    @apply text-[0.72rem] font-bold uppercase tracking-[0.18em] text-slate-500;
+  }
+
+  .page-title {
+    @apply font-headline text-[clamp(2rem,4vw,3.15rem)] font-semibold tracking-tight text-slate-950 capitalize;
+  }
+
+  .input-base {
+    @apply w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-900 focus:ring-4 focus:ring-brand-900/10;
+  }
+
+  .field-label {
+    @apply mb-2 block text-[0.72rem] font-bold uppercase tracking-[0.16em] text-slate-500;
+  }
+
+  .field-help {
+    @apply mt-2 text-xs leading-5 text-slate-500;
+  }
+
+  .button-base {
+    @apply inline-flex items-center justify-center rounded-full font-semibold transition focus:outline-none focus:ring-4 focus:ring-brand-900/10 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .button-primary {
+    @apply rounded-full bg-brand-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 hover:shadow-card focus:outline-none focus:ring-4 focus:ring-brand-900/10 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .button-secondary {
+    @apply rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-brand-900/10 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .button-ghost {
+    @apply rounded-full bg-transparent px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-brand-900/10 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .chip-base {
+    @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold;
+  }
+
+  .chip-neutral {
+    @apply chip-base bg-slate-100 text-slate-600;
+  }
+
+  .chip-success {
+    @apply chip-base bg-success/10 text-success;
+  }
+
+  .chip-warning {
+    @apply chip-base bg-warning/10 text-warning;
+  }
+
+  .chip-pending {
+    @apply chip-base bg-pending/10 text-slate-700;
+  }
+
+  .chip-danger {
+    @apply chip-base bg-danger/10 text-danger;
+  }
+
+  .stat-card {
+    @apply rounded-[24px] border border-white/70 bg-white/80 p-5 shadow-card backdrop-blur-xl;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}

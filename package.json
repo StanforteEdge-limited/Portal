@@ -1,24 +1,20 @@
 {
   "name": "stanforteedge-portal",
   "private": true,
-  "workspaces": [
-    "PWA",
-    "apps/pwa",
-    "apps/shared",
-    "api"
-  ],
   "scripts": {
-    "dev": "npm run dev -w api",
-    "dev:pwa": "npm run dev -w PWA",
-    "dev:pwa2": "npm run dev -w apps/pwa",
-    "dev:api": "npm run dev -w api",
-    "build": "npm run build -w api",
-    "build:pwa": "npm run build -w PWA",
-    "build:pwa2": "npm run build -w apps/pwa",
-    "build:api": "npm run build -w api",
-    "deploy:server": "npm run deploy:server -w api",
-    "tauri:dev": "npm run tauri:dev -w apps/pwa",
-    "tauri:build": "npm run tauri:build -w apps/pwa"
+    "dev": "pnpm --filter portal-api dev",
+    "dev:pwa2": "pnpm --filter stanforte-web dev",
+    "dev:web": "pnpm --filter stanforte-web dev",
+    "dev:desktop": "pnpm --filter stanforte-desktop dev",
+    "dev:api": "pnpm --filter portal-api dev",
+    "build": "pnpm --filter portal-api build",
+    "build:pwa2": "pnpm --filter stanforte-web build",
+    "build:web": "pnpm --filter stanforte-web build",
+    "build:desktop": "pnpm --filter stanforte-desktop build",
+    "build:api": "pnpm --filter portal-api build",
+    "deploy:server": "pnpm --filter portal-api deploy:server",
+    "tauri:dev": "pnpm --filter stanforte-desktop tauri:dev",
+    "tauri:build": "pnpm --filter stanforte-desktop tauri:build"
   },
   "overrides": {
     "react": "18.2.0",

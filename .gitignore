@@ -10,7 +10,7 @@ npm-debug.log*
 .vscode/
 **/.vscode/
 uploads/
-api/uploads/
+apps/api/uploads/
 plugins
 .playwright-cli/
 .claude/
@@ -18,9 +18,13 @@ plugins
 output/
 tmp/
 .worktrees/
-apps/pwa/src-tauri/target/
-apps/pwa/.env.local
-apps/pwa/public/version.json
+apps/web/src-tauri/target/
+apps/web/.env.local
+apps/web/public/version.json
+apps/desktop/src-tauri/target/
+apps/desktop/.env.local
+apps/desktop/public/version.json
+apps/desktop/dist/
 docs/_archive/
 docs/**/*.zip
 docs/policies/
