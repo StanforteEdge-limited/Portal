@@ -44,22 +44,30 @@ export class OrganizationsService {
     return paginatedResponse(items, { page: 1, per_page: items.length, total: items.length });
   }
 
-  async createOrganization(dto: CreateOrganizationDto) {
+  async createOrganization(dto: CreateOrganizationDto, tenantId?: bigint) {
     const code = dto.code.trim();
     const exists = await this.drizzle.organization.findUnique({ where: { code } });
     if (exists) throw new BadRequestException('Organization code already exists');
 
-    return this.drizzle.organization.create({
-      data: {
-        name: dto.name,
-        code,
-        organizationType: (dto.organization_type ?? 'venture') as OrganizationType,
-        isActive: dto.is_active ?? true,
-        parentOrganizationId: dto.parent_organization_id ? toBigInt(dto.parent_organization_id) : null,
-        metadata: dto.metadata as Drizzle.InputJsonValue | undefined,
-        createdAt: new Date(),
-        updatedAt: new Date()
+    return this.drizzle.$transaction(async (tx) => {
+      const organization = await tx.organization.create({
+        data: {
+          name: dto.name,
+          code,
+          organizationType: (dto.organization_type ?? 'venture') as OrganizationType,
+          isActive: dto.is_active ?? true,
+          parentOrganizationId: dto.parent_organization_id ? toBigInt(dto.parent_organization_id) : null,
+          metadata: dto.metadata as Drizzle.InputJsonValue | undefined,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      });
+      if (tenantId) {
+        await tx.tenantOrganization.create({
+          data: { tenantId, organizationId: organization.id },
+        });
       }
+      return organization;
     });
   }
 

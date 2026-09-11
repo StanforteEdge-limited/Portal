@@ -6,6 +6,7 @@ import { PermissionsGuard } from '$common/auth/permissions.guard';
 import { OrganizationsService } from './organizations.service';
 import { CreateOrganizationDto } from '$modules/directory/organizations/dto/create-organization.dto';
 import { UpdateOrganizationDto } from '$modules/directory/organizations/dto/update-organization.dto';
+import { CurrentTenant, TenantContext } from '$common/auth/tenant-context';
 
 @Controller('organizations')
 @ApiTags('Organizations')
@@ -23,8 +24,8 @@ export class OrganizationsController {
   @Post()
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @Permissions('settings.manage')
-  create(@Body() dto: CreateOrganizationDto) {
-    return this.organizationsService.createOrganization(dto);
+  create(@CurrentTenant() tenant: TenantContext, @Body() dto: CreateOrganizationDto) {
+    return this.organizationsService.createOrganization(dto, tenant.tenantId);
   }
 
   @Get('my')
