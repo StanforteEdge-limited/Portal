@@ -9,6 +9,7 @@ import { generateUniqueUsername, makeUsernameSeed } from '$common/utils/username
 import { paginatedResponse } from '$common/helpers/paginated-response';
 import { UsersService } from '$modules/auth/users/users.service';
 import { Drizzle } from '$common/db/drizzle-compat';
+import { TenantContext } from '$common/auth/tenant-context';
 
 @Injectable()
 export class AdminService {
@@ -17,7 +18,7 @@ export class AdminService {
     private readonly usersService: UsersService
   ) {}
 
-  async listUsers(filters: Record<string, any>) {
+  async listUsers(filters: Record<string, any>, tenant?: TenantContext) {
     const page = Math.max(1, Number(filters.page ?? 1));
     const perPage = Math.min(100, Math.max(1, Number(filters.per_page ?? 20)));
     const skip = (page - 1) * perPage;
@@ -61,6 +62,14 @@ export class AdminService {
       }
     }
 
+    if (tenant) {
+      const memberships = await this.drizzle.tenantMembership.findMany({
+        where: { tenantId: tenant.tenantId, status: 'active' },
+        select: { profileId: true },
+      });
+      andConditions.push({ id: { in: memberships.map((membership) => membership.profileId) } });
+    }
+
     if (andConditions.length > 0) {
       where.AND = andConditions;
     }
@@ -89,8 +98,14 @@ export class AdminService {
     return paginatedResponse(users.map((user) => this.serializeUser(user)), { page, per_page: perPage, total });
   }
 
-  async getUser(profileId: string) {
+  async getUser(profileId: string, tenant?: TenantContext) {
     const id = this.parseId(profileId, 'profile id');
+    if (tenant) {
+      const membership = await this.drizzle.tenantMembership.findFirst({
+        where: { tenantId: tenant.tenantId, profileId: id, status: 'active' },
+      });
+      if (!membership) throw new NotFoundException('Profile not found');
+    }
     const user = await this.drizzle.profile.findUnique({
       where: { id },
       include: {

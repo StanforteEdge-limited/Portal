@@ -7,6 +7,7 @@ import { CreateAdminUserDto } from '$modules/auth/admin/dto/create-admin-user.dt
 import { UpdateAdminUserDto } from '$modules/auth/admin/dto/update-admin-user.dto';
 import { UpdateUserStatusDto } from '$modules/auth/admin/dto/update-user-status.dto';
 import { AdminService } from './admin.service';
+import { CurrentTenant, TenantContext } from '$common/auth/tenant-context';
 
 @Controller('admin/users')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -17,13 +18,13 @@ export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
   @Get()
-  list(@Query() query: Record<string, any>) {
-    return this.adminService.listUsers(query);
+  list(@CurrentTenant() tenant: TenantContext, @Query() query: Record<string, any>) {
+    return this.adminService.listUsers(query, tenant);
   }
 
   @Get(':id')
-  getUser(@Param('id') id: string) {
-    return this.adminService.getUser(id);
+  getUser(@CurrentTenant() tenant: TenantContext, @Param('id') id: string) {
+    return this.adminService.getUser(id, tenant);
   }
 
   @Post()
