@@ -28,7 +28,7 @@ import { toBigInt } from '$common/utils/ids';
 import { WorkflowService } from '$modules/requests/workflow/workflow.service';
 import { normalizeWorkflowStepApprover } from '$modules/requests/workflow/workflow-approvers';
 import { FormsService } from '$modules/requests/forms/forms.service';
-import { NotificationsService } from '$modules/platform/notifications/notifications.service';
+import { NotificationsService } from '$modules/notifications/notifications.service';
 import { GroupUserRole, Drizzle } from '$common/db/drizzle-compat';
 
 const MANUAL_REQUEST_ID_MIN = BigInt(1);

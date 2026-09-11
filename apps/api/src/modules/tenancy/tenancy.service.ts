@@ -15,6 +15,8 @@ const TENANT_SCOPED_TABLES = [
   'sta_tokens',
   'sta_notifications',
   'sta_email_logs',
+  'sta_notification_jobs',
+  'sta_analytics_events',
   'sta_projects',
   'sta_request_groups',
   'sta_request_instances',

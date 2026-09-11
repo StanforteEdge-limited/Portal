@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { WorkflowService } from '$modules/requests/workflow/workflow.service';
-import { NotificationsService } from '$modules/platform/notifications/notifications.service';
+import { NotificationsService } from '$modules/notifications/notifications.service';
 import { MailService } from '$common/mail/mail.service';
 import { DocumentGeneratorService } from '$common/documents/document-generator.service';
 import { toBigInt } from '$common/utils/ids';

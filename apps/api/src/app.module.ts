@@ -12,7 +12,8 @@ import { RequestsModule } from '$modules/requests/requests/requests.module';
 import { WorkflowModule } from '$modules/requests/workflow/workflow.module';
 import { FinanceModule } from '$modules/finance/finance/finance.module';
 import { HrModule } from '$modules/hr/hr/hr.module';
-import { NotificationsModule } from '$modules/platform/notifications/notifications.module';
+import { NotificationsModule } from '$modules/notifications/notifications.module';
+import { AnalyticsModule } from '$modules/analytics/analytics.module';
 import { DocumentsModule } from '$modules/requests/documents/documents.module';
 import { FilesModule } from '$modules/platform/files/files.module';
 import { TaxonomyModule } from '$modules/requests/taxonomy/taxonomy.module';
@@ -45,6 +46,7 @@ import { BillingModule } from '$modules/platform/billing/billing.module';
     FinanceModule,
     HrModule,
     NotificationsModule,
+    AnalyticsModule,
     DocumentsModule,
     FilesModule,
     TaxonomyModule,

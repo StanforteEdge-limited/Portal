@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { MailAccountService } from './mail-account.service';
 import { MailImapService } from './mail-imap.service';
-import { NotificationsService } from '$modules/platform/notifications/notifications.service';
+import { NotificationsService } from '$modules/notifications/notifications.service';
 import type { MailAccount } from '$common/db/drizzle-compat';
 import type { SyncResultDto } from '$modules/platform/mail/dto/sync-result.dto';
 

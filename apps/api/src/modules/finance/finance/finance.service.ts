@@ -4,7 +4,7 @@ import { toBigInt } from '$common/utils/ids';
 import { PayrollService } from '$modules/hr/payroll/payroll.service';
 import { paginatedResponse } from '$common/helpers/paginated-response';
 import { DisburseRequestDto } from '$modules/finance/finance/dto/disburse-request.dto';
-import { NotificationsService } from '$modules/platform/notifications/notifications.service';
+import { NotificationsService } from '$modules/notifications/notifications.service';
 import { UpdateFinanceSettingsDto } from '$modules/finance/finance/dto/update-finance-settings.dto';
 import { Drizzle } from '$common/db/drizzle-compat';
 import { UpsertFinanceAccountDto } from '$modules/finance/finance/dto/upsert-finance-account.dto';

@@ -8,7 +8,7 @@ import { extname, resolve } from 'node:path';
 import { MailService } from '$common/mail/mail.service';
 import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { toBigInt } from '$common/utils/ids';
-import { NotificationsService } from '$modules/platform/notifications/notifications.service';
+import { NotificationsService } from '$modules/notifications/notifications.service';
 import { CreatePayrollRunDto } from '$modules/hr/payroll/dto/create-payroll-run.dto';
 import { GeneratePayrollPayslipTemplateDto, GeneratePayrollSummaryTemplateDto } from '$modules/hr/payroll/dto/generate-payroll-template.dto';
 import { PayPayrollRunDto } from '$modules/hr/payroll/dto/pay-payroll-run.dto';

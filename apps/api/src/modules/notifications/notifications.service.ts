@@ -3,6 +3,7 @@ import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { toBigInt } from '$common/utils/ids';
 import { Drizzle } from '$common/db/drizzle-compat';
 import { MailService } from '$common/mail/mail.service';
+import { TenantContextService } from '$common/auth/tenant-context.service';
 
 type NotificationInput = {
   userId: string | bigint;
@@ -26,7 +27,8 @@ type NotificationInput = {
 export class NotificationsService {
   constructor(
     private readonly drizzle: DrizzleService,
-    private readonly mailService: MailService
+    private readonly mailService: MailService,
+    private readonly tenantContext: TenantContextService,
   ) {}
 
   private resolveEmailPortalUrl(input: NotificationInput): string | undefined {
@@ -78,34 +80,29 @@ export class NotificationsService {
         )?.email;
 
       if (recipientEmail) {
-        try {
-          const threadKey =
-            input.emailThreadKey ??
-            (input.notifiableType && input.notifiableId !== undefined
-              ? `${input.notifiableType}-${input.notifiableId.toString()}`
-              : `notification-${created.id.toString()}`);
-          const result = await this.mailService.send({
-            to: recipientEmail,
-            subject: input.emailSubject ?? input.title,
-            text: input.message,
-            html: input.emailHtml,
-            portalUrl: this.resolveEmailPortalUrl(input),
-            ctaLabel: input.emailCtaLabel,
-            threadKey,
-            userId: input.userId,
-            notifiableType: input.notifiableType,
-            notifiableId: input.notifiableId
-          });
-
-          if (result.sent) {
-            await this.drizzle.notification.update({
-              where: { id: created.id },
-              data: { sentVia: ['in-app', 'email'] }
-            });
-          }
-        } catch (error) {
-          void error;
-        }
+        const context = this.tenantContext.require();
+        await this.drizzle.notificationJob.create({
+          data: {
+            tenantId: context.tenantId,
+            notificationId: created.id,
+            channel: 'email',
+            payload: {
+              to: recipientEmail,
+              subject: input.emailSubject ?? input.title,
+              text: input.message,
+              html: input.emailHtml,
+              portalUrl: this.resolveEmailPortalUrl(input),
+              ctaLabel: input.emailCtaLabel,
+              threadKey: input.emailThreadKey ??
+                (input.notifiableType && input.notifiableId !== undefined
+                  ? `${input.notifiableType}-${input.notifiableId.toString()}`
+                  : `notification-${created.id.toString()}`),
+              userId: input.userId.toString(),
+              notifiableType: input.notifiableType,
+              notifiableId: input.notifiableId?.toString(),
+            } as Drizzle.InputJsonValue,
+          },
+        });
       }
     }
 

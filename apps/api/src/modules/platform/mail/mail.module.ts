@@ -5,7 +5,7 @@ import { MailImapService } from './mail-imap.service';
 import { MailSyncService } from './mail-sync.service';
 import { MailSmtpService } from './mail-smtp.service';
 import { MailCryptoService } from './mail-crypto.service';
-import { NotificationsModule } from '$modules/platform/notifications/notifications.module';
+import { NotificationsModule } from '$modules/notifications/notifications.module';
 
 @Module({
   imports: [NotificationsModule],
