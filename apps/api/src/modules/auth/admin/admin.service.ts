@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
-import { PrismaService } from '$common/prisma/prisma.service';
+import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { toBigInt } from '$common/utils/ids';
 import { CreateAdminUserDto } from '$modules/auth/admin/dto/create-admin-user.dto';
 import { UpdateAdminUserDto } from '$modules/auth/admin/dto/update-admin-user.dto';
@@ -8,11 +8,12 @@ import { UpdateUserStatusDto } from '$modules/auth/admin/dto/update-user-status.
 import { generateUniqueUsername, makeUsernameSeed } from '$common/utils/username';
 import { paginatedResponse } from '$common/helpers/paginated-response';
 import { UsersService } from '$modules/auth/users/users.service';
+import { Drizzle } from '$common/db/drizzle-compat';
 
 @Injectable()
 export class AdminService {
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly drizzle: DrizzleService,
     private readonly usersService: UsersService
   ) {}
 
@@ -21,12 +22,12 @@ export class AdminService {
     const perPage = Math.min(100, Math.max(1, Number(filters.per_page ?? 20)));
     const skip = (page - 1) * perPage;
 
-    const where: any = {};
+    const where: Drizzle.ProfileWhereInput = {};
 
     if (filters.type) where.type = String(filters.type);
     if (filters.status) where.status = String(filters.status);
 
-    const andConditions: any[] = [];
+    const andConditions: Drizzle.ProfileWhereInput[] = [];
 
     if (filters.search) {
       const search = String(filters.search);
@@ -64,8 +65,8 @@ export class AdminService {
       where.AND = andConditions;
     }
 
-    const [users, total] = await this.prisma.$transaction([
-      this.prisma.profile.findMany({
+    const [users, total] = await this.drizzle.$transaction([
+      this.drizzle.profile.findMany({
         where,
         include: {
           organizations: {
@@ -82,7 +83,7 @@ export class AdminService {
         skip,
         take: perPage
       }),
-      this.prisma.profile.count({ where })
+      this.drizzle.profile.count({ where })
     ]);
 
     return paginatedResponse(users.map((user) => this.serializeUser(user)), { page, per_page: perPage, total });
@@ -90,7 +91,7 @@ export class AdminService {
 
   async getUser(profileId: string) {
     const id = this.parseId(profileId, 'profile id');
-    const user = await this.prisma.profile.findUnique({
+    const user = await this.drizzle.profile.findUnique({
       where: { id },
       include: {
         organizations: { include: { organization: true } },
@@ -115,13 +116,13 @@ export class AdminService {
       : await generateUniqueUsername(
           makeUsernameSeed(dto.first_name, dto.last_name, email.split('@')[0]),
           async (candidate) =>
-            Boolean(await this.prisma.profile.findFirst({ where: { username: candidate } }))
+            Boolean(await this.drizzle.profile.findFirst({ where: { username: candidate } }))
         );
 
-    const checks = [this.prisma.profile.findUnique({ where: { email } })] as const;
+    const checks = [this.drizzle.profile.findUnique({ where: { email } })] as const;
     const emailExists = await checks[0];
     const usernameExists = requestedUsername
-      ? await this.prisma.profile.findFirst({ where: { username } })
+      ? await this.drizzle.profile.findFirst({ where: { username } })
       : null;
 
     if (emailExists) throw new BadRequestException('Email already exists');
@@ -145,14 +146,14 @@ export class AdminService {
       throw new BadRequestException('Primary organization is required for staff');
     }
     if (primaryOrganizationId) {
-      const organization = await this.prisma.organization.findUnique({
+      const organization = await this.drizzle.organization.findUnique({
         where: { id: primaryOrganizationId },
         select: { id: true }
       });
       if (!organization) throw new BadRequestException('Organization not found');
     }
 
-    const user = await this.prisma.$transaction(async (tx) => {
+    const user = await this.drizzle.$transaction(async (tx) => {
       const created = await tx.profile.create({
         data: {
           username,
@@ -243,7 +244,7 @@ export class AdminService {
 
   async updateUser(profileId: string, dto: UpdateAdminUserDto) {
     const id = this.parseId(profileId, 'profile id');
-    const existing = await this.prisma.profile.findUnique({ where: { id } });
+    const existing = await this.drizzle.profile.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Profile not found');
 
     const data: {
@@ -259,7 +260,7 @@ export class AdminService {
     } = { updatedAt: new Date() };
 
     if (dto.username && dto.username !== existing.username) {
-      const usernameExists = await this.prisma.profile.findUnique({ where: { username: dto.username } });
+      const usernameExists = await this.drizzle.profile.findUnique({ where: { username: dto.username } });
       if (usernameExists) throw new BadRequestException('Username already exists');
       data.username = dto.username;
     }
@@ -267,7 +268,7 @@ export class AdminService {
     if (dto.email) {
       const email = dto.email.trim().toLowerCase();
       if (email !== existing.email) {
-        const emailExists = await this.prisma.profile.findUnique({ where: { email } });
+        const emailExists = await this.drizzle.profile.findUnique({ where: { email } });
         if (emailExists) throw new BadRequestException('Email already exists');
       }
       data.email = email;
@@ -301,14 +302,14 @@ export class AdminService {
     }
 
     if (nextPrimaryOrganizationId) {
-      const organization = await this.prisma.organization.findUnique({
+      const organization = await this.drizzle.organization.findUnique({
         where: { id: nextPrimaryOrganizationId },
         select: { id: true }
       });
       if (!organization) throw new BadRequestException('Organization not found');
     }
 
-    const user = await this.prisma.$transaction(async (tx) => {
+    const user = await this.drizzle.$transaction(async (tx) => {
       const updated = await tx.profile.update({
         where: { id },
         data
@@ -357,10 +358,10 @@ export class AdminService {
 
   async updateStatus(profileId: string, dto: UpdateUserStatusDto) {
     const id = this.parseId(profileId, 'profile id');
-    const existing = await this.prisma.profile.findUnique({ where: { id } });
+    const existing = await this.drizzle.profile.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Profile not found');
 
-    const user = await this.prisma.profile.update({
+    const user = await this.drizzle.profile.update({
       where: { id },
       data: {
         status: dto.status,

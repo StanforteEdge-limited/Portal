@@ -32,7 +32,7 @@ export class PurchaseOrderDocument implements Document<PurchaseOrderContext> {
     const poId = ids.options?.poId as string;
     if (!poId) throw new Error('poId option required');
 
-    const po = await this.engine.prisma.procurementOrder.findUnique({
+    const po = await this.engine.drizzle.procurementOrder.findUnique({
       where: { id: poId },
       include: {
         vendor: true,

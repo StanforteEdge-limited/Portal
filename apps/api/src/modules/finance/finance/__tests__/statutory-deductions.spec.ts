@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { DeductionService } from '$modules/finance/finance/deduction.service';
-import { PrismaService } from '$common/prisma/prisma.service';
+import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { StatutoryDeductionsQueryDto, RemitStatutoryDeductionsDto } from '$modules/finance/finance/dto/statutory-deductions.dto';
 
 const mockDeductions = [
@@ -26,10 +26,10 @@ const mockDeductions = [
 
 describe('DeductionService — listRequestDeductions', () => {
   let service: DeductionService;
-  let prisma: any;
+  let drizzle: any;
 
   beforeEach(async () => {
-    prisma = {
+    drizzle = {
       financeRequestDeduction: {
         findMany: jest.fn().mockResolvedValue(mockDeductions),
         count: jest.fn().mockResolvedValue(1),
@@ -37,7 +37,7 @@ describe('DeductionService — listRequestDeductions', () => {
       },
     };
     const module: TestingModule = await Test.createTestingModule({
-      providers: [DeductionService, { provide: PrismaService, useValue: prisma }],
+      providers: [DeductionService, { provide: DrizzleService, useValue: drizzle }],
     }).compile();
     service = module.get<DeductionService>(DeductionService);
   });
@@ -50,7 +50,7 @@ describe('DeductionService — listRequestDeductions', () => {
 
   it('should pass status filter to where clause', async () => {
     await service.listRequestDeductions({ status: 'pending' });
-    expect(prisma.financeRequestDeduction.findMany).toHaveBeenCalledWith(
+    expect(drizzle.financeRequestDeduction.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: expect.objectContaining({ status: 'pending' }) }),
     );
   });
@@ -58,23 +58,23 @@ describe('DeductionService — listRequestDeductions', () => {
 
 describe('DeductionService — batchRemitDeductions', () => {
   let service: DeductionService;
-  let prisma: any;
+  let drizzle: any;
 
   beforeEach(async () => {
-    prisma = {
+    drizzle = {
       financeRequestDeduction: {
         findMany: jest.fn(),
         updateMany: jest.fn().mockResolvedValue({ count: 2 }),
       },
     };
     const module: TestingModule = await Test.createTestingModule({
-      providers: [DeductionService, { provide: PrismaService, useValue: prisma }],
+      providers: [DeductionService, { provide: DrizzleService, useValue: drizzle }],
     }).compile();
     service = module.get<DeductionService>(DeductionService);
   });
 
   it('should remit selected deductions', async () => {
-    prisma.financeRequestDeduction.findMany.mockResolvedValue([
+    drizzle.financeRequestDeduction.findMany.mockResolvedValue([
       { id: 'uuid-1', status: 'pending' },
       { id: 'uuid-2', status: 'pending' },
     ]);
@@ -84,14 +84,14 @@ describe('DeductionService — batchRemitDeductions', () => {
   });
 
   it('should throw if any deduction is already remitted', async () => {
-    prisma.financeRequestDeduction.findMany.mockResolvedValue([{ id: 'uuid-1', status: 'remitted' }]);
+    drizzle.financeRequestDeduction.findMany.mockResolvedValue([{ id: 'uuid-1', status: 'remitted' }]);
     await expect(
       service.batchRemitDeductions({ deduction_ids: ['uuid-1'], reference: 'ref' }, 1),
     ).rejects.toThrow();
   });
 
   it('should throw NotFoundException if an id is missing', async () => {
-    prisma.financeRequestDeduction.findMany.mockResolvedValue([]);
+    drizzle.financeRequestDeduction.findMany.mockResolvedValue([]);
     await expect(
       service.batchRemitDeductions({ deduction_ids: ['missing-uuid'], reference: 'ref' }, 1),
     ).rejects.toThrow();

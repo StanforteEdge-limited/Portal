@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
-import { PrismaService } from '$common/prisma/prisma.service';
+import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { toBigInt } from '$common/utils/ids';
 import { UpdateProfileDto } from '$modules/auth/users/dto/update-profile.dto';
 import { CreateUserDto } from '$modules/auth/users/dto/create-user.dto';
@@ -12,16 +12,17 @@ import { randomToken, sha256 } from '$common/utils/crypto';
 import { MailService } from '$common/mail/mail.service';
 import { generateUniqueUsername, makeUsernameSeed } from '$common/utils/username';
 import { paginatedResponse } from '$common/helpers/paginated-response';
+import { Drizzle } from '$common/db/drizzle-compat';
 
 @Injectable()
 export class UsersService {
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly drizzle: DrizzleService,
     private readonly mailService: MailService
   ) {}
 
   async getMyProfile(profileId: string) {
-    const user = await this.prisma.profile.findUnique({
+    const user = await this.drizzle.profile.findUnique({
       where: { id: toBigInt(profileId) },
       include: {
         organizations: {
@@ -49,12 +50,12 @@ export class UsersService {
   }
 
   async updateMyProfile(profileId: string, dto: UpdateProfileDto) {
-    const existing = await this.prisma.profile.findUnique({
+    const existing = await this.drizzle.profile.findUnique({
       where: { id: toBigInt(profileId) }
     });
     if (!existing) throw new NotFoundException('Profile not found');
 
-    const updated = await this.prisma.profile.update({
+    const updated = await this.drizzle.profile.update({
       where: { id: existing.id },
       data: {
         firstName: dto.first_name ?? existing.firstName,
@@ -102,7 +103,7 @@ export class UsersService {
     const perPage = Number(filters.per_page ?? 15);
     const skip = (page - 1) * perPage;
 
-    const where: any = {};
+    const where: Drizzle.ProfileWhereInput = {};
     if (filters.search) {
       where.OR = [
         { username: { contains: filters.search, mode: 'insensitive' } },
@@ -114,14 +115,14 @@ export class UsersService {
     if (filters.type) where.type = filters.type;
     if (filters.status) where.status = filters.status;
 
-    const [data, total] = await this.prisma.$transaction([
-      this.prisma.profile.findMany({
+    const [data, total] = await this.drizzle.$transaction([
+      this.drizzle.profile.findMany({
         where,
         orderBy: { createdAt: 'desc' },
         skip,
         take: perPage
       }),
-      this.prisma.profile.count({ where })
+      this.drizzle.profile.count({ where })
     ]);
 
     return paginatedResponse(data.map((row) => this.serializeUserSummary(row)), { page, per_page: perPage, total });
@@ -129,7 +130,7 @@ export class UsersService {
 
   async createUser(dto: CreateUserDto) {
     const email = dto.email.trim().toLowerCase();
-    const existing = await this.prisma.profile.findUnique({ where: { email } });
+    const existing = await this.drizzle.profile.findUnique({ where: { email } });
     if (existing) throw new BadRequestException('Email already exists');
     const shouldSetPassword = dto.set_password ?? Boolean(dto.password);
     if (shouldSetPassword && !dto.password) {
@@ -156,7 +157,7 @@ export class UsersService {
       throw new BadRequestException('Primary organization is required for staff');
     }
     if (primaryOrganizationId) {
-      const organization = await this.prisma.organization.findUnique({
+      const organization = await this.drizzle.organization.findUnique({
         where: { id: primaryOrganizationId },
         select: { id: true }
       });
@@ -168,10 +169,10 @@ export class UsersService {
       : await generateUniqueUsername(
           makeUsernameSeed(dto.first_name, dto.last_name, email.split('@')[0]),
           async (candidate) =>
-            Boolean(await this.prisma.profile.findFirst({ where: { username: candidate } }))
+            Boolean(await this.drizzle.profile.findFirst({ where: { username: candidate } }))
         );
     if (requestedUsername) {
-      const usernameExists = await this.prisma.profile.findFirst({
+      const usernameExists = await this.drizzle.profile.findFirst({
         where: { username }
       });
       if (usernameExists) throw new BadRequestException('Username already exists');
@@ -180,7 +181,7 @@ export class UsersService {
     const passwordHash = shouldSetPassword && dto.password ? await bcrypt.hash(dto.password, 12) : null;
     const roleSlugs = Array.from(new Set(dto.roles?.map((r) => r.trim()).filter(Boolean) ?? []));
 
-    const user = await this.prisma.$transaction(async (tx) => {
+    const user = await this.drizzle.$transaction(async (tx) => {
       const user = await tx.profile.create({
         data: {
           username,
@@ -258,7 +259,7 @@ export class UsersService {
 
   async getUserById(userId: string) {
     const profileId = toBigInt(userId);
-    const user = await this.prisma.profile.findUnique({
+    const user = await this.drizzle.profile.findUnique({
       where: { id: profileId }
     });
     if (!user) throw new NotFoundException('User not found');
@@ -267,7 +268,7 @@ export class UsersService {
 
   async updateUser(userId: string, dto: UpdateUserDto) {
     const profileId = toBigInt(userId);
-    const existing = await this.prisma.profile.findUnique({
+    const existing = await this.drizzle.profile.findUnique({
       where: { id: profileId }
     });
     if (!existing) throw new NotFoundException('User not found');
@@ -284,7 +285,7 @@ export class UsersService {
       nextEmail = dto.email.trim().toLowerCase();
       if (!nextEmail) throw new BadRequestException('Email is required');
       if (nextEmail !== existing.email) {
-        const emailExists = await this.prisma.profile.findUnique({ where: { email: nextEmail } });
+        const emailExists = await this.drizzle.profile.findUnique({ where: { email: nextEmail } });
         if (emailExists && emailExists.id !== existing.id) {
           throw new BadRequestException('Email already exists');
         }
@@ -299,13 +300,13 @@ export class UsersService {
           makeUsernameSeed(existing.firstName, existing.lastName, nextEmail.split('@')[0]),
           async (candidate) =>
             Boolean(
-              await this.prisma.profile.findFirst({
+              await this.drizzle.profile.findFirst({
                 where: { username: candidate, id: { not: existing.id } }
               })
             )
         );
       } else {
-        const usernameExists = await this.prisma.profile.findFirst({
+        const usernameExists = await this.drizzle.profile.findFirst({
           where: { username: requestedUsername, id: { not: existing.id } }
         });
         if (usernameExists) throw new BadRequestException('Username already exists');
@@ -335,7 +336,7 @@ export class UsersService {
     }
 
     if (nextPrimaryOrganizationId) {
-      const organization = await this.prisma.organization.findUnique({
+      const organization = await this.drizzle.organization.findUnique({
         where: { id: nextPrimaryOrganizationId },
         select: { id: true }
       });
@@ -351,7 +352,7 @@ export class UsersService {
 
     const passwordHash = shouldSetPassword && dto.password ? await bcrypt.hash(dto.password, 12) : undefined;
 
-    const user = await this.prisma.$transaction(async (tx) => {
+    const user = await this.drizzle.$transaction(async (tx) => {
       const updated = await tx.profile.update({
         where: { id: existing.id },
         data: {
@@ -421,13 +422,13 @@ export class UsersService {
 
   async getUserRoles(userId: string) {
     const profileId = toBigInt(userId);
-    const user = await this.prisma.profile.findUnique({
+    const user = await this.drizzle.profile.findUnique({
       where: { id: profileId },
       select: { id: true, email: true, username: true }
     });
     if (!user) throw new NotFoundException('User not found');
 
-    const userRoles = await this.prisma.userRole.findMany({
+    const userRoles = await this.drizzle.userRole.findMany({
       where: { profileId },
       include: { role: true },
       orderBy: [{ isPrimaryRole: 'desc' }, { assignedAt: 'asc' }]
@@ -450,7 +451,7 @@ export class UsersService {
 
   async setUserRoles(userId: string, dto: AssignUserRolesDto) {
     const profileId = toBigInt(userId);
-    const user = await this.prisma.profile.findUnique({
+    const user = await this.drizzle.profile.findUnique({
       where: { id: profileId },
       select: { id: true, email: true, username: true }
     });
@@ -461,7 +462,7 @@ export class UsersService {
       throw new BadRequestException('At least one role is required');
     }
 
-    const roles = await this.prisma.role.findMany({
+    const roles = await this.drizzle.role.findMany({
       where: { slug: { in: roleSlugs }, isActive: true },
       select: { id: true, slug: true, name: true }
     });
@@ -472,9 +473,9 @@ export class UsersService {
       throw new BadRequestException(`Unknown role(s): ${missing.join(', ')}`);
     }
 
-    await this.prisma.$transaction([
-      this.prisma.userRole.deleteMany({ where: { profileId } }),
-      this.prisma.userRole.createMany({
+    await this.drizzle.$transaction([
+      this.drizzle.userRole.deleteMany({ where: { profileId } }),
+      this.drizzle.userRole.createMany({
         data: roles.map((role, index) => ({
           profileId,
           roleId: role.id,
@@ -502,7 +503,7 @@ export class UsersService {
 
   async inviteUser(userId: string, dto: InviteUserDto) {
     const profileId = toBigInt(userId);
-    const user = await this.prisma.profile.findUnique({
+    const user = await this.drizzle.profile.findUnique({
       where: { id: profileId },
       select: { id: true, email: true, firstName: true, lastName: true }
     });
@@ -526,11 +527,11 @@ export class UsersService {
     const tokenHash = sha256(inviteToken);
     const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7);
 
-    await this.prisma.$transaction([
-      this.prisma.token.deleteMany({
+    await this.drizzle.$transaction([
+      this.drizzle.token.deleteMany({
         where: { profileId, type: 'invite' }
       }),
-      this.prisma.token.create({
+      this.drizzle.token.create({
         data: {
           id: randomToken(24),
           profileId,
@@ -539,11 +540,11 @@ export class UsersService {
           expiresAt
         }
       }),
-      this.prisma.profile.update({
+      this.drizzle.profile.update({
         where: { id: profileId },
         data: { status }
       }),
-      this.prisma.onboardingProgress.upsert({
+      this.drizzle.onboardingProgress.upsert({
         where: { userId: profileId },
         update: {
           status: 'invited',

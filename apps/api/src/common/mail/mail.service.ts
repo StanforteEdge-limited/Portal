@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import nodemailer from 'nodemailer';
-import { PrismaService } from '$common/prisma/prisma.service';
+import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { toBigInt } from '$common/utils/ids';
 
 type SendMailInput = {
@@ -32,7 +32,7 @@ function escapeHtml(input: string): string {
 
 @Injectable()
 export class MailService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly drizzle: DrizzleService) {}
 
   private transporter = this.buildTransporter();
 
@@ -137,7 +137,7 @@ export class MailService {
     const renderedHtml = this.renderEmailHtml(input);
     if (!this.transporter || !process.env.MAIL_FROM) {
       try {
-        await this.prisma.emailLog.create({
+        await this.drizzle.emailLog.create({
           data: {
             userId: input.userId !== undefined ? toBigInt(input.userId) : null,
             toEmail: input.to,
@@ -181,7 +181,7 @@ export class MailService {
       });
 
       try {
-        await this.prisma.emailLog.create({
+        await this.drizzle.emailLog.create({
           data: {
             userId: input.userId !== undefined ? toBigInt(input.userId) : null,
             toEmail: input.to,
@@ -206,7 +206,7 @@ export class MailService {
       };
     } catch (error: any) {
       try {
-        await this.prisma.emailLog.create({
+        await this.drizzle.emailLog.create({
           data: {
             userId: input.userId !== undefined ? toBigInt(input.userId) : null,
             toEmail: input.to,

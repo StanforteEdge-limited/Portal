@@ -1,12 +1,12 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Drizzle } from '$common/db/drizzle-compat';
 import JSZip from 'jszip';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { PdfService } from '$common/pdf/pdf.service';
 import { existsSync, readFileSync } from 'node:fs';
 import { extname, resolve } from 'node:path';
 import { MailService } from '$common/mail/mail.service';
-import { PrismaService } from '$common/prisma/prisma.service';
+import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { toBigInt } from '$common/utils/ids';
 import { NotificationsService } from '$modules/platform/notifications/notifications.service';
 import { CreatePayrollRunDto } from '$modules/hr/payroll/dto/create-payroll-run.dto';
@@ -25,7 +25,7 @@ import { paginatedResponse } from '$common/helpers/paginated-response';
 @Injectable()
 export class PayrollService {
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly drizzle: DrizzleService,
     private readonly notificationsService: NotificationsService,
     private readonly mailService: MailService,
     private readonly pdfService: PdfService
@@ -33,13 +33,13 @@ export class PayrollService {
 
   async summary(query: Record<string, any> = {}) {
     const orgFilter = query.organization_id ? { organizationId: toBigInt(String(query.organization_id)) } : {};
-    const [workers, activeWorkers, consultants, components, runs, latestRun] = await this.prisma.$transaction([
-      this.prisma.payrollWorker.count({ where: orgFilter }),
-      this.prisma.payrollWorker.count({ where: { status: 'active', ...orgFilter } }),
-      this.prisma.payrollWorker.count({ where: { workerType: 'consultant', ...orgFilter } }),
-      this.prisma.payrollComponent.count({ where: { isActive: true } }),
-      this.prisma.payrollRun.count({ where: orgFilter }),
-      this.prisma.payrollRun.findFirst({ where: orgFilter, orderBy: [{ year: 'desc' }, { month: 'desc' }] })
+    const [workers, activeWorkers, consultants, components, runs, latestRun] = await this.drizzle.$transaction([
+      this.drizzle.payrollWorker.count({ where: orgFilter }),
+      this.drizzle.payrollWorker.count({ where: { status: 'active', ...orgFilter } }),
+      this.drizzle.payrollWorker.count({ where: { workerType: 'consultant', ...orgFilter } }),
+      this.drizzle.payrollComponent.count({ where: { isActive: true } }),
+      this.drizzle.payrollRun.count({ where: orgFilter }),
+      this.drizzle.payrollRun.findFirst({ where: orgFilter, orderBy: [{ year: 'desc' }, { month: 'desc' }] })
     ]);
 
     return {
@@ -55,7 +55,7 @@ export class PayrollService {
   async listMyPayslips(userId: string, query: Record<string, any>) {
     const page = Math.max(1, Number(query.page ?? 1));
     const perPage = Math.min(50, Math.max(1, Number(query.per_page ?? 20)));
-    const worker = await this.prisma.payrollWorker.findFirst({
+    const worker = await this.drizzle.payrollWorker.findFirst({
       where: { profileId: toBigInt(userId) },
       select: { id: true }
     });
@@ -63,8 +63,8 @@ export class PayrollService {
       return paginatedResponse([], { page, per_page: perPage, total: 0 });
     }
 
-    const [rows, total] = await this.prisma.$transaction([
-      this.prisma.payrollRunItem.findMany({
+    const [rows, total] = await this.drizzle.$transaction([
+      this.drizzle.payrollRunItem.findMany({
         where: { workerId: worker.id },
         include: {
           run: true,
@@ -74,7 +74,7 @@ export class PayrollService {
         skip: (page - 1) * perPage,
         take: perPage,
       }),
-      this.prisma.payrollRunItem.count({ where: { workerId: worker.id } }),
+      this.drizzle.payrollRunItem.count({ where: { workerId: worker.id } }),
     ]);
 
     return paginatedResponse(rows.map((row) => ({
@@ -101,13 +101,13 @@ export class PayrollService {
   }
 
   async getMyPayslipDetails(userId: string, runId: string, itemId: string) {
-    const worker = await this.prisma.payrollWorker.findFirst({
+    const worker = await this.drizzle.payrollWorker.findFirst({
       where: { profileId: toBigInt(userId) },
       select: { id: true }
     });
     if (!worker) throw new NotFoundException('Payslip not found');
 
-    const row = await this.prisma.payrollRunItem.findFirst({
+    const row = await this.drizzle.payrollRunItem.findFirst({
       where: { id: itemId, runId, workerId: worker.id },
       include: {
         run: true,
@@ -162,7 +162,7 @@ export class PayrollService {
   }
 
   async generateMyPayslip(userId: string, runId: string, itemId: string) {
-    const row = await this.prisma.payrollRunItem.findFirst({
+    const row = await this.drizzle.payrollRunItem.findFirst({
       where: {
         id: itemId,
         runId,
@@ -186,7 +186,7 @@ export class PayrollService {
 
   async updateMyProjectTimesheet(userId: string, id: string, dto: any) {
     const worker = await this.resolveWorkerForUser(userId);
-    const row = await this.prisma.projectTimesheetEntry.findUnique({ where: { id } });
+    const row = await this.drizzle.projectTimesheetEntry.findUnique({ where: { id } });
     if (!row || row.workerId !== worker.id) throw new NotFoundException('Project timesheet entry not found');
     if (!['draft', 'rejected'].includes(row.status)) {
       throw new BadRequestException('Only draft or rejected timesheets can be edited');
@@ -196,7 +196,7 @@ export class PayrollService {
 
   async submitMyProjectTimesheet(userId: string, id: string) {
     const worker = await this.resolveWorkerForUser(userId);
-    const row = await this.prisma.projectTimesheetEntry.findUnique({ where: { id } });
+    const row = await this.drizzle.projectTimesheetEntry.findUnique({ where: { id } });
     if (!row || row.workerId !== worker.id) throw new NotFoundException('Project timesheet entry not found');
     if (!['draft', 'rejected'].includes(row.status)) {
       throw new BadRequestException('Only draft or rejected timesheets can be submitted');
@@ -214,14 +214,14 @@ export class PayrollService {
 
     const orgFilter = query.organization_id ? { organizationId: toBigInt(String(query.organization_id)) } : {};
 
-    const [approvals, corrections, payments, importJobs, failedDistributions, notifications] = await this.prisma.$transaction([
-      this.prisma.payrollRun.findMany({
+    const [approvals, corrections, payments, importJobs, failedDistributions, notifications] = await this.drizzle.$transaction([
+      this.drizzle.payrollRun.findMany({
         where: canManage ? { status: 'under_review', ...orgFilter } : { status: 'under_review', preparedById: actorId, ...orgFilter },
         orderBy: [{ year: 'desc' }, { month: 'desc' }],
         take: 10,
         include: { items: true, _count: { select: { items: true } } }
       }),
-      this.prisma.payrollRun.findMany({
+      this.drizzle.payrollRun.findMany({
         where: canManage
           ? { status: 'rejected', ...orgFilter }
           : { status: 'rejected', OR: [{ preparedById: actorId }, { reviewedById: actorId }, { approvedById: actorId }], ...orgFilter },
@@ -229,13 +229,13 @@ export class PayrollService {
         take: 10,
         include: { items: true, _count: { select: { items: true } } }
       }),
-      this.prisma.payrollRun.findMany({
+      this.drizzle.payrollRun.findMany({
         where: canManage ? { status: 'approved', ...orgFilter } : { status: 'approved', preparedById: actorId, ...orgFilter },
         orderBy: [{ updatedAt: 'desc' }],
         take: 10,
         include: { items: true, _count: { select: { items: true } } }
       }),
-      this.prisma.payrollImportJob.findMany({
+      this.drizzle.payrollImportJob.findMany({
         where: canManage
           ? { status: { in: ['partial', 'failed'] } }
           : { uploadedBy: actorId, status: { in: ['partial', 'failed'] } },
@@ -243,7 +243,7 @@ export class PayrollService {
         take: 10,
         include: { _count: { select: { rows: true } } }
       }),
-      this.prisma.payrollPayslipDistribution.findMany({
+      this.drizzle.payrollPayslipDistribution.findMany({
         where: canManage
           ? { status: { in: ['failed', 'skipped'] } }
           : { OR: [{ sentBy: actorId }, { run: { preparedById: actorId } }], status: { in: ['failed', 'skipped'] } },
@@ -254,7 +254,7 @@ export class PayrollService {
           worker: { select: { id: true, fullName: true, email: true, workerType: true } }
         }
       }),
-      this.prisma.notification.findMany({
+      this.drizzle.notification.findMany({
         where: {
           userId: actorId,
           OR: [
@@ -309,7 +309,7 @@ export class PayrollService {
 
   async getSettings(query: Record<string, any>) {
     const organizationId = query.organization_id ? this.parseBigInt(query.organization_id, 'organization id') : null;
-    const row = await this.prisma.payrollSetting.findFirst({
+    const row = await this.drizzle.payrollSetting.findFirst({
       where: organizationId ? { organizationId } : {},
       include: {
         organization: { select: { id: true, name: true } },
@@ -322,7 +322,7 @@ export class PayrollService {
   }
 
   async getNotificationPreferences(userId: string) {
-    const row = await this.prisma.payrollNotificationPreference.findUnique({
+    const row = await this.drizzle.payrollNotificationPreference.findUnique({
       where: { userId: toBigInt(userId) }
     });
     return this.serializeNotificationPreferences(row);
@@ -330,27 +330,27 @@ export class PayrollService {
 
   async upsertNotificationPreferences(userId: string, payload: Record<string, any>) {
     const config = this.normalizeNotificationPreferenceConfig(payload);
-    const row = await this.prisma.payrollNotificationPreference.upsert({
+    const row = await this.drizzle.payrollNotificationPreference.upsert({
       where: { userId: toBigInt(userId) },
-      create: { userId: toBigInt(userId), config: config as Prisma.InputJsonValue },
-      update: { config: config as Prisma.InputJsonValue },
+      create: { userId: toBigInt(userId), config: config as Drizzle.InputJsonValue },
+      update: { config: config as Drizzle.InputJsonValue },
     });
     return this.serializeNotificationPreferences(row);
   }
 
   async upsertSettings(dto: UpsertPayrollSettingDto, actorId?: string) {
     const organizationId = dto.organization_id ? this.parseBigInt(dto.organization_id, 'organization id') : null;
-    const existing = await this.prisma.payrollSetting.findFirst({ where: organizationId ? { organizationId } : { organizationId: null } });
-    const payload: Prisma.PayrollSettingUncheckedCreateInput | Prisma.PayrollSettingUncheckedUpdateInput = {
+    const existing = await this.drizzle.payrollSetting.findFirst({ where: organizationId ? { organizationId } : { organizationId: null } });
+    const payload: Drizzle.PayrollSettingUncheckedCreateInput | Drizzle.PayrollSettingUncheckedUpdateInput = {
       organizationId,
       defaultExpenseAccountId: dto.default_expense_account_id || null,
       defaultCashAccountId: dto.default_cash_account_id || null,
       employeeTaxTableId: dto.employee_tax_table_id || null,
-      config: (dto.config || {}) as Prisma.InputJsonValue,
+      config: (dto.config || {}) as Drizzle.InputJsonValue,
       updatedBy: actorId ? toBigInt(actorId) : null,
     };
     const row = existing
-      ? await this.prisma.payrollSetting.update({
+      ? await this.drizzle.payrollSetting.update({
           where: { id: existing.id },
           data: payload,
           include: {
@@ -360,8 +360,8 @@ export class PayrollService {
             employeeTaxTable: { include: { bands: { orderBy: { sortOrder: 'asc' } } } },
           }
         })
-      : await this.prisma.payrollSetting.create({
-          data: payload as Prisma.PayrollSettingUncheckedCreateInput,
+      : await this.drizzle.payrollSetting.create({
+          data: payload as Drizzle.PayrollSettingUncheckedCreateInput,
           include: {
             organization: { select: { id: true, name: true } },
             defaultExpenseAccount: { select: { id: true, code: true, name: true } },
@@ -374,7 +374,7 @@ export class PayrollService {
 
   async listTaxTables(query: Record<string, any>) {
     const organizationId = query.organization_id ? this.parseBigInt(query.organization_id, 'organization id') : null;
-    const rows = await this.prisma.payrollTaxTable.findMany({
+    const rows = await this.drizzle.payrollTaxTable.findMany({
       where: {
         ...(organizationId ? { OR: [{ organizationId }, { organizationId: null }] } : {}),
         ...(query.status ? { status: String(query.status) } : {}),
@@ -390,7 +390,7 @@ export class PayrollService {
   }
 
   async createTaxTable(dto: UpsertPayrollTaxTableDto) {
-    const row = await this.prisma.payrollTaxTable.create({
+    const row = await this.drizzle.payrollTaxTable.create({
       data: {
         ...this.mapTaxTableDto(dto),
         bands: {
@@ -403,9 +403,9 @@ export class PayrollService {
   }
 
   async updateTaxTable(id: string, dto: UpsertPayrollTaxTableDto) {
-    const existing = await this.prisma.payrollTaxTable.findUnique({ where: { id } });
+    const existing = await this.drizzle.payrollTaxTable.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Payroll tax table not found');
-    const row = await this.prisma.$transaction(async (tx) => {
+    const row = await this.drizzle.$transaction(async (tx) => {
       await tx.payrollTaxBand.deleteMany({ where: { tableId: id } });
       return tx.payrollTaxTable.update({
         where: { id },
@@ -424,7 +424,7 @@ export class PayrollService {
   async listWorkers(query: Record<string, any>) {
     const page = Math.max(1, Number(query.page ?? 1));
     const perPage = Math.min(100, Math.max(1, Number(query.per_page ?? 20)));
-    const where: Prisma.PayrollWorkerWhereInput = {};
+    const where: Drizzle.PayrollWorkerWhereInput = {};
 
     if (query.search) {
       where.OR = [
@@ -437,28 +437,28 @@ export class PayrollService {
     if (query.status) where.status = String(query.status);
     if (query.organization_id) where.organizationId = toBigInt(String(query.organization_id));
 
-    const [rows, total] = await this.prisma.$transaction([
-      this.prisma.payrollWorker.findMany({
+    const [rows, total] = await this.drizzle.$transaction([
+      this.drizzle.payrollWorker.findMany({
         where,
         include: this.workerInclude(),
         orderBy: [{ fullName: 'asc' }],
         skip: (page - 1) * perPage,
         take: perPage
       }),
-      this.prisma.payrollWorker.count({ where })
+      this.drizzle.payrollWorker.count({ where })
     ]);
 
     return paginatedResponse(rows.map((row) => this.serializeWorker(row)), { page, per_page: perPage, total });
   }
 
   async getWorker(id: string) {
-    const row = await this.prisma.payrollWorker.findUnique({ where: { id }, include: this.workerInclude() });
+    const row = await this.drizzle.payrollWorker.findUnique({ where: { id }, include: this.workerInclude() });
     if (!row) throw new NotFoundException('Payroll worker not found');
     return this.serializeWorker(row);
   }
 
   async createWorker(dto: UpsertPayrollWorkerDto, actorId?: string) {
-    return this.prisma.$transaction(async (tx) => {
+    return this.drizzle.$transaction(async (tx) => {
       const worker = await tx.payrollWorker.create({
         data: this.mapWorkerDto(dto),
       });
@@ -469,9 +469,9 @@ export class PayrollService {
   }
 
   async updateWorker(id: string, dto: UpsertPayrollWorkerDto, actorId?: string) {
-    const existing = await this.prisma.payrollWorker.findUnique({ where: { id } });
+    const existing = await this.drizzle.payrollWorker.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Payroll worker not found');
-    return this.prisma.$transaction(async (tx) => {
+    return this.drizzle.$transaction(async (tx) => {
       await tx.payrollWorker.update({ where: { id }, data: this.mapWorkerDto(dto) });
       await this.syncWorkerChildrenTx(tx, id, dto);
       const row = await tx.payrollWorker.findUnique({ where: { id }, include: this.workerInclude() });
@@ -480,11 +480,11 @@ export class PayrollService {
   }
 
   async deleteWorker(id: string) {
-    const existing = await this.prisma.payrollWorker.findUnique({ where: { id } });
+    const existing = await this.drizzle.payrollWorker.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Payroll worker not found');
 
     // Prevent removal if worker is in an active (non-draft/non-rejected) run
-    const activeRunItems = await this.prisma.payrollRunItem.count({
+    const activeRunItems = await this.drizzle.payrollRunItem.count({
       where: {
         workerId: id,
         run: { status: { notIn: ['draft', 'rejected'] } },
@@ -496,29 +496,29 @@ export class PayrollService {
       );
     }
 
-    const usage = await this.prisma.$transaction([
-      this.prisma.payrollRunItem.count({ where: { workerId: id } }),
-      this.prisma.projectTimesheetEntry.count({ where: { workerId: id } }),
-      this.prisma.payrollLoan.count({ where: { workerId: id } }),
-      this.prisma.payrollRunTimesheetAllocation.count({ where: { workerId: id } }),
-      this.prisma.payrollPayslipDistribution.count({ where: { workerId: id } }),
+    const usage = await this.drizzle.$transaction([
+      this.drizzle.payrollRunItem.count({ where: { workerId: id } }),
+      this.drizzle.projectTimesheetEntry.count({ where: { workerId: id } }),
+      this.drizzle.payrollLoan.count({ where: { workerId: id } }),
+      this.drizzle.payrollRunTimesheetAllocation.count({ where: { workerId: id } }),
+      this.drizzle.payrollPayslipDistribution.count({ where: { workerId: id } }),
     ]);
 
     const totalUsage = usage.reduce((sum, count) => sum + count, 0);
     if (totalUsage > 0) {
-      await this.prisma.payrollWorker.update({
+      await this.drizzle.payrollWorker.update({
         where: { id },
         data: { status: 'inactive' },
       });
       return { action: 'deactivated', reason: 'worker has payroll history and was marked inactive instead of deleted' };
     }
 
-    await this.prisma.payrollWorker.delete({ where: { id } });
+    await this.drizzle.payrollWorker.delete({ where: { id } });
     return { action: 'deleted' };
   }
 
   async listLoans(query: Record<string, any>) {
-    const rows = await this.prisma.payrollLoan.findMany({
+    const rows = await this.drizzle.payrollLoan.findMany({
       where: {
         ...(query.worker_id ? { workerId: String(query.worker_id) } : {}),
         ...(query.status ? { status: String(query.status) } : {}),
@@ -536,7 +536,7 @@ export class PayrollService {
   }
 
   async createLoan(dto: any) {
-    const row = await this.prisma.payrollLoan.create({
+    const row = await this.drizzle.payrollLoan.create({
       data: {
         workerId: dto.worker_id,
         componentId: dto.component_id || null,
@@ -562,9 +562,9 @@ export class PayrollService {
   }
 
   async updateLoan(id: string, dto: any) {
-    const existing = await this.prisma.payrollLoan.findUnique({ where: { id } });
+    const existing = await this.drizzle.payrollLoan.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Payroll loan not found');
-    const row = await this.prisma.payrollLoan.update({
+    const row = await this.drizzle.payrollLoan.update({
       where: { id },
       data: {
         workerId: dto.worker_id,
@@ -590,12 +590,12 @@ export class PayrollService {
   }
 
   async logManualRepayment(id: string, amount: number, notes?: string) {
-    const existing = await this.prisma.payrollLoan.findUnique({ where: { id } });
+    const existing = await this.drizzle.payrollLoan.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Payroll loan not found');
 
     const newOutstanding = Number(existing.outstandingAmount || 0) - amount;
 
-    const row = await this.prisma.$transaction(async (tx) => {
+    const row = await this.drizzle.$transaction(async (tx) => {
       await tx.payrollLoanRepayment.create({
         data: {
           loanId: id,
@@ -621,7 +621,7 @@ export class PayrollService {
   }
 
   async listProjectTimesheets(query: Record<string, any>) {
-    const rows = await this.prisma.projectTimesheetEntry.findMany({
+    const rows = await this.drizzle.projectTimesheetEntry.findMany({
       where: {
         ...(query.worker_id ? { workerId: String(query.worker_id) } : {}),
         ...(query.status ? { status: String(query.status) } : {}),
@@ -642,7 +642,7 @@ export class PayrollService {
   }
 
   async createProjectTimesheet(dto: any, actorId?: string) {
-    const row = await this.prisma.projectTimesheetEntry.create({
+    const row = await this.drizzle.projectTimesheetEntry.create({
       data: this.mapProjectTimesheetDto(dto, actorId),
       include: {
         worker: { select: { id: true, fullName: true, workerType: true, email: true } },
@@ -657,9 +657,9 @@ export class PayrollService {
   }
 
   async updateProjectTimesheet(id: string, dto: any, actorId?: string) {
-    const existing = await this.prisma.projectTimesheetEntry.findUnique({ where: { id } });
+    const existing = await this.drizzle.projectTimesheetEntry.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Project timesheet entry not found');
-    const row = await this.prisma.projectTimesheetEntry.update({
+    const row = await this.drizzle.projectTimesheetEntry.update({
       where: { id },
       data: this.mapProjectTimesheetDto(dto, actorId, true),
       include: {
@@ -675,7 +675,7 @@ export class PayrollService {
   }
 
   async submitProjectTimesheet(id: string) {
-    const row = await this.prisma.projectTimesheetEntry.update({
+    const row = await this.drizzle.projectTimesheetEntry.update({
       where: { id },
       data: { status: 'submitted' },
       include: {
@@ -691,7 +691,7 @@ export class PayrollService {
   }
 
   async approveProjectTimesheet(id: string, actorId?: string) {
-    const row = await this.prisma.projectTimesheetEntry.update({
+    const row = await this.drizzle.projectTimesheetEntry.update({
       where: { id },
       data: { status: 'approved', approvedBy: actorId ? toBigInt(actorId) : null, approvedAt: new Date() },
       include: {
@@ -704,7 +704,7 @@ export class PayrollService {
       }
     });
     await this.syncApprovedTimesheetsToPayrollRun(row.workerId, row.workDate);
-    const refreshed = await this.prisma.projectTimesheetEntry.findUnique({
+    const refreshed = await this.drizzle.projectTimesheetEntry.findUnique({
       where: { id },
       include: {
         worker: { select: { id: true, fullName: true, workerType: true, email: true } },
@@ -719,9 +719,9 @@ export class PayrollService {
   }
 
   async rejectProjectTimesheet(id: string) {
-    const existing = await this.prisma.projectTimesheetEntry.findUnique({ where: { id } });
+    const existing = await this.drizzle.projectTimesheetEntry.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Project timesheet entry not found');
-    const row = await this.prisma.projectTimesheetEntry.update({
+    const row = await this.drizzle.projectTimesheetEntry.update({
       where: { id },
       data: { status: 'rejected' },
       include: {
@@ -738,10 +738,10 @@ export class PayrollService {
   }
 
   async listComponents(query: Record<string, any>) {
-    const where: Prisma.PayrollComponentWhereInput = {};
+    const where: Drizzle.PayrollComponentWhereInput = {};
     if (query.component_type) where.componentType = String(query.component_type);
     if (query.is_active === 'true' || query.is_active === 'false') where.isActive = query.is_active === 'true';
-    const rows = await this.prisma.payrollComponent.findMany({
+    const rows = await this.drizzle.payrollComponent.findMany({
       where,
       include: { chartAccount: { select: { id: true, code: true, name: true } } },
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }]
@@ -751,7 +751,7 @@ export class PayrollService {
   }
 
   async createComponent(dto: UpsertPayrollComponentDto) {
-    const row = await this.prisma.payrollComponent.create({
+    const row = await this.drizzle.payrollComponent.create({
       data: this.mapComponentDto(dto),
       include: { chartAccount: { select: { id: true, code: true, name: true } } }
     });
@@ -759,9 +759,9 @@ export class PayrollService {
   }
 
   async updateComponent(id: string, dto: UpsertPayrollComponentDto) {
-    const existing = await this.prisma.payrollComponent.findUnique({ where: { id } });
+    const existing = await this.drizzle.payrollComponent.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Payroll component not found');
-    const row = await this.prisma.payrollComponent.update({
+    const row = await this.drizzle.payrollComponent.update({
       where: { id },
       data: this.mapComponentDto(dto),
       include: { chartAccount: { select: { id: true, code: true, name: true } } }
@@ -770,19 +770,19 @@ export class PayrollService {
   }
 
   async deleteComponent(id: string) {
-    const existing = await this.prisma.payrollComponent.findUnique({ where: { id } });
+    const existing = await this.drizzle.payrollComponent.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Payroll component not found');
 
-    const usage = await this.prisma.$transaction([
-      this.prisma.payrollWorkerProfileComponent.count({ where: { componentId: id } }),
-      this.prisma.payrollRunItemLine.count({ where: { componentId: id } }),
-      this.prisma.payrollLoan.count({ where: { componentId: id } }),
-      this.prisma.projectTimesheetEntry.count({ where: { componentId: id } }),
+    const usage = await this.drizzle.$transaction([
+      this.drizzle.payrollWorkerProfileComponent.count({ where: { componentId: id } }),
+      this.drizzle.payrollRunItemLine.count({ where: { componentId: id } }),
+      this.drizzle.payrollLoan.count({ where: { componentId: id } }),
+      this.drizzle.projectTimesheetEntry.count({ where: { componentId: id } }),
     ]);
 
     const totalUsage = usage.reduce((sum, count) => sum + count, 0);
     if (totalUsage > 0) {
-      const row = await this.prisma.payrollComponent.update({
+      const row = await this.drizzle.payrollComponent.update({
         where: { id },
         data: { isActive: false },
         include: { chartAccount: { select: { id: true, code: true, name: true } } }
@@ -790,14 +790,14 @@ export class PayrollService {
       return { action: 'deactivated', component: this.serializeComponent(row), reason: 'component has payroll history and was deactivated instead of deleted' };
     }
 
-    await this.prisma.payrollComponent.delete({ where: { id } });
+    await this.drizzle.payrollComponent.delete({ where: { id } });
     return { action: 'deleted' };
   }
 
   async listRuns(query: Record<string, any>) {
     const page = Math.max(1, Number(query.page ?? 1));
     const perPage = Math.min(100, Math.max(1, Number(query.per_page ?? 20)));
-    const where: Prisma.PayrollRunWhereInput = {};
+    const where: Drizzle.PayrollRunWhereInput = {};
     if (query.status_in) {
       where.status = { in: String(query.status_in).split(',') };
     } else if (query.status) {
@@ -806,8 +806,8 @@ export class PayrollService {
     if (query.year) where.year = Number(query.year);
     if (query.month) where.month = Number(query.month);
     if (query.organization_id) where.organizationId = toBigInt(String(query.organization_id));
-    const [rows, total] = await this.prisma.$transaction([
-      this.prisma.payrollRun.findMany({
+    const [rows, total] = await this.drizzle.$transaction([
+      this.drizzle.payrollRun.findMany({
         where,
         include: {
           preparedBy: { select: { id: true, firstName: true, lastName: true, email: true, username: true } },
@@ -819,13 +819,13 @@ export class PayrollService {
         skip: (page - 1) * perPage,
         take: perPage
       }),
-      this.prisma.payrollRun.count({ where })
+      this.drizzle.payrollRun.count({ where })
     ]);
     return paginatedResponse(rows.map((row) => this.serializeRunSummary(row)), { page, per_page: perPage, total });
   }
 
   async getRun(id: string) {
-    const row = await this.prisma.payrollRun.findUnique({
+    const row = await this.drizzle.payrollRun.findUnique({
       where: { id },
       include: this.runInclude()
     });
@@ -834,7 +834,7 @@ export class PayrollService {
   }
 
   async deleteRun(id: string) {
-    const existing = await this.prisma.payrollRun.findUnique({
+    const existing = await this.drizzle.payrollRun.findUnique({
       where: { id },
       include: {
         _count: {
@@ -853,7 +853,7 @@ export class PayrollService {
       throw new BadRequestException('Cannot delete payroll run with payroll history or postings');
     }
 
-    await this.prisma.$transaction(async (tx) => {
+    await this.drizzle.$transaction(async (tx) => {
       const repayments = await tx.payrollLoanRepayment.findMany({
         where: { runId: id },
       });
@@ -879,7 +879,7 @@ export class PayrollService {
   async createRun(dto: CreatePayrollRunDto, actorId?: string) {
     let row: any;
     try {
-      row = await this.prisma.payrollRun.create({
+      row = await this.drizzle.payrollRun.create({
         data: {
           name: dto.name,
           year: dto.year,
@@ -894,7 +894,7 @@ export class PayrollService {
         }
       });
     } catch (err: any) {
-      if (err instanceof Prisma.PrismaClientKnownRequestError) {
+      if (err instanceof Drizzle.DrizzleClientKnownRequestError) {
         if (err.code === 'P2002') {
           throw new ConflictException('A payroll run already exists for this organization and period');
         }
@@ -909,12 +909,12 @@ export class PayrollService {
   }
 
   async updateRun(id: string, dto: CreatePayrollRunDto, actorId?: string) {
-    const existing = await this.prisma.payrollRun.findUnique({ where: { id } });
+    const existing = await this.drizzle.payrollRun.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Payroll run not found');
     if (!['draft', 'prepared'].includes(existing.status)) {
       throw new BadRequestException('Only draft or prepared runs can be edited');
     }
-    await this.prisma.payrollRun.update({
+    await this.drizzle.payrollRun.update({
       where: { id },
       data: {
         name: dto.name,
@@ -934,11 +934,11 @@ export class PayrollService {
   }
 
   async generateRun(id: string, actorId?: string) {
-    const run = await this.prisma.payrollRun.findUnique({ where: { id } });
+    const run = await this.drizzle.payrollRun.findUnique({ where: { id } });
     if (!run) throw new NotFoundException('Payroll run not found');
     if (!['draft', 'prepared'].includes(run.status)) throw new BadRequestException('Run cannot be regenerated in its current status');
 
-    const workers = await this.prisma.payrollWorker.findMany({
+    const workers = await this.drizzle.payrollWorker.findMany({
       where: {
         status: 'active',
         OR: [{ startDate: null }, { startDate: { lte: run.periodEnd } }],
@@ -948,7 +948,7 @@ export class PayrollService {
       include: this.workerInclude()
     });
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.drizzle.$transaction(async (tx) => {
       const oldRepayments = await tx.payrollLoanRepayment.findMany({
         where: { runId: id },
       });
@@ -978,13 +978,13 @@ export class PayrollService {
       }
       const componentCodes = ['basic_salary', 'paye_tax', 'pension_employee', 'pension_employer', 'withholding_tax', 'employer_paye_cover', 'salary_advance_recovery', 'loan_repayment'];
       const payrollComponents = await this.ensureSystemPayrollComponentsTx(tx, componentCodes);
-      const componentMap = new Map(payrollComponents.map((component) => [component.code, component]));
-      const componentById = new Map(payrollComponents.map((component) => [component.id, component]));
+      const componentMap = new Map<string, any>(payrollComponents.map((component) => [component.code, component]));
+      const componentById = new Map<string, any>(payrollComponents.map((component) => [component.id, component]));
       const taxTableCache = new Map<string, any | null>();
 
       for (const worker of workers) {
         const profile = this.pickActiveProfile(worker.profiles, run.periodStart, run.periodEnd);
-        const lines: Array<{ componentId: string; lineType: string; amount: Prisma.Decimal; quantity?: Prisma.Decimal | null; rate?: Prisma.Decimal | null; notes?: string | null; affectsNetPay?: boolean }> = [];
+        const lines: Array<{ componentId: string; lineType: string; amount: Drizzle.Decimal; quantity?: Drizzle.Decimal | null; rate?: Drizzle.Decimal | null; notes?: string | null; affectsNetPay?: boolean }> = [];
         const setting = await this.resolvePayrollSettingTx(tx, worker.organizationId ?? null);
         const config = (setting.config || {}) as Record<string, any>;
         const workerMeta = (worker.metadata || {}) as Record<string, any>;
@@ -1022,9 +1022,9 @@ export class PayrollService {
           lines.push({
             componentId: basicSalaryComponent.id,
             lineType: 'earning',
-            amount: new Prisma.Decimal(baseEarningsAmount),
-            quantity: new Prisma.Decimal(totalTimesheetHours),
-            rate: new Prisma.Decimal(Number(profile.baseAmount)),
+            amount: new Drizzle.Decimal(baseEarningsAmount),
+            quantity: new Drizzle.Decimal(totalTimesheetHours),
+            rate: new Drizzle.Decimal(Number(profile.baseAmount)),
             notes: 'Approved timesheet hours',
             affectsNetPay: true,
           });
@@ -1036,9 +1036,9 @@ export class PayrollService {
           lines.push({
             componentId: basicSalaryComponent.id,
             lineType: 'earning',
-            amount: new Prisma.Decimal(baseEarningsAmount),
-            quantity: new Prisma.Decimal(workDays),
-            rate: new Prisma.Decimal(Number(profile.baseAmount)),
+            amount: new Drizzle.Decimal(baseEarningsAmount),
+            quantity: new Drizzle.Decimal(workDays),
+            rate: new Drizzle.Decimal(Number(profile.baseAmount)),
             notes: `Approved workdays at ${standardHoursPerDay}h/day`,
             affectsNetPay: true,
           });
@@ -1072,8 +1072,8 @@ export class PayrollService {
             lines.push({
               componentId: employeePensionComponent.id,
               lineType: 'deduction',
-              amount: new Prisma.Decimal(grossPay * employeePensionRate),
-              rate: new Prisma.Decimal(employeePensionRate),
+              amount: new Drizzle.Decimal(grossPay * employeePensionRate),
+              rate: new Drizzle.Decimal(employeePensionRate),
               notes: 'Auto employee pension',
               affectsNetPay: true,
             });
@@ -1101,16 +1101,16 @@ export class PayrollService {
               lines.push({
                 componentId: taxComponent.id,
                 lineType: 'deduction',
-                amount: new Prisma.Decimal(payeResult.taxAmount),
-                rate: payeResult.appliedRate == null ? null : new Prisma.Decimal(payeResult.appliedRate),
+                amount: new Drizzle.Decimal(payeResult.taxAmount),
+                rate: payeResult.appliedRate == null ? null : new Drizzle.Decimal(payeResult.appliedRate),
                 notes: payeResult.notes || 'PAYE settled by employer',
                 affectsNetPay: false,
               });
               lines.push({
                 componentId: employerTaxComponent.id,
                 lineType: 'employer_cost',
-                amount: new Prisma.Decimal(payeResult.taxAmount),
-                rate: payeResult.appliedRate == null ? null : new Prisma.Decimal(payeResult.appliedRate),
+                amount: new Drizzle.Decimal(payeResult.taxAmount),
+                rate: payeResult.appliedRate == null ? null : new Drizzle.Decimal(payeResult.appliedRate),
                 notes: 'Employer-covered PAYE',
                 affectsNetPay: false,
               });
@@ -1118,8 +1118,8 @@ export class PayrollService {
               lines.push({
                 componentId: taxComponent.id,
                 lineType: 'deduction',
-                amount: new Prisma.Decimal(payeResult.taxAmount),
-                rate: payeResult.appliedRate == null ? null : new Prisma.Decimal(payeResult.appliedRate),
+                amount: new Drizzle.Decimal(payeResult.taxAmount),
+                rate: payeResult.appliedRate == null ? null : new Drizzle.Decimal(payeResult.appliedRate),
                 notes: payeResult.notes || 'Auto PAYE',
                 affectsNetPay: true,
               });
@@ -1130,8 +1130,8 @@ export class PayrollService {
             lines.push({
               componentId: employerPensionComponent.id,
               lineType: 'employer_cost',
-              amount: new Prisma.Decimal(grossPay * employerPensionRate),
-              rate: new Prisma.Decimal(employerPensionRate),
+              amount: new Drizzle.Decimal(grossPay * employerPensionRate),
+              rate: new Drizzle.Decimal(employerPensionRate),
               notes: 'Auto employer pension',
               affectsNetPay: false,
             });
@@ -1142,8 +1142,8 @@ export class PayrollService {
             lines.push({
               componentId: withholdingComponent.id,
               lineType: 'deduction',
-              amount: new Prisma.Decimal(grossPay * consultantWithholdingRate),
-              rate: new Prisma.Decimal(consultantWithholdingRate),
+              amount: new Drizzle.Decimal(grossPay * consultantWithholdingRate),
+              rate: new Drizzle.Decimal(consultantWithholdingRate),
               notes: 'Auto consultant withholding tax',
               affectsNetPay: true,
             });
@@ -1153,8 +1153,8 @@ export class PayrollService {
             lines.push({
               componentId: consultantPensionComponent.id,
               lineType: 'deduction',
-              amount: new Prisma.Decimal(grossPay * consultantPensionRate),
-              rate: new Prisma.Decimal(consultantPensionRate),
+              amount: new Drizzle.Decimal(grossPay * consultantPensionRate),
+              rate: new Drizzle.Decimal(consultantPensionRate),
               notes: 'Auto consultant pension',
               affectsNetPay: true,
             });
@@ -1173,7 +1173,7 @@ export class PayrollService {
           lines.push({
             componentId: recoveryComponent.id,
             lineType: 'deduction',
-            amount: new Prisma.Decimal(recoveryAmount),
+            amount: new Drizzle.Decimal(recoveryAmount),
             notes: `${loan.loanType === 'salary_advance' ? 'Salary advance' : 'Loan'} recovery: ${loan.title}`,
             affectsNetPay: true,
           });
@@ -1303,7 +1303,7 @@ export class PayrollService {
   }
 
   async submitRun(id: string, actorId?: string) {
-    const run = await this.prisma.payrollRun.findUnique({ where: { id }, include: { items: true } });
+    const run = await this.drizzle.payrollRun.findUnique({ where: { id }, include: { items: true } });
     if (!run) throw new NotFoundException('Payroll run not found');
     if (run.items.length === 0) {
       throw new BadRequestException(
@@ -1311,7 +1311,7 @@ export class PayrollService {
       );
     }
     if (!['prepared', 'draft'].includes(run.status)) throw new BadRequestException('Run cannot be submitted in its current status');
-    await this.prisma.payrollRun.update({
+    await this.drizzle.payrollRun.update({
       where: { id },
       data: { status: 'under_review' }
     });
@@ -1331,10 +1331,10 @@ export class PayrollService {
   }
 
   async reviewRun(id: string, dto: { note?: string }, actorId?: string) {
-    const run = await this.prisma.payrollRun.findUnique({ where: { id } });
+    const run = await this.drizzle.payrollRun.findUnique({ where: { id } });
     if (!run) throw new NotFoundException('Payroll run not found');
     if (!['prepared', 'draft', 'rejected'].includes(run.status)) throw new BadRequestException('Run cannot be moved to review in its current status');
-    await this.prisma.payrollRun.update({
+    await this.drizzle.payrollRun.update({
       where: { id },
       data: {
         status: 'under_review',
@@ -1355,10 +1355,10 @@ export class PayrollService {
   }
 
   async approveRun(id: string, dto: { note?: string }, actorId?: string) {
-    const run = await this.prisma.payrollRun.findUnique({ where: { id } });
+    const run = await this.drizzle.payrollRun.findUnique({ where: { id } });
     if (!run) throw new NotFoundException('Payroll run not found');
     if (!['under_review', 'prepared'].includes(run.status)) throw new BadRequestException('Run cannot be approved in its current status');
-    await this.prisma.payrollRun.update({
+    await this.drizzle.payrollRun.update({
       where: { id },
       data: {
         status: 'approved',
@@ -1382,16 +1382,16 @@ export class PayrollService {
   }
 
   async authorizeRun(id: string, dto: { notes?: string }, userId: string) {
-    const run = await this.prisma.payrollRun.findUnique({ where: { id } });
+    const run = await this.drizzle.payrollRun.findUnique({ where: { id } });
     if (!run) throw new NotFoundException('Payroll run not found');
     if (run.status !== 'approved') {
       throw new BadRequestException(`Cannot authorize a run with status "${run.status}". Run must be approved first.`);
     }
-    await this.prisma.payrollRun.update({
+    await this.drizzle.payrollRun.update({
       where: { id },
       data: {
         status: 'authorized',
-        // @ts-ignore prisma client types pending full migration
+        // @ts-ignore drizzle client types pending full migration
         authorizedAt: new Date(),
         // @ts-ignore
         authorizedById: userId ? toBigInt(userId) : null,
@@ -1411,10 +1411,10 @@ export class PayrollService {
   }
 
   async rejectRun(id: string, dto: { note?: string }, actorId?: string) {
-    const run = await this.prisma.payrollRun.findUnique({ where: { id } });
+    const run = await this.drizzle.payrollRun.findUnique({ where: { id } });
     if (!run) throw new NotFoundException('Payroll run not found');
     if (!['under_review', 'approved'].includes(run.status)) throw new BadRequestException('Run cannot be rejected in its current status');
-    await this.prisma.payrollRun.update({
+    await this.drizzle.payrollRun.update({
       where: { id },
       data: {
         status: 'rejected',
@@ -1434,13 +1434,13 @@ export class PayrollService {
   }
 
   async reopenRun(id: string, dto: { note?: string }, actorId?: string) {
-    const run = await this.prisma.payrollRun.findUnique({ where: { id }, include: { postings: true } });
+    const run = await this.drizzle.payrollRun.findUnique({ where: { id }, include: { postings: true } });
     if (!run) throw new NotFoundException('Payroll run not found');
     if (!['rejected', 'approved', 'prepared'].includes(run.status)) throw new BadRequestException('Run cannot be reopened in its current status');
     if (run.postings.length > 0 || run.status === 'paid' || run.status === 'closed') {
       throw new BadRequestException('Posted, paid, or closed payroll runs cannot be reopened');
     }
-    await this.prisma.payrollRun.update({
+    await this.drizzle.payrollRun.update({
       where: { id },
       data: {
         status: 'draft',
@@ -1452,10 +1452,10 @@ export class PayrollService {
   }
 
   async closeRun(id: string, dto: { note?: string }, actorId?: string) {
-    const run = await this.prisma.payrollRun.findUnique({ where: { id } });
+    const run = await this.drizzle.payrollRun.findUnique({ where: { id } });
     if (!run) throw new NotFoundException('Payroll run not found');
     if (run.status !== 'paid') throw new BadRequestException('Only paid payroll runs can be closed');
-    await this.prisma.payrollRun.update({
+    await this.drizzle.payrollRun.update({
       where: { id },
       data: {
         status: 'closed',
@@ -1475,7 +1475,7 @@ export class PayrollService {
   }
 
   async payRun(id: string, dto: PayPayrollRunDto, actorId?: string) {
-    const run = await this.prisma.payrollRun.findUnique({ where: { id }, include: this.runInclude() });
+    const run = await this.drizzle.payrollRun.findUnique({ where: { id }, include: this.runInclude() });
     if (!run) throw new NotFoundException('Payroll run not found');
     if (run.status !== 'authorized') {
       throw new BadRequestException(`Cannot pay a run with status "${run.status}". Run must be authorized by ED/COO first.`);
@@ -1484,7 +1484,7 @@ export class PayrollService {
     const paidFromAccountId = dto.paid_from_account_id || run.paidFromAccountId;
     if (!paidFromAccountId) throw new BadRequestException('Select the account to pay payroll from');
 
-    await this.prisma.$transaction(async (tx) => {
+    await this.drizzle.$transaction(async (tx) => {
       await tx.payrollRun.update({
         where: { id },
         data: { status: 'payment_processing', paidFromAccountId }
@@ -1540,7 +1540,7 @@ export class PayrollService {
   }
 
   async generateRunItemPayslip(runId: string, itemId: string) {
-    const run = await this.prisma.payrollRun.findUnique({
+    const run = await this.drizzle.payrollRun.findUnique({
       where: { id: runId },
       include: {
         items: {
@@ -1584,7 +1584,7 @@ export class PayrollService {
   }
 
   async generateBankSchedule(runId: string) {
-    const run = await this.prisma.payrollRun.findUnique({
+    const run = await this.drizzle.payrollRun.findUnique({
       where: { id: runId },
       include: {
         items: {
@@ -1630,7 +1630,7 @@ export class PayrollService {
   }
 
   async monthlyBreakdown(id: string) {
-    const run = await this.prisma.payrollRun.findUnique({
+    const run = await this.drizzle.payrollRun.findUnique({
       where: { id },
       include: {
         items: {
@@ -1700,7 +1700,7 @@ export class PayrollService {
   }
 
   async generateRunPayslipsPackage(runId: string) {
-    const run = await this.prisma.payrollRun.findUnique({
+    const run = await this.drizzle.payrollRun.findUnique({
       where: { id: runId },
       include: this.runInclude()
     });
@@ -1737,7 +1737,7 @@ export class PayrollService {
   }
 
   async distributeRunPayslips(runId: string, actorId?: string) {
-    const run = await this.prisma.payrollRun.findUnique({
+    const run = await this.drizzle.payrollRun.findUnique({
       where: { id: runId },
       include: this.runInclude()
     });
@@ -1762,7 +1762,7 @@ export class PayrollService {
       if (!workerEmail) {
         skipped += 1;
         skippedWorkers.push(item.worker?.fullName || item.id);
-        await this.prisma.payrollPayslipDistribution.create({
+        await this.drizzle.payrollPayslipDistribution.create({
           data: {
             runId: run.id,
             runItemId: item.id,
@@ -1771,7 +1771,7 @@ export class PayrollService {
             status: 'skipped',
             errorMessage: 'Worker has no email address',
             sentBy: actorId ? toBigInt(actorId) : null,
-            metadata: { worker_name: item.worker?.fullName || null } as Prisma.InputJsonValue,
+            metadata: { worker_name: item.worker?.fullName || null } as Drizzle.InputJsonValue,
           }
         });
         continue;
@@ -1794,7 +1794,7 @@ export class PayrollService {
             }
           ]
         });
-        await this.prisma.payrollPayslipDistribution.create({
+        await this.drizzle.payrollPayslipDistribution.create({
           data: {
             runId: run.id,
             runItemId: item.id,
@@ -1803,7 +1803,7 @@ export class PayrollService {
             status: 'sent',
             sentBy: actorId ? toBigInt(actorId) : null,
             sentAt: new Date(),
-            metadata: { file_name: payslip.file_name } as Prisma.InputJsonValue,
+            metadata: { file_name: payslip.file_name } as Drizzle.InputJsonValue,
           }
         });
         if (item.worker?.profileId) {
@@ -1817,7 +1817,7 @@ export class PayrollService {
               run_id: run.id,
               run_name: run.name,
               item_id: item.id,
-            } as Prisma.InputJsonValue,
+            } as Drizzle.InputJsonValue,
           });
         }
         sent += 1;
@@ -1825,7 +1825,7 @@ export class PayrollService {
         const message = error?.message || 'Unable to send payslip';
         failed += 1;
         failedWorkers.push({ worker: item.worker?.fullName || workerEmail, error: message });
-        await this.prisma.payrollPayslipDistribution.create({
+        await this.drizzle.payrollPayslipDistribution.create({
           data: {
             runId: run.id,
             runItemId: item.id,
@@ -1834,7 +1834,7 @@ export class PayrollService {
             status: 'failed',
             errorMessage: message,
             sentBy: actorId ? toBigInt(actorId) : null,
-            metadata: { worker_name: item.worker?.fullName || null } as Prisma.InputJsonValue,
+            metadata: { worker_name: item.worker?.fullName || null } as Drizzle.InputJsonValue,
           }
         });
       }
@@ -1842,7 +1842,7 @@ export class PayrollService {
 
     const summaryText = `sent=${sent}, skipped=${skipped}, failed=${failed}${skippedWorkers.length ? ` [skipped: ${skippedWorkers.join(', ')}]` : ''}${failedWorkers.length ? ` [failed: ${failedWorkers.map((row) => row.worker).join(', ')}]` : ''}`;
     const note = this.appendRunNote(run.notes, 'Payslips Distributed', summaryText, actorId);
-    await this.prisma.payrollRun.update({
+    await this.drizzle.payrollRun.update({
       where: { id: run.id },
       data: { notes: note }
     });
@@ -1884,8 +1884,8 @@ export class PayrollService {
   async reportsOverview(query: Record<string, any>) {
     const year = Number(query.year || new Date().getFullYear());
     const orgFilter = query.organization_id ? { organizationId: toBigInt(String(query.organization_id)) } : {};
-    const [runs, workers] = await this.prisma.$transaction([
-      this.prisma.payrollRun.findMany({
+    const [runs, workers] = await this.drizzle.$transaction([
+      this.drizzle.payrollRun.findMany({
         where: { year, ...orgFilter },
         include: {
           items: {
@@ -1899,7 +1899,7 @@ export class PayrollService {
         },
         orderBy: [{ year: 'asc' }, { month: 'asc' }]
       }),
-      this.prisma.payrollWorker.findMany({
+      this.drizzle.payrollWorker.findMany({
         where: { status: 'active', ...orgFilter },
         select: { workerType: true, organizationId: true }
       })
@@ -1988,14 +1988,14 @@ export class PayrollService {
   }
 
   async updateRunItem(runId: string, itemId: string, dto: UpdatePayrollRunItemDto, actorId?: string) {
-    const item = await this.prisma.payrollRunItem.findFirst({ where: { id: itemId, runId }, include: { run: { include: { postings: true } } } });
+    const item = await this.drizzle.payrollRunItem.findFirst({ where: { id: itemId, runId }, include: { run: { include: { postings: true } } } });
     if (!item) throw new NotFoundException('Payroll run item not found');
     if (['paid', 'closed'].includes(item.run.status) || item.run.postings.length > 0) {
       throw new BadRequestException('Paid, closed, or posted payroll runs cannot be edited');
     }
     const computedNetPay = dto.net_pay ?? Number(item.computedNetPay || item.netPay || 0);
     const actualNetPay = dto.actual_net_pay ?? dto.net_pay ?? Number(item.actualNetPay || item.netPay || 0);
-    await this.prisma.payrollRunItem.update({
+    await this.drizzle.payrollRunItem.update({
       where: { id: itemId },
       data: {
         grossPay: dto.gross_pay ?? undefined,
@@ -2019,14 +2019,14 @@ export class PayrollService {
   }
 
   async updateRunItemAllocations(runId: string, itemId: string, dto: UpdatePayrollRunAllocationsDto, actorId?: string) {
-    const item = await this.prisma.payrollRunItem.findFirst({ where: { id: itemId, runId }, include: { run: { include: { postings: true } } } });
+    const item = await this.drizzle.payrollRunItem.findFirst({ where: { id: itemId, runId }, include: { run: { include: { postings: true } } } });
     if (!item) throw new NotFoundException('Payroll run item not found');
     if (['paid', 'closed'].includes(item.run.status) || item.run.postings.length > 0) {
       throw new BadRequestException('Paid, closed, or posted payroll runs cannot be edited');
     }
     const totalPercent = dto.allocations.reduce((sum, row) => sum + Number(row.allocation_percent || 0), 0);
     if (Math.abs(totalPercent - 100) > 0.01) throw new BadRequestException('Allocation percent must total 100');
-    await this.prisma.$transaction(async (tx) => {
+    await this.drizzle.$transaction(async (tx) => {
       await tx.payrollRunItemAllocation.deleteMany({ where: { runItemId: itemId } });
       if (dto.allocations.length) {
         await tx.payrollRunItemAllocation.createMany({
@@ -2056,16 +2056,16 @@ export class PayrollService {
   }
 
   async updateRunWorkerTimesheetAllocations(runId: string, workerId: string, dto: UpdatePayrollRunTimesheetAllocationsDto, actorId?: string) {
-    const run = await this.prisma.payrollRun.findUnique({ where: { id: runId }, include: { postings: true } });
+    const run = await this.drizzle.payrollRun.findUnique({ where: { id: runId }, include: { postings: true } });
     if (!run) throw new NotFoundException('Payroll run not found');
     if (['paid', 'closed'].includes(run.status) || run.postings.length > 0) {
       throw new BadRequestException('Paid, closed, or posted payroll runs cannot be edited');
     }
-    const worker = await this.prisma.payrollWorker.findUnique({ where: { id: workerId } });
+    const worker = await this.drizzle.payrollWorker.findUnique({ where: { id: workerId } });
     if (!worker) throw new NotFoundException('Payroll worker not found');
 
     const normalized = this.normalizeTimesheetInputRows(dto.allocations);
-    await this.prisma.$transaction(async (tx) => {
+    await this.drizzle.$transaction(async (tx) => {
       await tx.payrollRunTimesheetAllocation.deleteMany({ where: { runId, workerId } });
       if (normalized.length) {
         await tx.payrollRunTimesheetAllocation.createMany({
@@ -2102,11 +2102,11 @@ export class PayrollService {
   async listImportJobs(query: Record<string, any>) {
     const page = Math.max(1, Number(query.page ?? 1));
     const perPage = Math.min(50, Math.max(1, Number(query.per_page ?? 10)));
-    const where: Prisma.PayrollImportJobWhereInput = {};
+    const where: Drizzle.PayrollImportJobWhereInput = {};
     if (query.status) where.status = String(query.status);
 
-    const [rows, total] = await this.prisma.$transaction([
-      this.prisma.payrollImportJob.findMany({
+    const [rows, total] = await this.drizzle.$transaction([
+      this.drizzle.payrollImportJob.findMany({
         where,
         include: {
           uploadedByUser: { select: { id: true, firstName: true, lastName: true, email: true } },
@@ -2118,14 +2118,14 @@ export class PayrollService {
         skip: (page - 1) * perPage,
         take: perPage,
       }),
-      this.prisma.payrollImportJob.count({ where }),
+      this.drizzle.payrollImportJob.count({ where }),
     ]);
 
     return paginatedResponse(rows.map((row) => this.serializeImportJobSummary(row)), { page, per_page: perPage, total });
   }
 
   async getImportJob(id: string) {
-    const job = await this.prisma.payrollImportJob.findUnique({
+    const job = await this.drizzle.payrollImportJob.findUnique({
       where: { id },
       include: {
         uploadedByUser: { select: { id: true, firstName: true, lastName: true, email: true } },
@@ -2148,7 +2148,7 @@ export class PayrollService {
   }
 
   async retryFailedImport(id: string, actorId?: string) {
-    const sourceJob = await this.prisma.payrollImportJob.findUnique({
+    const sourceJob = await this.drizzle.payrollImportJob.findUnique({
       where: { id },
       include: { rows: { where: { status: 'error' }, orderBy: [{ createdAt: 'asc' }] } }
     });
@@ -2396,7 +2396,7 @@ export class PayrollService {
     options?: { fileName?: string; retryOfJobId?: string; retriedBy?: bigint | null }
   ) {
     const fileName = options?.fileName || `payroll-import-${new Date().toISOString().slice(0, 10)}.xlsx`;
-    const job = await this.prisma.payrollImportJob.create({
+    const job = await this.drizzle.payrollImportJob.create({
       data: {
         fileName,
         status: 'processing',
@@ -2407,45 +2407,45 @@ export class PayrollService {
         summary: {
           ...analysis.summary,
           status_counts: { pending: analysis.workers.length + analysis.runs.length + analysis.lineGroups.length + analysis.payments.length }
-        } as Prisma.InputJsonValue,
+        } as Drizzle.InputJsonValue,
       }
     });
 
     const workerMap = new Map<string, any>();
     const runMap = new Map<string, any>();
     const itemMap = new Map<string, { itemId: string; runId: string }>();
-    const rowResults: Array<{ sheetName: string; rowNumber?: number; rowKey: string; action: string; status: string; errorMessage?: string | null; payload: Prisma.InputJsonValue; linkedRunId?: string | null; linkedRunItemId?: string | null }> = [];
+    const rowResults: Array<{ sheetName: string; rowNumber?: number; rowKey: string; action: string; status: string; errorMessage?: string | null; payload: Drizzle.InputJsonValue; linkedRunId?: string | null; linkedRunItemId?: string | null }> = [];
     const statusCounts = { success: 0, error: 0, skipped: 0 };
 
     for (const row of analysis.workers) {
       try {
-        const worker = await this.prisma.$transaction((tx) => this.upsertImportedWorkerTx(tx, row));
+        const worker = await this.drizzle.$transaction((tx) => this.upsertImportedWorkerTx(tx, row));
         workerMap.set(row.worker_ref, worker);
-        rowResults.push({ sheetName: 'Workers', rowNumber: row.row_number, rowKey: row.worker_ref, action: 'upsert', status: 'success', payload: row as Prisma.InputJsonValue });
+        rowResults.push({ sheetName: 'Workers', rowNumber: row.row_number, rowKey: row.worker_ref, action: 'upsert', status: 'success', payload: row as Drizzle.InputJsonValue });
         statusCounts.success += 1;
       } catch (error: any) {
-        rowResults.push({ sheetName: 'Workers', rowNumber: row.row_number, rowKey: row.worker_ref, action: 'upsert', status: 'error', errorMessage: error?.message || 'Unable to import worker', payload: row as Prisma.InputJsonValue });
+        rowResults.push({ sheetName: 'Workers', rowNumber: row.row_number, rowKey: row.worker_ref, action: 'upsert', status: 'error', errorMessage: error?.message || 'Unable to import worker', payload: row as Drizzle.InputJsonValue });
         statusCounts.error += 1;
       }
     }
 
     for (const row of analysis.runs) {
       try {
-        const run = await this.prisma.$transaction((tx) => this.upsertImportedRunTx(tx, row, updateExisting, actorId));
+        const run = await this.drizzle.$transaction((tx) => this.upsertImportedRunTx(tx, row, updateExisting, actorId));
         runMap.set(row.run_name, run);
-        rowResults.push({ sheetName: 'Runs', rowNumber: row.row_number, rowKey: row.run_name, action: updateExisting ? 'upsert' : 'create', status: 'success', payload: row as Prisma.InputJsonValue, linkedRunId: run.id });
+        rowResults.push({ sheetName: 'Runs', rowNumber: row.row_number, rowKey: row.run_name, action: updateExisting ? 'upsert' : 'create', status: 'success', payload: row as Drizzle.InputJsonValue, linkedRunId: run.id });
         statusCounts.success += 1;
       } catch (error: any) {
-        rowResults.push({ sheetName: 'Runs', rowNumber: row.row_number, rowKey: row.run_name, action: updateExisting ? 'upsert' : 'create', status: 'error', errorMessage: error?.message || 'Unable to import run', payload: row as Prisma.InputJsonValue });
+        rowResults.push({ sheetName: 'Runs', rowNumber: row.row_number, rowKey: row.run_name, action: updateExisting ? 'upsert' : 'create', status: 'error', errorMessage: error?.message || 'Unable to import run', payload: row as Drizzle.InputJsonValue });
         statusCounts.error += 1;
       }
     }
 
     for (const grouped of analysis.lineGroups) {
       const key = `${grouped.run_name}::${grouped.worker_ref}`;
-      const run = runMap.get(grouped.run_name) || (await this.prisma.payrollRun.findFirst({ where: { OR: [{ name: grouped.run_name }, { AND: [{ year: analysis.runs.find((row) => row.run_name === grouped.run_name)?.year ?? -1 }, { month: analysis.runs.find((row) => row.run_name === grouped.run_name)?.month ?? -1 }] }] } }));
+      const run = runMap.get(grouped.run_name) || (await this.drizzle.payrollRun.findFirst({ where: { OR: [{ name: grouped.run_name }, { AND: [{ year: analysis.runs.find((row) => row.run_name === grouped.run_name)?.year ?? -1 }, { month: analysis.runs.find((row) => row.run_name === grouped.run_name)?.month ?? -1 }] }] } }));
       const worker = workerMap.get(grouped.worker_ref) || await this.findImportedWorker(grouped.worker_ref, analysis.workers);
-      const payload = { run_name: grouped.run_name, worker_ref: grouped.worker_ref, lines: grouped.lines, allocations: analysis.allocationsByKey.get(key) ?? [] } as Prisma.InputJsonValue;
+      const payload = { run_name: grouped.run_name, worker_ref: grouped.worker_ref, lines: grouped.lines, allocations: analysis.allocationsByKey.get(key) ?? [] } as Drizzle.InputJsonValue;
       if (!run || !worker) {
         rowResults.push({ sheetName: 'RunItems', rowNumber: grouped.lines[0]?.row_number, rowKey: key, action: 'upsert', status: 'error', errorMessage: 'Referenced payroll run or worker is unavailable', payload });
         statusCounts.error += 1;
@@ -2453,7 +2453,7 @@ export class PayrollService {
       }
       try {
         const allocationRows = analysis.allocationsByKey.get(key) ?? [];
-        const item = await this.prisma.$transaction((tx) => this.createImportedRunItemTx(tx, run.id, worker, grouped, allocationRows, updateExisting));
+        const item = await this.drizzle.$transaction((tx) => this.createImportedRunItemTx(tx, run.id, worker, grouped, allocationRows, updateExisting));
         itemMap.set(key, { itemId: item.id, runId: run.id });
         rowResults.push({ sheetName: 'RunItems', rowNumber: grouped.lines[0]?.row_number, rowKey: key, action: 'upsert', status: 'success', payload, linkedRunId: run.id, linkedRunItemId: item.id });
         statusCounts.success += 1;
@@ -2467,37 +2467,37 @@ export class PayrollService {
       const key = `${payment.run_name}::${payment.worker_ref}`;
       const target = itemMap.get(key) || await this.findImportedItem(key, analysis, workerMap, runMap);
       if (!target) {
-        rowResults.push({ sheetName: 'Payments', rowNumber: payment.row_number, rowKey: key, action: 'update', status: 'error', errorMessage: 'Referenced payroll run item is unavailable', payload: payment as Prisma.InputJsonValue });
+        rowResults.push({ sheetName: 'Payments', rowNumber: payment.row_number, rowKey: key, action: 'update', status: 'error', errorMessage: 'Referenced payroll run item is unavailable', payload: payment as Drizzle.InputJsonValue });
         statusCounts.error += 1;
         continue;
       }
       try {
-        await this.prisma.payrollRunItem.update({
+        await this.drizzle.payrollRunItem.update({
           where: { id: target.itemId },
           data: {
             paymentStatus: payment.payment_status || 'pending',
             paymentReference: payment.payment_reference || null,
           }
         });
-        rowResults.push({ sheetName: 'Payments', rowNumber: payment.row_number, rowKey: key, action: 'update', status: 'success', payload: payment as Prisma.InputJsonValue, linkedRunId: target.runId, linkedRunItemId: target.itemId });
+        rowResults.push({ sheetName: 'Payments', rowNumber: payment.row_number, rowKey: key, action: 'update', status: 'success', payload: payment as Drizzle.InputJsonValue, linkedRunId: target.runId, linkedRunItemId: target.itemId });
         statusCounts.success += 1;
       } catch (error: any) {
-        rowResults.push({ sheetName: 'Payments', rowNumber: payment.row_number, rowKey: key, action: 'update', status: 'error', errorMessage: error?.message || 'Unable to update payment status', payload: payment as Prisma.InputJsonValue, linkedRunId: target.runId, linkedRunItemId: target.itemId });
+        rowResults.push({ sheetName: 'Payments', rowNumber: payment.row_number, rowKey: key, action: 'update', status: 'error', errorMessage: error?.message || 'Unable to update payment status', payload: payment as Drizzle.InputJsonValue, linkedRunId: target.runId, linkedRunItemId: target.itemId });
         statusCounts.error += 1;
       }
     }
 
     const successfulRunIds = Array.from(new Set(rowResults.filter((row) => row.linkedRunId && row.status === 'success').map((row) => row.linkedRunId!)));
     for (const runId of successfulRunIds) {
-      const run = await this.prisma.payrollRun.findUnique({ where: { id: runId }, include: { items: true } });
+      const run = await this.drizzle.payrollRun.findUnique({ where: { id: runId }, include: { items: true } });
       if (!run) continue;
       const matchingSource = analysis.runs.find((row) => run.name === row.run_name || (run.year === row.year && run.month === row.month));
       const nextStatus = matchingSource?.status || (run.items.some((item) => item.paymentStatus === 'paid') ? 'paid' : 'prepared');
-      await this.prisma.payrollRun.update({ where: { id: runId }, data: { status: nextStatus } });
+      await this.drizzle.payrollRun.update({ where: { id: runId }, data: { status: nextStatus } });
     }
 
     if (rowResults.length) {
-      await this.prisma.payrollImportRow.createMany({
+      await this.drizzle.payrollImportRow.createMany({
         data: rowResults.map((row) => ({
           jobId: job.id,
           sheetName: row.sheetName,
@@ -2513,7 +2513,7 @@ export class PayrollService {
       });
     }
 
-    const completedJob = await this.prisma.payrollImportJob.update({
+    const completedJob = await this.drizzle.payrollImportJob.update({
       where: { id: job.id },
       data: {
         status: statusCounts.error > 0 ? (statusCounts.success > 0 ? 'partial' : 'failed') : 'completed',
@@ -2525,7 +2525,7 @@ export class PayrollService {
           processed_run_items: analysis.lineGroups.length,
           processed_payments: analysis.payments.length,
           status_counts: statusCounts,
-        } as Prisma.InputJsonValue,
+        } as Drizzle.InputJsonValue,
       },
       include: {
         uploadedByUser: { select: { id: true, firstName: true, lastName: true, email: true } },
@@ -2546,14 +2546,14 @@ export class PayrollService {
           job_id: completedJob.id,
           status: completedJob.status,
           summary: completedJob.summary || {},
-        } as Prisma.InputJsonValue,
+        } as Drizzle.InputJsonValue,
       });
     }
 
     return this.serializeImportJob(completedJob);
   }
 
-  private mapWorkerDto(dto: UpsertPayrollWorkerDto): Prisma.PayrollWorkerUncheckedCreateInput {
+  private mapWorkerDto(dto: UpsertPayrollWorkerDto): Drizzle.PayrollWorkerUncheckedCreateInput {
     return {
       profileId: dto.profile_id ? this.parseBigInt(dto.profile_id, 'profile id') : null,
       organizationId: dto.organization_id ? this.parseBigInt(dto.organization_id, 'organization id') : null,
@@ -2580,11 +2580,11 @@ export class PayrollService {
       startDate: dto.start_date ? new Date(dto.start_date) : null,
       endDate: dto.end_date ? new Date(dto.end_date) : null,
       notes: dto.notes || null,
-      metadata: (dto.metadata || {}) as Prisma.InputJsonValue,
+      metadata: (dto.metadata || {}) as Drizzle.InputJsonValue,
     };
   }
 
-  private async syncWorkerChildrenTx(tx: Prisma.TransactionClient, workerId: string, dto: UpsertPayrollWorkerDto) {
+  private async syncWorkerChildrenTx(tx: Drizzle.TransactionClient, workerId: string, dto: UpsertPayrollWorkerDto) {
     if (dto.profile) {
       const effectiveFrom = new Date(dto.profile.effective_from);
       const existingProfile = await tx.payrollWorkerProfile.findFirst({
@@ -2662,7 +2662,7 @@ export class PayrollService {
     }
   }
 
-  private mapComponentDto(dto: UpsertPayrollComponentDto): Prisma.PayrollComponentUncheckedCreateInput {
+  private mapComponentDto(dto: UpsertPayrollComponentDto): Drizzle.PayrollComponentUncheckedCreateInput {
     return {
       chartAccountId: dto.chart_account_id || null,
       code: dto.code.trim().toLowerCase(),
@@ -2707,7 +2707,7 @@ export class PayrollService {
         },
         orderBy: [{ approvedAt: 'desc' }, { sortOrder: 'asc' }]
       },
-    } satisfies Prisma.PayrollWorkerInclude;
+    } satisfies Drizzle.PayrollWorkerInclude;
   }
 
   private runInclude() {
@@ -2762,7 +2762,7 @@ export class PayrollService {
         },
         orderBy: { worker: { fullName: 'asc' } }
       }
-    } satisfies Prisma.PayrollRunInclude;
+    } satisfies Drizzle.PayrollRunInclude;
   }
 
   private serializeWorker(row: any) {
@@ -3143,7 +3143,7 @@ export class PayrollService {
     };
   }
 
-  private mapTaxTableDto(dto: UpsertPayrollTaxTableDto): Prisma.PayrollTaxTableUncheckedCreateInput {
+  private mapTaxTableDto(dto: UpsertPayrollTaxTableDto): Drizzle.PayrollTaxTableUncheckedCreateInput {
     return {
       organizationId: dto.organization_id ? this.parseBigInt(dto.organization_id, 'organization id') : null,
       name: dto.name,
@@ -3172,7 +3172,7 @@ export class PayrollService {
   }
 
   private async resolveWorkerForUser(userId: string) {
-    const worker = await this.prisma.payrollWorker.findFirst({
+    const worker = await this.drizzle.payrollWorker.findFirst({
       where: { profileId: toBigInt(userId) },
       select: { id: true, fullName: true, workerType: true },
     });
@@ -3181,7 +3181,7 @@ export class PayrollService {
   }
 
   private async resolveEmployeeTaxTableTx(
-    tx: Prisma.TransactionClient,
+    tx: Drizzle.TransactionClient,
     input: { workerTaxTableId?: string | null; settingTaxTableId?: string | null; organizationId?: bigint | null },
     cache?: Map<string, any | null>
   ) {
@@ -3217,7 +3217,7 @@ export class PayrollService {
 
   private calculateEmployeePaye(input: {
     grossPay: number;
-    lines: Array<{ componentId: string; lineType: string; amount: Prisma.Decimal; affectsNetPay?: boolean }>;
+    lines: Array<{ componentId: string; lineType: string; amount: Drizzle.Decimal; affectsNetPay?: boolean }>;
     componentsById: Map<string, any>;
     taxTable: any | null;
     fallbackRate: number;
@@ -3260,7 +3260,7 @@ export class PayrollService {
     return { taxAmount: 0, appliedRate: null, notes: null };
   }
 
-  private applyProgressiveTax(amount: number, bands: Array<{ lowerBound?: Prisma.Decimal | number; upperBound?: Prisma.Decimal | number | null; rate?: Prisma.Decimal | number }>) {
+  private applyProgressiveTax(amount: number, bands: Array<{ lowerBound?: Drizzle.Decimal | number; upperBound?: Drizzle.Decimal | number | null; rate?: Drizzle.Decimal | number }>) {
     if (!amount || amount <= 0) return 0;
     let total = 0;
     const normalized = bands
@@ -3291,7 +3291,7 @@ export class PayrollService {
     }) || null;
   }
 
-  private mapProjectTimesheetDto(dto: any, actorId?: string, preserveCreator = false): Prisma.ProjectTimesheetEntryUncheckedCreateInput {
+  private mapProjectTimesheetDto(dto: any, actorId?: string, preserveCreator = false): Drizzle.ProjectTimesheetEntryUncheckedCreateInput {
     return {
       workerId: dto.worker_id,
       componentId: dto.component_id || null,
@@ -3313,10 +3313,10 @@ export class PayrollService {
     const year = workDate.getUTCFullYear();
     const periodStart = new Date(Date.UTC(year, month - 1, 1));
     const periodEnd = new Date(Date.UTC(year, month, 0));
-    const run = await this.prisma.payrollRun.findFirst({ where: { year, month } });
+    const run = await this.drizzle.payrollRun.findFirst({ where: { year, month } });
     if (!run) return null;
     if (['approved', 'authorized', 'paid', 'closed'].includes(run.status)) return null;
-    const approvedRows = await this.prisma.projectTimesheetEntry.findMany({
+    const approvedRows = await this.drizzle.projectTimesheetEntry.findMany({
       where: {
         workerId,
         status: 'approved',
@@ -3325,7 +3325,7 @@ export class PayrollService {
       orderBy: [{ workDate: 'asc' }, { createdAt: 'asc' }]
     });
     const totalHours = approvedRows.reduce((sum, row) => sum + Number(row.hours || 0), 0);
-    await this.prisma.$transaction(async (tx) => {
+    await this.drizzle.$transaction(async (tx) => {
       await tx.payrollRunTimesheetAllocation.deleteMany({ where: { runId: run.id, workerId } });
       if (approvedRows.length) {
         await tx.payrollRunTimesheetAllocation.createMany({
@@ -3354,14 +3354,14 @@ export class PayrollService {
     return run.id;
   }
 
-  private async resolvePayrollSettingTx(tx: Prisma.TransactionClient, organizationId: bigint | null) {
+  private async resolvePayrollSettingTx(tx: Drizzle.TransactionClient, organizationId: bigint | null) {
     return tx.payrollSetting.findFirst({
       where: organizationId ? { OR: [{ organizationId }, { organizationId: null }] } : { organizationId: null },
       orderBy: { organizationId: 'desc' }
     }).then((row) => row || { defaultExpenseAccountId: null, defaultCashAccountId: null, employeeTaxTableId: null, config: {} });
   }
 
-  private async resolveCashChartAccountTx(tx: Prisma.TransactionClient, financeAccountId: string, organizationId: bigint | null) {
+  private async resolveCashChartAccountTx(tx: Drizzle.TransactionClient, financeAccountId: string, organizationId: bigint | null) {
     const account = await tx.financeAccount.findUnique({ where: { id: financeAccountId }, include: { chartAccount: true } });
     if (!account?.chartAccount) throw new BadRequestException('Selected payment account has no linked chart account');
     return account.chartAccount.id;
@@ -3387,7 +3387,7 @@ export class PayrollService {
     };
 
     for (const item of run.items) {
-      const allocations = item.allocations?.length ? item.allocations : [{ organizationId: item.organizationId, teamId: item.teamId, fundId: item.fundId, grantId: item.grantId, allocationPercent: new Prisma.Decimal(100) }];
+      const allocations = item.allocations?.length ? item.allocations : [{ organizationId: item.organizationId, teamId: item.teamId, fundId: item.fundId, grantId: item.grantId, allocationPercent: new Drizzle.Decimal(100) }];
       for (const line of item.lines) {
           const accountId = line.component.chartAccountId || defaultExpenseAccountId;
         if (!accountId) continue;
@@ -3443,7 +3443,7 @@ export class PayrollService {
     return lines;
   }
 
-  private async ensureReportingPeriodTx(tx: Prisma.TransactionClient, date: Date, actorId?: string) {
+  private async ensureReportingPeriodTx(tx: Drizzle.TransactionClient, date: Date, actorId?: string) {
     const year = date.getFullYear();
     const month = date.getMonth() + 1;
     const quarter = Math.floor((month - 1) / 3) + 1;
@@ -3466,7 +3466,7 @@ export class PayrollService {
   }
 
   private async createJournalEntryTx(
-    tx: Prisma.TransactionClient,
+    tx: Drizzle.TransactionClient,
     input: {
       entryDate: Date;
       periodId: string;
@@ -3513,7 +3513,7 @@ export class PayrollService {
     });
   }
 
-  private async nextSequenceValueTx(tx: Prisma.TransactionClient, prefix: string, date: Date) {
+  private async nextSequenceValueTx(tx: Drizzle.TransactionClient, prefix: string, date: Date) {
     const year = date.getFullYear();
     const count = await tx.financeJournalEntry.count({ where: { entryNo: { startsWith: `${prefix}/${year}/` } } });
     return `${prefix}/${year}/${String(count + 1).padStart(4, '0')}`;
@@ -3525,10 +3525,10 @@ export class PayrollService {
     return 'fixed';
   }
 
-  private async ensureSystemPayrollComponentsTx(tx: Prisma.TransactionClient, codes: string[]) {
+  private async ensureSystemPayrollComponentsTx(tx: Drizzle.TransactionClient, codes: string[]) {
     const existing = await tx.payrollComponent.findMany({ where: { code: { in: codes }, isActive: true } });
     const existingCodes = new Set(existing.map((row) => row.code));
-    const definitions: Record<string, Partial<Prisma.PayrollComponentUncheckedCreateInput>> = {
+    const definitions: Record<string, Partial<Drizzle.PayrollComponentUncheckedCreateInput>> = {
       basic_salary: { name: 'Basic Salary', componentType: 'earning', calculationType: 'fixed', paidBy: 'employer', isTaxable: true, affectsNetPay: true, isStatutory: false, isActive: true },
       paye_tax: { name: 'PAYE Tax', componentType: 'deduction', calculationType: 'percentage', paidBy: 'employee', isTaxable: false, affectsNetPay: true, isStatutory: true, isActive: true },
       pension_employee: { name: 'Employee Pension', componentType: 'deduction', calculationType: 'percentage', paidBy: 'employee', isTaxable: false, affectsNetPay: true, isStatutory: true, isActive: true },
@@ -3544,7 +3544,7 @@ export class PayrollService {
         data: {
           code,
           ...definitions[code],
-        } as Prisma.PayrollComponentUncheckedCreateInput
+        } as Drizzle.PayrollComponentUncheckedCreateInput
       });
       existing.push(created);
     }
@@ -3552,13 +3552,13 @@ export class PayrollService {
   }
 
   private expandProfileComponentLines(component: any, amount: number, rate: number | null, notes: string | null) {
-    const lineRate = rate == null ? null : new Prisma.Decimal(rate);
+    const lineRate = rate == null ? null : new Drizzle.Decimal(rate);
     const employerSharePercent = Math.max(0, Math.min(100, Number(component.employerSharePercent || 0)));
     if (component.componentType === 'earning' || component.componentType === 'employer_cost') {
       return [{
         componentId: component.id,
         lineType: component.componentType,
-        amount: new Prisma.Decimal(amount),
+        amount: new Drizzle.Decimal(amount),
         rate: lineRate,
         notes,
         affectsNetPay: component.componentType === 'earning' ? true : false,
@@ -3568,7 +3568,7 @@ export class PayrollService {
       return [{
         componentId: component.id,
         lineType: 'employer_cost',
-        amount: new Prisma.Decimal(amount),
+        amount: new Drizzle.Decimal(amount),
         rate: lineRate,
         notes,
         affectsNetPay: false,
@@ -3581,7 +3581,7 @@ export class PayrollService {
         ...(employeeAmount > 0 ? [{
           componentId: component.id,
           lineType: 'deduction',
-          amount: new Prisma.Decimal(employeeAmount),
+          amount: new Drizzle.Decimal(employeeAmount),
           rate: lineRate,
           notes: notes || 'Employee share',
           affectsNetPay: true,
@@ -3589,7 +3589,7 @@ export class PayrollService {
         ...(employerAmount > 0 ? [{
           componentId: component.id,
           lineType: 'employer_cost',
-          amount: new Prisma.Decimal(employerAmount),
+          amount: new Drizzle.Decimal(employerAmount),
           rate: lineRate,
           notes: notes || 'Employer share',
           affectsNetPay: false,
@@ -3599,7 +3599,7 @@ export class PayrollService {
     return [{
       componentId: component.id,
       lineType: 'deduction',
-      amount: new Prisma.Decimal(amount),
+      amount: new Drizzle.Decimal(amount),
       rate: lineRate,
       notes,
       affectsNetPay: component.affectsNetPay !== false,
@@ -3623,7 +3623,7 @@ export class PayrollService {
           projectId: row.projectId ?? null,
           fundId: row.fundId ?? null,
           grantId: row.grantId ?? null,
-          allocationPercent: new Prisma.Decimal(percent),
+          allocationPercent: new Drizzle.Decimal(percent),
           allocationAmount: null,
           sortOrder: row.sortOrder ?? 0,
           hours: Number(row.hours || 0),
@@ -3635,8 +3635,8 @@ export class PayrollService {
   private resolveAllocations(input: {
     allocationMode: string;
     hybridFixedPercent: number;
-    fixedAllocations: Array<{ organizationId: bigint | null; teamId: bigint | null; projectId: bigint | null; fundId: string | null; grantId: string | null; allocationPercent: number; allocationAmount?: Prisma.Decimal | null; sortOrder: number }>;
-    timesheetAllocations: Array<{ organizationId: bigint | null; teamId: bigint | null; projectId: bigint | null; fundId: string | null; grantId: string | null; allocationPercent: Prisma.Decimal; allocationAmount?: Prisma.Decimal | null; sortOrder: number; hours?: number }>;
+    fixedAllocations: Array<{ organizationId: bigint | null; teamId: bigint | null; projectId: bigint | null; fundId: string | null; grantId: string | null; allocationPercent: number; allocationAmount?: Drizzle.Decimal | null; sortOrder: number }>;
+    timesheetAllocations: Array<{ organizationId: bigint | null; teamId: bigint | null; projectId: bigint | null; fundId: string | null; grantId: string | null; allocationPercent: Drizzle.Decimal; allocationAmount?: Drizzle.Decimal | null; sortOrder: number; hours?: number }>;
   }) {
     const timesheetRows = input.timesheetAllocations.length ? input.timesheetAllocations : [];
     if (input.allocationMode === 'timesheet' && timesheetRows.length) {
@@ -3645,7 +3645,7 @@ export class PayrollService {
     if (input.allocationMode !== 'hybrid' || !timesheetRows.length) {
       return input.fixedAllocations.map((row, index) => ({
         ...row,
-        allocationPercent: new Prisma.Decimal(Number(row.allocationPercent || 0)),
+        allocationPercent: new Drizzle.Decimal(Number(row.allocationPercent || 0)),
         sortOrder: index,
       }));
     }
@@ -3665,7 +3665,7 @@ export class PayrollService {
       .filter((row) => row.allocationPercent > 0)
       .map((row, index) => ({
         ...row,
-        allocationPercent: new Prisma.Decimal(row.allocationPercent),
+        allocationPercent: new Drizzle.Decimal(row.allocationPercent),
         allocationAmount: null,
         sortOrder: index,
       }));
@@ -3732,7 +3732,7 @@ export class PayrollService {
     const componentCodes = Array.from(new Set(lines.map((row) => row.component_code).filter(Boolean)));
 
     const components = componentCodes.length
-      ? await this.prisma.payrollComponent.findMany({ where: { code: { in: componentCodes } } })
+      ? await this.drizzle.payrollComponent.findMany({ where: { code: { in: componentCodes } } })
       : [];
     const componentSet = new Set(components.map((row) => row.code));
 
@@ -3745,11 +3745,11 @@ export class PayrollService {
       if (!row.period_start) rowIssues.push('period_start is required');
       if (!row.period_end) rowIssues.push('period_end is required');
       if (runRows.has(row.run_name)) rowIssues.push('run_name must be unique');
-      const existing = row.year && row.month ? await this.prisma.payrollRun.findFirst({ where: { year: row.year, month: row.month } }) : null;
+      const existing = row.year && row.month ? await this.drizzle.payrollRun.findFirst({ where: { year: row.year, month: row.month } }) : null;
       if (existing && dto.update_existing !== true) rowIssues.push(`run already exists for ${row.month}/${row.year}`);
       if (existing && existing.status === 'paid') rowIssues.push('existing paid runs cannot be overwritten');
       if (row.paid_from_account) {
-        const account = await this.resolveFinanceAccountLookup(this.prisma, row.paid_from_account);
+        const account = await this.resolveFinanceAccountLookup(this.drizzle, row.paid_from_account);
         if (!account) rowIssues.push(`payment account not found: ${row.paid_from_account}`);
       }
       runRows.set(row.run_name, row);
@@ -3766,22 +3766,22 @@ export class PayrollService {
         if (matches.length > 1) rowIssues.push('worker_ref must be unique');
       }
       if (row.organization) {
-        const orgId = await this.resolveOrganizationLookup(this.prisma, row.organization);
+        const orgId = await this.resolveOrganizationLookup(this.drizzle, row.organization);
         if (!orgId) rowIssues.push(`organization not found: ${row.organization}`);
       }
       if (row.team) {
-        const teamId = await this.resolveTeamLookup(this.prisma, row.team);
+        const teamId = await this.resolveTeamLookup(this.drizzle, row.team);
         if (!teamId) rowIssues.push(`team not found: ${row.team}`);
       }
       if (row.fund) {
-        const fundId = await this.resolveFundLookup(this.prisma, row.fund);
+        const fundId = await this.resolveFundLookup(this.drizzle, row.fund);
         if (!fundId) rowIssues.push(`fund not found: ${row.fund}`);
       }
       if (row.grant) {
-        const grantId = await this.resolveGrantLookup(this.prisma, row.grant);
+        const grantId = await this.resolveGrantLookup(this.drizzle, row.grant);
         if (!grantId) rowIssues.push(`grant not found: ${row.grant}`);
       }
-      if (row.profile_id && !await this.prisma.profile.findUnique({ where: { id: this.parseBigInt(row.profile_id, 'profile id') } })) {
+      if (row.profile_id && !await this.drizzle.profile.findUnique({ where: { id: this.parseBigInt(row.profile_id, 'profile id') } })) {
         rowIssues.push(`profile not found: ${row.profile_id}`);
       }
       if (rowIssues.length) issues.push({ sheet: 'Workers', row_number: row.row_number, key: row.worker_ref || `row-${row.row_number}`, issues: rowIssues });
@@ -3806,19 +3806,19 @@ export class PayrollService {
       if (row.run_name && !runNames.has(row.run_name)) rowIssues.push(`unknown run_name: ${row.run_name}`);
       if (row.worker_ref && !workerRefs.has(row.worker_ref)) rowIssues.push(`unknown worker_ref: ${row.worker_ref}`);
       if (row.organization) {
-        const orgId = await this.resolveOrganizationLookup(this.prisma, row.organization);
+        const orgId = await this.resolveOrganizationLookup(this.drizzle, row.organization);
         if (!orgId) rowIssues.push(`organization not found: ${row.organization}`);
       }
       if (row.team) {
-        const teamId = await this.resolveTeamLookup(this.prisma, row.team);
+        const teamId = await this.resolveTeamLookup(this.drizzle, row.team);
         if (!teamId) rowIssues.push(`team not found: ${row.team}`);
       }
       if (row.fund) {
-        const fundId = await this.resolveFundLookup(this.prisma, row.fund);
+        const fundId = await this.resolveFundLookup(this.drizzle, row.fund);
         if (!fundId) rowIssues.push(`fund not found: ${row.fund}`);
       }
       if (row.grant) {
-        const grantId = await this.resolveGrantLookup(this.prisma, row.grant);
+        const grantId = await this.resolveGrantLookup(this.drizzle, row.grant);
         if (!grantId) rowIssues.push(`grant not found: ${row.grant}`);
       }
       if (row.allocation_percent <= 0) rowIssues.push('allocation_percent must be greater than zero');
@@ -3884,7 +3884,7 @@ export class PayrollService {
     };
   }
 
-  private async upsertImportedWorkerTx(tx: Prisma.TransactionClient, row: any) {
+  private async upsertImportedWorkerTx(tx: Drizzle.TransactionClient, row: any) {
     const profileId = row.profile_id ? this.parseBigInt(row.profile_id, 'profile id') : null;
     const organizationId = row.organization ? await this.resolveOrganizationLookup(tx, row.organization) : null;
     const teamId = row.team ? await this.resolveTeamLookup(tx, row.team) : null;
@@ -3933,7 +3933,7 @@ export class PayrollService {
     return worker;
   }
 
-  private async upsertImportedRunTx(tx: Prisma.TransactionClient, row: any, updateExisting: boolean, actorId?: string) {
+  private async upsertImportedRunTx(tx: Drizzle.TransactionClient, row: any, updateExisting: boolean, actorId?: string) {
     const paidFromAccount = row.paid_from_account ? await this.resolveFinanceAccountLookup(tx, row.paid_from_account) : null;
     const existing = await tx.payrollRun.findFirst({ where: { year: row.year, month: row.month }, include: { postings: true } });
     if (existing) {
@@ -3973,7 +3973,7 @@ export class PayrollService {
   }
 
   private async createImportedRunItemTx(
-    tx: Prisma.TransactionClient,
+    tx: Drizzle.TransactionClient,
     runId: string,
     worker: any,
     grouped: { run_name: string; worker_ref: string; lines: any[] },
@@ -3982,14 +3982,14 @@ export class PayrollService {
   ) {
     const componentCodes = grouped.lines.map((line) => line.component_code);
     const components = await tx.payrollComponent.findMany({ where: { code: { in: componentCodes } } });
-    const componentMap = new Map(components.map((row) => [row.code, row]));
+        const componentMap = new Map<string, any>(components.map((row) => [row.code, row]));
 
     const typedLines = grouped.lines.map((line) => {
       const component = componentMap.get(line.component_code);
       return {
         componentId: component!.id,
         lineType: component!.componentType,
-        amount: new Prisma.Decimal(Number(line.amount || 0)),
+        amount: new Drizzle.Decimal(Number(line.amount || 0)),
         notes: line.notes || null,
       };
     });
@@ -4096,9 +4096,9 @@ export class PayrollService {
     if (!row) return null;
     const profileId = row.profile_id ? this.parseBigInt(row.profile_id, 'profile id') : null;
     return (
-      (profileId ? await this.prisma.payrollWorker.findFirst({ where: { profileId } }) : null) ||
-      (row.staff_code ? await this.prisma.payrollWorker.findFirst({ where: { staffCode: row.staff_code } }) : null) ||
-      (row.email ? await this.prisma.payrollWorker.findFirst({ where: { email: row.email, fullName: row.full_name } }) : null)
+      (profileId ? await this.drizzle.payrollWorker.findFirst({ where: { profileId } }) : null) ||
+      (row.staff_code ? await this.drizzle.payrollWorker.findFirst({ where: { staffCode: row.staff_code } }) : null) ||
+      (row.email ? await this.drizzle.payrollWorker.findFirst({ where: { email: row.email, fullName: row.full_name } }) : null)
     );
   }
 
@@ -4109,14 +4109,14 @@ export class PayrollService {
     runMap: Map<string, any>
   ) {
     const [runName, workerRef] = key.split('::');
-    const run = runMap.get(runName) || await this.prisma.payrollRun.findFirst({ where: { name: runName } });
+    const run = runMap.get(runName) || await this.drizzle.payrollRun.findFirst({ where: { name: runName } });
     const worker = workerMap.get(workerRef) || await this.findImportedWorker(workerRef, analysis.workers);
     if (!run || !worker) return null;
-    const item = await this.prisma.payrollRunItem.findFirst({ where: { runId: run.id, workerId: worker.id } });
+    const item = await this.drizzle.payrollRunItem.findFirst({ where: { runId: run.id, workerId: worker.id } });
     return item ? { itemId: item.id, runId: run.id } : null;
   }
 
-  private async resolveOrganizationLookup(client: Prisma.TransactionClient | PrismaService, value: string) {
+  private async resolveOrganizationLookup(client: Drizzle.TransactionClient | DrizzleService, value: string) {
     const trimmed = String(value || '').trim();
     if (!trimmed) return null;
     if (/^\d+$/.test(trimmed)) {
@@ -4127,7 +4127,7 @@ export class PayrollService {
     return match?.id ?? null;
   }
 
-  private async resolveTeamLookup(client: Prisma.TransactionClient | PrismaService, value: string) {
+  private async resolveTeamLookup(client: Drizzle.TransactionClient | DrizzleService, value: string) {
     const trimmed = String(value || '').trim();
     if (!trimmed) return null;
     if (/^\d+$/.test(trimmed)) {
@@ -4138,7 +4138,7 @@ export class PayrollService {
     return match?.id ?? null;
   }
 
-  private async resolveFundLookup(client: Prisma.TransactionClient | PrismaService, value: string) {
+  private async resolveFundLookup(client: Drizzle.TransactionClient | DrizzleService, value: string) {
     const trimmed = String(value || '').trim();
     if (!trimmed) return null;
     const match = await client.financeFund.findFirst({
@@ -4149,7 +4149,7 @@ export class PayrollService {
     return match?.id ?? null;
   }
 
-  private async resolveGrantLookup(client: Prisma.TransactionClient | PrismaService, value: string) {
+  private async resolveGrantLookup(client: Drizzle.TransactionClient | DrizzleService, value: string) {
     const trimmed = String(value || '').trim();
     if (!trimmed) return null;
     const match = await client.financeGrant.findFirst({
@@ -4160,7 +4160,7 @@ export class PayrollService {
     return match?.id ?? null;
   }
 
-  private async resolveFinanceAccountLookup(client: Prisma.TransactionClient | PrismaService, value: string) {
+  private async resolveFinanceAccountLookup(client: Drizzle.TransactionClient | DrizzleService, value: string) {
     const trimmed = String(value || '').trim();
     if (!trimmed) return null;
     const match = await client.financeAccount.findFirst({
@@ -4200,7 +4200,7 @@ export class PayrollService {
       includeRoleRecipients?: string[];
     }
   ) {
-    const run = await this.prisma.payrollRun.findUnique({
+    const run = await this.drizzle.payrollRun.findUnique({
       where: { id: runId },
       select: {
         id: true,
@@ -4233,7 +4233,7 @@ export class PayrollService {
             run_id: run.id,
             run_name: run.name,
             ...(input.data || {}),
-          } as Prisma.InputJsonValue,
+          } as Drizzle.InputJsonValue,
         })
       )
     );
@@ -4248,7 +4248,7 @@ export class PayrollService {
       message: string;
       link?: string;
       notifiableType?: string;
-      data?: Prisma.InputJsonValue;
+      data?: Drizzle.InputJsonValue;
     }
   ) {
     const sentVia = await this.resolveNotificationChannels(userId, category);
@@ -4266,7 +4266,7 @@ export class PayrollService {
   }
 
   private async resolveNotificationChannels(userId: string, category: string) {
-    const row = await this.prisma.payrollNotificationPreference.findUnique({
+    const row = await this.drizzle.payrollNotificationPreference.findUnique({
       where: { userId: toBigInt(userId) }
     });
     const config = this.normalizeNotificationPreferenceConfig((row?.config || {}) as Record<string, any>);
@@ -4311,19 +4311,19 @@ export class PayrollService {
     note?: string,
     metadata?: Record<string, any>
   ) {
-    await this.prisma.payrollRunEvent.create({
+    await this.drizzle.payrollRunEvent.create({
       data: {
         runId,
         actorId: actorId ? toBigInt(actorId) : null,
         eventType,
         note: note || null,
-        metadata: (metadata || {}) as Prisma.InputJsonValue,
+        metadata: (metadata || {}) as Drizzle.InputJsonValue,
       }
     });
   }
 
   private async recordRunEventTx(
-    tx: Prisma.TransactionClient,
+    tx: Drizzle.TransactionClient,
     runId: string,
     eventType: string,
     actorId?: string,
@@ -4336,7 +4336,7 @@ export class PayrollService {
         actorId: actorId ? toBigInt(actorId) : null,
         eventType,
         note: note || null,
-        metadata: (metadata || {}) as Prisma.InputJsonValue,
+        metadata: (metadata || {}) as Drizzle.InputJsonValue,
       }
     });
   }

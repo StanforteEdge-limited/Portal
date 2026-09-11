@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
-import { PrismaService } from '$common/prisma/prisma.service';
+import { Drizzle } from '$common/db/drizzle-compat';
+import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { paginatedResponse } from '$common/helpers/paginated-response';
 import { toBigInt } from '$common/utils/ids';
 import { CreateAttendanceCorrectionDto } from '$modules/hr/hr/dto/create-attendance-correction.dto';
@@ -44,7 +44,7 @@ type ProfileContext = {
 
 @Injectable()
 export class AttendanceService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly drizzle: DrizzleService) {}
 
   async clockIn(
     userId: string,
@@ -66,7 +66,7 @@ export class AttendanceService {
     this.assertTimestampAllowed(at, policy, payload?.source);
 
     const workDate = this.toWorkDate(at);
-    const entries = await this.prisma.attendanceEntry.findMany({
+    const entries = await this.drizzle.attendanceEntry.findMany({
       where: { userId: actorId, workDate },
       orderBy: { entryAt: 'asc' }
     });
@@ -100,7 +100,7 @@ export class AttendanceService {
       longitude: payload?.longitude
     });
 
-    await this.prisma.attendanceEntry.create({
+    await this.drizzle.attendanceEntry.create({
       data: {
         userId: actorId,
         entryType: 'clock_in',
@@ -116,7 +116,7 @@ export class AttendanceService {
         metadata: {
           ip: this.getIp(req),
           user_agent: this.getUserAgent(req)
-        } as Prisma.InputJsonValue
+        } as Drizzle.InputJsonValue
       }
     });
 
@@ -147,7 +147,7 @@ export class AttendanceService {
       new Date(Date.now() - policy.max_past_days * 24 * 60 * 60000)
     );
 
-    const entries = await this.prisma.attendanceEntry.findMany({
+    const entries = await this.drizzle.attendanceEntry.findMany({
       where: {
         userId: actorId,
         workDate: {
@@ -169,7 +169,7 @@ export class AttendanceService {
         ? (openClockIn.attendanceMode as AttendanceMode)
         : this.resolveExpectedMode(profile, workDate, policy);
 
-    await this.prisma.attendanceEntry.create({
+    await this.drizzle.attendanceEntry.create({
       data: {
         userId: actorId,
         entryType: 'clock_out',
@@ -185,7 +185,7 @@ export class AttendanceService {
         metadata: {
           ip: this.getIp(req),
           user_agent: this.getUserAgent(req)
-        } as Prisma.InputJsonValue
+        } as Drizzle.InputJsonValue
       }
     });
 
@@ -202,14 +202,14 @@ export class AttendanceService {
     const toDate = this.toWorkDate(to);
 
     const [entries, daily, policy, corrections, exceptions, officeLocations] = await Promise.all([
-      this.prisma.attendanceEntry.findMany({
+      this.drizzle.attendanceEntry.findMany({
         where: {
           userId: actorId,
           workDate: { gte: fromDate, lte: toDate }
         },
         orderBy: [{ workDate: 'desc' }, { entryAt: 'asc' }]
       }),
-      this.prisma.attendanceDaily.findMany({
+      this.drizzle.attendanceDaily.findMany({
         where: {
           userId: actorId,
           workDate: { gte: fromDate, lte: toDate }
@@ -217,11 +217,11 @@ export class AttendanceService {
         orderBy: { workDate: 'desc' }
       }),
       this.resolveAttendancePolicy(actorId, profile),
-      this.prisma.attendanceCorrection.findMany({
+      this.drizzle.attendanceCorrection.findMany({
         where: { userId: actorId, workDate: { gte: fromDate, lte: toDate } },
         orderBy: { requestedAt: 'desc' }
       }),
-      this.prisma.attendanceException.findMany({
+      this.drizzle.attendanceException.findMany({
         where: { userId: actorId, workDate: { gte: fromDate, lte: toDate } },
         orderBy: { createdAt: 'desc' }
       }),
@@ -283,7 +283,7 @@ export class AttendanceService {
     const fromDate = this.toWorkDate(from);
     const toDate = this.toWorkDate(to);
 
-    const rows = await this.prisma.attendanceDaily.groupBy({
+    const rows = await this.drizzle.attendanceDaily.groupBy({
       by: ['status'],
       where: { workDate: { gte: fromDate, lte: toDate } },
       _count: { _all: true }
@@ -313,7 +313,7 @@ export class AttendanceService {
     const orgId = query.org_id ? toBigInt(String(query.org_id)) : null;
     const teamId = query.team_id ? toBigInt(String(query.team_id)) : null;
 
-    const where: any = {
+    const where: Drizzle.AttendanceDailyWhereInput = {
       workDate: { gte: fromDate, lte: toDate },
       ...(status ? { status } : {}),
       ...(userId ? { userId } : {})
@@ -330,8 +330,8 @@ export class AttendanceService {
     }
 
     const [total, dailyRows] = await Promise.all([
-      this.prisma.attendanceDaily.count({ where }),
-      this.prisma.attendanceDaily.findMany({
+      this.drizzle.attendanceDaily.count({ where }),
+      this.drizzle.attendanceDaily.findMany({
         where,
         orderBy: [{ workDate: 'desc' }, { userId: 'asc' }],
         skip,
@@ -343,8 +343,8 @@ export class AttendanceService {
       return paginatedResponse([], { page, per_page: limit, total: 0 });
     }
 
-    const userIds = Array.from(new Set(dailyRows.map((row) => row.userId.toString())));
-    const profiles = await this.prisma.profile.findMany({
+    const userIds = Array.from(new Set<string>(dailyRows.map((row) => row.userId.toString())));
+    const profiles = await this.drizzle.profile.findMany({
       where: { id: { in: userIds.map((id) => toBigInt(id)) } },
       select: { id: true, email: true, username: true, firstName: true, lastName: true }
     });
@@ -382,7 +382,7 @@ export class AttendanceService {
   async getDailyRecord(userId: string, workDate: string) {
     const userIdBigInt = toBigInt(userId);
 
-    const daily = await this.prisma.attendanceDaily.findFirst({
+    const daily = await this.drizzle.attendanceDaily.findFirst({
       where: {
         userId: userIdBigInt,
         workDate: workDate
@@ -393,7 +393,7 @@ export class AttendanceService {
       return null;
     }
 
-    const entries = await this.prisma.attendanceEntry.findMany({
+    const entries = await this.drizzle.attendanceEntry.findMany({
       where: {
         userId: userIdBigInt,
         workDate: workDate
@@ -401,7 +401,7 @@ export class AttendanceService {
       orderBy: { entryAt: 'asc' }
     });
 
-    const profile = await this.prisma.profile.findUnique({
+    const profile = await this.drizzle.profile.findUnique({
       where: { id: userIdBigInt },
       select: { id: true, email: true, username: true, firstName: true, lastName: true }
     });
@@ -437,7 +437,7 @@ export class AttendanceService {
     const status = query.is_active === undefined ? null : String(query.is_active) === 'true';
     const search = query.search ? String(query.search).trim() : '';
 
-    const rows = await this.prisma.officeLocation.findMany({
+    const rows = await this.drizzle.officeLocation.findMany({
       where: {
         ...(status === null ? {} : { isActive: status }),
         ...(search
@@ -474,7 +474,7 @@ export class AttendanceService {
     const todayEnd = new Date(today);
     todayEnd.setDate(todayEnd.getDate() + 1);
 
-    const entries = await this.prisma.attendanceEntry.findMany({
+    const entries = await this.drizzle.attendanceEntry.findMany({
       where: {
         userId: actorId,
         workDate: today,
@@ -513,7 +513,7 @@ export class AttendanceService {
       organizationIds.unshift(primaryOrganizationId);
     }
 
-    const row = await this.prisma.officeLocation.create({
+    const row = await this.drizzle.officeLocation.create({
       data: {
         name: dto.name.trim(),
         address: dto.address?.trim() || null,
@@ -546,7 +546,7 @@ export class AttendanceService {
   async updateOfficeLocation(userId: string, id: string, dto: UpsertOfficeLocationDto) {
     const actorId = toBigInt(userId);
     const officeLocationId = toBigInt(id);
-    const existing = await this.prisma.officeLocation.findUnique({ where: { id: officeLocationId } });
+    const existing = await this.drizzle.officeLocation.findUnique({ where: { id: officeLocationId } });
     if (!existing) throw new NotFoundException('Office location not found');
 
     const organizationIds = dto.organization_ids ? this.uniqueBigInts(dto.organization_ids) : null;
@@ -555,7 +555,7 @@ export class AttendanceService {
       organizationIds.unshift(primaryOrganizationId);
     }
 
-    const row = await this.prisma.$transaction(async (tx) => {
+    const row = await this.drizzle.$transaction(async (tx) => {
       if (organizationIds) {
         await tx.organizationOfficeLocation.deleteMany({ where: { officeLocationId } });
       }
@@ -617,8 +617,8 @@ export class AttendanceService {
     };
 
     const [total, rows] = await Promise.all([
-      this.prisma.attendanceCorrection.count({ where }),
-      this.prisma.attendanceCorrection.findMany({
+      this.drizzle.attendanceCorrection.count({ where }),
+      this.drizzle.attendanceCorrection.findMany({
         where,
         include: {
           user: { select: { id: true, firstName: true, lastName: true, email: true } },
@@ -642,16 +642,16 @@ export class AttendanceService {
   async createCorrection(userId: string, dto: CreateAttendanceCorrectionDto) {
     const actorId = toBigInt(userId);
     const workDate = this.toWorkDate(new Date(dto.work_date));
-    const existingDaily = await this.prisma.attendanceDaily.findUnique({
+    const existingDaily = await this.drizzle.attendanceDaily.findUnique({
       where: { unique_attendance_daily: { userId: actorId, workDate } }
     });
     const relevantEntry = dto.request_type === 'clock_in'
-      ? await this.prisma.attendanceEntry.findFirst({ where: { userId: actorId, workDate, entryType: 'clock_in' }, orderBy: { entryAt: 'asc' } })
+      ? await this.drizzle.attendanceEntry.findFirst({ where: { userId: actorId, workDate, entryType: 'clock_in' }, orderBy: { entryAt: 'asc' } })
       : dto.request_type === 'clock_out'
-        ? await this.prisma.attendanceEntry.findFirst({ where: { userId: actorId, workDate, entryType: 'clock_out' }, orderBy: { entryAt: 'desc' } })
-        : await this.prisma.attendanceEntry.findFirst({ where: { userId: actorId, workDate }, orderBy: { entryAt: 'desc' } });
+        ? await this.drizzle.attendanceEntry.findFirst({ where: { userId: actorId, workDate, entryType: 'clock_out' }, orderBy: { entryAt: 'desc' } })
+        : await this.drizzle.attendanceEntry.findFirst({ where: { userId: actorId, workDate }, orderBy: { entryAt: 'desc' } });
 
-    const correction = await this.prisma.attendanceCorrection.create({
+    const correction = await this.drizzle.attendanceCorrection.create({
       data: {
         userId: actorId,
         attendanceDailyId: existingDaily?.id ?? null,
@@ -669,7 +669,7 @@ export class AttendanceService {
         snapshotJson: {
           daily: existingDaily ? this.serializeDaily(existingDaily) : null,
           entry: relevantEntry ? this.serializeEntry(relevantEntry) : null
-        } as Prisma.InputJsonValue
+        } as Drizzle.InputJsonValue
       }
     });
 
@@ -678,14 +678,14 @@ export class AttendanceService {
 
   async approveCorrection(userId: string, id: string, dto: ReviewAttendanceCorrectionDto) {
     const actorId = toBigInt(userId);
-    const correction = await this.prisma.attendanceCorrection.findUnique({ where: { id } });
+    const correction = await this.drizzle.attendanceCorrection.findUnique({ where: { id } });
     if (!correction) throw new NotFoundException('Attendance correction not found');
     if (correction.status !== 'pending') throw new BadRequestException('Attendance correction is no longer pending');
 
     const profile = await this.getProfileContext(correction.userId);
     const policy = await this.resolveAttendancePolicy(correction.userId, profile);
 
-    await this.prisma.$transaction(async (tx) => {
+    await this.drizzle.$transaction(async (tx) => {
       if (correction.requestType === 'clock_in' || correction.requestType === 'clock_out') {
         if (!correction.proposedAt) throw new BadRequestException('Correction is missing the proposed time');
         await tx.attendanceEntry.create({
@@ -708,7 +708,7 @@ export class AttendanceService {
             }),
             source: 'admin',
             createdBy: actorId,
-            metadata: { correction_id: correction.id, approved_by: actorId.toString() } as Prisma.InputJsonValue
+            metadata: { correction_id: correction.id, approved_by: actorId.toString() } as Drizzle.InputJsonValue
           }
         });
       } else {
@@ -758,11 +758,11 @@ export class AttendanceService {
 
   async rejectCorrection(userId: string, id: string, dto: ReviewAttendanceCorrectionDto) {
     const actorId = toBigInt(userId);
-    const correction = await this.prisma.attendanceCorrection.findUnique({ where: { id } });
+    const correction = await this.drizzle.attendanceCorrection.findUnique({ where: { id } });
     if (!correction) throw new NotFoundException('Attendance correction not found');
     if (correction.status !== 'pending') throw new BadRequestException('Attendance correction is no longer pending');
 
-    await this.prisma.attendanceCorrection.update({
+    await this.drizzle.attendanceCorrection.update({
       where: { id },
       data: {
         status: 'rejected',
@@ -781,7 +781,7 @@ export class AttendanceService {
     const fromDate = query.from ? this.toWorkDate(new Date(String(query.from))) : undefined;
     const toDate = query.to ? this.toWorkDate(new Date(String(query.to))) : undefined;
 
-    const rows = await this.prisma.attendanceException.findMany({
+    const rows = await this.drizzle.attendanceException.findMany({
       where: {
         ...(status ? { status } : {}),
         ...(targetUserId ? { userId: targetUserId } : {}),
@@ -811,11 +811,11 @@ export class AttendanceService {
     const targetUserId = toBigInt(dto.user_id);
     const workDate = this.toWorkDate(new Date(dto.work_date));
     const [daily, lastEntry] = await Promise.all([
-      this.prisma.attendanceDaily.findUnique({ where: { unique_attendance_daily: { userId: targetUserId, workDate } } }),
-      this.prisma.attendanceEntry.findFirst({ where: { userId: targetUserId, workDate }, orderBy: { entryAt: 'desc' } })
+      this.drizzle.attendanceDaily.findUnique({ where: { unique_attendance_daily: { userId: targetUserId, workDate } } }),
+      this.drizzle.attendanceEntry.findFirst({ where: { userId: targetUserId, workDate }, orderBy: { entryAt: 'desc' } })
     ]);
 
-    const row = await this.prisma.attendanceException.create({
+    const row = await this.drizzle.attendanceException.create({
       data: {
         userId: targetUserId,
         attendanceDailyId: daily?.id ?? null,
@@ -840,11 +840,11 @@ export class AttendanceService {
 
   async resolveException(userId: string, id: string, dto: ReviewAttendanceExceptionDto) {
     const actorId = toBigInt(userId);
-    const existing = await this.prisma.attendanceException.findUnique({ where: { id } });
+    const existing = await this.drizzle.attendanceException.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Attendance exception not found');
     if (existing.status !== 'active') throw new BadRequestException('Attendance exception is no longer active');
 
-    await this.prisma.attendanceException.update({
+    await this.drizzle.attendanceException.update({
       where: { id },
       data: {
         status: 'resolved',
@@ -864,13 +864,13 @@ export class AttendanceService {
   private async recomputeDay(userId: bigint, workDate: Date, profileArg?: ProfileContext, policyArg?: AttendancePolicy) {
     const profile = profileArg ?? (await this.getProfileContext(userId));
     const [entries, policy, exceptions, corrections] = await Promise.all([
-      this.prisma.attendanceEntry.findMany({
+      this.drizzle.attendanceEntry.findMany({
         where: { userId, workDate },
         orderBy: { entryAt: 'asc' }
       }),
       policyArg ? Promise.resolve(policyArg) : this.resolveAttendancePolicy(userId, profile),
-      this.prisma.attendanceException.findMany({ where: { userId, workDate, status: 'active' }, orderBy: { createdAt: 'desc' } }),
-      this.prisma.attendanceCorrection.findMany({ where: { userId, workDate, status: 'approved' }, orderBy: { reviewedAt: 'desc' } })
+      this.drizzle.attendanceException.findMany({ where: { userId, workDate, status: 'active' }, orderBy: { createdAt: 'desc' } }),
+      this.drizzle.attendanceCorrection.findMany({ where: { userId, workDate, status: 'approved' }, orderBy: { reviewedAt: 'desc' } })
     ]);
 
     let firstInAt: Date | null = null;
@@ -961,7 +961,7 @@ export class AttendanceService {
       office_location_id: officeLocationId ? officeLocationId.toString() : null
     };
 
-    const daily = await this.prisma.attendanceDaily.upsert({
+    const daily = await this.drizzle.attendanceDaily.upsert({
       where: {
         unique_attendance_daily: { userId, workDate }
       },
@@ -978,7 +978,7 @@ export class AttendanceService {
         overtimeMinutes,
         firstInAt,
         lastOutAt,
-        policySnapshot: policySnapshot as Prisma.InputJsonValue,
+        policySnapshot: policySnapshot as Drizzle.InputJsonValue,
         computedAt: new Date()
       },
       create: {
@@ -996,7 +996,7 @@ export class AttendanceService {
         overtimeMinutes,
         firstInAt,
         lastOutAt,
-        policySnapshot: policySnapshot as Prisma.InputJsonValue,
+        policySnapshot: policySnapshot as Drizzle.InputJsonValue,
         computedAt: new Date()
       }
     });
@@ -1027,7 +1027,7 @@ export class AttendanceService {
     const staffType = profile.workMode ?? undefined;
 
     const now = new Date();
-    const policies = await this.prisma.policy.findMany({
+    const policies = await this.drizzle.policy.findMany({
       where: {
         module: 'attendance',
         policyKey: 'schedule',
@@ -1052,7 +1052,7 @@ export class AttendanceService {
         return a.priority - b.priority;
       });
 
-    const merged = matched.reduce<Record<string, unknown>>((acc, row) => {
+    const merged = (matched as any[]).reduce((acc: Record<string, unknown>, row) => {
       const cfg =
         row.configJson && typeof row.configJson === 'object' && !Array.isArray(row.configJson)
           ? (row.configJson as Record<string, unknown>)
@@ -1106,8 +1106,8 @@ export class AttendanceService {
   }
 
   private async getProfileContext(userId: bigint): Promise<ProfileContext> {
-    const [profile, primaryTeam] = await this.prisma.$transaction([
-      this.prisma.profile.findUnique({
+    const [profile, primaryTeam] = await this.drizzle.$transaction([
+      this.drizzle.profile.findUnique({
         where: { id: userId },
         include: {
           organizations: true,
@@ -1115,7 +1115,7 @@ export class AttendanceService {
           employeeMeta: true
         }
       }),
-      this.prisma.groupUser.findFirst({
+      this.drizzle.groupUser.findFirst({
         where: { userId, isPrimary: true },
         select: { groupId: true }
       })
@@ -1139,7 +1139,7 @@ export class AttendanceService {
           ].filter(Boolean) as bigint[]
         )
       ),
-      employeeMeta: (profile.employeeMeta ?? []).reduce<Record<string, unknown>>((acc, row: any) => {
+      employeeMeta: (profile.employeeMeta ?? []).reduce((acc: Record<string, unknown>, row: any) => {
         acc[row.metaKey] = row.metaValue;
         return acc;
       }, {})
@@ -1184,7 +1184,7 @@ export class AttendanceService {
 
   private async listAllowedOfficeLocations(profile: ProfileContext) {
     if (!profile.organizationIds.length) return [];
-    const rows = await this.prisma.officeLocation.findMany({
+    const rows = await this.drizzle.officeLocation.findMany({
       where: {
         isActive: true,
         organizations: { some: { organizationId: { in: profile.organizationIds } } }
@@ -1210,7 +1210,7 @@ export class AttendanceService {
 
     const requestedOfficeLocationId = input.requestedOfficeLocationId ? toBigInt(input.requestedOfficeLocationId) : null;
     if (requestedOfficeLocationId) {
-      const row = await this.prisma.officeLocation.findFirst({
+      const row = await this.drizzle.officeLocation.findFirst({
         where: {
           id: requestedOfficeLocationId,
           isActive: true,
@@ -1221,7 +1221,7 @@ export class AttendanceService {
       return row;
     }
 
-    return this.prisma.officeLocation.findFirst({
+    return this.drizzle.officeLocation.findFirst({
       where: {
         isActive: true,
         organizations: { some: { organizationId: { in: input.profile.organizationIds } } }
@@ -1247,7 +1247,7 @@ export class AttendanceService {
   }
 
   private async findHoliday(profile: ProfileContext, workDate: Date, officeLocationId: bigint | null) {
-    const rows = await this.prisma.attendanceHoliday.findMany({
+    const rows = await this.drizzle.attendanceHoliday.findMany({
       where: {
         isActive: true,
         OR: [
@@ -1271,7 +1271,7 @@ export class AttendanceService {
   }
 
   private async isOnApprovedLeave(userId: bigint, workDate: Date) {
-    const requests = await this.prisma.requestInstance.findMany({
+    const requests = await this.drizzle.requestInstance.findMany({
       where: {
         createdBy: userId,
         status: { in: ['approved', 'completed'] }
@@ -1303,7 +1303,7 @@ export class AttendanceService {
 
   private evaluateGeofence(input: {
     attendanceMode: AttendanceMode;
-    officeLocation: { latitude: Prisma.Decimal | number; longitude: Prisma.Decimal | number; radiusMeters: number } | null;
+    officeLocation: { latitude: Drizzle.Decimal | number; longitude: Drizzle.Decimal | number; radiusMeters: number } | null;
     latitude?: number | null;
     longitude?: number | null;
   }): GeofenceStatus {

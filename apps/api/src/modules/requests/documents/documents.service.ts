@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
-import { PrismaService } from '$common/prisma/prisma.service';
+import { Drizzle } from '$common/db/drizzle-compat';
+import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { toBigInt } from '$common/utils/ids';
 import { AcknowledgeDocumentDto } from '$modules/requests/documents/dto/acknowledge-document.dto';
 import { CreateDocumentDto } from '$modules/requests/documents/dto/create-document.dto';
@@ -9,13 +9,13 @@ import { paginatedResponse } from '$common/helpers/paginated-response';
 
 @Injectable()
 export class DocumentsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly drizzle: DrizzleService) {}
 
   async list(profileId: string, query: Record<string, any>) {
     const page = Math.max(1, Number(query.page ?? 1));
     const perPage = Math.min(100, Math.max(1, Number(query.per_page ?? 20)));
 
-    const where: Prisma.DocumentWhereInput = {};
+    const where: Drizzle.DocumentWhereInput = {};
 
     if (query.search) {
       const value = String(query.search).trim();
@@ -33,8 +33,8 @@ export class DocumentsService {
       where.requireAcknowledgement = query.require_acknowledgement === 'true';
     }
 
-    const [data, total] = await this.prisma.$transaction([
-      this.prisma.document.findMany({
+    const [data, total] = await this.drizzle.$transaction([
+      this.drizzle.document.findMany({
         where,
         include: {
           file: true,
@@ -49,14 +49,14 @@ export class DocumentsService {
         skip: (page - 1) * perPage,
         take: perPage
       }),
-      this.prisma.document.count({ where })
+      this.drizzle.document.count({ where })
     ]);
 
     return paginatedResponse(data.map((row) => this.serialize(row)), { page, per_page: perPage, total });
   }
 
   async get(profileId: string, id: string) {
-    const document = await this.prisma.document.findUnique({
+    const document = await this.drizzle.document.findUnique({
       where: { id },
       include: {
         file: true,
@@ -79,15 +79,15 @@ export class DocumentsService {
     }
 
     const slug = dto.slug?.trim() || this.slugify(dto.title);
-    const existing = await this.prisma.document.findUnique({ where: { slug } });
+    const existing = await this.drizzle.document.findUnique({ where: { slug } });
     if (existing) throw new BadRequestException('Slug already exists');
 
     if (dto.file_id) {
-      const file = await this.prisma.fileAsset.findUnique({ where: { id: dto.file_id }, select: { id: true } });
+      const file = await this.drizzle.fileAsset.findUnique({ where: { id: dto.file_id }, select: { id: true } });
       if (!file) throw new NotFoundException('File not found');
     }
 
-    const row = await this.prisma.document.create({
+    const row = await this.drizzle.document.create({
       data: {
         title: dto.title.trim(),
         slug,
@@ -110,20 +110,20 @@ export class DocumentsService {
   }
 
   async update(id: string, dto: UpdateDocumentDto, actorId?: string) {
-    const existing = await this.prisma.document.findUnique({ where: { id } });
+    const existing = await this.drizzle.document.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Document not found');
 
     if (dto.slug && dto.slug !== existing.slug) {
-      const slugCheck = await this.prisma.document.findUnique({ where: { slug: dto.slug } });
+      const slugCheck = await this.drizzle.document.findUnique({ where: { slug: dto.slug } });
       if (slugCheck && slugCheck.id !== id) throw new BadRequestException('Slug already exists');
     }
 
     if (dto.file_id) {
-      const file = await this.prisma.fileAsset.findUnique({ where: { id: dto.file_id }, select: { id: true } });
+      const file = await this.drizzle.fileAsset.findUnique({ where: { id: dto.file_id }, select: { id: true } });
       if (!file) throw new NotFoundException('File not found');
     }
 
-    const row = await this.prisma.document.update({
+    const row = await this.drizzle.document.update({
       where: { id },
       data: {
         title: dto.title?.trim(),
@@ -147,14 +147,14 @@ export class DocumentsService {
 
   async acknowledge(id: string, profileId: string, req: any, dto: AcknowledgeDocumentDto) {
     const userId = toBigInt(profileId);
-    const document = await this.prisma.document.findUnique({ where: { id } });
+    const document = await this.drizzle.document.findUnique({ where: { id } });
     if (!document) throw new NotFoundException('Document not found');
 
     const version = dto.version ?? document.version;
     const ip = (req?.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim() ?? req?.ip ?? null;
     const ua = (req?.headers?.['user-agent'] as string) ?? null;
 
-    const row = await this.prisma.documentAcknowledgement.upsert({
+    const row = await this.drizzle.documentAcknowledgement.upsert({
       where: {
         unique_document_ack: {
           documentId: id,
@@ -192,11 +192,11 @@ export class DocumentsService {
     const page = Math.max(1, Number(query.page ?? 1));
     const perPage = Math.min(100, Math.max(1, Number(query.per_page ?? 20)));
 
-    const where: Prisma.DocumentAcknowledgementWhereInput = { documentId: id };
+    const where: Drizzle.DocumentAcknowledgementWhereInput = { documentId: id };
     if (query.version) where.version = String(query.version);
 
-    const [rows, total] = await this.prisma.$transaction([
-      this.prisma.documentAcknowledgement.findMany({
+    const [rows, total] = await this.drizzle.$transaction([
+      this.drizzle.documentAcknowledgement.findMany({
         where,
         include: {
           user: {
@@ -213,7 +213,7 @@ export class DocumentsService {
         skip: (page - 1) * perPage,
         take: perPage
       }),
-      this.prisma.documentAcknowledgement.count({ where })
+      this.drizzle.documentAcknowledgement.count({ where })
     ]);
 
     return paginatedResponse(rows.map((row) => ({

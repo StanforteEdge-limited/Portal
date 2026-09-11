@@ -1,19 +1,19 @@
 import { RequestsService } from '$modules/requests/requests/requests.service';
 
 describe('RequestsService budget linkage', () => {
-  const prisma: any = {
+  const drizzle: any = {
     financeBudget: { findUnique: jest.fn() },
     financeBudgetCommitment: { upsert: jest.fn(), updateMany: jest.fn() },
   };
 
-  const service = new RequestsService(prisma, {} as any, {} as any, {} as any, { getRequestInclude: () => ({}) } as any);
+  const service = new RequestsService(drizzle, {} as any, {} as any, {} as any, { getRequestInclude: () => ({}) } as any);
 
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   it('rejects request budget line when line is not from the active approved revision', async () => {
-    prisma.financeBudget.findUnique.mockResolvedValue({
+    drizzle.financeBudget.findUnique.mockResolvedValue({
       id: 'budget-1',
       status: 'approved',
       teamId: 4n,
@@ -28,7 +28,7 @@ describe('RequestsService budget linkage', () => {
   });
 
   it('accepts approved budget line that matches request scope', async () => {
-    prisma.financeBudget.findUnique.mockResolvedValue({
+    drizzle.financeBudget.findUnique.mockResolvedValue({
       id: 'budget-1',
       status: 'approved',
       teamId: 4n,
@@ -55,7 +55,7 @@ describe('RequestsService budget linkage', () => {
       data: { budget_id: 'budget-1', budget_revision_id: 'rev-1', budget_line_id: 'line-1' },
     });
 
-    expect(prisma.financeBudgetCommitment.upsert).toHaveBeenCalledWith(
+    expect(drizzle.financeBudgetCommitment.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         create: expect.objectContaining({
           status: 'consumed',
@@ -74,7 +74,7 @@ describe('RequestsService budget linkage', () => {
       data: {},
     });
 
-    expect(prisma.financeBudgetCommitment.updateMany).toHaveBeenCalledWith(
+    expect(drizzle.financeBudgetCommitment.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ status: 'released' }),
       })

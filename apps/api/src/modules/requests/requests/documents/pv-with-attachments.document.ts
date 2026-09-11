@@ -20,7 +20,7 @@ export class PVWithAttachmentsDocument implements Document<PVWithAttachmentsCont
     if (!voucherId) throw new Error('voucherId required');
     const generatedAt = new Date();
 
-    const voucher = await this.engine.prisma.financePaymentVoucher.findFirst({
+    const voucher = await this.engine.drizzle.financePaymentVoucher.findFirst({
       where: { requestId: toBigInt(requestId), id: voucherId },
       include: {
         evidenceFile: true,
@@ -74,7 +74,7 @@ export class PVWithAttachmentsDocument implements Document<PVWithAttachmentsCont
         : [];
 
     if (retirementIds.length) {
-      const files = await this.engine.prisma.fileAsset.findMany({ where: { id: { in: retirementIds } } });
+      const files = await this.engine.drizzle.fileAsset.findMany({ where: { id: { in: retirementIds } } });
       for (const file of files) {
         const buffer = await this.engine.readAssetFileBuffer(file);
         if (buffer) {

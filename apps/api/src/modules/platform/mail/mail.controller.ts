@@ -4,7 +4,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard } from '$common/auth/jwt-auth.guard';
-import { PrismaService } from '$common/prisma/prisma.service';
+import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { MailAccountService } from './mail-account.service';
 import { MailSyncService } from './mail-sync.service';
 import { MailImapService } from './mail-imap.service';
@@ -20,7 +20,7 @@ export class MailController {
     private readonly syncService: MailSyncService,
     private readonly imapService: MailImapService,
     private readonly smtpService: MailSmtpService,
-    private readonly prisma: PrismaService,
+    private readonly drizzle: DrizzleService,
   ) {}
 
   // ── OAuth — NOT guarded (callback comes from Google/Microsoft redirect) ─────
@@ -115,7 +115,7 @@ export class MailController {
   ) {
     await this.accountService.findAccountForUser(BigInt(accountId), BigInt(req.user.id));
     const skip = (Number(page) - 1) * Number(limit);
-    const data = await this.prisma.mailHeader.findMany({
+    const data = await this.drizzle.mailHeader.findMany({
       where: { accountId: BigInt(accountId), folder },
       orderBy: { date: 'desc' },
       skip,
@@ -167,7 +167,7 @@ export class MailController {
     const accessToken = await this.accountService.getDecryptedAccessToken(account);
     const read = isRead !== 'false';
     await this.imapService.markRead(account, accessToken, folder, uid, read);
-    await this.prisma.mailHeader.updateMany({
+    await this.drizzle.mailHeader.updateMany({
       where: { accountId: account.id, folder, uid },
       data: { isRead: read },
     }).catch(() => null);
@@ -253,7 +253,7 @@ export class MailController {
     @Req() req: any,
   ) {
     const account = await this.accountService.findAccountForUser(BigInt(accountId), BigInt(req.user.id));
-    const profile = await this.prisma.profile.findUnique({
+    const profile = await this.drizzle.profile.findUnique({
       where: { id: account.profileId },
       include: {
         primaryOrganization: true,
@@ -383,7 +383,7 @@ export class MailController {
       const data = JSON.parse(decodedString);
       const emailAddress = data.emailAddress;
       if (emailAddress) {
-        const account = await this.prisma.mailAccount.findFirst({
+        const account = await this.drizzle.mailAccount.findFirst({
           where: { emailAddress, provider: 'GOOGLE' },
         });
         if (account) {
@@ -411,7 +411,7 @@ export class MailController {
       for (const notification of body.value) {
         const subscriptionId = notification.subscriptionId;
         if (subscriptionId) {
-          const account = await this.prisma.mailAccount.findFirst({
+          const account = await this.drizzle.mailAccount.findFirst({
             where: { outlookSubscriptionId: subscriptionId },
           });
           if (account) {

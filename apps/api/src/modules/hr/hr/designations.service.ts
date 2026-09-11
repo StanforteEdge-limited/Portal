@@ -1,10 +1,10 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '$common/prisma/prisma.service';
+import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { toBigInt } from '$common/utils/ids';
 
 @Injectable()
 export class DesignationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly drizzle: DrizzleService) {}
 
   private slugify(text: string): string {
     return text
@@ -16,7 +16,7 @@ export class DesignationsService {
   }
 
   async list() {
-    const list = await this.prisma.hrDesignation.findMany({
+    const list = await this.drizzle.hrDesignation.findMany({
       include: { document: true },
       orderBy: { name: 'asc' }
     });
@@ -25,7 +25,7 @@ export class DesignationsService {
 
   async get(id: string) {
     const bigId = toBigInt(id);
-    const item = await this.prisma.hrDesignation.findUnique({
+    const item = await this.drizzle.hrDesignation.findUnique({
       where: { id: bigId },
       include: { document: true }
     });
@@ -42,12 +42,12 @@ export class DesignationsService {
     const code = dto.code?.trim() || null;
     const description = dto.description?.trim() || null;
 
-    const existing = await this.prisma.hrDesignation.findFirst({
+    const existing = await this.drizzle.hrDesignation.findFirst({
       where: { name: { equals: name, mode: 'insensitive' } }
     });
     if (existing) throw new BadRequestException('Designation name already exists');
 
-    return await this.prisma.$transaction(async (tx) => {
+    return await this.drizzle.$transaction(async (tx) => {
       let documentId: string | null = null;
 
       if (dto.job_description !== undefined) {
@@ -81,20 +81,20 @@ export class DesignationsService {
 
   async update(id: string, dto: { name?: string; code?: string; description?: string; job_description?: string }) {
     const bigId = toBigInt(id);
-    const existing = await this.prisma.hrDesignation.findUnique({
+    const existing = await this.drizzle.hrDesignation.findUnique({
       where: { id: bigId },
       include: { document: true }
     });
     if (!existing) throw new NotFoundException('Designation not found');
 
     if (dto.name && dto.name.trim().toLowerCase() !== existing.name.toLowerCase()) {
-      const nameCheck = await this.prisma.hrDesignation.findFirst({
+      const nameCheck = await this.drizzle.hrDesignation.findFirst({
         where: { name: { equals: dto.name.trim(), mode: 'insensitive' } }
       });
       if (nameCheck) throw new BadRequestException('Designation name already exists');
     }
 
-    return await this.prisma.$transaction(async (tx) => {
+    return await this.drizzle.$transaction(async (tx) => {
       let documentId = existing.documentId;
 
       if (dto.job_description !== undefined) {
@@ -138,13 +138,13 @@ export class DesignationsService {
 
   async delete(id: string) {
     const bigId = toBigInt(id);
-    const existing = await this.prisma.hrDesignation.findUnique({ where: { id: bigId } });
+    const existing = await this.drizzle.hrDesignation.findUnique({ where: { id: bigId } });
     if (!existing) throw new NotFoundException('Designation not found');
 
-    await this.prisma.hrDesignation.delete({ where: { id: bigId } });
+    await this.drizzle.hrDesignation.delete({ where: { id: bigId } });
     if (existing.documentId) {
       try {
-        await this.prisma.document.delete({ where: { id: existing.documentId } });
+        await this.drizzle.document.delete({ where: { id: existing.documentId } });
       } catch (err) {
         // ignore if already deleted
       }

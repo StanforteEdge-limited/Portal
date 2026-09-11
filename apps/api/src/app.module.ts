@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { PrismaModule } from '$common/prisma/prisma.module';
+import { DrizzleModule } from '$common/drizzle/drizzle.module';
 import { HealthModule } from '$modules/platform/health/health.module';
 import { AuthModule } from '$modules/auth/auth/auth.module';
 import { RbacModule } from '$modules/auth/rbac/rbac.module';
@@ -29,7 +29,7 @@ import { MailModule } from '$modules/platform/mail/mail.module';
 
 @Module({
   imports: [
-    PrismaModule,
+    DrizzleModule,
     HealthModule,
     AuthModule,
     RbacModule,

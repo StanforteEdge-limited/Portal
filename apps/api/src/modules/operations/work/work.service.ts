@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma, WorkLogApprovalStatus, WorkItemStatus } from '@prisma/client';
-import { PrismaService } from '$common/prisma/prisma.service';
+import { Drizzle, WorkLogApprovalStatus, WorkItemStatus } from '$common/db/drizzle-compat';
+import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { paginatedResponse } from '$common/helpers/paginated-response';
 import { toBigInt } from '$common/utils/ids';
 import { UpsertTeamGoalDto, UpsertTeamKpiDto, UpsertTeamObjectiveDto } from '$modules/operations/work/dto/upsert-team-goal.dto';
@@ -9,14 +9,14 @@ import { UpsertWorkLogDto } from '$modules/operations/work/dto/upsert-work-log.d
 
 @Injectable()
 export class WorkService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly drizzle: DrizzleService) {}
 
   async listGoals(query: Record<string, any>) {
-    const where: Prisma.TeamGoalWhereInput = {};
+    const where: Drizzle.TeamGoalWhereInput = {};
     if (query.team_id) where.teamId = this.parseBigInt(String(query.team_id), 'team id');
     if (query.organization_id) where.organizationId = this.parseBigInt(String(query.organization_id), 'organization id');
     if (query.period_year) where.periodYear = Number(query.period_year);
-    const rows = await this.prisma.teamGoal.findMany({
+    const rows = await this.drizzle.teamGoal.findMany({
       where,
       include: { organization: true, team: true, owner: { select: { id: true, firstName: true, lastName: true, email: true } } },
       orderBy: [{ periodYear: 'desc' }, { createdAt: 'desc' }]
@@ -27,7 +27,7 @@ export class WorkService {
 
   async upsertGoal(actorId: string, dto: UpsertTeamGoalDto, id?: string) {
     const userId = this.parseBigInt(actorId, 'user id');
-    const payload: Prisma.TeamGoalUncheckedCreateInput | Prisma.TeamGoalUncheckedUpdateInput = {
+    const payload: Drizzle.TeamGoalUncheckedCreateInput | Drizzle.TeamGoalUncheckedUpdateInput = {
       title: dto.title,
       description: dto.description ?? null,
       organizationId: this.optionalBigInt(dto.organization_id, 'organization id'),
@@ -38,20 +38,20 @@ export class WorkService {
       periodType: dto.period_type ?? 'annual',
       periodLabel: dto.period_label ?? null,
       status: dto.status ?? 'draft',
-      weight: dto.weight != null ? new Prisma.Decimal(dto.weight) : null,
+      weight: dto.weight != null ? new Drizzle.Decimal(dto.weight) : null,
       startDate: dto.start_date ? new Date(dto.start_date) : null,
       endDate: dto.end_date ? new Date(dto.end_date) : null,
     };
     if (id) {
-      await this.prisma.teamGoal.update({ where: { id }, data: payload as Prisma.TeamGoalUncheckedUpdateInput });
+      await this.drizzle.teamGoal.update({ where: { id }, data: payload as Drizzle.TeamGoalUncheckedUpdateInput });
       return this.getGoal(id);
     }
-    const row = await this.prisma.teamGoal.create({ data: payload as Prisma.TeamGoalUncheckedCreateInput });
+    const row = await this.drizzle.teamGoal.create({ data: payload as Drizzle.TeamGoalUncheckedCreateInput });
     return this.getGoal(row.id);
   }
 
   async getGoal(id: string) {
-    const row = await this.prisma.teamGoal.findUnique({
+    const row = await this.drizzle.teamGoal.findUnique({
       where: { id },
       include: { organization: true, team: true, owner: { select: { id: true, firstName: true, lastName: true, email: true } }, objectives: true, kpis: true }
     });
@@ -60,10 +60,10 @@ export class WorkService {
   }
 
   async listObjectives(query: Record<string, any>) {
-    const where: Prisma.TeamObjectiveWhereInput = {};
+    const where: Drizzle.TeamObjectiveWhereInput = {};
     if (query.goal_id) where.goalId = String(query.goal_id);
     if (query.team_id) where.teamId = this.parseBigInt(String(query.team_id), 'team id');
-    const rows = await this.prisma.teamObjective.findMany({
+    const rows = await this.drizzle.teamObjective.findMany({
       where,
       include: { goal: true, team: true, owner: { select: { id: true, firstName: true, lastName: true, email: true } } },
       orderBy: [{ createdAt: 'desc' }]
@@ -74,7 +74,7 @@ export class WorkService {
 
   async upsertObjective(actorId: string, dto: UpsertTeamObjectiveDto, id?: string) {
     const userId = this.parseBigInt(actorId, 'user id');
-    const payload: Prisma.TeamObjectiveUncheckedCreateInput | Prisma.TeamObjectiveUncheckedUpdateInput = {
+    const payload: Drizzle.TeamObjectiveUncheckedCreateInput | Drizzle.TeamObjectiveUncheckedUpdateInput = {
       title: dto.title,
       description: dto.description ?? null,
       goalId: this.optionalString(dto.goal_id),
@@ -83,19 +83,19 @@ export class WorkService {
       ownerUserId: this.optionalBigInt(dto.owner_user_id, 'owner user id') ?? userId,
       createdById: userId,
       status: dto.status ?? 'draft',
-      weight: dto.weight != null ? new Prisma.Decimal(dto.weight) : null,
+      weight: dto.weight != null ? new Drizzle.Decimal(dto.weight) : null,
       dueDate: dto.due_date ? new Date(dto.due_date) : null,
     };
     if (id) {
-      await this.prisma.teamObjective.update({ where: { id }, data: payload as Prisma.TeamObjectiveUncheckedUpdateInput });
+      await this.drizzle.teamObjective.update({ where: { id }, data: payload as Drizzle.TeamObjectiveUncheckedUpdateInput });
       return this.getObjective(id);
     }
-    const row = await this.prisma.teamObjective.create({ data: payload as Prisma.TeamObjectiveUncheckedCreateInput });
+    const row = await this.drizzle.teamObjective.create({ data: payload as Drizzle.TeamObjectiveUncheckedCreateInput });
     return this.getObjective(row.id);
   }
 
   async getObjective(id: string) {
-    const row = await this.prisma.teamObjective.findUnique({
+    const row = await this.drizzle.teamObjective.findUnique({
       where: { id },
       include: { goal: true, team: true, owner: { select: { id: true, firstName: true, lastName: true, email: true } }, kpis: true }
     });
@@ -104,12 +104,12 @@ export class WorkService {
   }
 
   async listKpis(query: Record<string, any>) {
-    const where: Prisma.TeamKpiWhereInput = {};
+    const where: Drizzle.TeamKpiWhereInput = {};
     if (query.goal_id) where.goalId = String(query.goal_id);
     if (query.objective_id) where.objectiveId = String(query.objective_id);
     if (query.team_id) where.teamId = this.parseBigInt(String(query.team_id), 'team id');
     if (query.period_year) where.periodYear = Number(query.period_year);
-    const rows = await this.prisma.teamKpi.findMany({
+    const rows = await this.drizzle.teamKpi.findMany({
       where,
       include: { goal: true, objective: true, team: true, owner: { select: { id: true, firstName: true, lastName: true, email: true } } },
       orderBy: [{ periodYear: 'desc' }, { createdAt: 'desc' }]
@@ -120,7 +120,7 @@ export class WorkService {
 
   async upsertKpi(actorId: string, dto: UpsertTeamKpiDto, id?: string) {
     const userId = this.parseBigInt(actorId, 'user id');
-    const payload: Prisma.TeamKpiUncheckedCreateInput | Prisma.TeamKpiUncheckedUpdateInput = {
+    const payload: Drizzle.TeamKpiUncheckedCreateInput | Drizzle.TeamKpiUncheckedUpdateInput = {
       title: dto.title,
       description: dto.description ?? null,
       goalId: this.optionalString(dto.goal_id),
@@ -130,23 +130,23 @@ export class WorkService {
       ownerUserId: this.optionalBigInt(dto.owner_user_id, 'owner user id') ?? userId,
       createdById: userId,
       targetType: dto.target_type ?? null,
-      targetValue: dto.target_value != null ? new Prisma.Decimal(dto.target_value) : null,
+      targetValue: dto.target_value != null ? new Drizzle.Decimal(dto.target_value) : null,
       unitLabel: dto.unit_label ?? null,
       periodYear: dto.period_year ?? null,
       quarter: dto.quarter ?? null,
       status: dto.status ?? 'draft',
-      weight: dto.weight != null ? new Prisma.Decimal(dto.weight) : null,
+      weight: dto.weight != null ? new Drizzle.Decimal(dto.weight) : null,
     };
     if (id) {
-      await this.prisma.teamKpi.update({ where: { id }, data: payload as Prisma.TeamKpiUncheckedUpdateInput });
+      await this.drizzle.teamKpi.update({ where: { id }, data: payload as Drizzle.TeamKpiUncheckedUpdateInput });
       return this.getKpi(id);
     }
-    const row = await this.prisma.teamKpi.create({ data: payload as Prisma.TeamKpiUncheckedCreateInput });
+    const row = await this.drizzle.teamKpi.create({ data: payload as Drizzle.TeamKpiUncheckedCreateInput });
     return this.getKpi(row.id);
   }
 
   async getKpi(id: string) {
-    const row = await this.prisma.teamKpi.findUnique({
+    const row = await this.drizzle.teamKpi.findUnique({
       where: { id },
       include: { goal: true, objective: true, team: true, owner: { select: { id: true, firstName: true, lastName: true, email: true } } }
     });
@@ -156,7 +156,7 @@ export class WorkService {
 
   async listMyItems(actorId: string, query: Record<string, any>) {
     const userId = this.parseBigInt(actorId, 'user id');
-    const where: Prisma.WorkItemWhereInput = {
+    const where: Drizzle.WorkItemWhereInput = {
       OR: [{ assignedToId: userId }, { createdById: userId }, { assignedById: userId }]
     };
     if (query.status) where.status = query.status;
@@ -168,7 +168,7 @@ export class WorkService {
         ]
       }];
     }
-    const rows = await this.prisma.workItem.findMany({
+    const rows = await this.drizzle.workItem.findMany({
       where,
       include: this.workItemInclude(),
       orderBy: [{ dueDate: 'asc' }, { createdAt: 'desc' }]
@@ -179,30 +179,30 @@ export class WorkService {
 
   async listTeamItems(actorId: string, query: Record<string, any>) {
     const managerId = this.parseBigInt(actorId, 'user id');
-    const directReports = await this.prisma.employeeProfile.findMany({
+    const directReports = await this.drizzle.employeeProfile.findMany({
       where: { managerUserId: managerId },
       select: { userId: true }
     });
     const reportIds = directReports.map((row) => row.userId);
     const primaryTeams = reportIds.length > 0
-      ? await this.prisma.groupUser.findMany({
+      ? await this.drizzle.groupUser.findMany({
           where: { userId: { in: reportIds }, isPrimary: true },
           select: { groupId: true }
         })
       : [];
     const teamIds = [...new Set(primaryTeams.map((row) => row.groupId))] as bigint[];
-    const where: Prisma.WorkItemWhereInput = {
+    const where: Drizzle.WorkItemWhereInput = {
       OR: [
         { assignedById: managerId },
         reportIds.length ? { assignedToId: { in: reportIds } } : undefined,
         teamIds.length ? { ownerTeamId: { in: teamIds } } : undefined
-      ].filter(Boolean) as Prisma.WorkItemWhereInput[]
+      ].filter(Boolean) as Drizzle.WorkItemWhereInput[]
     };
     if (query.week_start_date) where.weekStartDate = new Date(String(query.week_start_date));
     if (query.team_id) where.ownerTeamId = this.parseBigInt(String(query.team_id), 'team id');
     if (query.assigned_to_id) where.assignedToId = this.parseBigInt(String(query.assigned_to_id), 'assigned to id');
     if (query.status) where.status = query.status;
-    const rows = await this.prisma.workItem.findMany({
+    const rows = await this.drizzle.workItem.findMany({
       where,
       include: this.workItemInclude(),
       orderBy: [{ weekStartDate: 'desc' }, { dueDate: 'asc' }, { createdAt: 'desc' }]
@@ -214,26 +214,26 @@ export class WorkService {
   async upsertItem(actorId: string, dto: UpsertWorkItemDto, id?: string) {
     const userId = this.parseBigInt(actorId, 'user id');
     if (id) {
-      const existing = await this.prisma.workItem.findUnique({ where: { id } });
+      const existing = await this.drizzle.workItem.findUnique({ where: { id } });
       if (!existing) throw new NotFoundException('Work item not found');
       if (![existing.createdById?.toString(), existing.assignedById?.toString(), existing.assignedToId?.toString()].includes(userId.toString())) {
         throw new BadRequestException('You cannot update this work item');
       }
-      await this.prisma.workItem.update({
+      await this.drizzle.workItem.update({
         where: { id },
-        data: this.mapItemDto(dto, userId, existing) as Prisma.WorkItemUncheckedUpdateInput
+        data: this.mapItemDto(dto, userId, existing) as Drizzle.WorkItemUncheckedUpdateInput
       });
       return this.getItem(id);
     }
 
-    const created = await this.prisma.workItem.create({
-      data: this.mapItemDto(dto, userId) as Prisma.WorkItemUncheckedCreateInput
+    const created = await this.drizzle.workItem.create({
+      data: this.mapItemDto(dto, userId) as Drizzle.WorkItemUncheckedCreateInput
     });
     return this.getItem(created.id);
   }
 
   async getItem(id: string) {
-    const row = await this.prisma.workItem.findUnique({
+    const row = await this.drizzle.workItem.findUnique({
       where: { id },
       include: this.workItemInclude()
     });
@@ -243,14 +243,14 @@ export class WorkService {
 
   async listMyLogs(actorId: string, query: Record<string, any>) {
     const userId = this.parseBigInt(actorId, 'user id');
-    const where: Prisma.WorkLogWhereInput = { staffId: userId };
+    const where: Drizzle.WorkLogWhereInput = { staffId: userId };
     if (query.approval_status) where.approvalStatus = query.approval_status;
     if (query.from || query.to) {
       where.logDate = {};
       if (query.from) where.logDate.gte = new Date(String(query.from));
       if (query.to) where.logDate.lte = new Date(String(query.to));
     }
-    const rows = await this.prisma.workLog.findMany({
+    const rows = await this.drizzle.workLog.findMany({
       where,
       include: this.workLogInclude(),
       orderBy: [{ logDate: 'desc' }, { createdAt: 'desc' }]
@@ -261,16 +261,16 @@ export class WorkService {
 
   async listTeamLogs(actorId: string, query: Record<string, any>) {
     const managerId = this.parseBigInt(actorId, 'user id');
-    const reportIds = (await this.prisma.employeeProfile.findMany({
+    const reportIds = (await this.drizzle.employeeProfile.findMany({
       where: { managerUserId: managerId },
       select: { userId: true }
     })).map((row) => row.userId);
 
-    const where: Prisma.WorkLogWhereInput = {
+    const where: Drizzle.WorkLogWhereInput = {
       OR: [
         { workItem: { assignedById: managerId } },
         reportIds.length ? { staffId: { in: reportIds } } : undefined
-      ].filter(Boolean) as Prisma.WorkLogWhereInput[]
+      ].filter(Boolean) as Drizzle.WorkLogWhereInput[]
     };
     if (query.approval_status) where.approvalStatus = query.approval_status;
     if (query.team_id) where.teamId = this.parseBigInt(String(query.team_id), 'team id');
@@ -281,7 +281,7 @@ export class WorkService {
       weekEnd.setDate(weekEnd.getDate() + 6);
       where.logDate = { gte: weekStart, lte: weekEnd };
     }
-    const rows = await this.prisma.workLog.findMany({
+    const rows = await this.drizzle.workLog.findMany({
       where,
       include: this.workLogInclude(),
       orderBy: [{ logDate: 'desc' }, { createdAt: 'desc' }]
@@ -292,38 +292,38 @@ export class WorkService {
 
   async upsertLog(actorId: string, dto: UpsertWorkLogDto, id?: string) {
     const userId = this.parseBigInt(actorId, 'user id');
-    const workItem = await this.prisma.workItem.findUnique({ where: { id: dto.work_item_id } });
+    const workItem = await this.drizzle.workItem.findUnique({ where: { id: dto.work_item_id } });
     if (!workItem) throw new NotFoundException('Work item not found');
 
     if (id) {
-      const existing = await this.prisma.workLog.findUnique({ where: { id } });
+      const existing = await this.drizzle.workLog.findUnique({ where: { id } });
       if (!existing || existing.staffId !== userId) throw new NotFoundException('Work log not found');
       if (!['draft', 'rejected'].includes(existing.approvalStatus)) throw new BadRequestException('Only draft or rejected logs can be edited');
-      await this.prisma.workLog.update({
+      await this.drizzle.workLog.update({
         where: { id },
-        data: this.mapLogDto(dto, userId, workItem, existing) as Prisma.WorkLogUncheckedUpdateInput
+        data: this.mapLogDto(dto, userId, workItem, existing) as Drizzle.WorkLogUncheckedUpdateInput
       });
       return this.getLog(id);
     }
 
-    const created = await this.prisma.workLog.create({
-      data: this.mapLogDto(dto, userId, workItem) as Prisma.WorkLogUncheckedCreateInput
+    const created = await this.drizzle.workLog.create({
+      data: this.mapLogDto(dto, userId, workItem) as Drizzle.WorkLogUncheckedCreateInput
     });
     return this.getLog(created.id);
   }
 
   async getLog(id: string) {
-    const row = await this.prisma.workLog.findUnique({ where: { id }, include: this.workLogInclude() });
+    const row = await this.drizzle.workLog.findUnique({ where: { id }, include: this.workLogInclude() });
     if (!row) throw new NotFoundException('Work log not found');
     return this.serializeWorkLog(row);
   }
 
   async submitLog(actorId: string, id: string) {
     const userId = this.parseBigInt(actorId, 'user id');
-    const existing = await this.prisma.workLog.findUnique({ where: { id } });
+    const existing = await this.drizzle.workLog.findUnique({ where: { id } });
     if (!existing || existing.staffId !== userId) throw new NotFoundException('Work log not found');
     if (!['draft', 'rejected'].includes(existing.approvalStatus)) throw new BadRequestException('Only draft or rejected logs can be submitted');
-    await this.prisma.workLog.update({
+    await this.drizzle.workLog.update({
       where: { id },
       data: { approvalStatus: WorkLogApprovalStatus.submitted }
     });
@@ -333,9 +333,9 @@ export class WorkService {
 
   async approveLog(actorId: string, id: string, approve: boolean) {
     const managerId = this.parseBigInt(actorId, 'user id');
-    const row = await this.prisma.workLog.findUnique({ where: { id }, include: { workItem: true } });
+    const row = await this.drizzle.workLog.findUnique({ where: { id }, include: { workItem: true } });
     if (!row) throw new NotFoundException('Work log not found');
-    const staff = await this.prisma.profile.findUnique({
+    const staff = await this.drizzle.profile.findUnique({
       where: { id: row.staffId },
       include: { employeeProfile: true }
     });
@@ -345,7 +345,7 @@ export class WorkService {
         throw new BadRequestException('You cannot review this work log');
       }
     }
-    await this.prisma.workLog.update({
+    await this.drizzle.workLog.update({
       where: { id },
       data: {
         approvalStatus: approve ? WorkLogApprovalStatus.approved : WorkLogApprovalStatus.rejected,
@@ -359,7 +359,7 @@ export class WorkService {
 
   async myTimesheetSummary(actorId: string, query: Record<string, any>) {
     const userId = this.parseBigInt(actorId, 'user id');
-    const where: Prisma.WorkLogWhereInput = {
+    const where: Drizzle.WorkLogWhereInput = {
       staffId: userId,
       approvalStatus: { in: [WorkLogApprovalStatus.submitted, WorkLogApprovalStatus.approved] }
     };
@@ -368,7 +368,7 @@ export class WorkService {
       if (query.from) where.logDate.gte = new Date(String(query.from));
       if (query.to) where.logDate.lte = new Date(String(query.to));
     }
-    const rows = await this.prisma.workLog.findMany({
+    const rows = await this.drizzle.workLog.findMany({
       where,
       include: {
         organization: true,
@@ -410,7 +410,7 @@ export class WorkService {
     return Array.from(summary.values()).sort((a, b) => b.hours - a.hours);
   }
 
-  private mapItemDto(dto: UpsertWorkItemDto, actorId: bigint, existing?: any): Prisma.WorkItemUncheckedCreateInput | Prisma.WorkItemUncheckedUpdateInput {
+  private mapItemDto(dto: UpsertWorkItemDto, actorId: bigint, existing?: any): Drizzle.WorkItemUncheckedCreateInput | Drizzle.WorkItemUncheckedUpdateInput {
     return {
       title: dto.title ?? existing?.title,
       description: dto.description ?? existing?.description ?? null,
@@ -432,13 +432,13 @@ export class WorkService {
       plannedStartDate: dto.planned_start_date ? new Date(dto.planned_start_date) : existing?.plannedStartDate ?? null,
       dueDate: dto.due_date ? new Date(dto.due_date) : existing?.dueDate ?? null,
       weekStartDate: dto.week_start_date ? new Date(dto.week_start_date) : existing?.weekStartDate ?? null,
-      expectedHours: dto.expected_hours != null ? new Prisma.Decimal(dto.expected_hours) : existing?.expectedHours ?? null,
+      expectedHours: dto.expected_hours != null ? new Drizzle.Decimal(dto.expected_hours) : existing?.expectedHours ?? null,
       isStaffAdded: dto.is_staff_added ?? existing?.isStaffAdded ?? false,
       requiresManagerAck: dto.requires_manager_ack ?? existing?.requiresManagerAck ?? false
     };
   }
 
-  private mapLogDto(dto: UpsertWorkLogDto, actorId: bigint, item: any, existing?: any): Prisma.WorkLogUncheckedCreateInput | Prisma.WorkLogUncheckedUpdateInput {
+  private mapLogDto(dto: UpsertWorkLogDto, actorId: bigint, item: any, existing?: any): Drizzle.WorkLogUncheckedCreateInput | Drizzle.WorkLogUncheckedUpdateInput {
     return {
       workItemId: item.id,
       staffId: existing?.staffId ?? actorId,
@@ -448,9 +448,9 @@ export class WorkService {
       fundId: this.optionalString(dto.fund_id) ?? existing?.fundId ?? item.fundId ?? null,
       grantId: this.optionalString(dto.grant_id) ?? existing?.grantId ?? item.grantId ?? null,
       logDate: new Date(dto.log_date),
-      hoursSpent: new Prisma.Decimal(dto.hours_spent ?? 0),
+      hoursSpent: new Drizzle.Decimal(dto.hours_spent ?? 0),
       status: (dto.status as any) ?? existing?.status ?? WorkItemStatus.in_progress,
-      progressPercent: dto.progress_percent != null ? new Prisma.Decimal(dto.progress_percent) : existing?.progressPercent ?? null,
+      progressPercent: dto.progress_percent != null ? new Drizzle.Decimal(dto.progress_percent) : existing?.progressPercent ?? null,
       note: dto.note ?? existing?.note ?? null,
       blockerNote: dto.blocker_note ?? existing?.blockerNote ?? null,
       carriedOver: dto.carried_over ?? existing?.carriedOver ?? false,
@@ -476,7 +476,7 @@ export class WorkService {
       assignedBy: { select: { id: true, firstName: true, lastName: true, email: true } },
       createdBy: { select: { id: true, firstName: true, lastName: true, email: true } },
       logs: { orderBy: { logDate: 'desc' }, take: 5 }
-    } satisfies Prisma.WorkItemInclude;
+    } satisfies Drizzle.WorkItemInclude;
   }
 
   private workLogInclude() {
@@ -489,7 +489,7 @@ export class WorkService {
       grant: true,
       staff: { select: { id: true, firstName: true, lastName: true, email: true } },
       approvedBy: { select: { id: true, firstName: true, lastName: true, email: true } }
-    } satisfies Prisma.WorkLogInclude;
+    } satisfies Drizzle.WorkLogInclude;
   }
 
   private serializeWorkItem(row: any) {
@@ -667,7 +667,7 @@ export class WorkService {
   }
 
   private async syncWorkLogToProjectTimesheet(workLogId: string, status: 'submitted' | 'approved' | 'rejected', actorId?: bigint) {
-    const log = await this.prisma.workLog.findUnique({
+    const log = await this.drizzle.workLog.findUnique({
       where: { id: workLogId },
       include: {
         workItem: true,
@@ -677,14 +677,14 @@ export class WorkService {
     });
     if (!log) return null;
 
-    const payrollWorker = await this.prisma.payrollWorker.findFirst({
+    const payrollWorker = await this.drizzle.payrollWorker.findFirst({
       where: { profileId: log.staffId, status: 'active' },
       orderBy: { createdAt: 'desc' }
     });
 
     if (!payrollWorker) return null;
 
-    const payload: Prisma.ProjectTimesheetEntryUncheckedCreateInput = {
+    const payload: Drizzle.ProjectTimesheetEntryUncheckedCreateInput = {
       sourceWorkLogId: log.id,
       workerId: payrollWorker.id,
       organizationId: log.organizationId ?? log.workItem.organizationId ?? payrollWorker.organizationId ?? null,
@@ -702,7 +702,7 @@ export class WorkService {
     };
 
     const entry = log.projectTimesheet
-      ? await this.prisma.projectTimesheetEntry.update({
+      ? await this.drizzle.projectTimesheetEntry.update({
           where: { id: log.projectTimesheet.id },
           data: {
             organizationId: payload.organizationId,
@@ -719,7 +719,7 @@ export class WorkService {
             createdBy: payload.createdBy
           }
         })
-      : await this.prisma.projectTimesheetEntry.create({ data: payload });
+      : await this.drizzle.projectTimesheetEntry.create({ data: payload });
 
     await this.syncProjectTimesheetWorkerMonthToPayroll(payrollWorker.id, log.logDate);
     return entry;
@@ -730,10 +730,10 @@ export class WorkService {
     const year = workDate.getUTCFullYear();
     const periodStart = new Date(Date.UTC(year, month - 1, 1));
     const periodEnd = new Date(Date.UTC(year, month, 0));
-    const run = await this.prisma.payrollRun.findFirst({ where: { year, month } });
+    const run = await this.drizzle.payrollRun.findFirst({ where: { year, month } });
     if (!run) return null;
 
-    const approvedRows = await this.prisma.projectTimesheetEntry.findMany({
+    const approvedRows = await this.drizzle.projectTimesheetEntry.findMany({
       where: {
         workerId,
         status: 'approved',
@@ -743,7 +743,7 @@ export class WorkService {
     });
 
     const totalHours = approvedRows.reduce((sum, row) => sum + Number(row.hours || 0), 0);
-    await this.prisma.$transaction(async (tx) => {
+    await this.drizzle.$transaction(async (tx) => {
       await tx.payrollRunTimesheetAllocation.deleteMany({ where: { runId: run.id, workerId } });
       if (approvedRows.length) {
         await tx.payrollRunTimesheetAllocation.createMany({

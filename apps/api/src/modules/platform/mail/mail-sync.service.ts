@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '$common/prisma/prisma.service';
+import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { MailAccountService } from './mail-account.service';
 import { MailImapService } from './mail-imap.service';
 import { NotificationsService } from '$modules/platform/notifications/notifications.service';
-import type { MailAccount } from '@prisma/client';
+import type { MailAccount } from '$common/db/drizzle-compat';
 import type { SyncResultDto } from '$modules/platform/mail/dto/sync-result.dto';
 
 const DEFAULT_FOLDERS: Record<string, string[]> = {
@@ -14,7 +14,7 @@ const DEFAULT_FOLDERS: Record<string, string[]> = {
 @Injectable()
 export class MailSyncService {
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly drizzle: DrizzleService,
     private readonly accountService: MailAccountService,
     private readonly imapService: MailImapService,
     private readonly notificationsService: NotificationsService,
@@ -41,7 +41,7 @@ export class MailSyncService {
       }
     }
 
-    await this.prisma.mailAccount.update({
+    await this.drizzle.mailAccount.update({
       where: { id: account.id },
       data: { lastSyncedAt: new Date() },
     });
@@ -50,7 +50,7 @@ export class MailSyncService {
   }
 
   private async syncFolder(account: MailAccount, accessToken: string, folder: string): Promise<SyncResultDto> {
-    const latest = await this.prisma.mailHeader.findFirst({
+    const latest = await this.drizzle.mailHeader.findFirst({
       where: { accountId: account.id, folder },
       orderBy: { uid: 'desc' },
       select: { uid: true },
@@ -60,9 +60,9 @@ export class MailSyncService {
     const headers = await this.imapService.fetchNewHeaders(account, accessToken, folder, sinceUid);
     if (headers.length === 0) return { accountId: String(account.id), folder, newCount: 0 };
 
-    await this.prisma.$transaction(
+    await this.drizzle.$transaction(
       headers.map(h =>
-        this.prisma.mailHeader.upsert({
+        this.drizzle.mailHeader.upsert({
           where: { accountId_folder_uid: { accountId: account.id, folder, uid: h.uid } },
           create: {
             accountId: account.id,
@@ -103,7 +103,7 @@ export class MailSyncService {
   }
 
   async syncAllAccounts(profileId: bigint): Promise<SyncResultDto[]> {
-    const accounts = await this.prisma.mailAccount.findMany({ where: { profileId } });
+    const accounts = await this.drizzle.mailAccount.findMany({ where: { profileId } });
     const all: SyncResultDto[] = [];
     for (const account of accounts) {
       all.push(...await this.syncAccount(account));

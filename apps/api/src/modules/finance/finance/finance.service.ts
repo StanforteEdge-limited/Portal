@@ -1,12 +1,12 @@
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '$common/prisma/prisma.service';
+import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { toBigInt } from '$common/utils/ids';
 import { PayrollService } from '$modules/hr/payroll/payroll.service';
 import { paginatedResponse } from '$common/helpers/paginated-response';
 import { DisburseRequestDto } from '$modules/finance/finance/dto/disburse-request.dto';
 import { NotificationsService } from '$modules/platform/notifications/notifications.service';
 import { UpdateFinanceSettingsDto } from '$modules/finance/finance/dto/update-finance-settings.dto';
-import { Prisma } from '@prisma/client';
+import { Drizzle } from '$common/db/drizzle-compat';
 import { UpsertFinanceAccountDto } from '$modules/finance/finance/dto/upsert-finance-account.dto';
 import { CreateFinanceIncomeDto } from '$modules/finance/finance/dto/create-finance-income.dto';
 import { UpsertFinancePledgeDto } from '$modules/finance/finance/dto/upsert-finance-pledge.dto';
@@ -36,7 +36,7 @@ export class FinanceService {
   private readonly logger = new Logger(FinanceService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly drizzle: DrizzleService,
     private readonly notificationsService: NotificationsService,
     private readonly mailService: MailService,
     private readonly payrollService: PayrollService,
@@ -44,7 +44,7 @@ export class FinanceService {
   ) {}
 
   async summary(query: Record<string, any>) {
-    const where: any = {
+    const where: Drizzle.FinancePaymentVoucherWhereInput = {
       status: {
         in: ['cleared', 'disbursed', 'confirmed', 'retired', 'completed']
       },
@@ -64,14 +64,14 @@ export class FinanceService {
       if (query.to) where.createdAt.lte = new Date(String(query.to));
     }
 
-    const [count, aggregates, byStatus] = await this.prisma.$transaction([
-      this.prisma.requestInstance.count({ where }),
-      this.prisma.requestInstance.aggregate({
+    const [count, aggregates, byStatus] = await this.drizzle.$transaction([
+      this.drizzle.requestInstance.count({ where }),
+      this.drizzle.requestInstance.aggregate({
         where,
         _sum: { totalAmount: true },
         _avg: { totalAmount: true }
       }),
-      this.prisma.requestInstance.groupBy({
+      this.drizzle.requestInstance.groupBy({
         by: ['status'],
         where,
         _sum: { totalAmount: true },
@@ -93,7 +93,7 @@ export class FinanceService {
   }
 
   async getSettings() {
-    const row = await this.prisma.financeSetting.findUnique({
+    const row = await this.drizzle.financeSetting.findUnique({
       where: { key: 'default' }
     });
     const settings = this.normalizeSettings(row?.config);
@@ -103,7 +103,7 @@ export class FinanceService {
       settings.approved_by.signature_file_id
     ].filter((id): id is string => Boolean(id));
     if (fileIds.length > 0) {
-      const files = await this.prisma.fileAsset.findMany({
+      const files = await this.drizzle.fileAsset.findMany({
         where: { id: { in: fileIds } },
         select: { id: true, publicUrl: true }
       });
@@ -125,15 +125,15 @@ export class FinanceService {
       meta: { ...current.meta, ...(dto.meta ?? {}) }
     };
 
-    await this.prisma.financeSetting.upsert({
+    await this.drizzle.financeSetting.upsert({
       where: { key: 'default' },
       update: {
-        config: next as Prisma.InputJsonValue,
+        config: next as Drizzle.InputJsonValue,
         updatedBy: userId ? toBigInt(userId) : null
       },
       create: {
         key: 'default',
-        config: next as Prisma.InputJsonValue,
+        config: next as Drizzle.InputJsonValue,
         updatedBy: userId ? toBigInt(userId) : null
       }
     });
@@ -147,7 +147,7 @@ export class FinanceService {
     const sortBy = String(query.order_by ?? query.sort_by ?? 'created_at').toLowerCase();
     const sortDir = String(query.order_dir ?? query.sort_dir ?? 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc';
 
-    const where: any = {
+    const where: Drizzle.FinancePaymentVoucherWhereInput = {
       status: {
         in: ['approval', 'cleared', 'disbursed', 'confirmed', 'retired', 'completed']
       }
@@ -156,8 +156,8 @@ export class FinanceService {
     if (query.status && String(query.status).toLowerCase() !== 'all') where.status = String(query.status);
     if (query.currency) where.currency = String(query.currency).toUpperCase();
 
-    const [rows] = await this.prisma.$transaction([
-      this.prisma.requestInstance.findMany({
+    const [rows] = await this.drizzle.$transaction([
+      this.drizzle.requestInstance.findMany({
         where,
         include: {
           requestType: true,
@@ -178,7 +178,7 @@ export class FinanceService {
 
     const financeApprovalInstanceIds = new Set<string>();
     if (approvalInstanceIds.length > 0) {
-      const instances = await this.prisma.workflowInstance.findMany({
+      const instances = await this.drizzle.workflowInstance.findMany({
         where: { id: { in: approvalInstanceIds } },
         include: {
           currentStep: {
@@ -233,7 +233,7 @@ export class FinanceService {
         return isNaN(n) ? null : BigInt(n);
       }).filter((id): id is bigint => id !== null);
       if (teamIds.length > 0) {
-        const teamGroups = await this.prisma.group.findMany({
+        const teamGroups = await this.drizzle.group.findMany({
           where: { id: { in: teamIds } },
           select: { id: true, name: true },
         });
@@ -466,7 +466,7 @@ export class FinanceService {
     );
 
     try {
-      const request = await this.prisma.requestInstance.findUnique({
+      const request = await this.drizzle.requestInstance.findUnique({
         where: { id },
         include: { requestType: true }
       });
@@ -491,7 +491,7 @@ export class FinanceService {
         throw new BadRequestException('Invalid disbursed_at date');
       }
       const requestTotal = request.totalAmount !== null ? Number(request.totalAmount) : 0;
-      const existingVouchers = await this.prisma.financePaymentVoucher.findMany({
+      const existingVouchers = await this.drizzle.financePaymentVoucher.findMany({
         where: { requestId: id },
         select: { amount: true, grossAmount: true }
       });
@@ -503,7 +503,7 @@ export class FinanceService {
       let disburseAmount = dto.amount ?? balanceBefore;
       let targetItems: any[] = [];
       if (dto.item_ids && dto.item_ids.length > 0) {
-        targetItems = await this.prisma.requestItem.findMany({
+        targetItems = await this.drizzle.requestItem.findMany({
           where: { id: { in: dto.item_ids }, requestId: id }
         });
         if (targetItems.length !== dto.item_ids.length) {
@@ -533,7 +533,7 @@ export class FinanceService {
         `disburseRequest:evidence requestId=${id.toString()} evidenceFileIds=${evidenceFileIds.length ? evidenceFileIds.join(',') : 'none'}`,
       );
       if (evidenceFileIds.length > 0) {
-        const fileExists = await this.prisma.fileAsset.count({ where: { id: { in: evidenceFileIds } } });
+        const fileExists = await this.drizzle.fileAsset.count({ where: { id: { in: evidenceFileIds } } });
         if (fileExists !== evidenceFileIds.length) {
           traceWarn(
             `disburseRequest:blocked requestId=${id.toString()} reason=invalid_evidence_file expected=${evidenceFileIds.length} found=${fileExists}`,
@@ -541,7 +541,7 @@ export class FinanceService {
           throw new BadRequestException('Invalid disbursement evidence file');
         }
       }
-      const activeAccountCount = await this.prisma.financeAccount.count({ where: { isActive: true } });
+      const activeAccountCount = await this.drizzle.financeAccount.count({ where: { isActive: true } });
       traceLog(
         `disburseRequest:finance-accounts requestId=${id.toString()} activeAccountCount=${activeAccountCount} paidFromAccountId=${dto.paid_from_account_id ?? 'none'}`,
       );
@@ -553,7 +553,7 @@ export class FinanceService {
       }
       let paidFromAccount: { id: string; currency: string; isActive: boolean } | null = null;
       if (dto.paid_from_account_id) {
-        paidFromAccount = await this.prisma.financeAccount.findUnique({
+        paidFromAccount = await this.drizzle.financeAccount.findUnique({
           where: { id: dto.paid_from_account_id },
           select: { id: true, currency: true, isActive: true }
         });
@@ -591,7 +591,7 @@ export class FinanceService {
         disbursed_at: now.toISOString()
       };
 
-      const voucher = await this.prisma.financePaymentVoucher.create({
+      const voucher = await this.drizzle.financePaymentVoucher.create({
         data: {
           requestId: id,
           paidFromAccountId: dto.paid_from_account_id ?? null,
@@ -608,7 +608,7 @@ export class FinanceService {
         }
       });
       if (targetItems.length > 0) {
-        await this.prisma.financePaymentVoucherItem.createMany({
+        await this.drizzle.financePaymentVoucherItem.createMany({
           data: targetItems.map((item) => ({
             paymentVoucherId: voucher.id,
             requestItemId: item.id,
@@ -620,7 +620,7 @@ export class FinanceService {
         `disburseRequest:voucher-created requestId=${id.toString()} voucherId=${voucher.id} voucherNumber=${voucherNumber}`,
       );
       if (evidenceFileIds.length > 0) {
-        await this.prisma.financePaymentVoucherFile.createMany({
+        await this.drizzle.financePaymentVoucherFile.createMany({
           data: evidenceFileIds.map((fileId, index) => ({
             voucherId: voucher.id,
             fileId,
@@ -633,7 +633,7 @@ export class FinanceService {
         );
       }
       if (paidFromAccount) {
-        await this.prisma.financeLedgerEntry.create({
+        await this.drizzle.financeLedgerEntry.create({
           data: {
             accountId: paidFromAccount.id,
             direction: 'out',
@@ -647,7 +647,7 @@ export class FinanceService {
             metadata: {
               request_id: request.id.toString(),
               voucher_number: voucherNumber
-            } as Prisma.InputJsonValue
+            } as Drizzle.InputJsonValue
           }
         });
         traceLog(
@@ -659,7 +659,7 @@ export class FinanceService {
       if (dto.deductions && dto.deductions.length > 0) {
         await Promise.all(
           dto.deductions.map((ded) =>
-            this.prisma.financeRequestDeduction.create({
+            this.drizzle.financeRequestDeduction.create({
               data: {
                 requestId: id,
                 deductionTypeId: ded.deduction_type_id,
@@ -682,7 +682,7 @@ export class FinanceService {
       await this.postPaymentVoucherJournal(voucher, request.organizationId, request.teamId, actorId);
       traceLog(`disburseRequest:journal-complete requestId=${id.toString()} voucherId=${voucher.id}`);
       if (request.workflowInstanceId) {
-        await this.prisma.workflowHistory.create({
+        await this.drizzle.workflowHistory.create({
           data: {
             instanceId: request.workflowInstanceId,
             action: 'pv_disbursed',
@@ -693,7 +693,7 @@ export class FinanceService {
               amount: disburseAmount,
               method: dto.method ?? null,
               transaction_ref: dto.transaction_ref ?? null
-            } as Prisma.InputJsonValue
+            } as Drizzle.InputJsonValue
           }
         });
         traceLog(
@@ -706,7 +706,7 @@ export class FinanceService {
       const nextStatus = (isLoan || isSalaryAdvance) ? 'completed' : 'disbursed';
 
       traceLog(`disburseRequest:request-update-start requestId=${id.toString()} statusFrom=${request.status} statusTo=${nextStatus}`);
-      const updated = await this.prisma.requestInstance.update({
+      const updated = await this.drizzle.requestInstance.update({
         where: { id },
         data: {
           status: nextStatus,
@@ -738,8 +738,8 @@ export class FinanceService {
           traceLog(`disburseRequest:processing-payroll-loan requestId=${id.toString()}`);
           
           // 1. Resolve payroll worker
-          const profile = await this.prisma.profile.findUnique({ where: { id: request.createdBy } });
-          let payrollWorker = await this.prisma.payrollWorker.findFirst({
+          const profile = await this.drizzle.profile.findUnique({ where: { id: request.createdBy } });
+          let payrollWorker = await this.drizzle.payrollWorker.findFirst({
             where: {
               profileId: request.createdBy,
               status: 'active'
@@ -747,7 +747,7 @@ export class FinanceService {
           });
 
           if (!payrollWorker && profile) {
-            payrollWorker = await this.prisma.payrollWorker.findFirst({
+            payrollWorker = await this.drizzle.payrollWorker.findFirst({
               where: {
                 email: { equals: profile.email, mode: 'insensitive' },
                 status: 'active'
@@ -755,7 +755,7 @@ export class FinanceService {
             });
             // Auto link the profile if matched by email
             if (payrollWorker) {
-              await this.prisma.payrollWorker.update({
+              await this.drizzle.payrollWorker.update({
                 where: { id: payrollWorker.id },
                 data: { profileId: profile.id }
               });
@@ -859,13 +859,13 @@ export class FinanceService {
 
   async listPaymentVouchers(requestId: string) {
     const id = this.parseId(requestId, 'request id');
-    const request = await this.prisma.requestInstance.findUnique({
+    const request = await this.drizzle.requestInstance.findUnique({
       where: { id },
       select: { totalAmount: true }
     });
     if (!request) throw new NotFoundException('Request not found');
 
-    const vouchers = await this.prisma.financePaymentVoucher.findMany({
+    const vouchers = await this.drizzle.financePaymentVoucher.findMany({
       where: { requestId: id },
       include: {
         evidenceFile: {
@@ -923,7 +923,7 @@ export class FinanceService {
     );
     const retirementFiles =
       retirementFileIds.length > 0
-        ? await this.prisma.fileAsset.findMany({
+        ? await this.drizzle.fileAsset.findMany({
             where: { id: { in: retirementFileIds } },
             select: { id: true, fileName: true, mimeType: true, publicUrl: true, storagePath: true }
           })
@@ -1023,7 +1023,7 @@ export class FinanceService {
           const ids = Array.isArray(metadata.retirement_file_ids) ? metadata.retirement_file_ids : [];
           return ids
             .map((id) => retirementFileMap.get(String(id)))
-            .filter((file): file is NonNullable<typeof file> => Boolean(file))
+	            .filter((file): file is any => Boolean(file))
             .map((file) => ({
               id: file.id,
               file_name: file.fileName,
@@ -1045,7 +1045,7 @@ export class FinanceService {
     actorPermissions: string[] = []
   ) {
     const id = this.parseId(requestId, 'request id');
-    const voucher = await this.prisma.financePaymentVoucher.findFirst({
+    const voucher = await this.drizzle.financePaymentVoucher.findFirst({
       where: { id: voucherId, requestId: id },
       include: {
         request: {
@@ -1088,7 +1088,7 @@ export class FinanceService {
 
   async approvePaymentVoucherCorrection(requestId: string, voucherId: string, correctionId: string, actorId?: string) {
     const id = this.parseId(requestId, 'request id');
-    const correction = await this.prisma.financePaymentVoucherCorrection.findFirst({
+    const correction = await this.drizzle.financePaymentVoucherCorrection.findFirst({
       where: { id: correctionId, voucherId, requestId: id, status: 'pending' },
       include: {
         voucher: {
@@ -1112,7 +1112,7 @@ export class FinanceService {
     const prepared = await this.preparePaymentVoucherUpdate(correction.voucher, proposed);
     await this.applyPaymentVoucherUpdate(correction.voucher, prepared, actorId);
 
-    await this.prisma.financePaymentVoucherCorrection.update({
+    await this.drizzle.financePaymentVoucherCorrection.update({
       where: { id: correction.id },
       data: {
         status: 'approved',
@@ -1127,7 +1127,7 @@ export class FinanceService {
       title: 'Payment voucher correction approved',
       message: `Your correction for voucher ${correction.voucher.voucherNumber} has been approved.`,
       link: `/finance/requests/details?id=${requestId}&voucher_id=${voucherId}`,
-      data: { voucher_id: voucherId, correction_id: correction.id, status: 'approved' } as Prisma.InputJsonValue
+      data: { voucher_id: voucherId, correction_id: correction.id, status: 'approved' } as Drizzle.InputJsonValue
     }).catch(() => undefined);
 
     const updated = await this.listPaymentVouchers(requestId);
@@ -1140,13 +1140,13 @@ export class FinanceService {
 
   async rejectPaymentVoucherCorrection(requestId: string, voucherId: string, correctionId: string, actorId?: string, comment?: string) {
     const id = this.parseId(requestId, 'request id');
-    const correction = await this.prisma.financePaymentVoucherCorrection.findFirst({
+    const correction = await this.drizzle.financePaymentVoucherCorrection.findFirst({
       where: { id: correctionId, voucherId, requestId: id, status: 'pending' },
       include: { voucher: true }
     });
     if (!correction) throw new NotFoundException('Pending payment voucher correction not found');
 
-    await this.prisma.financePaymentVoucherCorrection.update({
+    await this.drizzle.financePaymentVoucherCorrection.update({
       where: { id: correction.id },
       data: {
         status: 'rejected',
@@ -1164,7 +1164,7 @@ export class FinanceService {
         ? `Your correction for voucher ${correction.voucher.voucherNumber} was rejected: ${comment.trim()}`
         : `Your correction for voucher ${correction.voucher.voucherNumber} was rejected.`,
       link: `/finance/requests/details?id=${requestId}&voucher_id=${voucherId}`,
-      data: { voucher_id: voucherId, correction_id: correction.id, status: 'rejected' } as Prisma.InputJsonValue
+      data: { voucher_id: voucherId, correction_id: correction.id, status: 'rejected' } as Drizzle.InputJsonValue
     }).catch(() => undefined);
 
     const updated = await this.listPaymentVouchers(requestId);
@@ -1177,7 +1177,7 @@ export class FinanceService {
 
   private serializeVoucherCorrection(
     correction:
-      | (Prisma.FinancePaymentVoucherCorrectionGetPayload<{ include: { proposer: { select: { id: true; firstName: true; lastName: true; username: true; email: true } } } }>)
+      | (Drizzle.FinancePaymentVoucherCorrectionGetPayload<{ include: { proposer: { select: { id: true; firstName: true; lastName: true; username: true; email: true } } } }>)
       | null
   ) {
     if (!correction) return null;
@@ -1211,7 +1211,7 @@ export class FinanceService {
     };
   }
 
-  private correctionSnapshotToDto(snapshot: Prisma.JsonValue): UpdatePaymentVoucherDto {
+  private correctionSnapshotToDto(snapshot: Drizzle.JsonValue): UpdatePaymentVoucherDto {
     const record = snapshot && typeof snapshot === 'object' && !Array.isArray(snapshot)
       ? (snapshot as Record<string, unknown>)
       : {};
@@ -1228,7 +1228,7 @@ export class FinanceService {
   }
 
   private async preparePaymentVoucherUpdate(
-    voucher: Prisma.FinancePaymentVoucherGetPayload<{
+    voucher: Drizzle.FinancePaymentVoucherGetPayload<{
       include: {
         request: {
           select: {
@@ -1247,7 +1247,7 @@ export class FinanceService {
       new Set([dto.evidence_file_id ?? null, ...(dto.evidence_file_ids ?? [])].filter((fileId): fileId is string => Boolean(fileId)))
     );
     if (evidenceFileIds.length > 0) {
-      const fileExists = await this.prisma.fileAsset.count({ where: { id: { in: evidenceFileIds } } });
+      const fileExists = await this.drizzle.fileAsset.count({ where: { id: { in: evidenceFileIds } } });
       if (fileExists !== evidenceFileIds.length) {
         throw new BadRequestException('Invalid payment voucher evidence file');
       }
@@ -1271,7 +1271,7 @@ export class FinanceService {
     let paidFromAccountId = dto.paid_from_account_id ?? voucher.paidFromAccountId;
     let paidFromAccount: { id: string; currency: string; isActive: boolean } | null = null;
     if (paidFromAccountId) {
-      paidFromAccount = await this.prisma.financeAccount.findUnique({
+      paidFromAccount = await this.drizzle.financeAccount.findUnique({
         where: { id: paidFromAccountId },
         select: { id: true, currency: true, isActive: true }
       });
@@ -1285,7 +1285,7 @@ export class FinanceService {
     const nextTransactionRef = dto.transaction_ref ?? voucher.transactionRef;
     let nextContactId = dto.contact_id ?? voucher.contactId;
     if (nextContactId) {
-      const contact = await this.prisma.financeContact.findUnique({
+      const contact = await this.drizzle.financeContact.findUnique({
         where: { id: nextContactId },
         select: { id: true }
       });
@@ -1330,7 +1330,7 @@ export class FinanceService {
         contact_id: voucher.contactId ?? null,
         note: voucher.note ?? null,
         evidence_file_ids: voucher.evidenceFileId ? [voucher.evidenceFileId] : []
-      } as Prisma.InputJsonValue,
+      } as Drizzle.InputJsonValue,
       proposedSnapshot: {
         amount: nextAmount,
         paid_from_account_id: paidFromAccountId ?? null,
@@ -1340,12 +1340,12 @@ export class FinanceService {
         contact_id: nextContactId ?? null,
         note: nextNote ?? null,
         evidence_file_ids: evidenceFileIds
-      } as Prisma.InputJsonValue
+      } as Drizzle.InputJsonValue
     };
   }
 
   private async applyPaymentVoucherUpdate(
-    voucher: Prisma.FinancePaymentVoucherGetPayload<{
+    voucher: Drizzle.FinancePaymentVoucherGetPayload<{
       include: {
         request: {
           select: {
@@ -1361,7 +1361,7 @@ export class FinanceService {
     prepared: Awaited<ReturnType<FinanceService['preparePaymentVoucherUpdate']>>,
     actorId?: string
   ) {
-    await this.prisma.$transaction(async (tx) => {
+    await this.drizzle.$transaction(async (tx) => {
       await tx.financePaymentVoucher.update({
         where: { id: voucher.id },
         data: {
@@ -1415,7 +1415,7 @@ export class FinanceService {
             metadata: {
               request_id: voucher.request.id.toString(),
               voucher_number: voucher.voucherNumber
-            } as Prisma.InputJsonValue
+            } as Drizzle.InputJsonValue
           }
         });
       }
@@ -1465,7 +1465,7 @@ export class FinanceService {
     });
 
     if (voucher.request.workflowInstanceId) {
-      await this.prisma.workflowHistory.create({
+      await this.drizzle.workflowHistory.create({
         data: {
           instanceId: voucher.request.workflowInstanceId,
           action: 'pv_corrected',
@@ -1475,14 +1475,14 @@ export class FinanceService {
             voucher_id: voucher.id,
             voucher_number: voucher.voucherNumber,
             changes: prepared.changeSummary
-          } as Prisma.InputJsonValue
+          } as Drizzle.InputJsonValue
         }
       });
     }
   }
 
   private async submitPaymentVoucherCorrection(
-    voucher: Prisma.FinancePaymentVoucherGetPayload<{
+    voucher: Drizzle.FinancePaymentVoucherGetPayload<{
       include: {
         request: {
           select: {
@@ -1501,7 +1501,7 @@ export class FinanceService {
   ) {
     if (!actorId) throw new ForbiddenException('Authenticated user required');
 
-    const existingPending = await this.prisma.financePaymentVoucherCorrection.findFirst({
+    const existingPending = await this.drizzle.financePaymentVoucherCorrection.findFirst({
       where: { voucherId: voucher.id, status: 'pending' },
       include: {
         proposer: {
@@ -1511,7 +1511,7 @@ export class FinanceService {
     });
 
     const correction = existingPending
-      ? await this.prisma.financePaymentVoucherCorrection.update({
+      ? await this.drizzle.financePaymentVoucherCorrection.update({
           where: { id: existingPending.id },
           data: {
             reason: reason?.trim() || null,
@@ -1528,7 +1528,7 @@ export class FinanceService {
             }
           }
         })
-      : await this.prisma.financePaymentVoucherCorrection.create({
+      : await this.drizzle.financePaymentVoucherCorrection.create({
           data: {
             voucherId: voucher.id,
             requestId: voucher.request.id,
@@ -1545,7 +1545,7 @@ export class FinanceService {
           }
         });
 
-    const approvers = await this.prisma.userRole.findMany({
+    const approvers = await this.drizzle.userRole.findMany({
       where: {
         role: {
           OR: [
@@ -1573,13 +1573,13 @@ export class FinanceService {
               correction_id: correction.id,
               request_id: voucher.request.id.toString(),
               status: 'pending'
-            } as Prisma.InputJsonValue
+            } as Drizzle.InputJsonValue
           }).catch(() => undefined)
         )
     );
 
     if (voucher.request.workflowInstanceId) {
-      await this.prisma.workflowHistory.create({
+      await this.drizzle.workflowHistory.create({
         data: {
           instanceId: voucher.request.workflowInstanceId,
           action: 'pv_correction_requested',
@@ -1591,7 +1591,7 @@ export class FinanceService {
             correction_id: correction.id,
             changes: prepared.changeSummary,
             reason: reason?.trim() || null
-          } as Prisma.InputJsonValue
+          } as Drizzle.InputJsonValue
         }
       });
     }
@@ -1602,7 +1602,7 @@ export class FinanceService {
   async listAllPaymentVouchers(query: Record<string, any>) {
     const page = Math.max(1, Number(query.page ?? 1));
     const perPage = Math.min(100, Math.max(1, Number(query.per_page ?? 20)));
-    const where: Prisma.FinancePaymentVoucherWhereInput = {};
+    const where: Drizzle.FinancePaymentVoucherWhereInput = {};
 
     if (query.request_id) where.requestId = this.parseId(String(query.request_id), 'request id');
     if (query.voucher_number) where.voucherNumber = { contains: String(query.voucher_number), mode: 'insensitive' };
@@ -1615,9 +1615,9 @@ export class FinanceService {
       if (query.to) where.disbursedAt.lte = new Date(String(query.to));
     }
 
-    const [total, rows] = await this.prisma.$transaction([
-      this.prisma.financePaymentVoucher.count({ where }),
-      this.prisma.financePaymentVoucher.findMany({
+    const [total, rows] = await this.drizzle.$transaction([
+      this.drizzle.financePaymentVoucher.count({ where }),
+      this.drizzle.financePaymentVoucher.findMany({
         where,
         include: {
           request: {
@@ -1754,19 +1754,19 @@ export class FinanceService {
     const page = Math.max(1, Number(query.page ?? 1));
     const perPage = Math.min(100, Math.max(1, Number(query.per_page ?? 20)));
 
-    const where: Prisma.FinanceAccountWhereInput = {
+    const where: Drizzle.FinanceAccountWhereInput = {
       ...(query.is_active !== undefined ? { isActive: String(query.is_active) !== 'false' } : {}),
       ...(query.organization_id ? { organizationId: toBigInt(String(query.organization_id)) } : {})
     };
 
-    const [data, total] = await this.prisma.$transaction([
-      this.prisma.financeAccount.findMany({
+    const [data, total] = await this.drizzle.$transaction([
+      this.drizzle.financeAccount.findMany({
         where,
         orderBy: [{ isActive: 'desc' }, { name: 'asc' }],
         skip: (page - 1) * perPage,
         take: perPage
       }),
-      this.prisma.financeAccount.count({ where })
+      this.drizzle.financeAccount.count({ where })
     ]);
 
     const movementByAccount = await this.getLedgerMovementByAccount(data.map((row) => row.id));
@@ -1794,7 +1794,7 @@ export class FinanceService {
   }
 
   async getAccount(id: string) {
-    const row = await this.prisma.financeAccount.findUnique({ where: { id } });
+    const row = await this.drizzle.financeAccount.findUnique({ where: { id } });
     if (!row) throw new NotFoundException('Account not found');
     const movementByAccount = await this.getLedgerMovementByAccount([row.id]);
     return {
@@ -1819,7 +1819,7 @@ export class FinanceService {
   private async getLedgerMovementByAccount(accountIds: string[]) {
     if (!accountIds.length) return new Map<string, number>();
 
-    const groups = await this.prisma.financeLedgerEntry.groupBy({
+    const groups = await this.drizzle.financeLedgerEntry.groupBy({
       by: ['accountId', 'direction'],
       where: { accountId: { in: accountIds } },
       _sum: { amount: true }
@@ -1843,7 +1843,7 @@ export class FinanceService {
   }
 
   async createAccount(dto: UpsertFinanceAccountDto, actorId?: string) {
-    const row = await this.prisma.financeAccount.create({
+    const row = await this.drizzle.financeAccount.create({
       data: {
         name: dto.name.trim(),
         code: dto.code?.trim() || null,
@@ -1855,13 +1855,13 @@ export class FinanceService {
         currency: (dto.currency ?? 'NGN').toUpperCase(),
         openingBalance: dto.opening_balance ?? 0,
         isActive: dto.is_active ?? true,
-        metadata: (dto.metadata ?? {}) as Prisma.InputJsonValue,
+        metadata: (dto.metadata ?? {}) as Drizzle.InputJsonValue,
         createdBy: actorId ? toBigInt(actorId) : null
       }
     });
 
     if (Number(row.openingBalance) !== 0) {
-      await this.prisma.financeLedgerEntry.create({
+      await this.drizzle.financeLedgerEntry.create({
         data: {
           accountId: row.id,
           direction: Number(row.openingBalance) >= 0 ? 'in' : 'out',
@@ -1922,10 +1922,10 @@ export class FinanceService {
   }
 
   async updateAccount(id: string, dto: UpsertFinanceAccountDto) {
-    const existing = await this.prisma.financeAccount.findUnique({ where: { id } });
+    const existing = await this.drizzle.financeAccount.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Account not found');
 
-    const row = await this.prisma.financeAccount.update({
+    const row = await this.drizzle.financeAccount.update({
       where: { id },
       data: {
         name: dto.name.trim(),
@@ -1938,7 +1938,7 @@ export class FinanceService {
         currency: (dto.currency ?? existing.currency).toUpperCase(),
         openingBalance: dto.opening_balance ?? existing.openingBalance,
         isActive: dto.is_active ?? existing.isActive,
-        metadata: ((dto.metadata ?? existing.metadata ?? {}) as Prisma.InputJsonValue)
+        metadata: ((dto.metadata ?? existing.metadata ?? {}) as Drizzle.InputJsonValue)
       }
     });
 
@@ -1961,13 +1961,13 @@ export class FinanceService {
   }
 
   async createIncome(dto: CreateFinanceIncomeDto, actorId?: string) {
-    const account = await this.prisma.financeAccount.findUnique({
+    const account = await this.drizzle.financeAccount.findUnique({
       where: { id: dto.account_id },
       select: { id: true, currency: true, isActive: true }
     });
     if (!account || !account.isActive) throw new BadRequestException('Invalid account_id');
     if (dto.file_id) {
-      const fileExists = await this.prisma.fileAsset.count({ where: { id: dto.file_id } });
+      const fileExists = await this.drizzle.fileAsset.count({ where: { id: dto.file_id } });
       if (!fileExists) throw new BadRequestException('Invalid file_id');
     }
 
@@ -1976,7 +1976,7 @@ export class FinanceService {
     const currency = (dto.currency ?? account.currency ?? 'NGN').toUpperCase();
     const { fund, grant } = await this.validateFundGrant(dto.fund_id, dto.grant_id);
 
-    const income = await this.prisma.financeIncomeEntry.create({
+    const income = await this.drizzle.financeIncomeEntry.create({
       data: {
         accountId: account.id,
         revenueAccountId: dto.revenue_account_id ?? null,
@@ -1994,7 +1994,7 @@ export class FinanceService {
       }
     });
 
-    await this.prisma.financeLedgerEntry.create({
+    await this.drizzle.financeLedgerEntry.create({
       data: {
         accountId: account.id,
         direction: 'in',
@@ -2008,13 +2008,13 @@ export class FinanceService {
         metadata: {
           reference: dto.reference ?? null,
           payer: dto.payer ?? null
-        } as Prisma.InputJsonValue
+        } as Drizzle.InputJsonValue
       }
     });
 
     await this.postIncomeJournal(income, actorId);
     if (grant?.id) {
-      await this.prisma.financeGrant.update({
+      await this.drizzle.financeGrant.update({
         where: { id: grant.id },
         data: {
           recognizedAmount: { increment: dto.amount },
@@ -2024,12 +2024,12 @@ export class FinanceService {
     }
 
     if (dto.pledge_id) {
-      const pledge = await this.prisma.financePledge.findUnique({
+      const pledge = await this.drizzle.financePledge.findUnique({
         where: { id: dto.pledge_id },
         select: { amount: true }
       });
       if (pledge) {
-        await this.recomputePledgeStatus(dto.pledge_id, Number(pledge.amount), this.prisma);
+        await this.recomputePledgeStatus(dto.pledge_id, Number(pledge.amount), this.drizzle);
       }
     }
 
@@ -2052,7 +2052,7 @@ export class FinanceService {
   async listIncome(query: Record<string, any>) {
     const page = Math.max(1, Number(query.page ?? 1));
     const perPage = Math.min(200, Math.max(1, Number(query.per_page ?? query.limit ?? 20)));
-    const where: Prisma.FinanceIncomeEntryWhereInput = {
+    const where: Drizzle.FinanceIncomeEntryWhereInput = {
       ...(query.account_id ? { accountId: String(query.account_id) } : {}),
       ...(query.from || query.to
         ? {
@@ -2063,8 +2063,8 @@ export class FinanceService {
           }
         : {})
     };
-    const [rows, totalResult] = await this.prisma.$transaction([
-      this.prisma.financeIncomeEntry.findMany({
+    const [rows, totalResult] = await this.drizzle.$transaction([
+      this.drizzle.financeIncomeEntry.findMany({
         where,
         include: {
           account: { select: { id: true, name: true, code: true } },
@@ -2074,7 +2074,7 @@ export class FinanceService {
         skip: (page - 1) * perPage,
         take: perPage,
       }),
-      this.prisma.financeIncomeEntry.count({ where }),
+      this.drizzle.financeIncomeEntry.count({ where }),
     ]);
     const result = rows.map((row) => ({
       id: row.id,
@@ -2100,12 +2100,12 @@ export class FinanceService {
       throw new BadRequestException('from_account_id and to_account_id must be different');
     }
     const { fund, grant } = await this.validateFundGrant(dto.fund_id, dto.grant_id);
-    const [fromAccount, toAccount] = await this.prisma.$transaction([
-      this.prisma.financeAccount.findUnique({
+    const [fromAccount, toAccount] = await this.drizzle.$transaction([
+      this.drizzle.financeAccount.findUnique({
         where: { id: dto.from_account_id },
         select: { id: true, name: true, isActive: true, currency: true }
       }),
-      this.prisma.financeAccount.findUnique({
+      this.drizzle.financeAccount.findUnique({
         where: { id: dto.to_account_id },
         select: { id: true, name: true, isActive: true, currency: true }
       })
@@ -2121,8 +2121,8 @@ export class FinanceService {
     const sourceId = `transfer:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`;
     const description = dto.note?.trim() || `Transfer ${currency} ${amount} from ${fromAccount.name} to ${toAccount.name}`;
 
-    await this.prisma.$transaction([
-      this.prisma.financeLedgerEntry.create({
+    await this.drizzle.$transaction([
+      this.drizzle.financeLedgerEntry.create({
         data: {
           accountId: fromAccount.id,
           direction: 'out',
@@ -2138,10 +2138,10 @@ export class FinanceService {
             counterpart_account_id: toAccount.id,
             fund_id: fund?.id ?? null,
             grant_id: grant?.id ?? null
-          } as Prisma.InputJsonValue
+          } as Drizzle.InputJsonValue
         }
       }),
-      this.prisma.financeLedgerEntry.create({
+      this.drizzle.financeLedgerEntry.create({
         data: {
           accountId: toAccount.id,
           direction: 'in',
@@ -2157,7 +2157,7 @@ export class FinanceService {
             counterpart_account_id: fromAccount.id,
             fund_id: fund?.id ?? null,
             grant_id: grant?.id ?? null
-          } as Prisma.InputJsonValue
+          } as Drizzle.InputJsonValue
         }
       })
     ]);
@@ -2211,8 +2211,8 @@ export class FinanceService {
     const perPage = Math.min(200, Math.max(1, Number(query.per_page ?? query.limit ?? 20)));
     const where = this.buildLedgerWhere(query);
 
-    const [rows, total] = await this.prisma.$transaction([
-      this.prisma.financeLedgerEntry.findMany({
+    const [rows, total] = await this.drizzle.$transaction([
+      this.drizzle.financeLedgerEntry.findMany({
         where,
         include: {
           account: { select: { id: true, name: true, code: true, accountType: true } }
@@ -2221,7 +2221,7 @@ export class FinanceService {
         skip: (page - 1) * perPage,
         take: perPage,
       }),
-      this.prisma.financeLedgerEntry.count({ where }),
+      this.drizzle.financeLedgerEntry.count({ where }),
     ]);
 
     const result = rows.map((row) => this.serializeLedgerRow(row));
@@ -2235,7 +2235,7 @@ export class FinanceService {
     }
 
     const where = this.buildLedgerWhere(query);
-    const rows = await this.prisma.financeLedgerEntry.findMany({
+    const rows = await this.drizzle.financeLedgerEntry.findMany({
       where,
       include: {
         account: { select: { id: true, name: true, code: true, accountType: true } }
@@ -2269,14 +2269,14 @@ export class FinanceService {
     };
   }
 
-  private buildLedgerWhere(query: Record<string, any>): Prisma.FinanceLedgerEntryWhereInput {
+  private buildLedgerWhere(query: Record<string, any>): Drizzle.FinanceLedgerEntryWhereInput {
     const fromDateRaw = String(query.from ?? '').trim();
     const toDateRaw = String(query.to ?? '').trim();
     const fromDate = fromDateRaw ? new Date(fromDateRaw) : null;
     const toDate = toDateRaw ? new Date(toDateRaw) : null;
     const q = String(query.q ?? query.search ?? '').trim();
 
-    const where: Prisma.FinanceLedgerEntryWhereInput = {
+    const where: Drizzle.FinanceLedgerEntryWhereInput = {
       ...(query.account_id ? { accountId: String(query.account_id) } : {}),
       ...(query.direction ? { direction: String(query.direction) } : {}),
       ...(query.source_type ? { sourceType: String(query.source_type) } : {}),
@@ -2316,7 +2316,7 @@ export class FinanceService {
   }
 
   private serializeLedgerRow(
-    row: Prisma.FinanceLedgerEntryGetPayload<{
+    row: Drizzle.FinanceLedgerEntryGetPayload<{
       include: { account: { select: { id: true; name: true; code: true; accountType: true } } };
     }>,
   ) {
@@ -2341,7 +2341,7 @@ export class FinanceService {
   async listAssets(query: Record<string, any>) {
     const page = Math.max(1, Number(query.page ?? 1));
     const perPage = Math.min(100, Math.max(1, Number(query.per_page ?? 20)));
-    const where: Prisma.FinanceAssetWhereInput = {};
+    const where: Drizzle.FinanceAssetWhereInput = {};
 
     if (query.organization_id) where.organizationId = this.parseId(String(query.organization_id), 'organization_id');
     if (query.team_id) where.teamId = this.parseId(String(query.team_id), 'team_id');
@@ -2361,15 +2361,15 @@ export class FinanceService {
       ];
     }
 
-    const [rows, total] = await this.prisma.$transaction([
-      this.prisma.financeAsset.findMany({
+    const [rows, total] = await this.drizzle.$transaction([
+      this.drizzle.financeAsset.findMany({
         where,
         include: this.getAssetInclude(),
         orderBy: [{ purchaseDate: 'desc' }, { createdAt: 'desc' }],
         skip: (page - 1) * perPage,
         take: perPage
       }),
-      this.prisma.financeAsset.count({ where })
+      this.drizzle.financeAsset.count({ where })
     ]);
 
     const result = rows.map((row) => this.serializeAsset(row));
@@ -2377,7 +2377,7 @@ export class FinanceService {
   }
 
   async listAssetDisposals(query: Record<string, any>) {
-    const where: Prisma.FinanceAssetDisposalWhereInput = {};
+    const where: Drizzle.FinanceAssetDisposalWhereInput = {};
     if (query.from || query.to) {
       where.disposalDate = {
         ...(query.from ? { gte: new Date(String(query.from)) } : {}),
@@ -2385,7 +2385,7 @@ export class FinanceService {
       };
     }
 
-    const rows = await this.prisma.financeAssetDisposal.findMany({
+    const rows = await this.drizzle.financeAssetDisposal.findMany({
       where,
       include: {
         asset: {
@@ -2428,7 +2428,7 @@ export class FinanceService {
   }
 
   async getAsset(id: string) {
-    const asset = await this.prisma.financeAsset.findUnique({
+    const asset = await this.drizzle.financeAsset.findUnique({
       where: { id },
       include: this.getAssetInclude()
     });
@@ -2443,7 +2443,7 @@ export class FinanceService {
     const purchaseDate = new Date(dto.purchase_date);
     if (Number.isNaN(purchaseDate.getTime())) throw new BadRequestException('Invalid purchase_date');
 
-    const created = await this.prisma.financeAsset.create({
+    const created = await this.drizzle.financeAsset.create({
       data: {
         assetId,
         organizationId: dto.organization_id ? this.parseId(dto.organization_id, 'organization_id') : null,
@@ -2474,7 +2474,7 @@ export class FinanceService {
   }
 
   async updateAsset(id: string, dto: UpsertFinanceAssetDto, actorId?: string) {
-    const existing = await this.prisma.financeAsset.findUnique({
+    const existing = await this.drizzle.financeAsset.findUnique({
       where: { id },
       include: { disposal: true }
     });
@@ -2488,7 +2488,7 @@ export class FinanceService {
     if (Number.isNaN(purchaseDate.getTime())) throw new BadRequestException('Invalid purchase_date');
     const assetId = dto.asset_id?.trim() || existing.assetId;
 
-    const updated = await this.prisma.financeAsset.update({
+    const updated = await this.drizzle.financeAsset.update({
       where: { id },
       data: {
         assetId,
@@ -2520,7 +2520,7 @@ export class FinanceService {
 
   async verifyAsset(id: string, dto: CreateFinanceAssetVerificationDto, actorId?: string) {
     if (!actorId) throw new BadRequestException('Actor is required');
-    const asset = await this.prisma.financeAsset.findUnique({
+    const asset = await this.drizzle.financeAsset.findUnique({
       where: { id },
       select: { id: true, disposal: true }
     });
@@ -2530,7 +2530,7 @@ export class FinanceService {
     const verifiedAt = new Date(dto.verified_at);
     if (Number.isNaN(verifiedAt.getTime())) throw new BadRequestException('Invalid verified_at');
 
-    await this.prisma.$transaction(async (tx) => {
+    await this.drizzle.$transaction(async (tx) => {
       await tx.financeAssetVerification.create({
         data: {
           assetRecordId: id,
@@ -2560,7 +2560,7 @@ export class FinanceService {
   }
 
   async disposeAsset(id: string, dto: CreateFinanceAssetDisposalDto, actorId?: string) {
-    const asset = await this.prisma.financeAsset.findUnique({
+    const asset = await this.drizzle.financeAsset.findUnique({
       where: { id },
       include: { disposal: true }
     });
@@ -2579,7 +2579,7 @@ export class FinanceService {
     const proceeds = Number(dto.proceeds ?? 0);
     const gainLoss = proceeds - metrics.netBookValue;
 
-    await this.prisma.$transaction(async (tx) => {
+    await this.drizzle.$transaction(async (tx) => {
       await tx.financeAssetDisposal.create({
         data: {
           assetRecordId: asset.id,
@@ -2612,7 +2612,7 @@ export class FinanceService {
     const page = Math.max(1, Number(query.page ?? 1));
     const perPage = Math.min(100, Math.max(1, Number(query.per_page ?? 20)));
 
-    const where: Prisma.FinanceChartAccountWhereInput = {};
+    const where: Drizzle.FinanceChartAccountWhereInput = {};
     if (query.organization_id) where.organizationId = this.parseId(String(query.organization_id), 'organization_id');
     if (query.type) where.type = String(query.type).toLowerCase();
     if (query.category) where.category = String(query.category).toLowerCase();
@@ -2626,10 +2626,10 @@ export class FinanceService {
       ];
     }
 
-    const whereCount: Prisma.FinanceChartAccountWhereInput = { ...where };
+    const whereCount: Drizzle.FinanceChartAccountWhereInput = { ...where };
 
-    const [data, total] = await this.prisma.$transaction([
-      this.prisma.financeChartAccount.findMany({
+    const [data, total] = await this.drizzle.$transaction([
+      this.drizzle.financeChartAccount.findMany({
         where,
         include: {
           organization: { select: { id: true, name: true, code: true } },
@@ -2639,7 +2639,7 @@ export class FinanceService {
         skip: (page - 1) * perPage,
         take: perPage
       }),
-      this.prisma.financeChartAccount.count({ where: whereCount })
+      this.drizzle.financeChartAccount.count({ where: whereCount })
     ]);
 
     return paginatedResponse(
@@ -2650,7 +2650,7 @@ export class FinanceService {
 
   async getChartAccount(id: string) {
     await this.ensureDefaultChartAccounts();
-    const row = await this.prisma.financeChartAccount.findUnique({
+    const row = await this.drizzle.financeChartAccount.findUnique({
       where: { id },
       include: {
         organization: { select: { id: true, name: true, code: true } },
@@ -2662,7 +2662,7 @@ export class FinanceService {
   }
 
   async createChartAccount(dto: UpsertFinanceChartAccountDto, actorId?: string) {
-    const row = await this.prisma.financeChartAccount.create({
+    const row = await this.drizzle.financeChartAccount.create({
       data: {
         organizationId: dto.organization_id ? this.parseId(dto.organization_id, 'organization_id') : null,
         financeAccountId: dto.finance_account_id ?? null,
@@ -2673,7 +2673,7 @@ export class FinanceService {
         normalBalance: dto.normal_balance.trim().toLowerCase(),
         isControlAccount: dto.is_control_account ?? false,
         isActive: dto.is_active ?? true,
-        metadata: (dto.metadata ?? null) as Prisma.InputJsonValue,
+        metadata: (dto.metadata ?? null) as Drizzle.InputJsonValue,
         createdBy: actorId ? toBigInt(actorId) : null
       },
       include: {
@@ -2685,9 +2685,9 @@ export class FinanceService {
   }
 
   async updateChartAccount(id: string, dto: UpsertFinanceChartAccountDto) {
-    const existing = await this.prisma.financeChartAccount.findUnique({ where: { id } });
+    const existing = await this.drizzle.financeChartAccount.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Chart account not found');
-    const row = await this.prisma.financeChartAccount.update({
+    const row = await this.drizzle.financeChartAccount.update({
       where: { id },
       data: {
         organizationId: dto.organization_id ? this.parseId(dto.organization_id, 'organization_id') : null,
@@ -2699,7 +2699,7 @@ export class FinanceService {
         normalBalance: dto.normal_balance.trim().toLowerCase(),
         isControlAccount: dto.is_control_account ?? existing.isControlAccount,
         isActive: dto.is_active ?? existing.isActive,
-        metadata: (dto.metadata ?? existing.metadata ?? null) as Prisma.InputJsonValue
+        metadata: (dto.metadata ?? existing.metadata ?? null) as Drizzle.InputJsonValue
       },
       include: {
         organization: { select: { id: true, name: true, code: true } },
@@ -2710,11 +2710,11 @@ export class FinanceService {
   }
 
   async listReportingPeriods(query: Record<string, any>) {
-    const where: Prisma.FinanceReportingPeriodWhereInput = {};
+    const where: Drizzle.FinanceReportingPeriodWhereInput = {};
     if (query.year) where.year = Number(query.year);
     if (query.quarter) where.quarter = Number(query.quarter);
     if (query.status) where.status = String(query.status).toLowerCase();
-    const rows = await this.prisma.financeReportingPeriod.findMany({
+    const rows = await this.drizzle.financeReportingPeriod.findMany({
       where,
       orderBy: [{ year: 'desc' }, { month: 'desc' }]
     });
@@ -2731,9 +2731,9 @@ export class FinanceService {
     const month = Number(dto.month);
     const year = Number(dto.year);
     const quarter = Math.ceil(month / 3);
-    const existing = await this.prisma.financeReportingPeriod.findFirst({ where: { year, month } });
+    const existing = await this.drizzle.financeReportingPeriod.findFirst({ where: { year, month } });
     const row = existing
-      ? await this.prisma.financeReportingPeriod.update({
+      ? await this.drizzle.financeReportingPeriod.update({
           where: { id: existing.id },
           data: {
             label: dto.label?.trim() || this.buildPeriodLabel(year, month),
@@ -2744,7 +2744,7 @@ export class FinanceService {
             notes: dto.notes?.trim() || null
           }
         })
-      : await this.prisma.financeReportingPeriod.create({
+      : await this.drizzle.financeReportingPeriod.create({
           data: {
             year,
             month,
@@ -2761,13 +2761,13 @@ export class FinanceService {
   }
 
   async updateReportingPeriod(id: string, dto: UpsertFinanceReportingPeriodDto) {
-    const existing = await this.prisma.financeReportingPeriod.findUnique({ where: { id } });
+    const existing = await this.drizzle.financeReportingPeriod.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Reporting period not found');
     const startDate = new Date(dto.start_date);
     const endDate = new Date(dto.end_date);
     const month = Number(dto.month);
     const year = Number(dto.year);
-    const row = await this.prisma.financeReportingPeriod.update({
+    const row = await this.drizzle.financeReportingPeriod.update({
       where: { id },
       data: {
         year,
@@ -2784,7 +2784,7 @@ export class FinanceService {
   }
 
   async closeReportingPeriod(id: string) {
-    const row = await this.prisma.financeReportingPeriod.update({
+    const row = await this.drizzle.financeReportingPeriod.update({
       where: { id },
       data: { status: 'closed' }
     });
@@ -2792,7 +2792,7 @@ export class FinanceService {
   }
 
   async reopenReportingPeriod(id: string) {
-    const row = await this.prisma.financeReportingPeriod.update({
+    const row = await this.drizzle.financeReportingPeriod.update({
       where: { id },
       data: { status: 'open' }
     });
@@ -2802,7 +2802,7 @@ export class FinanceService {
   async listContacts(query: Record<string, any>) {
     const page = Math.max(1, Number(query.page ?? 1));
     const perPage = Math.min(100, Math.max(1, Number(query.per_page ?? 20)));
-    const where: Prisma.FinanceContactWhereInput = {};
+    const where: Drizzle.FinanceContactWhereInput = {};
     if (query.organization_id) where.organizationId = this.parseId(String(query.organization_id), 'organization_id');
     if (query.is_active !== undefined) where.isActive = String(query.is_active) !== 'false';
     if (query.contact_type) where.contactType = { in: [query.contact_type, 'both'] };
@@ -2816,14 +2816,14 @@ export class FinanceService {
         { companyName: { contains: term, mode: 'insensitive' } }
       ];
     }
-    const [data, total] = await this.prisma.$transaction([
-      this.prisma.financeContact.findMany({
+    const [data, total] = await this.drizzle.$transaction([
+      this.drizzle.financeContact.findMany({
         where,
         orderBy: { name: 'asc' },
         skip: (page - 1) * perPage,
         take: perPage
       }),
-      this.prisma.financeContact.count({ where })
+      this.drizzle.financeContact.count({ where })
     ]);
     return paginatedResponse(
       data.map((row) => this.serializeContact(row)),
@@ -2832,7 +2832,7 @@ export class FinanceService {
   }
 
   async getContact(id: string) {
-    const row = await this.prisma.financeContact.findUnique({
+    const row = await this.drizzle.financeContact.findUnique({
       where: { id },
       include: { organization: true, contactPersons: { orderBy: { isPrimary: 'desc' } } }
     });
@@ -2841,7 +2841,7 @@ export class FinanceService {
   }
 
   async createContact(dto: UpsertContactDto, actorId?: string) {
-    const data: Prisma.FinanceContactCreateInput = {
+    const data: Drizzle.FinanceContactCreateInput = {
       contactType: dto.contact_type,
       subType: dto.sub_type || 'business',
       name: dto.name.trim(),
@@ -2850,30 +2850,30 @@ export class FinanceService {
       email: dto.email?.trim().toLowerCase() || undefined,
       phone: dto.phone?.trim() || undefined,
       address: dto.address?.trim() || undefined,
-      billingAddress: (dto.billing_address as Prisma.InputJsonValue) || undefined,
-      shippingAddress: (dto.shipping_address as Prisma.InputJsonValue) || undefined,
+      billingAddress: (dto.billing_address as Drizzle.InputJsonValue) || undefined,
+      shippingAddress: (dto.shipping_address as Drizzle.InputJsonValue) || undefined,
       taxNumber: dto.tax_number?.trim() || undefined,
       isTaxable: dto.is_taxable ?? true,
       isActive: dto.is_active ?? true,
       paymentTerms: dto.payment_terms || undefined,
-      creditLimit: dto.credit_limit ? new Prisma.Decimal(dto.credit_limit) : undefined,
-      openingBalance: dto.opening_balance ? new Prisma.Decimal(dto.opening_balance) : undefined,
+      creditLimit: dto.credit_limit ? new Drizzle.Decimal(dto.credit_limit) : undefined,
+      openingBalance: dto.opening_balance ? new Drizzle.Decimal(dto.opening_balance) : undefined,
       website: dto.website?.trim() || undefined,
       notes: dto.notes?.trim() || undefined,
-      metadata: (dto.metadata as Prisma.InputJsonValue) || undefined,
+      metadata: (dto.metadata as Drizzle.InputJsonValue) || undefined,
       createdByUser: actorId ? { connect: { id: toBigInt(actorId) } } : undefined,
       updatedByUser: actorId ? { connect: { id: toBigInt(actorId) } } : undefined
     };
     if (dto.organization_id) data.organization = { connect: { id: this.parseId(dto.organization_id, 'organization_id') } };
 
-    const contact = await this.prisma.financeContact.create({
+    const contact = await this.drizzle.financeContact.create({
       data,
       include: { organization: { select: { id: true, name: true, code: true } }, contactPersons: true }
     });
 
     if (Array.isArray(dto.contact_persons)) {
       for (const p of dto.contact_persons) {
-        await this.prisma.financeContactPerson.create({
+        await this.drizzle.financeContactPerson.create({
           data: {
             contact: { connect: { id: contact.id } },
             salutation: p.salutation || undefined,
@@ -2894,10 +2894,10 @@ export class FinanceService {
   }
 
   async updateContact(id: string, dto: UpsertContactDto, actorId?: string) {
-    const existing = await this.prisma.financeContact.findUnique({ where: { id } });
+    const existing = await this.drizzle.financeContact.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Contact not found');
 
-    const data: Prisma.FinanceContactUpdateInput = {
+    const data: Drizzle.FinanceContactUpdateInput = {
       contactType: dto.contact_type ?? existing.contactType,
       subType: dto.sub_type ?? existing.subType,
       name: dto.name !== undefined ? dto.name.trim() : existing.name,
@@ -2912,20 +2912,20 @@ export class FinanceService {
       isTaxable: dto.is_taxable ?? existing.isTaxable,
       isActive: dto.is_active ?? existing.isActive,
       paymentTerms: dto.payment_terms !== undefined ? dto.payment_terms : existing.paymentTerms,
-      creditLimit: dto.credit_limit !== undefined ? (dto.credit_limit ? new Prisma.Decimal(dto.credit_limit) : undefined) : existing.creditLimit,
-      openingBalance: dto.opening_balance !== undefined ? (dto.opening_balance ? new Prisma.Decimal(dto.opening_balance) : undefined) : existing.openingBalance,
+      creditLimit: dto.credit_limit !== undefined ? (dto.credit_limit ? new Drizzle.Decimal(dto.credit_limit) : undefined) : existing.creditLimit,
+      openingBalance: dto.opening_balance !== undefined ? (dto.opening_balance ? new Drizzle.Decimal(dto.opening_balance) : undefined) : existing.openingBalance,
       website: dto.website !== undefined ? (dto.website?.trim() || undefined) : existing.website,
       notes: dto.notes !== undefined ? (dto.notes?.trim() || undefined) : existing.notes,
       metadata: (dto.metadata !== undefined ? dto.metadata : existing?.metadata) as any,
       updatedByUser: actorId ? { connect: { id: toBigInt(actorId) } } : undefined
     };
 
-    await this.prisma.financeContact.update({ where: { id }, data });
+    await this.drizzle.financeContact.update({ where: { id }, data });
 
     if (Array.isArray(dto.contact_persons)) {
-      await this.prisma.financeContactPerson.deleteMany({ where: { contactId: id } });
+      await this.drizzle.financeContactPerson.deleteMany({ where: { contactId: id } });
       for (const p of dto.contact_persons) {
-        await this.prisma.financeContactPerson.create({
+        await this.drizzle.financeContactPerson.create({
           data: {
             contact: { connect: { id } },
             salutation: p.salutation || undefined,
@@ -3060,7 +3060,7 @@ export class FinanceService {
 }
 
   async listDonors(query: Record<string, any>) {
-    const rows = await this.prisma.financeDonor.findMany({
+    const rows = await this.drizzle.financeDonor.findMany({
       where: {
         ...(query.organization_id ? { organizationId: this.parseId(String(query.organization_id), 'organization_id') } : {}),
         ...(query.is_active !== undefined ? { isActive: String(query.is_active) !== 'false' } : {})
@@ -3072,7 +3072,7 @@ export class FinanceService {
   }
 
   async createDonor(dto: any, actorId?: string) {
-    const row = await this.prisma.financeDonor.create({
+    const row = await this.drizzle.financeDonor.create({
       data: {
         organizationId: null,
         name: dto.name.trim(),
@@ -3089,9 +3089,9 @@ export class FinanceService {
   }
 
   async updateDonor(id: string, dto: any, actorId?: string) {
-    const existing = await this.prisma.financeDonor.findUnique({ where: { id } });
+    const existing = await this.drizzle.financeDonor.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Donor not found');
-    const row = await this.prisma.financeDonor.update({
+    const row = await this.drizzle.financeDonor.update({
       where: { id },
       data: {
         name: dto.name.trim(),
@@ -3107,14 +3107,14 @@ export class FinanceService {
   }
 
   async deleteDonor(id: string) {
-    const existing = await this.prisma.financeDonor.findUnique({ where: { id } });
+    const existing = await this.drizzle.financeDonor.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Donor not found');
-    await this.prisma.financeDonor.delete({ where: { id } });
+    await this.drizzle.financeDonor.delete({ where: { id } });
     return { success: true };
   }
 
   async listFunds(query: Record<string, any>) {
-    const rows = await this.prisma.financeFund.findMany({
+    const rows = await this.drizzle.financeFund.findMany({
       where: {
         ...(query.organization_id ? { organizationId: this.parseId(String(query.organization_id), 'organization_id') } : {}),
         ...(query.project_id ? { projectId: this.parseId(String(query.project_id), 'project_id') } : {}),
@@ -3129,10 +3129,10 @@ export class FinanceService {
   }
 
   async createFund(dto: any, actorId?: string) {
-    const donor = dto.donor_id ? await this.prisma.financeDonor.findUnique({ where: { id: dto.donor_id } }) : null;
+    const donor = dto.donor_id ? await this.drizzle.financeDonor.findUnique({ where: { id: dto.donor_id } }) : null;
     const projectId = dto.project_id ? await this.ensureProjectExists(String(dto.project_id), 'project_id') : null;
     if (dto.donor_id && !donor) throw new BadRequestException('Invalid donor_id');
-    const row = await this.prisma.financeFund.create({
+    const row = await this.drizzle.financeFund.create({
       data: {
         organizationId: null,
         projectId,
@@ -3152,12 +3152,12 @@ export class FinanceService {
   }
 
   async updateFund(id: string, dto: any, actorId?: string) {
-    const existing = await this.prisma.financeFund.findUnique({ where: { id } });
+    const existing = await this.drizzle.financeFund.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Fund not found');
-    const donor = dto.donor_id ? await this.prisma.financeDonor.findUnique({ where: { id: dto.donor_id } }) : null;
+    const donor = dto.donor_id ? await this.drizzle.financeDonor.findUnique({ where: { id: dto.donor_id } }) : null;
     const projectId = dto.project_id ? await this.ensureProjectExists(String(dto.project_id), 'project_id') : null;
     if (dto.donor_id && !donor) throw new BadRequestException('Invalid donor_id');
-    const row = await this.prisma.financeFund.update({
+    const row = await this.drizzle.financeFund.update({
       where: { id },
       data: {
         projectId: dto.project_id !== undefined ? projectId : existing.projectId,
@@ -3176,14 +3176,14 @@ export class FinanceService {
   }
 
   async deleteFund(id: string) {
-    const existing = await this.prisma.financeFund.findUnique({ where: { id } });
+    const existing = await this.drizzle.financeFund.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Fund not found');
-    await this.prisma.financeFund.delete({ where: { id } });
+    await this.drizzle.financeFund.delete({ where: { id } });
     return { success: true };
   }
 
   async listGrants(query: Record<string, any>) {
-    const rows = await this.prisma.financeGrant.findMany({
+    const rows = await this.drizzle.financeGrant.findMany({
       where: {
         ...(query.organization_id ? { organizationId: this.parseId(String(query.organization_id), 'organization_id') } : {}),
         ...(query.project_id ? { projectId: this.parseId(String(query.project_id), 'project_id') } : {}),
@@ -3197,12 +3197,12 @@ export class FinanceService {
   }
 
   async createGrant(dto: any, actorId?: string) {
-    const donor = dto.donor_id ? await this.prisma.financeDonor.findUnique({ where: { id: dto.donor_id } }) : null;
-    const fund = dto.fund_id ? await this.prisma.financeFund.findUnique({ where: { id: dto.fund_id } }) : null;
+    const donor = dto.donor_id ? await this.drizzle.financeDonor.findUnique({ where: { id: dto.donor_id } }) : null;
+    const fund = dto.fund_id ? await this.drizzle.financeFund.findUnique({ where: { id: dto.fund_id } }) : null;
     const projectId = dto.project_id ? await this.ensureProjectExists(String(dto.project_id), 'project_id') : null;
     if (dto.donor_id && !donor) throw new BadRequestException('Invalid donor_id');
     if (dto.fund_id && !fund) throw new BadRequestException('Invalid fund_id');
-    const row = await this.prisma.financeGrant.create({
+    const row = await this.drizzle.financeGrant.create({
       data: {
         organizationId: null,
         projectId,
@@ -3228,21 +3228,21 @@ export class FinanceService {
   }
 
   async deleteGrant(id: string) {
-    const existing = await this.prisma.financeGrant.findUnique({ where: { id } });
+    const existing = await this.drizzle.financeGrant.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Grant not found');
-    await this.prisma.financeGrant.delete({ where: { id } });
+    await this.drizzle.financeGrant.delete({ where: { id } });
     return { success: true };
   }
 
   async updateGrant(id: string, dto: any, actorId?: string) {
-    const existing = await this.prisma.financeGrant.findUnique({ where: { id } });
+    const existing = await this.drizzle.financeGrant.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Grant not found');
-    const donor = dto.donor_id ? await this.prisma.financeDonor.findUnique({ where: { id: dto.donor_id } }) : null;
-    const fund = dto.fund_id ? await this.prisma.financeFund.findUnique({ where: { id: dto.fund_id } }) : null;
+    const donor = dto.donor_id ? await this.drizzle.financeDonor.findUnique({ where: { id: dto.donor_id } }) : null;
+    const fund = dto.fund_id ? await this.drizzle.financeFund.findUnique({ where: { id: dto.fund_id } }) : null;
     const projectId = dto.project_id ? await this.ensureProjectExists(String(dto.project_id), 'project_id') : null;
     if (dto.donor_id && !donor) throw new BadRequestException('Invalid donor_id');
     if (dto.fund_id && !fund) throw new BadRequestException('Invalid fund_id');
-    const row = await this.prisma.financeGrant.update({
+    const row = await this.drizzle.financeGrant.update({
       where: { id },
       data: {
         projectId: dto.project_id !== undefined ? projectId : existing.projectId,
@@ -3267,7 +3267,7 @@ export class FinanceService {
   }
 
   async listBudgets(query: Record<string, any>) {
-    const rows = await this.prisma.financeBudget.findMany({
+    const rows = await this.drizzle.financeBudget.findMany({
       where: {
         ...(query.organization_id ? { organizationId: this.parseId(String(query.organization_id), 'organization_id') } : {}),
         ...(query.team_id ? { teamId: this.parseId(String(query.team_id), 'team_id') } : {}),
@@ -3299,7 +3299,7 @@ export class FinanceService {
   }
 
   async getBudget(id: string) {
-    const row = await this.prisma.financeBudget.findUnique({
+    const row = await this.drizzle.financeBudget.findUnique({
       where: { id },
       include: {
         fund: true,
@@ -3340,7 +3340,7 @@ export class FinanceService {
   }
 
   async listApprovedBudgetLines(query: Record<string, any>) {
-    const rows = await this.prisma.financeBudget.findMany({
+    const rows = await this.drizzle.financeBudget.findMany({
       where: {
         status: 'approved',
         currentActiveRevisionId: { not: null },
@@ -3380,7 +3380,7 @@ export class FinanceService {
   }
 
   async approveBudget(id: string, actorId?: string) {
-    const row = await this.prisma.financeBudget.update({
+    const row = await this.drizzle.financeBudget.update({
       where: { id },
       data: {
         status: 'approved',
@@ -3400,7 +3400,7 @@ export class FinanceService {
   }
 
   async reopenBudget(id: string, actorId?: string) {
-    const row = await this.prisma.financeBudget.update({
+    const row = await this.drizzle.financeBudget.update({
       where: { id },
       data: {
         status: 'draft',
@@ -3420,7 +3420,7 @@ export class FinanceService {
   }
 
   async recalculateBudget(id: string) {
-    const budget = await this.prisma.financeBudget.findUnique({
+    const budget = await this.drizzle.financeBudget.findUnique({
       where: { id },
       include: {
         fund: true,
@@ -3437,7 +3437,7 @@ export class FinanceService {
       const planned = Number(line.totalAmount ?? line.amount ?? 0);
       const actual = line.section === 'income' ? incomeTotal : expenseTotal;
       const variance = actual - planned;
-      return this.prisma.financeBudgetLine.update({
+      return this.drizzle.financeBudgetLine.update({
         where: { id: line.id },
         data: {
           totalAmount: planned,
@@ -3446,9 +3446,9 @@ export class FinanceService {
         },
       });
     });
-    await this.prisma.$transaction([
+    await this.drizzle.$transaction([
       ...lineUpdates,
-      this.prisma.financeBudget.update({
+      this.drizzle.financeBudget.update({
         where: { id: budget.id },
         data: { totalBudget: budget.lines.reduce((sum, line) => sum + Number(line.totalAmount ?? line.amount ?? 0), 0) },
       }),
@@ -3456,7 +3456,7 @@ export class FinanceService {
     return this.getBudget(id);
   }
 
-  private async ensureBudgetDraftRevisionTx(tx: Prisma.TransactionClient, budgetId: string, actorId?: string) {
+  private async ensureBudgetDraftRevisionTx(tx: Drizzle.TransactionClient, budgetId: string, actorId?: string) {
     const budget = await tx.financeBudget.findUnique({ where: { id: budgetId } });
     if (!budget) throw new NotFoundException('Budget not found');
     if (budget.draftRevisionId) return budget.draftRevisionId;
@@ -3491,8 +3491,8 @@ export class FinanceService {
     const quarter = dto.quarter !== undefined && dto.quarter !== null && dto.quarter !== '' ? Number(dto.quarter) : null;
     const month = dto.month !== undefined && dto.month !== null && dto.month !== '' ? Number(dto.month) : null;
     const { startDate, endDate } = this.resolveBudgetDates(dto.start_date, dto.end_date, periodType, fiscalYear, quarter, month);
-    const fund = dto.fund_id ? await this.prisma.financeFund.findUnique({ where: { id: dto.fund_id } }) : null;
-    const grant = dto.grant_id ? await this.prisma.financeGrant.findUnique({ where: { id: dto.grant_id } }) : null;
+    const fund = dto.fund_id ? await this.drizzle.financeFund.findUnique({ where: { id: dto.fund_id } }) : null;
+    const grant = dto.grant_id ? await this.drizzle.financeGrant.findUnique({ where: { id: dto.grant_id } }) : null;
     const projectId = dto.project_id ? await this.ensureProjectExists(String(dto.project_id), 'project_id') : null;
     const scopeIds = await this.resolveBudgetScopeIds(scopeType, dto);
     if (dto.fund_id && !fund) throw new BadRequestException('Invalid fund_id');
@@ -3526,11 +3526,11 @@ export class FinanceService {
     }
 
     if (id) {
-      const existing = await this.prisma.financeBudget.findUnique({ where: { id } });
+      const existing = await this.drizzle.financeBudget.findUnique({ where: { id } });
       if (!existing) throw new NotFoundException('Budget not found');
     }
 
-    const row = await this.prisma.$transaction(async (tx) => {
+    const row = await this.drizzle.$transaction(async (tx) => {
       const budget = id
           ? await tx.financeBudget.update({
             where: { id },
@@ -3684,7 +3684,7 @@ export class FinanceService {
   }
 
   async listBudgetRevisions(budgetId: string) {
-    const revisions = await this.prisma.financeBudgetRevision.findMany({
+    const revisions = await this.drizzle.financeBudgetRevision.findMany({
       where: { budgetId },
       include: { lines: { orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] } },
       orderBy: [{ revisionNumber: 'desc' }],
@@ -3693,13 +3693,13 @@ export class FinanceService {
   }
 
   async submitBudgetRevision(revisionId: string, actorId?: string, dto?: { comment?: string }) {
-    const revision = await this.prisma.financeBudgetRevision.findUnique({ where: { id: revisionId } });
+    const revision = await this.drizzle.financeBudgetRevision.findUnique({ where: { id: revisionId } });
     if (!revision) throw new NotFoundException('Budget revision not found');
     if (revision.status !== 'draft' && revision.status !== 'returned') {
       throw new BadRequestException('Only draft or returned revisions can be submitted');
     }
 
-    return this.prisma.financeBudgetRevision.update({
+    return this.drizzle.financeBudgetRevision.update({
       where: { id: revisionId },
       data: {
         status: 'approval',
@@ -3711,13 +3711,13 @@ export class FinanceService {
   }
 
   async approveBudgetRevision(revisionId: string, actorId?: string, dto?: { action?: string; comment?: string }) {
-    const revision = await this.prisma.financeBudgetRevision.findUnique({ where: { id: revisionId } });
+    const revision = await this.drizzle.financeBudgetRevision.findUnique({ where: { id: revisionId } });
     if (!revision) throw new NotFoundException('Budget revision not found');
     if (revision.status !== 'approval') {
       throw new BadRequestException('Only revisions in approval state can be approved');
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.drizzle.$transaction(async (tx) => {
       const approvedRevision = await tx.financeBudgetRevision.update({
         where: { id: revisionId },
         data: {
@@ -3742,13 +3742,13 @@ export class FinanceService {
   }
 
   async rejectBudgetRevision(revisionId: string, actorId?: string, dto?: { action?: string; comment?: string }) {
-    const revision = await this.prisma.financeBudgetRevision.findUnique({ where: { id: revisionId } });
+    const revision = await this.drizzle.financeBudgetRevision.findUnique({ where: { id: revisionId } });
     if (!revision) throw new NotFoundException('Budget revision not found');
     if (revision.status !== 'approval') {
       throw new BadRequestException('Only revisions in approval state can be rejected');
     }
 
-    return this.prisma.financeBudgetRevision.update({
+    return this.drizzle.financeBudgetRevision.update({
       where: { id: revisionId },
       data: {
         status: 'rejected',
@@ -3760,13 +3760,13 @@ export class FinanceService {
   }
 
   async returnBudgetRevision(revisionId: string, actorId?: string, dto?: { action?: string; comment?: string }) {
-    const revision = await this.prisma.financeBudgetRevision.findUnique({ where: { id: revisionId } });
+    const revision = await this.drizzle.financeBudgetRevision.findUnique({ where: { id: revisionId } });
     if (!revision) throw new NotFoundException('Budget revision not found');
     if (revision.status !== 'approval') {
       throw new BadRequestException('Only revisions in approval state can be returned');
     }
 
-    return this.prisma.financeBudgetRevision.update({
+    return this.drizzle.financeBudgetRevision.update({
       where: { id: revisionId },
       data: {
         status: 'returned',
@@ -3778,7 +3778,7 @@ export class FinanceService {
   }
 
   async copyBudget(id: string, dto: any, actorId?: string) {
-    const source = await this.prisma.financeBudget.findUnique({
+    const source = await this.drizzle.financeBudget.findUnique({
       where: { id },
       include: {
         currentActiveRevision: { include: { lines: true } },
@@ -3859,7 +3859,7 @@ export class FinanceService {
   async listSalesInvoices(query: Record<string, any>) {
     const page = Math.max(1, Number(query.page ?? 1));
     const perPage = Math.min(200, Math.max(1, Number(query.per_page ?? 20)));
-    const where: Prisma.FinanceSalesInvoiceWhereInput = {};
+    const where: Drizzle.FinanceSalesInvoiceWhereInput = {};
     if (query.contactId) where.contactId = String(query.contactId);
     if (query.organization_id) where.organizationId = this.parseId(String(query.organization_id), 'organization_id');
     if (query.team_id) where.teamId = this.parseId(String(query.team_id), 'team_id');
@@ -3869,7 +3869,7 @@ export class FinanceService {
         ...(query.to ? { lte: new Date(String(query.to)) } : {})
       };
     }
-    const rows = await this.prisma.financeSalesInvoice.findMany({
+    const rows = await this.drizzle.financeSalesInvoice.findMany({
       where,
       include: {
         contact: true,
@@ -3903,7 +3903,7 @@ export class FinanceService {
   }
 
   async getSalesInvoice(id: string) {
-    const row = await this.prisma.financeSalesInvoice.findUnique({
+    const row = await this.drizzle.financeSalesInvoice.findUnique({
       where: { id },
       include: {
         contact: true,
@@ -3934,11 +3934,11 @@ export class FinanceService {
     const invoiceDate = new Date(dto.invoice_date);
     if (Number.isNaN(invoiceDate.getTime())) throw new BadRequestException('Invalid invoice_date');
     const dueDate = dto.due_date ? new Date(dto.due_date) : null;
-    const contact = await this.prisma.financeContact.findUnique({ where: { id: dto.contact_id } });
+    const contact = await this.drizzle.financeContact.findUnique({ where: { id: dto.contact_id } });
     if (!contact) throw new BadRequestException('Invalid contactId');
     const lineInputs = await Promise.all(
       dto.lines.map(async (line) => {
-        const chartAccount = await this.prisma.financeChartAccount.findUnique({ where: { id: line.chart_account_id } });
+        const chartAccount = await this.drizzle.financeChartAccount.findUnique({ where: { id: line.chart_account_id } });
         if (!chartAccount || chartAccount.type !== 'income') {
           throw new BadRequestException('Invoice lines must use income chart accounts');
         }
@@ -3965,7 +3965,7 @@ export class FinanceService {
     const { fund, grant } = await this.validateFundGrant(dto.fund_id, dto.grant_id);
     const desiredStatus = (dto.status ?? 'draft').toLowerCase();
 
-    const created = await this.prisma.$transaction(async (tx) => {
+    const created = await this.drizzle.$transaction(async (tx) => {
       const invoice = await tx.financeSalesInvoice.create({
         data: {
           invoiceNumber,
@@ -4061,7 +4061,7 @@ export class FinanceService {
   async listBills(query: Record<string, any>) {
     const page = Math.max(1, Number(query.page ?? 1));
     const perPage = Math.min(200, Math.max(1, Number(query.per_page ?? 20)));
-    const where: Prisma.FinanceBillHeaderWhereInput = {};
+    const where: Drizzle.FinanceBillHeaderWhereInput = {};
     if (query.contactId) where.contactId = String(query.contactId);
     if (query.organization_id) where.organizationId = this.parseId(String(query.organization_id), 'organization_id');
     if (query.team_id) where.teamId = this.parseId(String(query.team_id), 'team_id');
@@ -4072,8 +4072,8 @@ export class FinanceService {
         ...(query.to ? { lte: new Date(String(query.to)) } : {})
       };
     }
-    const [rows, totalResult] = await this.prisma.$transaction([
-      this.prisma.financeBillHeader.findMany({
+    const [rows, totalResult] = await this.drizzle.$transaction([
+      this.drizzle.financeBillHeader.findMany({
         where,
         include: {
           contact: true,
@@ -4088,14 +4088,14 @@ export class FinanceService {
         skip: (page - 1) * perPage,
         take: perPage,
       }),
-      this.prisma.financeBillHeader.count({ where }),
+      this.drizzle.financeBillHeader.count({ where }),
     ]);
     const result = rows.map((row) => this.serializeBill(row));
     return paginatedResponse(result, { page, per_page: perPage, total: totalResult });
   }
 
   async getBill(id: string) {
-    const row = await this.prisma.financeBillHeader.findUnique({
+    const row = await this.drizzle.financeBillHeader.findUnique({
       where: { id },
       include: {
         contact: true,
@@ -4117,11 +4117,11 @@ export class FinanceService {
     const billDate = new Date(dto.bill_date);
     if (Number.isNaN(billDate.getTime())) throw new BadRequestException('Invalid bill_date');
     const dueDate = dto.due_date ? new Date(dto.due_date) : null;
-    const contact = await this.prisma.financeContact.findUnique({ where: { id: dto.contact_id } });
+    const contact = await this.drizzle.financeContact.findUnique({ where: { id: dto.contact_id } });
     if (!contact) throw new BadRequestException('Invalid contactId');
     const lineInputs = await Promise.all(
       dto.lines.map(async (line) => {
-        const chartAccount = await this.prisma.financeChartAccount.findUnique({ where: { id: line.chart_account_id } });
+        const chartAccount = await this.drizzle.financeChartAccount.findUnique({ where: { id: line.chart_account_id } });
         if (!chartAccount || !['expense', 'asset'].includes(chartAccount.type)) {
           throw new BadRequestException('Bill lines must use expense or asset chart accounts');
         }
@@ -4147,7 +4147,7 @@ export class FinanceService {
     const apAccount = await this.getRequiredChartAccount('2100');
     const { fund, grant } = await this.validateFundGrant(dto.fund_id, dto.grant_id);
 
-    const created = await this.prisma.$transaction(async (tx) => {
+    const created = await this.drizzle.$transaction(async (tx) => {
       const bill = await tx.financeBillHeader.create({
         data: {
           billNumber,
@@ -4226,7 +4226,7 @@ export class FinanceService {
 
   async createReceipt(dto: CreateFinanceReceiptDto, actorId?: string) {
     await this.ensureDefaultChartAccounts();
-    const account = await this.prisma.financeAccount.findUnique({ where: { id: dto.account_id } });
+    const account = await this.drizzle.financeAccount.findUnique({ where: { id: dto.account_id } });
     if (!account || !account.isActive) throw new BadRequestException('Invalid account_id');
     const requestedAllocationIds = Array.from(
       new Set([
@@ -4237,14 +4237,14 @@ export class FinanceService {
     if (requestedAllocationIds.length === 0) {
       throw new BadRequestException('At least one invoice allocation is required');
     }
-    const salesInvoices = await this.prisma.financeSalesInvoice.findMany({
+    const salesInvoices = await this.drizzle.financeSalesInvoice.findMany({
       where: { id: { in: requestedAllocationIds } },
       include: { allocations: true, fund: true, grant: true }
     });
     if (salesInvoices.length !== requestedAllocationIds.length) {
       throw new BadRequestException('Invalid sales_invoice_id');
     }
-    const invoiceMap = new Map(salesInvoices.map((invoice) => [invoice.id, invoice]));
+    const invoiceMap = new Map<string, any>(salesInvoices.map((invoice) => [invoice.id, invoice]));
     const allocationsInput = dto.allocations?.length
       ? dto.allocations.map((allocation) => ({
           salesInvoiceId: allocation.sales_invoice_id,
@@ -4281,7 +4281,7 @@ export class FinanceService {
     const arAccount = await this.getRequiredChartAccount('1100');
     const bankAccount = await this.ensureFinanceAccountChartAccount(account.id, actorId);
 
-    const receipt = await this.prisma.$transaction(async (tx) => {
+    const receipt = await this.drizzle.$transaction(async (tx) => {
       const created = await tx.financeReceipt.create({
         data: {
           receiptNumber,
@@ -4351,7 +4351,7 @@ export class FinanceService {
             sales_invoice_id: firstInvoice?.id ?? null,
             allocation_invoice_ids: allocationsInput.map((row) => row.salesInvoiceId),
             reference: dto.reference ?? null
-          } as Prisma.InputJsonValue
+          } as Drizzle.InputJsonValue
         }
       });
 
@@ -4367,10 +4367,10 @@ export class FinanceService {
 
   async createVendorPayment(dto: CreateFinanceVendorPaymentDto, actorId?: string) {
     await this.ensureDefaultChartAccounts();
-    const account = await this.prisma.financeAccount.findUnique({ where: { id: dto.account_id } });
+    const account = await this.drizzle.financeAccount.findUnique({ where: { id: dto.account_id } });
     if (!account || !account.isActive) throw new BadRequestException('Invalid account_id');
     const bill = dto.bill_id
-      ? await this.prisma.financeBillHeader.findUnique({ where: { id: dto.bill_id }, include: { payments: true, fund: true, grant: true } })
+      ? await this.drizzle.financeBillHeader.findUnique({ where: { id: dto.bill_id }, include: { payments: true, fund: true, grant: true } })
       : null;
     if (dto.bill_id && !bill) throw new BadRequestException('Invalid bill_id');
     const contactId = dto.contact_id ?? bill?.contactId ?? null;
@@ -4388,7 +4388,7 @@ export class FinanceService {
     const apAccount = await this.getRequiredChartAccount('2100');
     const bankAccount = await this.ensureFinanceAccountChartAccount(account.id, actorId);
 
-    const payment = await this.prisma.$transaction(async (tx) => {
+    const payment = await this.drizzle.$transaction(async (tx) => {
       const created = await tx.financeVendorPayment.create({
         data: {
           paymentNumber,
@@ -4447,7 +4447,7 @@ export class FinanceService {
             contactId: contactId,
             bill_id: bill?.id ?? null,
             reference: dto.reference ?? null
-          } as Prisma.InputJsonValue
+          } as Drizzle.InputJsonValue
         }
       });
 
@@ -4458,7 +4458,7 @@ export class FinanceService {
   }
 
   async sendSalesInvoice(id: string, actorId?: string) {
-    const existing = await this.prisma.financeSalesInvoice.findUnique({
+    const existing = await this.drizzle.financeSalesInvoice.findUnique({
       where: { id },
       include: {
         contact: true,
@@ -4475,7 +4475,7 @@ export class FinanceService {
     if (String(existing.status).toLowerCase() === 'void') {
       throw new BadRequestException('Voided invoice cannot be sent');
     }
-    const journalExists = await this.prisma.financeJournalEntry.findFirst({
+    const journalExists = await this.drizzle.financeJournalEntry.findFirst({
       where: { sourceType: 'finance_sales_invoice', sourceId: existing.id },
       select: { id: true }
     });
@@ -4485,7 +4485,7 @@ export class FinanceService {
       : existing.receipts.reduce((sum, row) => sum + Number(row.amount), 0);
     const effectiveStatus = this.resolveInvoiceStatus(existing.status, Number(existing.totalAmount), paidAmount, dueDate, existing.voidedAt);
 
-    const updated = await this.prisma.$transaction(async (tx) => {
+    const updated = await this.drizzle.$transaction(async (tx) => {
       if (!journalExists) {
         const period = await this.ensureReportingPeriod(existing.invoiceDate, actorId);
         const arAccount = await this.getRequiredChartAccount('1100');
@@ -4551,7 +4551,7 @@ export class FinanceService {
   }
 
   async remindSalesInvoice(id: string, actorId?: string) {
-    const existing = await this.prisma.financeSalesInvoice.findUnique({
+    const existing = await this.drizzle.financeSalesInvoice.findUnique({
       where: { id },
       include: {
         contact: true,
@@ -4588,7 +4588,7 @@ export class FinanceService {
   }
 
   async voidSalesInvoice(id: string, actorId?: string) {
-    const existing = await this.prisma.financeSalesInvoice.findUnique({
+    const existing = await this.drizzle.financeSalesInvoice.findUnique({
       where: { id },
       include: {
         lines: true,
@@ -4603,11 +4603,11 @@ export class FinanceService {
     if (paidAmount > 0) {
       throw new BadRequestException('Paid or part-paid invoice cannot be voided');
     }
-    const journal = await this.prisma.financeJournalEntry.findFirst({
+    const journal = await this.drizzle.financeJournalEntry.findFirst({
       where: { sourceType: 'finance_sales_invoice', sourceId: existing.id },
       include: { lines: true }
     });
-    const updated = await this.prisma.$transaction(async (tx) => {
+    const updated = await this.drizzle.$transaction(async (tx) => {
       if (journal) {
         const period = await this.ensureReportingPeriod(new Date(), actorId);
         await this.createJournalEntryTx(tx, {
@@ -4653,11 +4653,11 @@ export class FinanceService {
   }
 
   async contactStatement(contactId: string, query: Record<string, any>) {
-    const contact = await this.prisma.financeContact.findUnique({ where: { id: contactId } });
+    const contact = await this.drizzle.financeContact.findUnique({ where: { id: contactId } });
     if (!contact) throw new NotFoundException('Customer not found');
     const from = query.from ? new Date(String(query.from)) : null;
     const to = query.to ? new Date(String(query.to)) : null;
-    const invoices = await this.prisma.financeSalesInvoice.findMany({
+    const invoices = await this.drizzle.financeSalesInvoice.findMany({
       where: {
         contactId,
         ...(from || to
@@ -4733,10 +4733,10 @@ export class FinanceService {
   }
 
   async listReportNotes(query: Record<string, any>) {
-    const where: Prisma.FinanceReportNoteWhereInput = {};
+    const where: Drizzle.FinanceReportNoteWhereInput = {};
     if (query.period_id) where.periodId = String(query.period_id);
     if (query.report_key) where.reportKey = String(query.report_key);
-    const rows = await this.prisma.financeReportNote.findMany({
+    const rows = await this.drizzle.financeReportNote.findMany({
       where,
       include: { period: true },
       orderBy: [{ reportKey: 'asc' }, { severity: 'desc' }, { createdAt: 'asc' }]
@@ -4747,7 +4747,7 @@ export class FinanceService {
 
   async budgetVsActual(query: Record<string, any>) {
     if (!query.budget_id) throw new BadRequestException('budget_id is required');
-    const budget = await this.prisma.financeBudget.findUnique({
+    const budget = await this.drizzle.financeBudget.findUnique({
       where: { id: String(query.budget_id) },
       include: {
         fund: true,
@@ -4809,7 +4809,7 @@ export class FinanceService {
   }
 
   async grantUtilization(query: Record<string, any>) {
-    const rows = await this.prisma.financeGrant.findMany({
+    const rows = await this.drizzle.financeGrant.findMany({
       where: {
         ...(query.grant_id ? { id: String(query.grant_id) } : {}),
         ...(query.fund_id ? { fundId: String(query.fund_id) } : {}),
@@ -4822,7 +4822,7 @@ export class FinanceService {
     const items = await Promise.all(
       rows.map(async (grant) => {
         const [incomeRows, voucherRows] = await Promise.all([
-          this.prisma.financeIncomeEntry.findMany({
+          this.drizzle.financeIncomeEntry.findMany({
             where: {
               grantId: grant.id,
               ...(query.from || query.to
@@ -4835,7 +4835,7 @@ export class FinanceService {
                 : {})
             }
           }),
-          this.prisma.financePaymentVoucher.findMany({
+          this.drizzle.financePaymentVoucher.findMany({
             where: {
               grantId: grant.id,
               ...(query.from || query.to
@@ -4876,7 +4876,7 @@ export class FinanceService {
   }
 
   async upsertReportNote(dto: UpsertFinanceReportNoteDto, actorId?: string) {
-    const row = await this.prisma.financeReportNote.create({
+    const row = await this.drizzle.financeReportNote.create({
       data: {
         periodId: dto.period_id,
         reportKey: dto.report_key.trim(),
@@ -4998,7 +4998,7 @@ export class FinanceService {
   async balances(query: Record<string, any>, contextInput?: Awaited<ReturnType<FinanceService['buildReportContext']>>) {
     const context = contextInput ?? (await this.buildReportContext(query));
     const lineBalances = this.computeChartBalances(context.lines);
-    const bankReserveAccounts = await this.prisma.financeChartAccount.findMany({
+    const bankReserveAccounts = await this.drizzle.financeChartAccount.findMany({
       where: { category: { in: ['bank', 'cash', 'wallet', 'reserve'] } },
       include: { financeAccount: { select: { id: true, name: true, code: true, accountType: true } } },
       orderBy: { code: 'asc' }
@@ -5060,7 +5060,7 @@ export class FinanceService {
 
   async receivables(query: Record<string, any>, contextInput?: Awaited<ReturnType<FinanceService['buildReportContext']>>) {
     const context = contextInput ?? (await this.buildReportContext(query));
-    const rows = await this.prisma.financeSalesInvoice.findMany({
+    const rows = await this.drizzle.financeSalesInvoice.findMany({
       where: {
         ...(query.organization_id ? { organizationId: this.parseId(String(query.organization_id), 'organization_id') } : {}),
         ...(query.team_id ? { teamId: this.parseId(String(query.team_id), 'team_id') } : {})
@@ -5085,7 +5085,7 @@ export class FinanceService {
 
   async payables(query: Record<string, any>, contextInput?: Awaited<ReturnType<FinanceService['buildReportContext']>>) {
     const context = contextInput ?? (await this.buildReportContext(query));
-    const rows = await this.prisma.financeBillHeader.findMany({
+    const rows = await this.drizzle.financeBillHeader.findMany({
       where: {
         ...(query.organization_id ? { organizationId: this.parseId(String(query.organization_id), 'organization_id') } : {}),
         ...(query.team_id ? { teamId: this.parseId(String(query.team_id), 'team_id') } : {})
@@ -5111,11 +5111,11 @@ export class FinanceService {
     await this.ensureDefaultChartAccounts(actorId);
     const created: string[] = [];
 
-    const accounts = await this.prisma.financeAccount.findMany();
+    const accounts = await this.drizzle.financeAccount.findMany();
     for (const account of accounts) {
       const chart = await this.ensureFinanceAccountChartAccount(account.id, actorId);
       if (Number(account.openingBalance) !== 0) {
-        const exists = await this.prisma.financeJournalEntry.findFirst({
+        const exists = await this.drizzle.financeJournalEntry.findFirst({
           where: { sourceType: 'finance_account_opening', sourceId: account.id }
         });
         if (!exists) {
@@ -5145,25 +5145,25 @@ export class FinanceService {
       }
     }
 
-    const incomeEntries = await this.prisma.financeIncomeEntry.findMany();
+    const incomeEntries = await this.drizzle.financeIncomeEntry.findMany();
     for (const row of incomeEntries) {
-      const exists = await this.prisma.financeJournalEntry.findFirst({ where: { sourceType: 'finance_income', sourceId: row.id } });
+      const exists = await this.drizzle.financeJournalEntry.findFirst({ where: { sourceType: 'finance_income', sourceId: row.id } });
       if (!exists) {
         await this.postIncomeJournal(row, actorId);
         created.push(`income:${row.id}`);
       }
     }
 
-    const vouchers = await this.prisma.financePaymentVoucher.findMany({ include: { request: true } });
+    const vouchers = await this.drizzle.financePaymentVoucher.findMany({ include: { request: true } });
     for (const row of vouchers) {
-      const exists = await this.prisma.financeJournalEntry.findFirst({ where: { sourceType: 'finance_payment_voucher', sourceId: row.id } });
+      const exists = await this.drizzle.financeJournalEntry.findFirst({ where: { sourceType: 'finance_payment_voucher', sourceId: row.id } });
       if (!exists && row.paidFromAccountId) {
         await this.postPaymentVoucherJournal(row, row.request.organizationId, row.request.teamId, actorId);
         created.push(`pv:${row.id}`);
       }
     }
 
-    const transferGroups = await this.prisma.financeLedgerEntry.findMany({
+    const transferGroups = await this.drizzle.financeLedgerEntry.findMany({
       where: { sourceType: 'finance_transfer' },
       orderBy: { entryDate: 'asc' }
     });
@@ -5173,7 +5173,7 @@ export class FinanceService {
       groupedTransfers.set(row.sourceId, [...(groupedTransfers.get(row.sourceId) ?? []), row]);
     }
     for (const [sourceId, rows] of groupedTransfers.entries()) {
-      const exists = await this.prisma.financeJournalEntry.findFirst({ where: { sourceType: 'finance_transfer', sourceId } });
+      const exists = await this.drizzle.financeJournalEntry.findFirst({ where: { sourceType: 'finance_transfer', sourceId } });
       if (exists) continue;
       const fromRow = rows.find((row) => row.direction === 'out');
       const toRow = rows.find((row) => row.direction === 'in');
@@ -5283,7 +5283,7 @@ export class FinanceService {
       };
     }
 
-    const team = await this.prisma.group.findUnique({
+    const team = await this.drizzle.group.findUnique({
       where: { id: teamId },
       select: { id: true, type: true, organizationId: true },
     });
@@ -5321,7 +5321,7 @@ export class FinanceService {
 
   private async ensureProjectExists(value: string, label: string) {
     const projectId = this.parseId(value, label);
-    const project = await this.prisma.group.findUnique({ where: { id: projectId } });
+    const project = await this.drizzle.group.findUnique({ where: { id: projectId } });
     if (!project || project.type !== 'project') {
       throw new BadRequestException(`Invalid ${label}`);
     }
@@ -5334,8 +5334,8 @@ export class FinanceService {
     grant,
   }: {
     projectId: bigint | null;
-    fund: Prisma.FinanceFundGetPayload<{}> | null;
-    grant: Prisma.FinanceGrantGetPayload<{}> | null;
+    fund: Drizzle.FinanceFundGetPayload<{}> | null;
+    grant: Drizzle.FinanceGrantGetPayload<{}> | null;
   }) {
     if (fund && grant && grant.fundId && grant.fundId !== fund.id) {
       throw new BadRequestException('grant_id does not belong to fund_id');
@@ -5354,7 +5354,7 @@ export class FinanceService {
   private async nextVoucherNumber(year: number) {
     const start = new Date(year, 0, 1);
     const end = new Date(year + 1, 0, 1);
-    const count = await this.prisma.financePaymentVoucher.count({
+    const count = await this.drizzle.financePaymentVoucher.count({
       where: {
         disbursedAt: {
           gte: start,
@@ -5366,7 +5366,7 @@ export class FinanceService {
   }
 
   private async getFormattedRequestNumber(requestId: bigint): Promise<string> {
-    const request = await this.prisma.requestInstance.findUnique({
+    const request = await this.drizzle.requestInstance.findUnique({
       where: { id: requestId },
       select: {
         id: true,
@@ -5391,7 +5391,7 @@ export class FinanceService {
     return `request-${requestNumber.replace(/[^a-zA-Z0-9_.-]/g, '-').toLowerCase()}`;
   }
 
-  private serializeChartAccount(row: Prisma.FinanceChartAccountGetPayload<{
+  private serializeChartAccount(row: Drizzle.FinanceChartAccountGetPayload<{
     include: {
       organization: { select: { id: true; name: true; code: true } };
       financeAccount: { select: { id: true; name: true; code: true; accountType: true } };
@@ -5421,7 +5421,7 @@ export class FinanceService {
     };
   }
 
-  private serializeReportingPeriod(row: Prisma.FinanceReportingPeriodGetPayload<{}>) {
+  private serializeReportingPeriod(row: Drizzle.FinanceReportingPeriodGetPayload<{}>) {
     return {
       id: row.id,
       year: row.year,
@@ -5437,7 +5437,7 @@ export class FinanceService {
     };
 }
 
-  private serializeDonor(row: Prisma.FinanceDonorGetPayload<{}>) {
+  private serializeDonor(row: Drizzle.FinanceDonorGetPayload<{}>) {
     return {
       id: row.id,
       name: row.name,
@@ -5452,7 +5452,7 @@ export class FinanceService {
   }
 
   private serializeFund(
-    row: Prisma.FinanceFundGetPayload<{ include: { donor: true; grants: { select: { id: true; code: true; name: true; status: true } } } }>
+    row: Drizzle.FinanceFundGetPayload<{ include: { donor: true; grants: { select: { id: true; code: true; name: true; status: true } } } }>
   ) {
     return {
       id: row.id,
@@ -5471,7 +5471,7 @@ export class FinanceService {
   }
 
   private serializeGrant(
-    row: Prisma.FinanceGrantGetPayload<{ include: { donor: true; fund: true } }>
+    row: Drizzle.FinanceGrantGetPayload<{ include: { donor: true; fund: true } }>
   ) {
     return {
       id: row.id,
@@ -5581,7 +5581,7 @@ export class FinanceService {
   }
 
   private serializeBudgetRevision(
-    row: Prisma.FinanceBudgetRevisionGetPayload<{ include: { lines: true } }>
+    row: Drizzle.FinanceBudgetRevisionGetPayload<{ include: { lines: true } }>
   ) {
     return {
       id: row.id,
@@ -5624,7 +5624,7 @@ export class FinanceService {
   }
 
   private serializeBudgetRevisionLine(
-    line: Prisma.FinanceBudgetRevisionLineGetPayload<{}>
+    line: Drizzle.FinanceBudgetRevisionLineGetPayload<{}>
   ) {
     return {
       id: line.id,
@@ -5646,7 +5646,7 @@ export class FinanceService {
   }
 
   private serializeBudgetRevisionSummary(
-    row: Prisma.FinanceBudgetRevisionGetPayload<{}>
+    row: Drizzle.FinanceBudgetRevisionGetPayload<{}>
   ) {
     return {
       id: row.id,
@@ -5663,7 +5663,7 @@ export class FinanceService {
   }
 
   private async computeBudgetActuals(
-    budget: Prisma.FinanceBudgetGetPayload<{ include: { fund: true; grant: true; lines: true; assumptions: true; portfolio: true } }>
+    budget: Drizzle.FinanceBudgetGetPayload<{ include: { fund: true; grant: true; lines: true; assumptions: true; portfolio: true } }>
   ) {
     const dateRange = {
       gte: budget.startDate,
@@ -5671,7 +5671,7 @@ export class FinanceService {
     };
 
     if (budget.budgetType === 'project') {
-      const vouchers = await this.prisma.financePaymentVoucher.findMany({
+      const vouchers = await this.drizzle.financePaymentVoucher.findMany({
         where: {
           disbursedAt: dateRange,
           request: {
@@ -5697,14 +5697,14 @@ export class FinanceService {
           : {};
 
     const [incomeRows, voucherRows] = await Promise.all([
-      this.prisma.financeIncomeEntry.findMany({
+      this.drizzle.financeIncomeEntry.findMany({
         where: {
           ...fundGrantFilter,
           receivedAt: dateRange,
         },
         select: { amount: true },
       }),
-      this.prisma.financePaymentVoucher.findMany({
+      this.drizzle.financePaymentVoucher.findMany({
         where: {
           ...fundGrantFilter,
           disbursedAt: dateRange,
@@ -5720,8 +5720,8 @@ export class FinanceService {
   }
 
   private async validateFundGrant(fundId?: string | null, grantId?: string | null) {
-    const fund = fundId ? await this.prisma.financeFund.findUnique({ where: { id: fundId } }) : null;
-    const grant = grantId ? await this.prisma.financeGrant.findUnique({ where: { id: grantId } }) : null;
+    const fund = fundId ? await this.drizzle.financeFund.findUnique({ where: { id: fundId } }) : null;
+    const grant = grantId ? await this.drizzle.financeGrant.findUnique({ where: { id: grantId } }) : null;
     if (fundId && !fund) throw new BadRequestException('Invalid fund_id');
     if (grantId && !grant) throw new BadRequestException('Invalid grant_id');
     await this.validateBudgetDimensionCompatibility({ projectId: null, fund, grant });
@@ -5729,7 +5729,7 @@ export class FinanceService {
   }
 
   private serializeSalesInvoice(
-    row: Prisma.FinanceSalesInvoiceGetPayload<{
+    row: Drizzle.FinanceSalesInvoiceGetPayload<{
       include: {
         contact: true;
         organization: { select: { id: true; name: true; code: true } };
@@ -5823,7 +5823,7 @@ export class FinanceService {
     return normalized || 'draft';
   }
 
-  private async refreshInvoiceStatusTx(tx: Prisma.TransactionClient, invoiceId: string) {
+  private async refreshInvoiceStatusTx(tx: Drizzle.TransactionClient, invoiceId: string) {
     const row = await tx.financeSalesInvoice.findUnique({
       where: { id: invoiceId },
       include: { allocations: true, receipts: true }
@@ -5846,7 +5846,7 @@ export class FinanceService {
   }
 
   private serializeBill(
-    row: Prisma.FinanceBillHeaderGetPayload<{
+    row: Drizzle.FinanceBillHeaderGetPayload<{
       include: {
         contact: true;
         organization: { select: { id: true; name: true; code: true } };
@@ -5899,7 +5899,7 @@ export class FinanceService {
     };
   }
 
-  private serializeReportNote(row: Prisma.FinanceReportNoteGetPayload<{ include: { period: true } }>) {
+  private serializeReportNote(row: Drizzle.FinanceReportNoteGetPayload<{ include: { period: true } }>) {
     return {
       id: row.id,
       period: this.serializeReportingPeriod(row.period),
@@ -5916,7 +5916,7 @@ export class FinanceService {
   }
 
   private serializeSalesInvoiceReceivable(
-    row: Prisma.FinanceSalesInvoiceGetPayload<{
+    row: Drizzle.FinanceSalesInvoiceGetPayload<{
       include: {
         contact: true;
         receipts: true;
@@ -5959,7 +5959,7 @@ export class FinanceService {
   }
 
   private serializeBillPayable(
-    row: Prisma.FinanceBillHeaderGetPayload<{
+    row: Drizzle.FinanceBillHeaderGetPayload<{
       include: {
         contact: true;
         payments: true;
@@ -6018,7 +6018,7 @@ export class FinanceService {
   private async buildReportContext(query: Record<string, any>) {
     const period = await this.resolvePeriodContext(query);
     const comparisonPeriod = await this.resolveComparisonPeriod(period, query);
-    const lines = await this.prisma.financeJournalLine.findMany({
+    const lines = await this.drizzle.financeJournalLine.findMany({
       where: {
         journalEntry: {
           entryDate: {
@@ -6046,7 +6046,7 @@ export class FinanceService {
 
   private async resolvePeriodContext(query: Record<string, any>) {
     if (query.period_id) {
-      const period = await this.prisma.financeReportingPeriod.findUnique({ where: { id: String(query.period_id) } });
+      const period = await this.drizzle.financeReportingPeriod.findUnique({ where: { id: String(query.period_id) } });
       if (!period) throw new BadRequestException('Invalid period_id');
       return {
         id: period.id,
@@ -6087,13 +6087,13 @@ export class FinanceService {
       };
     }
     const periodId = String(query.comparison_period);
-    const comparison = await this.prisma.financeReportingPeriod.findUnique({ where: { id: periodId } });
+    const comparison = await this.drizzle.financeReportingPeriod.findUnique({ where: { id: periodId } });
     return comparison
       ? { id: comparison.id, year: comparison.year, month: comparison.month, quarter: comparison.quarter, label: comparison.label }
       : null;
   }
 
-  private summarizeIncomeLines(lines: Array<Prisma.FinanceJournalLineGetPayload<{ include: { chartAccount: true; fund: true; grant: true } }>>) {
+  private summarizeIncomeLines(lines: Array<Drizzle.FinanceJournalLineGetPayload<{ include: { chartAccount: true; fund: true; grant: true } }>>) {
     const relevant = lines.filter((line) => line.chartAccount.type === 'income');
     const byAccount = new Map<string, { account_id: string; code: string; name: string; amount: number; category: string }>();
     const categoryTotals = new Map<string, number>();
@@ -6123,7 +6123,7 @@ export class FinanceService {
     };
   }
 
-  private summarizeExpenseLines(lines: Array<Prisma.FinanceJournalLineGetPayload<{ include: { chartAccount: true; fund: true; grant: true } }>>) {
+  private summarizeExpenseLines(lines: Array<Drizzle.FinanceJournalLineGetPayload<{ include: { chartAccount: true; fund: true; grant: true } }>>) {
     const relevant = lines.filter((line) => line.chartAccount.type === 'expense');
     const byAccount = new Map<string, { account_id: string; code: string; name: string; amount: number; category: string }>();
     const categoryTotals = new Map<string, number>();
@@ -6154,7 +6154,7 @@ export class FinanceService {
   }
 
   private computeChartBalances(
-    lines: Array<Prisma.FinanceJournalLineGetPayload<{ include: { chartAccount: true; fund: true; grant: true } }>>
+    lines: Array<Drizzle.FinanceJournalLineGetPayload<{ include: { chartAccount: true; fund: true; grant: true } }>>
   ) {
     const balances = new Map<string, number>();
     for (const line of lines) {
@@ -6168,7 +6168,7 @@ export class FinanceService {
   }
 
   private summarizeFundActivity(
-    lines: Array<Prisma.FinanceJournalLineGetPayload<{ include: { chartAccount: true; fund: true; grant: true } }>>
+    lines: Array<Drizzle.FinanceJournalLineGetPayload<{ include: { chartAccount: true; fund: true; grant: true } }>>
   ) {
     const buckets = new Map<string, { fund_id: string; fund_name: string; restriction_type: string; income: number; expense: number; net: number }>();
     for (const line of lines) {
@@ -6199,12 +6199,12 @@ export class FinanceService {
   }
 
   private async getControlBalance(code: string, balances: Map<string, number>) {
-    const account = await this.prisma.financeChartAccount.findFirst({ where: { code } });
+    const account = await this.drizzle.financeChartAccount.findFirst({ where: { code } });
     return account ? Number(balances.get(account.id) ?? 0) : 0;
   }
 
   private async getFixedAssetBalance(balances: Map<string, number>) {
-    const accounts = await this.prisma.financeChartAccount.findMany({ where: { type: 'asset', category: 'fixed_asset' } });
+    const accounts = await this.drizzle.financeChartAccount.findMany({ where: { type: 'asset', category: 'fixed_asset' } });
     return accounts.reduce((sum, account) => sum + Number(balances.get(account.id) ?? 0), 0);
   }
 
@@ -6214,7 +6214,7 @@ export class FinanceService {
     metrics: Record<string, any>
   ) {
     const saved = context.period.id
-      ? await this.prisma.financeReportNote.findMany({ where: { periodId: String(context.period.id), reportKey } })
+      ? await this.drizzle.financeReportNote.findMany({ where: { periodId: String(context.period.id), reportKey } })
       : [];
     const generated: Array<{ severity: string; title: string; body: string; source_rule: string }> = [];
 
@@ -6290,11 +6290,11 @@ export class FinanceService {
   private async ensureReportingPeriod(date: Date, actorId?: string) {
     const year = date.getFullYear();
     const month = date.getMonth() + 1;
-    const existing = await this.prisma.financeReportingPeriod.findFirst({ where: { year, month } });
+    const existing = await this.drizzle.financeReportingPeriod.findFirst({ where: { year, month } });
     if (existing) return existing;
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0);
-    return this.prisma.financeReportingPeriod.create({
+    return this.drizzle.financeReportingPeriod.create({
       data: {
         year,
         month,
@@ -6329,11 +6329,11 @@ export class FinanceService {
       { code: '5300', name: 'Asset Disposal Gain/Loss', type: 'income', category: 'other_income', normalBalance: 'credit' }
     ];
     for (const account of defaults) {
-      const existing = await this.prisma.financeChartAccount.findFirst({
+      const existing = await this.drizzle.financeChartAccount.findFirst({
         where: { organizationId: null, code: account.code }
       });
       if (existing) {
-        await this.prisma.financeChartAccount.update({
+        await this.drizzle.financeChartAccount.update({
           where: { id: existing.id },
           data: {
             name: account.name,
@@ -6345,7 +6345,7 @@ export class FinanceService {
           }
         });
       } else {
-        await this.prisma.financeChartAccount.create({
+        await this.drizzle.financeChartAccount.create({
           data: {
             organizationId: null,
             code: account.code,
@@ -6360,20 +6360,20 @@ export class FinanceService {
         });
       }
     }
-    const financeAccounts = await this.prisma.financeAccount.findMany({ where: { isActive: true } });
+    const financeAccounts = await this.drizzle.financeAccount.findMany({ where: { isActive: true } });
     for (const financeAccount of financeAccounts) {
       await this.ensureFinanceAccountChartAccount(financeAccount.id, actorId);
     }
   }
 
   private async ensureFinanceAccountChartAccount(accountId: string, actorId?: string) {
-    const existing = await this.prisma.financeChartAccount.findFirst({ where: { financeAccountId: accountId } });
+    const existing = await this.drizzle.financeChartAccount.findFirst({ where: { financeAccountId: accountId } });
     if (existing) return existing;
-    const account = await this.prisma.financeAccount.findUnique({ where: { id: accountId } });
+    const account = await this.drizzle.financeAccount.findUnique({ where: { id: accountId } });
     if (!account) throw new BadRequestException('Finance account not found');
     const category = ['bank', 'cash', 'wallet'].includes(account.accountType) ? account.accountType : 'bank';
     const code = await this.nextChartCode(account.accountType === 'cash' ? '101' : account.accountType === 'wallet' ? '102' : '103');
-    return this.prisma.financeChartAccount.create({
+    return this.drizzle.financeChartAccount.create({
       data: {
         organizationId: account.organizationId,
         financeAccountId: account.id,
@@ -6389,7 +6389,7 @@ export class FinanceService {
   }
 
   private async nextChartCode(prefix: string) {
-    const rows = await this.prisma.financeChartAccount.findMany({ where: { code: { startsWith: prefix } }, select: { code: true } });
+    const rows = await this.drizzle.financeChartAccount.findMany({ where: { code: { startsWith: prefix } }, select: { code: true } });
     const max = rows.reduce((highest, row) => {
       const numeric = Number(String(row.code).replace(/\D/g, ''));
       return Number.isFinite(numeric) ? Math.max(highest, numeric) : highest;
@@ -6399,7 +6399,7 @@ export class FinanceService {
 
   private async getRequiredChartAccount(code: string) {
     await this.ensureDefaultChartAccounts();
-    const account = await this.prisma.financeChartAccount.findFirst({ where: { code } });
+    const account = await this.drizzle.financeChartAccount.findFirst({ where: { code } });
     if (!account) throw new BadRequestException(`Chart account ${code} not configured`);
     return account;
   }
@@ -6414,11 +6414,11 @@ export class FinanceService {
     postedBy?: string;
     lines: Array<{ chartAccountId: string; organizationId?: bigint | null; teamId?: bigint | null; fundId?: string | null; grantId?: string | null; debit: number; credit: number; description?: string }>;
   }) {
-    return this.prisma.$transaction((tx) => this.createJournalEntryTx(tx, input));
+    return this.drizzle.$transaction((tx) => this.createJournalEntryTx(tx, input));
   }
 
   private async createJournalEntryTx(
-    tx: Prisma.TransactionClient,
+    tx: Drizzle.TransactionClient,
     input: {
       entryDate: Date;
       periodId: string;
@@ -6465,11 +6465,11 @@ export class FinanceService {
     });
   }
 
-  private async nextSequenceValue(tx: Prisma.TransactionClient, prefix: string, date: Date) {
+  private async nextSequenceValue(tx: Drizzle.TransactionClient, prefix: string, date: Date) {
     const year = date.getFullYear();
     const sequenceId = `${prefix}:${year}`;
-    const rows = await tx.$queryRaw<Array<{ last_number: number }>>(
-      Prisma.sql`
+    const rows = await tx.$queryRaw(
+      Drizzle.sql`
         WITH current_max AS (
           SELECT COALESCE(
             MAX(
@@ -6520,13 +6520,13 @@ export class FinanceService {
     const startsWith = `${prefix}/${year}/`;
     let count = 0;
     if (kind === 'sales_invoice') {
-      count = await this.prisma.financeSalesInvoice.count({ where: { invoiceNumber: { startsWith } } });
+      count = await this.drizzle.financeSalesInvoice.count({ where: { invoiceNumber: { startsWith } } });
     } else if (kind === 'bill') {
-      count = await this.prisma.financeBillHeader.count({ where: { billNumber: { startsWith } } });
+      count = await this.drizzle.financeBillHeader.count({ where: { billNumber: { startsWith } } });
     } else if (kind === 'receipt') {
-      count = await this.prisma.financeReceipt.count({ where: { receiptNumber: { startsWith } } });
+      count = await this.drizzle.financeReceipt.count({ where: { receiptNumber: { startsWith } } });
     } else {
-      count = await this.prisma.financeVendorPayment.count({ where: { paymentNumber: { startsWith } } });
+      count = await this.drizzle.financeVendorPayment.count({ where: { paymentNumber: { startsWith } } });
     }
     return `${prefix}/${year}/${String(count + 1).padStart(4, '0')}`;
   }
@@ -6599,7 +6599,7 @@ export class FinanceService {
     subject: string,
     text: string
   ) {
-    const invoice = await this.prisma.financeSalesInvoice.findUnique({
+    const invoice = await this.drizzle.financeSalesInvoice.findUnique({
       where: { id: invoiceId },
       include: { contact: true }
     });
@@ -6786,7 +6786,7 @@ export class FinanceService {
   }
 
   async listManualJournalEntries(query: Record<string, any>) {
-    const where: Prisma.FinanceJournalEntryWhereInput = {
+    const where: Drizzle.FinanceJournalEntryWhereInput = {
       sourceType: 'manual_entry',
     };
 
@@ -6800,8 +6800,8 @@ export class FinanceService {
     const perPage = Number(query.per_page ?? 50);
     const skip = (page - 1) * perPage;
 
-    const [data, total] = await this.prisma.$transaction([
-      this.prisma.financeJournalEntry.findMany({
+    const [data, total] = await this.drizzle.$transaction([
+      this.drizzle.financeJournalEntry.findMany({
         where,
         include: {
           lines: {
@@ -6814,7 +6814,7 @@ export class FinanceService {
         skip,
         take: perPage,
       }),
-      this.prisma.financeJournalEntry.count({ where }),
+      this.drizzle.financeJournalEntry.count({ where }),
     ]);
 
     return paginatedResponse(data, { page, per_page: perPage, total });
@@ -6873,7 +6873,7 @@ export class FinanceService {
       })),
     });
 
-    return this.prisma.financeJournalEntry.findUnique({
+    return this.drizzle.financeJournalEntry.findUnique({
       where: { id: entry.id },
       include: {
         lines: {
@@ -6901,7 +6901,7 @@ export class FinanceService {
       description?: string;
     }>;
   }, actorId?: string) {
-    const existing = await this.prisma.financeJournalEntry.findUnique({
+    const existing = await this.drizzle.financeJournalEntry.findUnique({
       where: { id },
       include: { lines: true },
     });
@@ -6938,7 +6938,7 @@ export class FinanceService {
 
     const period = await this.ensureReportingPeriod(entryDate, actorId);
 
-    await this.prisma.$transaction(async (tx) => {
+    await this.drizzle.$transaction(async (tx) => {
       await tx.financeJournalLine.deleteMany({ where: { journalEntryId: id } });
       await tx.financeJournalEntry.update({
         where: { id },
@@ -6965,7 +6965,7 @@ export class FinanceService {
       });
     });
 
-    return this.prisma.financeJournalEntry.findUnique({
+    return this.drizzle.financeJournalEntry.findUnique({
       where: { id },
       include: {
         lines: { include: { chartAccount: { select: { id: true, code: true, name: true } } } },
@@ -6974,7 +6974,7 @@ export class FinanceService {
   }
 
   async listStatutoryDeductionManualEntries(query: Record<string, any>) {
-    const where: Prisma.FinanceJournalEntryWhereInput = {
+    const where: Drizzle.FinanceJournalEntryWhereInput = {
       sourceType: 'statutory_deduction_manual_entry',
     };
 
@@ -6988,8 +6988,8 @@ export class FinanceService {
     const perPage = Number(query.per_page ?? 50);
     const skip = (page - 1) * perPage;
 
-    const [data, total] = await this.prisma.$transaction([
-      this.prisma.financeJournalEntry.findMany({
+    const [data, total] = await this.drizzle.$transaction([
+      this.drizzle.financeJournalEntry.findMany({
         where,
         include: {
           lines: {
@@ -7002,7 +7002,7 @@ export class FinanceService {
         skip,
         take: perPage,
       }),
-      this.prisma.financeJournalEntry.count({ where }),
+      this.drizzle.financeJournalEntry.count({ where }),
     ]);
 
     return paginatedResponse(data, { page, per_page: perPage, total });
@@ -7057,7 +7057,7 @@ export class FinanceService {
       throw new BadRequestException('Journal entry is not balanced');
     }
 
-    const deductionType = await this.prisma.financeDeductionType.findUnique({
+    const deductionType = await this.drizzle.financeDeductionType.findUnique({
       where: { id: dto.deduction_type_id },
     });
     if (!deductionType) {
@@ -7089,7 +7089,7 @@ export class FinanceService {
       })),
     });
 
-    return this.prisma.financeJournalEntry.findUnique({
+    return this.drizzle.financeJournalEntry.findUnique({
       where: { id: entry.id },
       include: {
         lines: {
@@ -7101,11 +7101,11 @@ export class FinanceService {
     });
   }
 
-  private async postIncomeJournal(row: Prisma.FinanceIncomeEntryGetPayload<{}>, actorId?: string) {
+  private async postIncomeJournal(row: Drizzle.FinanceIncomeEntryGetPayload<{}>, actorId?: string) {
     const period = await this.ensureReportingPeriod(row.receivedAt, actorId);
     const cashAccount = await this.ensureFinanceAccountChartAccount(row.accountId, actorId);
     const revenueAccount = row.revenueAccountId
-      ? await this.prisma.financeChartAccount.findUnique({ where: { id: row.revenueAccountId } })
+      ? await this.drizzle.financeChartAccount.findUnique({ where: { id: row.revenueAccountId } })
       : await this.getRequiredChartAccount(row.grantId ? '4100' : '4300');
     if (!revenueAccount) throw new BadRequestException('Revenue chart account not found');
     await this.createJournalEntry({
@@ -7124,7 +7124,7 @@ export class FinanceService {
   }
 
   private async postPaymentVoucherJournal(
-    row: Prisma.FinancePaymentVoucherGetPayload<{}>,
+    row: Drizzle.FinancePaymentVoucherGetPayload<{}>,
     organizationId?: bigint | null,
     teamId?: bigint | null,
     actorId?: string
@@ -7195,10 +7195,10 @@ export class FinanceService {
           createdByUser: { select: { id: true, firstName: true, lastName: true, email: true } }
         }
       }
-    } satisfies Prisma.FinanceAssetInclude;
+    } satisfies Drizzle.FinanceAssetInclude;
   }
 
-  private serializeAsset(asset: Prisma.FinanceAssetGetPayload<{ include: ReturnType<FinanceService['getAssetInclude']> }>) {
+  private serializeAsset(asset: Drizzle.FinanceAssetGetPayload<{ include: ReturnType<FinanceService['getAssetInclude']> }>) {
     const asOfDate = asset.disposal?.disposalDate ?? new Date();
     const metrics = this.computeAssetMetrics({
       purchaseDate: asset.purchaseDate,
@@ -7326,11 +7326,11 @@ export class FinanceService {
   }
 
   private async generateNextAssetId() {
-    const count = await this.prisma.financeAsset.count();
+    const count = await this.drizzle.financeAsset.count();
     let candidateNumber = count + 1;
     while (candidateNumber < 1000000) {
       const candidate = `SEA-${String(candidateNumber).padStart(3, '0')}`;
-      const exists = await this.prisma.financeAsset.findUnique({
+      const exists = await this.drizzle.financeAsset.findUnique({
         where: { assetId: candidate },
         select: { id: true }
       });
@@ -7342,7 +7342,7 @@ export class FinanceService {
 
   private handleAssetConstraintErrors(error: unknown, assetId: string) {
     if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error instanceof Drizzle.DrizzleClientKnownRequestError &&
       error.code === 'P2002'
     ) {
       throw new BadRequestException(`asset_id "${assetId}" already exists`);
@@ -7352,7 +7352,7 @@ export class FinanceService {
   // ─── Items (Products/Services) ─────────────────────────────────
 
   async listItems(query: Record<string, any>) {
-    const where: any = {};
+    const where: Drizzle.FinancePaymentVoucherWhereInput = {};
     if (query.item_type) where.itemType = String(query.item_type);
     if (query.is_active !== undefined) where.isActive = String(query.is_active) === 'true';
     if (query.search) {
@@ -7366,15 +7366,15 @@ export class FinanceService {
     const perPage = Number(query.per_page ?? 50);
     const skip = (page - 1) * perPage;
 
-    const [data, total] = await this.prisma.$transaction([
-      this.prisma.financeItem.findMany({
+    const [data, total] = await this.drizzle.$transaction([
+      this.drizzle.financeItem.findMany({
         where,
         include: { chartAccount: { select: { id: true, name: true, code: true } } },
         orderBy: [{ code: 'asc' }, { name: 'asc' }],
         skip,
         take: perPage,
       }),
-      this.prisma.financeItem.count({ where }),
+      this.drizzle.financeItem.count({ where }),
     ]);
 
     return paginatedResponse(data, { page, per_page: perPage, total });
@@ -7395,12 +7395,12 @@ export class FinanceService {
       createdBy: BigInt(userId),
     };
 
-    const item = await this.prisma.financeItem.create({ data });
-    return this.prisma.financeItem.findUnique({ where: { id: item.id }, include: { chartAccount: { select: { id: true, name: true, code: true } } } });
+    const item = await this.drizzle.financeItem.create({ data });
+    return this.drizzle.financeItem.findUnique({ where: { id: item.id }, include: { chartAccount: { select: { id: true, name: true, code: true } } } });
   }
 
   async updateItem(userId: string, id: string, dto: UpsertFinanceItemDto) {
-    const existing = await this.prisma.financeItem.findUnique({ where: { id } });
+    const existing = await this.drizzle.financeItem.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Item not found');
 
     const data: any = { updatedBy: BigInt(userId) };
@@ -7415,14 +7415,14 @@ export class FinanceService {
     if (dto.chartAccountId !== undefined) data.chartAccountId = dto.chartAccountId;
     if (dto.isActive !== undefined) data.isActive = dto.isActive;
 
-    await this.prisma.financeItem.update({ where: { id }, data });
-    return this.prisma.financeItem.findUnique({ where: { id }, include: { chartAccount: { select: { id: true, name: true, code: true } } } });
+    await this.drizzle.financeItem.update({ where: { id }, data });
+    return this.drizzle.financeItem.findUnique({ where: { id }, include: { chartAccount: { select: { id: true, name: true, code: true } } } });
   }
 
   // ─── Expenses ──────────────────────────────────────────────────
 
   async listExpenses(query: Record<string, any>) {
-    const where: any = {};
+    const where: Drizzle.FinancePaymentVoucherWhereInput = {};
     if (query.status) where.status = String(query.status);
     if (query.category) where.category = String(query.category);
     if (query.contactId) where.contactId = String(query.contactId);
@@ -7444,8 +7444,8 @@ export class FinanceService {
     const perPage = Number(query.per_page ?? 50);
     const skip = (page - 1) * perPage;
 
-    const [data, total] = await this.prisma.$transaction([
-      this.prisma.financeExpense.findMany({
+    const [data, total] = await this.drizzle.$transaction([
+      this.drizzle.financeExpense.findMany({
         where,
         include: {
           contact: { select: { id: true, name: true } },
@@ -7456,14 +7456,14 @@ export class FinanceService {
         skip,
         take: perPage,
       }),
-      this.prisma.financeExpense.count({ where }),
+      this.drizzle.financeExpense.count({ where }),
     ]);
 
     return paginatedResponse(data, { page, per_page: perPage, total });
   }
 
   async createExpense(userId: string, dto: CreateFinanceExpenseDto) {
-    const lastExpense = await this.prisma.financeExpense.findFirst({
+    const lastExpense = await this.drizzle.financeExpense.findFirst({
       orderBy: { createdAt: 'desc' },
       select: { expenseNumber: true },
     });
@@ -7497,8 +7497,8 @@ export class FinanceService {
       createdBy: BigInt(userId),
     };
 
-    const expense = await this.prisma.financeExpense.create({ data });
-    return this.prisma.financeExpense.findUnique({
+    const expense = await this.drizzle.financeExpense.create({ data });
+    return this.drizzle.financeExpense.findUnique({
       where: { id: expense.id },
       include: {
         contact: { select: { id: true, name: true } },
@@ -7509,7 +7509,7 @@ export class FinanceService {
   }
 
   async updateExpense(userId: string, id: string, dto: CreateFinanceExpenseDto) {
-    const existing = await this.prisma.financeExpense.findUnique({ where: { id } });
+    const existing = await this.drizzle.financeExpense.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Expense not found');
 
     const data: any = { updatedBy: BigInt(userId) };
@@ -7531,8 +7531,8 @@ export class FinanceService {
       data.totalAmount = tax != null ? amt + tax : null;
     }
 
-    await this.prisma.financeExpense.update({ where: { id }, data });
-    return this.prisma.financeExpense.findUnique({
+    await this.drizzle.financeExpense.update({ where: { id }, data });
+    return this.drizzle.financeExpense.findUnique({
       where: { id },
       include: {
         contact: { select: { id: true, name: true } },
@@ -7545,13 +7545,13 @@ export class FinanceService {
   // ─── Pledge CRUD ──────────────────────────────────────────────────────────
 
   async createPledge(dto: UpsertFinancePledgeDto, actorId?: number) {
-    const donor = await this.prisma.financeDonor.findUnique({ where: { id: dto.donor_id } });
+    const donor = await this.drizzle.financeDonor.findUnique({ where: { id: dto.donor_id } });
     if (!donor) throw new NotFoundException(`Donor ${dto.donor_id} not found`);
 
     const pledgedAt = new Date(dto.pledged_at);
     const pledgeNumber = await this.nextDocumentSequenceValue('PLG', pledgedAt, 'pledge');
 
-    return this.prisma.financePledge.create({
+    return this.drizzle.financePledge.create({
       data: {
         pledgeNumber,
         donorId: dto.donor_id,
@@ -7572,13 +7572,13 @@ export class FinanceService {
   }
 
   async updatePledge(id: string, dto: UpsertFinancePledgeDto, actorId?: number) {
-    const existing = await this.prisma.financePledge.findUnique({ where: { id } });
+    const existing = await this.drizzle.financePledge.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException(`Pledge ${id} not found`);
 
-    const donor = await this.prisma.financeDonor.findUnique({ where: { id: dto.donor_id } });
+    const donor = await this.drizzle.financeDonor.findUnique({ where: { id: dto.donor_id } });
     if (!donor) throw new NotFoundException(`Donor ${dto.donor_id} not found`);
 
-    return this.prisma.financePledge.update({
+    return this.drizzle.financePledge.update({
       where: { id },
       data: {
         donorId: dto.donor_id,
@@ -7597,12 +7597,12 @@ export class FinanceService {
   }
 
   async deletePledge(id: string) {
-    const pledge = await this.prisma.financePledge.findUnique({ where: { id } });
+    const pledge = await this.drizzle.financePledge.findUnique({ where: { id } });
     if (!pledge) throw new NotFoundException(`Pledge ${id} not found`);
     if (!['pending', 'cancelled'].includes(pledge.status)) {
       throw new BadRequestException(`Cannot delete a pledge with status "${pledge.status}". Cancel it first.`);
     }
-    await this.prisma.financePledge.delete({ where: { id } });
+    await this.drizzle.financePledge.delete({ where: { id } });
   }
 
   async listPledges(query: Record<string, any>) {
@@ -7610,7 +7610,7 @@ export class FinanceService {
     const perPage = Math.min(100, Math.max(1, Number(query.per_page ?? 20)));
     const skip = (page - 1) * perPage;
 
-    const where: any = {};
+    const where: Drizzle.FinancePaymentVoucherWhereInput = {};
     if (query.donor_id) where.donorId = query.donor_id;
     if (query.grant_id) where.grantId = query.grant_id;
     if (query.status) where.status = query.status;
@@ -7623,7 +7623,7 @@ export class FinanceService {
     }
 
     const [rows, total] = await Promise.all([
-      this.prisma.financePledge.findMany({
+      this.drizzle.financePledge.findMany({
         where,
         skip,
         take: perPage,
@@ -7633,14 +7633,14 @@ export class FinanceService {
           grant: { select: { id: true, name: true } },
         },
       }),
-      this.prisma.financePledge.count({ where }),
+      this.drizzle.financePledge.count({ where }),
     ]);
 
     return { result: rows, total, page, pages: Math.ceil(total / perPage), per_page: perPage };
   }
 
   async getPledge(id: string) {
-    const pledge = await this.prisma.financePledge.findUnique({
+    const pledge = await this.drizzle.financePledge.findUnique({
       where: { id },
       include: {
         donor: true,
@@ -7662,7 +7662,7 @@ export class FinanceService {
   }
 
   private async pdfFetchOrgSettings(): Promise<{ org_name: string; prepared_by: string; prepared_title: string }> {
-    const row = await this.prisma.financeSetting.findUnique({ where: { key: 'default' }, select: { config: true } });
+    const row = await this.drizzle.financeSetting.findUnique({ where: { key: 'default' }, select: { config: true } });
     const cfg: any = (row?.config && typeof row.config === 'object' && !Array.isArray(row.config)) ? row.config : {};
     return {
       org_name: cfg?.org_name ?? cfg?.organization_name ?? 'The Organisation',
@@ -7716,7 +7716,7 @@ export class FinanceService {
   }
 
   async generatePledgeAcknowledgmentPdf(id: string): Promise<{ file_name: string; mime_type: string; content_base64: string }> {
-    const pledge = await this.prisma.financePledge.findUnique({
+    const pledge = await this.drizzle.financePledge.findUnique({
       where: { id },
       include: {
         donor: { select: { name: true, email: true, phone: true, address: true } },
@@ -7788,7 +7788,7 @@ ${pledge.notes ? `<div class="section"><div class="section-title">Notes</div><p 
   }
 
   async generateFunderReceiptPdf(id: string): Promise<{ file_name: string; mime_type: string; content_base64: string }> {
-    const entry = await this.prisma.financeIncomeEntry.findUnique({
+    const entry = await this.drizzle.financeIncomeEntry.findUnique({
       where: { id },
       include: {
         pledge: {
@@ -7806,7 +7806,7 @@ ${pledge.notes ? `<div class="section"><div class="section-title">Notes</div><p 
     let receiptNumber = entry.receiptNumber;
     if (!receiptNumber) {
       receiptNumber = await this.nextDocumentSequenceValue('FRC', entry.receivedAt, 'funder_receipt');
-      await this.prisma.financeIncomeEntry.update({
+      await this.drizzle.financeIncomeEntry.update({
         where: { id },
         data: { receiptNumber },
       });

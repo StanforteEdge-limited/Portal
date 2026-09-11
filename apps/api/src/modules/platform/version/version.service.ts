@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '$common/prisma/prisma.service';
+import { DrizzleService } from '$common/drizzle/drizzle.service';
 
 @Injectable()
 export class VersionService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly drizzle: DrizzleService) {}
 
   async getVersionConfig(platform: string, moduleName: string) {
-    const config = await this.prisma.systemVersion.findUnique({
+    const config = await this.drizzle.systemVersion.findUnique({
       where: {
         platform_module: {
           platform,

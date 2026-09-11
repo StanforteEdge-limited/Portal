@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '$common/prisma/prisma.service';
+import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { paginatedResponse } from '$common/helpers/paginated-response';
 import { toBigInt } from '$common/utils/ids';
 import { AssignUserRolesDto } from '$modules/auth/rbac/dto/assign-user-roles.dto';
@@ -11,13 +11,13 @@ import { UpdateRoleDto } from '$modules/auth/rbac/dto/update-role.dto';
 
 @Injectable()
 export class RbacService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly drizzle: DrizzleService) {}
 
   async getOverview(includeInactive = false) {
-    const [roles, permissions, usersWithRoles] = await this.prisma.$transaction([
-      this.prisma.role.count({ where: includeInactive ? {} : { isActive: true } }),
-      this.prisma.permission.count(),
-      this.prisma.userRole.groupBy({ by: ['profileId'], orderBy: { profileId: 'asc' } })
+    const [roles, permissions, usersWithRoles] = await this.drizzle.$transaction([
+      this.drizzle.role.count({ where: includeInactive ? {} : { isActive: true } }),
+      this.drizzle.permission.count(),
+      this.drizzle.userRole.groupBy({ by: ['profileId'], orderBy: { profileId: 'asc' } })
     ]);
 
     return {
@@ -28,7 +28,7 @@ export class RbacService {
   }
 
   async listRoles(includeInactive = false) {
-    const roles = await this.prisma.role.findMany({
+    const roles = await this.drizzle.role.findMany({
       where: includeInactive ? {} : { isActive: true },
       include: {
         permissions: { include: { permission: true } },
@@ -83,7 +83,7 @@ export class RbacService {
     }
 
     const now = new Date();
-    const role = await this.prisma.role.create({
+    const role = await this.drizzle.role.create({
       data: {
         name: dto.name.trim(),
         slug,
@@ -95,7 +95,7 @@ export class RbacService {
     });
 
     if (permissionIds.length > 0) {
-      await this.prisma.rolePermission.createMany({
+      await this.drizzle.rolePermission.createMany({
         data: permissionIds.map((permissionId) => ({ roleId: role.id, permissionId })),
         skipDuplicates: true
       });
@@ -106,7 +106,7 @@ export class RbacService {
 
   async updateRole(roleId: string, dto: UpdateRoleDto) {
     const id = this.parseId(roleId, 'role id');
-    const existing = await this.prisma.role.findUnique({ where: { id } });
+    const existing = await this.drizzle.role.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Role not found');
 
     const slug = dto.slug ? this.normalizeSlug(dto.slug) : undefined;
@@ -129,15 +129,15 @@ export class RbacService {
     if (dto.description !== undefined) data.description = dto.description;
     if (dto.is_active !== undefined) data.isActive = dto.is_active;
 
-    await this.prisma.role.update({ where: { id }, data });
+    await this.drizzle.role.update({ where: { id }, data });
 
     if (dto.permission_ids) {
       const permissionIds = this.parseIds(dto.permission_ids, 'permission id');
       await this.ensurePermissionsExist(permissionIds);
 
-      await this.prisma.$transaction([
-        this.prisma.rolePermission.deleteMany({ where: { roleId: id } }),
-        this.prisma.rolePermission.createMany({
+      await this.drizzle.$transaction([
+        this.drizzle.rolePermission.deleteMany({ where: { roleId: id } }),
+        this.drizzle.rolePermission.createMany({
           data: permissionIds.map((permissionId) => ({ roleId: id, permissionId })),
           skipDuplicates: true
         })
@@ -149,10 +149,10 @@ export class RbacService {
 
   async getRoleDeleteImpact(roleId: string) {
     const id = this.parseId(roleId, 'role id');
-    const role = await this.prisma.role.findUnique({ where: { id } });
+    const role = await this.drizzle.role.findUnique({ where: { id } });
     if (!role) throw new NotFoundException('Role not found');
 
-    const assignments = await this.prisma.userRole.findMany({
+    const assignments = await this.drizzle.userRole.findMany({
       where: { roleId: id },
       select: {
         id: true,
@@ -191,10 +191,10 @@ export class RbacService {
 
   async deleteRole(roleId: string, replacementRoleId?: string) {
     const id = this.parseId(roleId, 'role id');
-    const role = await this.prisma.role.findUnique({ where: { id } });
+    const role = await this.drizzle.role.findUnique({ where: { id } });
     if (!role) throw new NotFoundException('Role not found');
 
-    const assignments = await this.prisma.userRole.findMany({
+    const assignments = await this.drizzle.userRole.findMany({
       where: { roleId: id },
       select: {
         id: true,
@@ -215,11 +215,11 @@ export class RbacService {
       if (replacementId === id) {
         throw new BadRequestException('Replacement role must be different from role being deleted');
       }
-      const replacementRole = await this.prisma.role.findUnique({ where: { id: replacementId } });
+      const replacementRole = await this.drizzle.role.findUnique({ where: { id: replacementId } });
       if (!replacementRole) throw new NotFoundException('Replacement role not found');
     }
 
-    await this.prisma.$transaction(async (tx) => {
+    await this.drizzle.$transaction(async (tx) => {
       if (replacementId) {
         for (const assignment of assignments) {
           const existingReplacement = await tx.userRole.findFirst({
@@ -260,19 +260,19 @@ export class RbacService {
 
   async setRolePermissions(roleId: string, dto: SetRolePermissionsDto) {
     const id = this.parseId(roleId, 'role id');
-    const role = await this.prisma.role.findUnique({ where: { id } });
+    const role = await this.drizzle.role.findUnique({ where: { id } });
     if (!role) throw new NotFoundException('Role not found');
 
     const permissionIds = this.parseIds(dto.permission_ids, 'permission id');
     await this.ensurePermissionsExist(permissionIds);
 
-    await this.prisma.$transaction([
-      this.prisma.rolePermission.deleteMany({ where: { roleId: id } }),
-      this.prisma.rolePermission.createMany({
+    await this.drizzle.$transaction([
+      this.drizzle.rolePermission.deleteMany({ where: { roleId: id } }),
+      this.drizzle.rolePermission.createMany({
         data: permissionIds.map((permissionId) => ({ roleId: id, permissionId })),
         skipDuplicates: true
       }),
-      this.prisma.role.update({ where: { id }, data: { updatedAt: new Date() } })
+      this.drizzle.role.update({ where: { id }, data: { updatedAt: new Date() } })
     ]);
 
     return this.getRoleById(id);
@@ -292,7 +292,7 @@ export class RbacService {
       ];
     }
 
-    const permissions = await this.prisma.permission.findMany({
+    const permissions = await this.drizzle.permission.findMany({
       where,
       include: {
         roles: {
@@ -320,11 +320,11 @@ export class RbacService {
 
   async createPermission(dto: CreatePermissionDto) {
     const slug = this.normalizeSlug(dto.slug ?? dto.name);
-    const existing = await this.prisma.permission.findUnique({ where: { slug } });
+    const existing = await this.drizzle.permission.findUnique({ where: { slug } });
     if (existing) throw new BadRequestException('Permission slug already exists');
 
     const now = new Date();
-    const permission = await this.prisma.permission.create({
+    const permission = await this.drizzle.permission.create({
       data: {
         name: dto.name.trim(),
         slug,
@@ -348,7 +348,7 @@ export class RbacService {
 
   async getPermissionDeleteImpact(permissionId: string) {
     const id = this.parseId(permissionId, 'permission id');
-    const permission = await this.prisma.permission.findUnique({
+    const permission = await this.drizzle.permission.findUnique({
       where: { id },
       include: {
         roles: {
@@ -385,16 +385,16 @@ export class RbacService {
 
   async updatePermission(permissionId: string, dto: UpdatePermissionDto) {
     const id = this.parseId(permissionId, 'permission id');
-    const existing = await this.prisma.permission.findUnique({ where: { id } });
+    const existing = await this.drizzle.permission.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Permission not found');
 
     const slug = dto.slug ? this.normalizeSlug(dto.slug) : undefined;
     if (slug && slug !== existing.slug) {
-      const slugExists = await this.prisma.permission.findUnique({ where: { slug } });
+      const slugExists = await this.drizzle.permission.findUnique({ where: { slug } });
       if (slugExists) throw new BadRequestException('Permission slug already exists');
     }
 
-    const updated = await this.prisma.permission.update({
+    const updated = await this.drizzle.permission.update({
       where: { id },
       data: {
         name: dto.name !== undefined ? dto.name.trim() : undefined,
@@ -418,10 +418,10 @@ export class RbacService {
 
   async deletePermission(permissionId: string, replacementPermissionId?: string) {
     const id = this.parseId(permissionId, 'permission id');
-    const existing = await this.prisma.permission.findUnique({ where: { id } });
+    const existing = await this.drizzle.permission.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Permission not found');
 
-    const assignments = await this.prisma.rolePermission.findMany({
+    const assignments = await this.drizzle.rolePermission.findMany({
       where: { permissionId: id },
       select: { roleId: true }
     });
@@ -438,11 +438,11 @@ export class RbacService {
       if (replacementId === id) {
         throw new BadRequestException('Replacement permission must be different from permission being deleted');
       }
-      const replacement = await this.prisma.permission.findUnique({ where: { id: replacementId } });
+      const replacement = await this.drizzle.permission.findUnique({ where: { id: replacementId } });
       if (!replacement) throw new NotFoundException('Replacement permission not found');
     }
 
-    await this.prisma.$transaction(async (tx) => {
+    await this.drizzle.$transaction(async (tx) => {
       if (replacementId && affectedRoleIds.length > 0) {
         await tx.rolePermission.createMany({
           data: affectedRoleIds.map((roleId) => ({
@@ -466,7 +466,7 @@ export class RbacService {
   async getUserRoles(profileId: string) {
     const id = this.parseId(profileId, 'profile id');
 
-    const profile = await this.prisma.profile.findUnique({
+    const profile = await this.drizzle.profile.findUnique({
       where: { id },
       include: {
         roles: {
@@ -526,7 +526,7 @@ export class RbacService {
 
   async assignUserRoles(profileId: string, dto: AssignUserRolesDto) {
     const id = this.parseId(profileId, 'profile id');
-    const profile = await this.prisma.profile.findUnique({ where: { id } });
+    const profile = await this.drizzle.profile.findUnique({ where: { id } });
     if (!profile) throw new NotFoundException('Profile not found');
 
     const roleIds = Array.from(new Set(this.parseIds(dto.role_ids, 'role id')));
@@ -536,7 +536,7 @@ export class RbacService {
 
     const organizationId = dto.organization_id ? this.parseId(dto.organization_id, 'organization id') : null;
     if (organizationId) {
-      const organization = await this.prisma.organization.findUnique({ where: { id: organizationId } });
+      const organization = await this.drizzle.organization.findUnique({ where: { id: organizationId } });
       if (!organization) throw new NotFoundException('Organization not found');
     }
 
@@ -550,7 +550,7 @@ export class RbacService {
       }
     }
 
-    await this.prisma.$transaction(async (tx) => {
+    await this.drizzle.$transaction(async (tx) => {
       const scope = organizationId === null ? { organizationId: null } : { organizationId };
 
       if (dto.replace_existing) {
@@ -607,7 +607,7 @@ export class RbacService {
   }
 
   private async getRoleById(id: bigint) {
-    const role = await this.prisma.role.findUnique({
+    const role = await this.drizzle.role.findUnique({
       where: { id },
       include: {
         permissions: {
@@ -660,14 +660,14 @@ export class RbacService {
   }
 
   private async ensureRoleSlugAvailable(slug: string) {
-    const existing = await this.prisma.role.findUnique({ where: { slug } });
+    const existing = await this.drizzle.role.findUnique({ where: { slug } });
     if (existing) throw new BadRequestException('Role slug already exists');
   }
 
   private async ensurePermissionsExist(permissionIds: bigint[]) {
     if (permissionIds.length === 0) return;
 
-    const found = await this.prisma.permission.findMany({
+    const found = await this.drizzle.permission.findMany({
       where: { id: { in: permissionIds } },
       select: { id: true }
     });
@@ -678,7 +678,7 @@ export class RbacService {
   }
 
   private async ensureRolesExist(roleIds: bigint[]) {
-    const found = await this.prisma.role.findMany({
+    const found = await this.drizzle.role.findMany({
       where: { id: { in: roleIds } },
       select: { id: true }
     });

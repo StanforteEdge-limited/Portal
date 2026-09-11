@@ -1,8 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
-import { Prisma, EmploymentStatus, EmploymentType, GroupUserRole } from '@prisma/client';
-import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
-import { PrismaService } from '$common/prisma/prisma.service';
+import { Drizzle, EmploymentStatus, EmploymentType, GroupUserRole } from '$common/db/drizzle-compat';
+import { DrizzleClientKnownRequestError } from '$common/db/drizzle-compat';
+import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { randomToken } from '$common/utils/crypto';
 import { toBigInt } from '$common/utils/ids';
 import { paginatedResponse } from '$common/helpers/paginated-response';
@@ -19,14 +19,14 @@ import {
 
 @Injectable()
 export class HrService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly drizzle: DrizzleService) {}
 
   async summary() {
-    const [total, active, inactive, onboardingPending] = await this.prisma.$transaction([
-      this.prisma.profile.count({ where: { type: { in: ['staff', 'employee'] } } }),
-      this.prisma.employeeProfile.count({ where: { employmentStatus: 'active' } }),
-      this.prisma.employeeProfile.count({ where: { employmentStatus: { in: ['draft', 'suspended', 'exited'] } } }),
-      this.prisma.onboardingProgress.count({
+    const [total, active, inactive, onboardingPending] = await this.drizzle.$transaction([
+      this.drizzle.profile.count({ where: { type: { in: ['staff', 'employee'] } } }),
+      this.drizzle.employeeProfile.count({ where: { employmentStatus: 'active' } }),
+      this.drizzle.employeeProfile.count({ where: { employmentStatus: { in: ['draft', 'suspended', 'exited'] } } }),
+      this.drizzle.onboardingProgress.count({
         where: {
           status: {
             in: ['invited', 'accepted', 'profile_pending', 'forms_pending', 'hr_review']
@@ -42,7 +42,7 @@ export class HrService {
     const page = Math.max(1, Number(query.page ?? 1));
     const perPage = Math.min(100, Math.max(1, Number(query.per_page ?? 20)));
 
-    const where: Prisma.ProfileWhereInput = {
+    const where: Drizzle.ProfileWhereInput = {
       type: { in: ['staff', 'employee'] }
     };
 
@@ -57,7 +57,7 @@ export class HrService {
 
     if (query.status) where.status = String(query.status);
 
-    const profileFilter: Prisma.EmployeeProfileWhereInput = {};
+    const profileFilter: Drizzle.EmployeeProfileWhereInput = {};
     if (query.employment_status) profileFilter.employmentStatus = String(query.employment_status) as EmploymentStatus;
     if (query.employment_type) profileFilter.employmentType = String(query.employment_type) as EmploymentType;
     if (Object.keys(profileFilter).length > 0) {
@@ -70,15 +70,15 @@ export class HrService {
       };
     }
 
-    const [data, total] = await this.prisma.$transaction([
-      this.prisma.profile.findMany({
+    const [data, total] = await this.drizzle.$transaction([
+      this.drizzle.profile.findMany({
         where,
         include: this.employeeInclude(),
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * perPage,
         take: perPage
       }),
-      this.prisma.profile.count({ where })
+      this.drizzle.profile.count({ where })
     ]);
 
     return paginatedResponse(
@@ -89,7 +89,7 @@ export class HrService {
 
   async createEmployee(dto: UpsertEmployeeDto) {
     try {
-      return await this.prisma.$transaction(async (tx) => {
+      return await this.drizzle.$transaction(async (tx) => {
         let profileId: bigint;
         let resolvedPrimaryOrganizationId = dto.primary_organization_id?.trim() || undefined;
 
@@ -175,7 +175,7 @@ export class HrService {
   }
 
   async getEmployee(id: string) {
-    const profile = await this.prisma.profile.findUnique({
+    const profile = await this.drizzle.profile.findUnique({
       where: { id: this.parseId(id, 'employee id') },
       include: this.employeeInclude()
     });
@@ -189,7 +189,7 @@ export class HrService {
 
   async updateEmployee(id: string, dto: UpsertEmployeeDto) {
     const profileId = this.parseId(id, 'employee id');
-    const profile = await this.prisma.profile.findUnique({ where: { id: profileId } });
+    const profile = await this.drizzle.profile.findUnique({ where: { id: profileId } });
     if (!profile || !['staff', 'employee'].includes(profile.type)) {
       throw new NotFoundException('Employee not found');
     }
@@ -197,20 +197,20 @@ export class HrService {
     const nextEmail = dto.email ? dto.email.trim().toLowerCase() : profile.email;
     const nextUsername = dto.username !== undefined ? this.normalizeOptionalText(dto.username) : profile.username;
     if (dto.email !== undefined && nextEmail !== profile.email) {
-      const existingEmail = await this.prisma.profile.findFirst({
+      const existingEmail = await this.drizzle.profile.findFirst({
         where: { email: nextEmail, id: { not: profileId } }
       });
       if (existingEmail) throw new BadRequestException('Email already exists');
     }
     if (dto.username !== undefined && nextUsername && nextUsername !== profile.username) {
-      const existingUsername = await this.prisma.profile.findFirst({
+      const existingUsername = await this.drizzle.profile.findFirst({
         where: { username: nextUsername, id: { not: profileId } }
       });
       if (existingUsername) throw new BadRequestException('Username already exists');
     }
 
     try {
-      return await this.prisma.$transaction(async (tx) => {
+      return await this.drizzle.$transaction(async (tx) => {
         await tx.profile.update({
           where: { id: profileId },
           data: {
@@ -233,13 +233,13 @@ export class HrService {
 
   async runEmployeeAction(id: string, dto: EmployeeActionDto) {
     const profileId = this.parseId(id, 'employee id');
-    const existing = await this.prisma.employeeProfile.findUnique({ where: { userId: profileId } });
+    const existing = await this.drizzle.employeeProfile.findUnique({ where: { userId: profileId } });
     if (!existing) throw new NotFoundException('Employee profile not found');
 
     const nextStatus: EmploymentStatus =
       dto.action === 'activate' ? 'active' : dto.action === 'suspend' ? 'suspended' : 'exited';
 
-    await this.prisma.employeeProfile.update({
+    await this.drizzle.employeeProfile.update({
       where: { userId: profileId },
       data: {
         employmentStatus: nextStatus,
@@ -247,7 +247,7 @@ export class HrService {
       }
     });
 
-    await this.prisma.profile.update({
+    await this.drizzle.profile.update({
       where: { id: profileId },
       data: {
         status: nextStatus === 'active' ? 'active' : nextStatus === 'suspended' ? 'inactive' : 'inactive'
@@ -261,9 +261,9 @@ export class HrService {
     const profileId = this.parseId(id, 'employee id');
     const organizationId = this.parseId(dto.organization_id, 'organization id');
 
-    const [profile, organization] = await this.prisma.$transaction([
-      this.prisma.profile.findUnique({ where: { id: profileId } }),
-      this.prisma.organization.findUnique({ where: { id: organizationId } })
+    const [profile, organization] = await this.drizzle.$transaction([
+      this.drizzle.profile.findUnique({ where: { id: profileId } }),
+      this.drizzle.organization.findUnique({ where: { id: organizationId } })
     ]);
 
     if (!profile || !['staff', 'employee'].includes(profile.type)) {
@@ -271,7 +271,7 @@ export class HrService {
     }
     if (!organization) throw new NotFoundException('Organization not found');
 
-    await this.prisma.$transaction(async (tx) => {
+    await this.drizzle.$transaction(async (tx) => {
       await tx.profileOrganization.updateMany({
         where: { profileId, isPrimary: true },
         data: { isPrimary: false }
@@ -310,14 +310,14 @@ export class HrService {
     const profileId = this.parseId(id, 'employee id');
     const organizationId = this.parseId(dto.organization_id, 'organization id');
 
-    const [profile, organization] = await this.prisma.$transaction([
-      this.prisma.profile.findUnique({ where: { id: profileId } }),
-      this.prisma.organization.findUnique({ where: { id: organizationId } })
+    const [profile, organization] = await this.drizzle.$transaction([
+      this.drizzle.profile.findUnique({ where: { id: profileId } }),
+      this.drizzle.organization.findUnique({ where: { id: organizationId } })
     ]);
     if (!profile || !['staff', 'employee'].includes(profile.type)) throw new NotFoundException('Employee not found');
     if (!organization) throw new NotFoundException('Organization not found');
 
-    await this.prisma.profileOrganization.upsert({
+    await this.drizzle.profileOrganization.upsert({
       where: {
         profile_org_unique: {
           profileId,
@@ -336,12 +336,12 @@ export class HrService {
     });
 
     if (dto.is_primary) {
-      await this.prisma.$transaction([
-        this.prisma.profileOrganization.updateMany({
+      await this.drizzle.$transaction([
+        this.drizzle.profileOrganization.updateMany({
           where: { profileId, organizationId: { not: organizationId }, isPrimary: true },
           data: { isPrimary: false }
         }),
-        this.prisma.profile.update({
+        this.drizzle.profile.update({
           where: { id: profileId },
           data: { primaryOrganizationId: organizationId }
         })
@@ -355,18 +355,18 @@ export class HrService {
     const profileId = this.parseId(id, 'employee id');
     const organizationId = this.parseId(organizationIdParam, 'organization id');
 
-    const membership = await this.prisma.profileOrganization.findFirst({
+    const membership = await this.drizzle.profileOrganization.findFirst({
       where: { profileId, organizationId }
     });
     if (!membership) throw new NotFoundException('Organization membership not found');
 
-    await this.prisma.profileOrganization.delete({ where: { id: membership.id } });
+    await this.drizzle.profileOrganization.delete({ where: { id: membership.id } });
 
-    const primary = await this.prisma.profileOrganization.findFirst({
+    const primary = await this.drizzle.profileOrganization.findFirst({
       where: { profileId, isPrimary: true }
     });
 
-    await this.prisma.profile.update({
+    await this.drizzle.profile.update({
       where: { id: profileId },
       data: { primaryOrganizationId: primary?.organizationId ?? null }
     });
@@ -378,9 +378,9 @@ export class HrService {
     const profileId = this.parseId(id, 'employee id');
     const teamId = this.parseId(dto.team_id, 'team id');
 
-    const [profile, team] = await this.prisma.$transaction([
-      this.prisma.profile.findUnique({ where: { id: profileId } }),
-      this.prisma.group.findUnique({ where: { id: teamId } })
+    const [profile, team] = await this.drizzle.$transaction([
+      this.drizzle.profile.findUnique({ where: { id: profileId } }),
+      this.drizzle.group.findUnique({ where: { id: teamId } })
     ]);
     if (!profile || !['staff', 'employee'].includes(profile.type)) throw new NotFoundException('Employee not found');
     if (!team) throw new NotFoundException('Team not found');
@@ -392,13 +392,13 @@ export class HrService {
           ? GroupUserRole.admin
           : GroupUserRole.member;
 
-    const existingPrimary = await this.prisma.groupUser.findFirst({
+    const existingPrimary = await this.drizzle.groupUser.findFirst({
       where: { userId: profileId, isPrimary: true },
       select: { id: true }
     });
     const makePrimary = !existingPrimary;
 
-    await this.prisma.groupUser.upsert({
+    await this.drizzle.groupUser.upsert({
       where: {
         unique_group_user: {
           groupId: teamId,
@@ -424,7 +424,7 @@ export class HrService {
     const profileId = this.parseId(id, 'employee id');
     const teamId = this.parseId(teamIdParam, 'team id');
 
-    await this.prisma.groupUser.delete({
+    await this.drizzle.groupUser.delete({
       where: {
         unique_group_user: {
           groupId: teamId,
@@ -433,13 +433,13 @@ export class HrService {
       }
     });
 
-    const fallbackTeam = await this.prisma.groupUser.findFirst({
+    const fallbackTeam = await this.drizzle.groupUser.findFirst({
       where: { userId: profileId },
       orderBy: { joinedAt: 'asc' }
     });
 
     if (fallbackTeam) {
-      await this.prisma.groupUser.update({
+      await this.drizzle.groupUser.update({
         where: { id: fallbackTeam.id },
         data: { isPrimary: true }
       });
@@ -449,12 +449,12 @@ export class HrService {
   }
 
   async listOnboardingFormAssignments(query: Record<string, any>) {
-    const where: Prisma.FormAssignmentWhereInput = {};
+    const where: Drizzle.FormAssignmentWhereInput = {};
     if (query.form_id) where.formId = String(query.form_id);
     if (query.profile_id) where.assignedToProfileId = this.parseId(String(query.profile_id), 'profile id');
     if (query.role_slug) where.assignedToRole = String(query.role_slug);
 
-    const assignments = await this.prisma.formAssignment.findMany({
+    const assignments = await this.drizzle.formAssignment.findMany({
       where,
       include: {
         form: { select: { id: true, name: true, module: true, isActive: true } }
@@ -479,16 +479,16 @@ export class HrService {
     if (!dto.profile_id && !dto.role_slug) {
       throw new BadRequestException('Either profile_id or role_slug is required');
     }
-    const form = await this.prisma.form.findUnique({ where: { id: dto.form_id } });
+    const form = await this.drizzle.form.findUnique({ where: { id: dto.form_id } });
     if (!form || !form.isActive) throw new NotFoundException('Form not found');
 
     const assignedToProfileId = dto.profile_id ? this.parseId(dto.profile_id, 'profile id') : null;
     if (assignedToProfileId) {
-      const user = await this.prisma.profile.findUnique({ where: { id: assignedToProfileId } });
+      const user = await this.drizzle.profile.findUnique({ where: { id: assignedToProfileId } });
       if (!user) throw new NotFoundException('Profile not found');
     }
 
-    return this.prisma.formAssignment.create({
+    return this.drizzle.formAssignment.create({
       data: {
         formId: dto.form_id,
         assignedToRole: dto.role_slug ?? null,
@@ -499,28 +499,28 @@ export class HrService {
   }
 
   async deleteOnboardingFormAssignment(id: string) {
-    const existing = await this.prisma.formAssignment.findUnique({ where: { id } });
+    const existing = await this.drizzle.formAssignment.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Form assignment not found');
-    await this.prisma.formAssignment.delete({ where: { id } });
+    await this.drizzle.formAssignment.delete({ where: { id } });
     return { success: true };
   }
 
   async updateOnboardingFormAssignment(id: string, dto: UpdateOnboardingFormAssignmentDto) {
-    const existing = await this.prisma.formAssignment.findUnique({ where: { id } });
+    const existing = await this.drizzle.formAssignment.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Form assignment not found');
 
     let assignedToProfileId: bigint | null | undefined;
     if (dto.profile_id !== undefined) {
       assignedToProfileId = dto.profile_id ? this.parseId(dto.profile_id, 'profile id') : null;
       if (assignedToProfileId) {
-        const user = await this.prisma.profile.findUnique({ where: { id: assignedToProfileId } });
+        const user = await this.drizzle.profile.findUnique({ where: { id: assignedToProfileId } });
         if (!user) throw new NotFoundException('Profile not found');
       }
     }
 
     const formId = dto.form_id ?? existing.formId;
     if (dto.form_id) {
-      const form = await this.prisma.form.findUnique({ where: { id: dto.form_id } });
+      const form = await this.drizzle.form.findUnique({ where: { id: dto.form_id } });
       if (!form || !form.isActive) throw new NotFoundException('Form not found');
     }
 
@@ -532,7 +532,7 @@ export class HrService {
       throw new BadRequestException('Either profile_id or role_slug is required');
     }
 
-    return this.prisma.formAssignment.update({
+    return this.drizzle.formAssignment.update({
       where: { id },
       data: {
         formId,
@@ -547,12 +547,12 @@ export class HrService {
     const year = Number(query.year ?? new Date().getFullYear());
     const userId = query.user_id ? this.parseId(String(query.user_id), 'user id') : undefined;
 
-    const where: Prisma.LeaveBalanceLedgerWhereInput = {
+    const where: Drizzle.LeaveBalanceLedgerWhereInput = {
       periodYear: year,
       ...(userId ? { userId } : {})
     };
 
-    const rows = await this.prisma.leaveBalanceLedger.findMany({
+    const rows = await this.drizzle.leaveBalanceLedger.findMany({
       where,
       orderBy: [{ userId: 'asc' }, { leaveTypeKey: 'asc' }, { createdAt: 'asc' }]
     });
@@ -605,10 +605,10 @@ export class HrService {
       throw new BadRequestException('Invalid period_year');
     }
 
-    const userExists = await this.prisma.profile.count({ where: { id: userId } });
+    const userExists = await this.drizzle.profile.count({ where: { id: userId } });
     if (!userExists) throw new NotFoundException('User not found');
 
-    const row = await this.prisma.leaveBalanceLedger.create({
+    const row = await this.drizzle.leaveBalanceLedger.create({
       data: {
         userId,
         leaveTypeKey,
@@ -633,7 +633,7 @@ export class HrService {
   }
 
   private async upsertEmployeeProfileTx(
-    tx: Prisma.TransactionClient,
+    tx: Drizzle.TransactionClient,
     profileId: bigint,
     dto: UpsertEmployeeDto,
     actorId: bigint | null
@@ -775,12 +775,12 @@ export class HrService {
               }
             },
             update: {
-              metaValue: value as Prisma.InputJsonValue
+              metaValue: value as Drizzle.InputJsonValue
             },
             create: {
               userId: profileId,
               metaKey: key,
-              metaValue: value as Prisma.InputJsonValue
+              metaValue: value as Drizzle.InputJsonValue
             }
           })
         )
@@ -848,7 +848,7 @@ export class HrService {
     const { entitlements, carryoverCaps } = await this.getDefaultLeaveRulesFromRequestTypes();
     const now = new Date();
     const context = userId ? await this.resolvePolicyContextForUser(userId) : null;
-    const rows = await this.prisma.policy.findMany({
+    const rows = await this.drizzle.policy.findMany({
       where: {
         module: 'leave',
         policyKey: { in: ['leave_entitlements', 'entitlement'] },
@@ -886,7 +886,7 @@ export class HrService {
 
     if (userId && Number.isFinite(year) && year > 2000) {
       const previousYear = year - 1;
-      const previousDeltaRows = await this.prisma.leaveBalanceLedger.groupBy({
+      const previousDeltaRows = await this.drizzle.leaveBalanceLedger.groupBy({
         by: ['leaveTypeKey'],
         where: {
           userId,
@@ -914,7 +914,7 @@ export class HrService {
   }
 
   private async getDefaultLeaveRulesFromRequestTypes() {
-    const types = await this.prisma.requestType.findMany({
+    const types = await this.drizzle.requestType.findMany({
       where: { isActive: true },
       select: {
         name: true,
@@ -976,14 +976,14 @@ export class HrService {
   }
 
   private async resolvePolicyContextForUser(userId: bigint) {
-    const [profile, primaryTeam] = await this.prisma.$transaction([
-      this.prisma.profile.findUnique({
+    const [profile, primaryTeam] = await this.drizzle.$transaction([
+      this.drizzle.profile.findUnique({
         where: { id: userId },
         include: {
           employeeProfile: { select: { employmentType: true } }
         }
       }),
-      this.prisma.groupUser.findFirst({
+      this.drizzle.groupUser.findFirst({
         where: { userId, isPrimary: true },
         select: { groupId: true }
       })
@@ -1124,7 +1124,7 @@ export class HrService {
   }
 
   private handleEmployeePersistenceError(error: unknown) {
-    if (!(error instanceof PrismaClientKnownRequestError)) return;
+    if (!(error instanceof DrizzleClientKnownRequestError)) return;
     if (error.code === 'P2002') {
       const target = Array.isArray(error.meta?.target)
         ? (error.meta?.target as string[]).join(', ')

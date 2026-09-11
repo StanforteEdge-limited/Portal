@@ -2,7 +2,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { FinanceService } from '$modules/finance/finance/finance.service';
 
 describe('FinanceService budget revisions', () => {
-  const prisma: any = {
+  const drizzle: any = {
     financeBudget: { create: jest.fn(), update: jest.fn(), findUnique: jest.fn(), findMany: jest.fn() },
     financeBudgetRevision: { create: jest.fn(), findUnique: jest.fn(), findMany: jest.fn(), update: jest.fn(), findFirst: jest.fn() },
     financeBudgetRevisionLine: { createMany: jest.fn(), deleteMany: jest.fn() },
@@ -11,20 +11,20 @@ describe('FinanceService budget revisions', () => {
     financeFund: { findUnique: jest.fn() },
     financeGrant: { findUnique: jest.fn() },
     group: { findUnique: jest.fn() },
-    $transaction: jest.fn(async (callback: any) => callback(prisma)),
+    $transaction: jest.fn(async (callback: any) => callback(drizzle)),
   };
 
-  const service = new FinanceService(prisma, {} as any, {} as any, {} as any);
+  const service = new FinanceService(drizzle, {} as any, {} as any, {} as any);
 
   beforeEach(() => {
     jest.clearAllMocks();
-    prisma.group.findUnique.mockResolvedValue({ id: 4n, type: 'department', organizationId: 8n });
+    drizzle.group.findUnique.mockResolvedValue({ id: 4n, type: 'department', organizationId: 8n });
   });
 
   it('creates a draft revision when creating a budget', async () => {
-    prisma.financeBudget.create.mockResolvedValue({ id: 'budget-1' });
-    prisma.financeBudgetRevision.create.mockResolvedValue({ id: 'rev-1', budgetId: 'budget-1', revisionNumber: 1, status: 'draft' });
-    prisma.financeBudget.findUnique.mockResolvedValue({
+    drizzle.financeBudget.create.mockResolvedValue({ id: 'budget-1' });
+    drizzle.financeBudgetRevision.create.mockResolvedValue({ id: 'rev-1', budgetId: 'budget-1', revisionNumber: 1, status: 'draft' });
+    drizzle.financeBudget.findUnique.mockResolvedValue({
       id: 'budget-1',
       name: 'July OPEX',
       status: 'draft',
@@ -51,7 +51,7 @@ describe('FinanceService budget revisions', () => {
 
     const result = await (service as any).createBudget(dto, '9');
 
-    expect(prisma.financeBudgetRevision.create).toHaveBeenCalledWith(
+    expect(drizzle.financeBudgetRevision.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           budgetId: 'budget-1',
@@ -60,7 +60,7 @@ describe('FinanceService budget revisions', () => {
         }),
       }),
     );
-    expect(prisma.financeBudget.create).toHaveBeenCalledWith(
+    expect(drizzle.financeBudget.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           organizationId: 8n,
@@ -72,14 +72,14 @@ describe('FinanceService budget revisions', () => {
   });
 
   it('updates the draft revision instead of overwriting the approved baseline', async () => {
-    prisma.financeBudget.findUnique.mockResolvedValueOnce({
+    drizzle.financeBudget.findUnique.mockResolvedValueOnce({
       id: 'budget-1',
       currentActiveRevisionId: 'rev-1',
       draftRevisionId: 'rev-2',
       status: 'approved',
     });
-    prisma.financeBudgetRevision.update.mockResolvedValue({ id: 'rev-2', budgetId: 'budget-1', revisionNumber: 2, status: 'draft' });
-    prisma.financeBudget.findUnique.mockResolvedValueOnce({
+    drizzle.financeBudgetRevision.update.mockResolvedValue({ id: 'rev-2', budgetId: 'budget-1', revisionNumber: 2, status: 'draft' });
+    drizzle.financeBudget.findUnique.mockResolvedValueOnce({
       id: 'budget-1',
       draftRevisionId: 'rev-2',
       currentActiveRevisionId: 'rev-1',
@@ -98,11 +98,11 @@ describe('FinanceService budget revisions', () => {
       lines: [{ line_name: 'Rent', total_amount: 120000 }],
     }, '9');
 
-    expect(prisma.financeBudgetRevision.update).toHaveBeenCalled();
+    expect(drizzle.financeBudgetRevision.update).toHaveBeenCalled();
   });
 
   it('lists approved budget lines for a project scope', async () => {
-    prisma.financeBudget.findMany.mockResolvedValue([
+    drizzle.financeBudget.findMany.mockResolvedValue([
       {
         id: 'budget-1',
         name: 'Project Alpha Budget',
@@ -119,7 +119,7 @@ describe('FinanceService budget revisions', () => {
 
     const result = await (service as any).listApprovedBudgetLines({ project_id: '9' });
 
-    expect(prisma.financeBudget.findMany).toHaveBeenCalled();
+    expect(drizzle.financeBudget.findMany).toHaveBeenCalled();
     expect(result[0].budget_id).toBe('budget-1');
     expect(result[0].budget_line_id).toBe('line-1');
   });

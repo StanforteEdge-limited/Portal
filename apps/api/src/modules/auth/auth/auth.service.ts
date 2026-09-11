@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, UnauthorizedException, BadRequestExcepti
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import type { Response } from 'express';
-import { PrismaService } from '$common/prisma/prisma.service';
+import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { LoginDto } from '$modules/auth/auth/dto/login.dto';
 import { ChangePasswordDto } from '$modules/auth/auth/dto/change-password.dto';
 import { RefreshDto } from '$modules/auth/auth/dto/refresh.dto';
@@ -27,7 +27,7 @@ const REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '30d';
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly drizzle: DrizzleService,
     private readonly jwt: JwtService,
     private readonly mailService: MailService
   ) {}
@@ -35,7 +35,7 @@ export class AuthService {
   async login(dto: LoginDto, res?: Response): Promise<LoginResponseDto> {
     const email = dto.email.trim().toLowerCase();
     const organizationCode = dto.organization?.trim();
-    const profile = await this.prisma.profile.findUnique({ where: { email } });
+    const profile = await this.drizzle.profile.findUnique({ where: { email } });
     if (!profile) this.throwUnauthorized('Invalid credentials', 'AUTH_INVALID_CREDENTIALS');
 
     // SECURITY: Account Lockout Check
@@ -61,7 +61,7 @@ export class AuthService {
 
     const primaryOrgId = profile.primaryOrganizationId;
     if (primaryOrgId) {
-      const primaryOrg = await this.prisma.organization.findUnique({
+      const primaryOrg = await this.drizzle.organization.findUnique({
         where: { id: primaryOrgId },
         select: { metadata: true }
       });
@@ -83,7 +83,7 @@ export class AuthService {
       const attempts = profile.failedLoginAttempts + 1;
       const lockoutUntil = attempts >= 3 ? new Date(Date.now() + 15 * 60 * 1000) : null;
       
-      await this.prisma.profile.update({
+      await this.drizzle.profile.update({
         where: { id: profile.id },
         data: { 
           failedLoginAttempts: attempts,
@@ -98,7 +98,7 @@ export class AuthService {
     const tokens = await this.issueTokens(profile.id, authContext.permissions, authContext.roles);
     this.setAuthCookies(res, tokens.accessToken, tokens.refreshToken, tokens.expiresIn);
 
-    await this.prisma.profile.update({
+    await this.drizzle.profile.update({
       where: { id: profile.id },
       data: { 
         lastLogin: new Date(),
@@ -142,12 +142,12 @@ export class AuthService {
     organizationCode?: string
   ): Promise<{ id: bigint; name: string; code: string; metadata: unknown } | null> {
     if (organizationCode) {
-      const org = await this.prisma.organization.findFirst({
+      const org = await this.drizzle.organization.findFirst({
         where: { code: { equals: organizationCode, mode: 'insensitive' } },
         select: { id: true, name: true, code: true, metadata: true }
       });
       if (!org) return null;
-      const membership = await this.prisma.profileOrganization.findFirst({
+      const membership = await this.drizzle.profileOrganization.findFirst({
         where: { profileId, organizationId: org.id },
         select: { id: true }
       });
@@ -158,7 +158,7 @@ export class AuthService {
     const domain = email.split('@')[1]?.toLowerCase() ?? '';
 
     if (primaryOrganizationId) {
-      const primary = await this.prisma.organization.findUnique({
+      const primary = await this.drizzle.organization.findUnique({
         where: { id: primaryOrganizationId },
         select: { id: true, name: true, code: true, metadata: true }
       });
@@ -168,7 +168,7 @@ export class AuthService {
       }
     }
 
-    const memberships = await this.prisma.profileOrganization.findMany({
+    const memberships = await this.drizzle.profileOrganization.findMany({
       where: { profileId },
       select: {
         organization: { select: { id: true, name: true, code: true, metadata: true } }
@@ -186,7 +186,7 @@ export class AuthService {
   }
 
   async status(userId: string): Promise<AuthStatusResponseDto> {
-    const profile = await this.prisma.profile.findUnique({
+    const profile = await this.drizzle.profile.findUnique({
       where: { id: toBigInt(userId) },
       include: { onboardingProgress: true }
     });
@@ -205,7 +205,7 @@ export class AuthService {
   }
 
   async logout(userId: string, res?: Response) {
-    await this.prisma.token.deleteMany({ where: { profileId: toBigInt(userId), type: 'refresh' } });
+    await this.drizzle.token.deleteMany({ where: { profileId: toBigInt(userId), type: 'refresh' } });
     this.clearAuthCookies(res);
     return { success: true };
   }
@@ -215,7 +215,7 @@ export class AuthService {
       throw new BadRequestException('Passwords do not match');
     }
 
-    const profile = await this.prisma.profile.findUnique({ where: { id: toBigInt(userId) } });
+    const profile = await this.drizzle.profile.findUnique({ where: { id: toBigInt(userId) } });
     if (!profile) this.throwUnauthorized('Invalid credentials', 'AUTH_INVALID_CREDENTIALS');
     if (!profile.passwordHash) {
       this.throwUnauthorized('Password is not set. Use invite/reset flow first.', 'AUTH_PASSWORD_NOT_SET');
@@ -225,12 +225,12 @@ export class AuthService {
     if (!ok) this.throwUnauthorized('Invalid credentials', 'AUTH_INVALID_CREDENTIALS');
 
     const newHash = await bcrypt.hash(dto.new_password, 12);
-    await this.prisma.profile.update({
+    await this.drizzle.profile.update({
       where: { id: profile.id },
       data: { passwordHash: newHash }
     });
 
-    await this.prisma.token.deleteMany({ where: { profileId: profile.id } });
+    await this.drizzle.token.deleteMany({ where: { profileId: profile.id } });
 
     return { success: true };
   }
@@ -241,20 +241,20 @@ export class AuthService {
     if (!refreshToken) this.throwUnauthorized('Invalid refresh token', 'AUTH_REFRESH_INVALID');
 
     const tokenHash = sha256(refreshToken);
-    const tokenRow = await this.prisma.token.findFirst({
+    const tokenRow = await this.drizzle.token.findFirst({
       where: { tokenHash, type: 'refresh' }
     });
 
     if (!tokenRow) this.throwUnauthorized('Invalid refresh token', 'AUTH_REFRESH_INVALID');
     if (tokenRow.expiresAt.getTime() < Date.now()) {
-      await this.prisma.token.delete({ where: { id: tokenRow.id } });
+      await this.drizzle.token.delete({ where: { id: tokenRow.id } });
       this.throwUnauthorized('Refresh token expired', 'AUTH_REFRESH_EXPIRED');
     }
 
     const authContext = await this.buildAuthContext(tokenRow.profileId);
 
     // Rotate refresh token
-    await this.prisma.token.delete({ where: { id: tokenRow.id } });
+    await this.drizzle.token.delete({ where: { id: tokenRow.id } });
     const tokens = await this.issueTokens(tokenRow.profileId, authContext.permissions, authContext.roles);
     this.setAuthCookies(res, tokens.accessToken, tokens.refreshToken, tokens.expiresIn);
 
@@ -266,18 +266,18 @@ export class AuthService {
 
   async forgotPassword(dto: ForgotPasswordDto) {
     const email = dto.email.trim().toLowerCase();
-    const profile = await this.prisma.profile.findUnique({ where: { email } });
+    const profile = await this.drizzle.profile.findUnique({ where: { email } });
     if (!profile) return { success: true };
 
     const resetToken = randomToken(32);
     const tokenHash = sha256(resetToken);
     const expiresAt = new Date(Date.now() + 1000 * 60 * 30);
 
-    await this.prisma.$transaction([
-      this.prisma.token.deleteMany({
+    await this.drizzle.$transaction([
+      this.drizzle.token.deleteMany({
         where: { profileId: profile.id, type: 'reset' }
       }),
-      this.prisma.token.create({
+      this.drizzle.token.create({
         data: {
           id: randomToken(24),
           profileId: profile.id,
@@ -303,24 +303,24 @@ export class AuthService {
 
   async resetPassword(dto: ResetPasswordDto) {
     const tokenHash = sha256(dto.token);
-    const tokenRow = await this.prisma.token.findFirst({
+    const tokenRow = await this.drizzle.token.findFirst({
       where: { tokenHash, type: 'reset' }
     });
 
     if (!tokenRow) this.throwUnauthorized('Invalid reset token', 'AUTH_RESET_TOKEN_INVALID');
     if (tokenRow.expiresAt.getTime() < Date.now()) {
-      await this.prisma.token.delete({ where: { id: tokenRow.id } });
+      await this.drizzle.token.delete({ where: { id: tokenRow.id } });
       this.throwUnauthorized('Reset token expired', 'AUTH_RESET_TOKEN_EXPIRED');
     }
 
     const newHash = await bcrypt.hash(dto.new_password, 12);
 
-    await this.prisma.$transaction([
-      this.prisma.profile.update({
+    await this.drizzle.$transaction([
+      this.drizzle.profile.update({
         where: { id: tokenRow.profileId },
         data: { passwordHash: newHash }
       }),
-      this.prisma.token.deleteMany({ where: { profileId: tokenRow.profileId } })
+      this.drizzle.token.deleteMany({ where: { profileId: tokenRow.profileId } })
     ]);
 
     return { success: true };
@@ -332,28 +332,28 @@ export class AuthService {
     }
 
     const tokenHash = sha256(dto.token);
-    const tokenRow = await this.prisma.token.findFirst({
+    const tokenRow = await this.drizzle.token.findFirst({
       where: { tokenHash, type: 'invite' }
     });
 
     if (!tokenRow) this.throwUnauthorized('Invalid invite token', 'AUTH_INVITE_TOKEN_INVALID');
     if (tokenRow.expiresAt.getTime() < Date.now()) {
-      await this.prisma.token.delete({ where: { id: tokenRow.id } });
+      await this.drizzle.token.delete({ where: { id: tokenRow.id } });
       this.throwUnauthorized('Invite token expired', 'AUTH_INVITE_TOKEN_EXPIRED');
     }
 
     const passwordHash = await bcrypt.hash(dto.new_password, 12);
-    await this.prisma.$transaction([
-      this.prisma.profile.update({
+    await this.drizzle.$transaction([
+      this.drizzle.profile.update({
         where: { id: tokenRow.profileId },
         data: { passwordHash, status: 'active' }
       }),
-      this.prisma.onboardingProgress.upsert({
+      this.drizzle.onboardingProgress.upsert({
         where: { userId: tokenRow.profileId },
         update: { status: 'accepted', currentStep: 'profile' },
         create: { userId: tokenRow.profileId, status: 'accepted', currentStep: 'profile' }
       }),
-      this.prisma.token.deleteMany({
+      this.drizzle.token.deleteMany({
         where: {
           profileId: tokenRow.profileId,
           type: { in: ['invite'] }
@@ -398,7 +398,7 @@ export class AuthService {
       const email = payload?.email?.trim().toLowerCase();
       if (!email) return `${appUrl}/login?error=google_no_email`;
 
-      const profile = await this.prisma.profile.findUnique({ where: { email } });
+      const profile = await this.drizzle.profile.findUnique({ where: { email } });
       if (!profile) return `${appUrl}/login?error=no_account`;
 
       if (profile.lockoutUntil && profile.lockoutUntil > new Date()) {
@@ -410,7 +410,7 @@ export class AuthService {
       const issued = await this.issueTokens(profile.id, authContext.permissions, authContext.roles);
       this.setAuthCookies(res, issued.accessToken, issued.refreshToken, issued.expiresIn);
 
-      await this.prisma.profile.update({
+      await this.drizzle.profile.update({
         where: { id: profile.id },
         data: { lastLogin: new Date(), failedLoginAttempts: 0, lockoutUntil: null },
       });
@@ -425,7 +425,7 @@ export class AuthService {
     const profileId = payload?.sub ? toBigInt(payload.sub) : null;
     if (!profileId) return null;
 
-    const profile = await this.prisma.profile.findUnique({ where: { id: profileId } });
+    const profile = await this.drizzle.profile.findUnique({ where: { id: profileId } });
     if (!profile || profile.status !== 'active') return null;
 
     // Always resolve fresh roles/permissions from DB so RBAC changes apply immediately
@@ -459,7 +459,7 @@ export class AuthService {
     const tokenHash = sha256(refreshToken);
     const expiresAt = this.parseExpiresIn(REFRESH_EXPIRES_IN);
 
-    await this.prisma.token.create({
+    await this.drizzle.token.create({
       data: {
         id: randomToken(24),
         profileId,
@@ -534,7 +534,7 @@ export class AuthService {
   }
 
   private async getUserRoles(profileId: bigint): Promise<string[]> {
-    const roles = await this.prisma.userRole.findMany({
+    const roles = await this.drizzle.userRole.findMany({
       where: { profileId },
       include: { role: true }
     });
@@ -542,7 +542,7 @@ export class AuthService {
   }
 
   private async getUserPermissions(profileId: bigint, roles?: string[]): Promise<string[]> {
-    const profile = await this.prisma.profile.findUnique({
+    const profile = await this.drizzle.profile.findUnique({
       where: { id: profileId },
       select: { type: true }
     });
@@ -550,14 +550,14 @@ export class AuthService {
     const roleSlugs = roles ?? (await this.getUserRoles(profileId));
     if (roleSlugs.includes('administrator') || roleSlugs.includes('admin')) return ['*'];
 
-    const roleIds = await this.prisma.role.findMany({
+    const roleIds = await this.drizzle.role.findMany({
       where: { slug: { in: roleSlugs } },
       select: { id: true }
     });
 
     if (roleIds.length === 0) return [];
 
-    const perms = await this.prisma.rolePermission.findMany({
+    const perms = await this.drizzle.rolePermission.findMany({
       where: { roleId: { in: roleIds.map((r) => r.id) } },
       include: { permission: true }
     });

@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { GroupUserRole } from '@prisma/client';
-import { PrismaService } from '$common/prisma/prisma.service';
+import { GroupUserRole } from '$common/db/drizzle-compat';
+import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { toBigInt } from '$common/utils/ids';
 import {
   WorkflowStepConfig,
@@ -11,7 +11,7 @@ import {
 
 @Injectable()
 export class WorkflowService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly drizzle: DrizzleService) {}
 
   async startForRequest(params: {
     requestId: bigint;
@@ -19,7 +19,7 @@ export class WorkflowService {
     initiatedBy: string;
     amount?: number | null;
   }) {
-    const existing = await this.prisma.requestInstance.findUnique({
+    const existing = await this.drizzle.requestInstance.findUnique({
       where: { id: params.requestId },
       select: {
         workflowInstanceId: true,
@@ -31,7 +31,7 @@ export class WorkflowService {
 
     if (!existing) throw new NotFoundException('Request not found');
     if (existing.workflowInstanceId) {
-      const current = await this.prisma.workflowInstance.findUnique({
+      const current = await this.drizzle.workflowInstance.findUnique({
         where: { id: existing.workflowInstanceId },
         select: { id: true, status: true }
       });
@@ -39,7 +39,7 @@ export class WorkflowService {
         return { instanceId: existing.workflowInstanceId, workflowStatus: 'pending' as const };
       }
 
-      await this.prisma.requestInstance.update({
+      await this.drizzle.requestInstance.update({
         where: { id: params.requestId },
         data: { workflowInstanceId: null }
       });
@@ -55,7 +55,7 @@ export class WorkflowService {
       return { instanceId: null, workflowStatus: 'none' as const };
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.drizzle.$transaction(async (tx) => {
       const workflow = await tx.workflow.create({
         data: {
           name: `${existing.requestType.name} Workflow`,
@@ -208,7 +208,7 @@ export class WorkflowService {
       return { instanceId: null, workflowStatus: 'none' as const };
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.drizzle.$transaction(async (tx) => {
       const workflow = await tx.workflow.create({
         data: {
           name: params.name ?? `${params.entityType} workflow`,
@@ -260,7 +260,7 @@ export class WorkflowService {
     performedBy: string;
     comment?: string;
   }) {
-    const instance = await this.prisma.workflowInstance.findUnique({
+    const instance = await this.drizzle.workflowInstance.findUnique({
       where: { id: params.instanceId },
       include: { currentStep: { include: { approvers: true } } }
     });
@@ -274,7 +274,7 @@ export class WorkflowService {
       throw new BadRequestException('User is not an allowed approver for the current step');
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.drizzle.$transaction(async (tx) => {
       if (params.action === 'reject') {
         await tx.workflowHistory.create({
           data: {
@@ -340,21 +340,21 @@ export class WorkflowService {
   }
 
   async getAvailableActions(instanceId: string) {
-    const instance = await this.prisma.workflowInstance.findUnique({ where: { id: instanceId } });
+    const instance = await this.drizzle.workflowInstance.findUnique({ where: { id: instanceId } });
     if (!instance) throw new NotFoundException('Workflow instance not found');
     if (instance.status !== 'pending') return [];
     return ['approve', 'reject'];
   }
 
   async getHistory(instanceId: string) {
-    return this.prisma.workflowHistory.findMany({
+    return this.drizzle.workflowHistory.findMany({
       where: { instanceId },
       orderBy: { createdAt: 'asc' }
     });
   }
 
   async getInstance(instanceId: string) {
-    const instance = await this.prisma.workflowInstance.findUnique({
+    const instance = await this.drizzle.workflowInstance.findUnique({
       where: { id: instanceId },
       include: {
         workflow: {
@@ -370,11 +370,11 @@ export class WorkflowService {
   }
 
   async cancelWorkflow(instanceId: string, performedBy: string, reason?: string) {
-    const instance = await this.prisma.workflowInstance.findUnique({ where: { id: instanceId } });
+    const instance = await this.drizzle.workflowInstance.findUnique({ where: { id: instanceId } });
     if (!instance) throw new NotFoundException('Workflow instance not found');
     if (instance.status !== 'pending') throw new BadRequestException('Workflow is already closed');
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.drizzle.$transaction(async (tx) => {
       await tx.workflowHistory.create({
         data: {
           instanceId,
@@ -521,7 +521,7 @@ export class WorkflowService {
           approverType === 'role' && approverId === 'accountant'
             ? ['accountant', 'finance_manager']
             : [approverId];
-        const hasRole = await this.prisma.userRole.count({
+        const hasRole = await this.drizzle.userRole.count({
           where: {
             profileId: toBigInt(userId),
             role: { slug: { in: roleSlugs } }
@@ -542,7 +542,7 @@ export class WorkflowService {
               : approverId === 'hr'
                 ? 'hr.approve'
                 : approverId;
-        const hasPermission = await this.prisma.rolePermission.count({
+        const hasPermission = await this.drizzle.rolePermission.count({
           where: {
             role: {
               users: {
@@ -567,13 +567,13 @@ export class WorkflowService {
     userId: string
   ) {
     if (instance.entityType !== 'request') return false;
-    const request = await this.prisma.requestInstance.findUnique({
+    const request = await this.drizzle.requestInstance.findUnique({
       where: { id: toBigInt(instance.entityId) },
       select: { teamId: true }
     });
     if (!request?.teamId) return false;
 
-    const member = await this.prisma.groupUser.findFirst({
+    const member = await this.drizzle.groupUser.findFirst({
       where: {
         groupId: request.teamId,
         userId: toBigInt(userId),
@@ -592,13 +592,13 @@ export class WorkflowService {
     userId: string
   ) {
     if (instance.entityType !== 'request') return false;
-    const request = await this.prisma.requestInstance.findUnique({
+    const request = await this.drizzle.requestInstance.findUnique({
       where: { id: toBigInt(instance.entityId) },
       select: { teamId: true }
     });
     if (!request?.teamId) return false;
 
-    const member = await this.prisma.groupUser.findFirst({
+    const member = await this.drizzle.groupUser.findFirst({
       where: {
         groupId: request.teamId,
         userId: toBigInt(userId),
@@ -608,7 +608,7 @@ export class WorkflowService {
     });
     if (member) return true;
 
-    const managerRole = await this.prisma.userRole.findFirst({
+    const managerRole = await this.drizzle.userRole.findFirst({
       where: {
         profileId: toBigInt(userId),
         role: { slug: 'manager' }

@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
-import { PrismaService } from '$common/prisma/prisma.service';
+import { Drizzle } from '$common/db/drizzle-compat';
+import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { toBigInt } from '$common/utils/ids';
 import { CreateAcknowledgementDto } from '$modules/requests/acknowledgements/dto/create-acknowledgement.dto';
 import { ListAcknowledgementsDto } from '$modules/requests/acknowledgements/dto/list-acknowledgements.dto';
@@ -9,7 +9,7 @@ import { paginatedResponse } from '$common/helpers/paginated-response';
 
 @Injectable()
 export class AcknowledgementsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly drizzle: DrizzleService) {}
 
   async listMine(profileId: string, query: ListAcknowledgementsDto) {
     return this.listInternal({ ...query, user_id: profileId }, false);
@@ -29,7 +29,7 @@ export class AcknowledgementsService {
       throw new BadRequestException('subject_type and subject_id are required');
     }
 
-    const existing = await this.prisma.acknowledgement.findFirst({
+    const existing = await this.drizzle.acknowledgement.findFirst({
       where: {
         userId,
         subjectType,
@@ -39,14 +39,14 @@ export class AcknowledgementsService {
     });
 
     if (dto.source_form_submission_id) {
-      const source = await this.prisma.formSubmission.findUnique({
+      const source = await this.drizzle.formSubmission.findUnique({
         where: { id: dto.source_form_submission_id },
         select: { id: true }
       });
       if (!source) throw new NotFoundException('Source form submission not found');
     }
 
-    const data: Prisma.AcknowledgementUncheckedCreateInput = {
+    const data: Drizzle.AcknowledgementUncheckedCreateInput = {
       userId,
       subjectType,
       subjectId,
@@ -56,24 +56,24 @@ export class AcknowledgementsService {
       acknowledgedAt: new Date(),
       revokedAt: null,
       sourceFormSubmissionId: dto.source_form_submission_id || null,
-      metadata: (dto.metadata ?? null) as Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput
+      metadata: (dto.metadata ?? null) as Drizzle.InputJsonValue | Drizzle.NullableJsonNullValueInput
     };
 
     const row = existing
-      ? await this.prisma.acknowledgement.update({
+      ? await this.drizzle.acknowledgement.update({
           where: { id: existing.id },
           data: {
             ...data,
             updatedAt: new Date()
           }
         })
-      : await this.prisma.acknowledgement.create({ data });
+      : await this.drizzle.acknowledgement.create({ data });
 
     return this.getById(row.id);
   }
 
   async revoke(id: string, dto: RevokeAcknowledgementDto) {
-    const existing = await this.prisma.acknowledgement.findUnique({ where: { id } });
+    const existing = await this.drizzle.acknowledgement.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Acknowledgement not found');
 
     const metadata =
@@ -85,12 +85,12 @@ export class AcknowledgementsService {
       metadata.revocation_reason = dto.reason.trim();
     }
 
-    await this.prisma.acknowledgement.update({
+    await this.drizzle.acknowledgement.update({
       where: { id },
       data: {
         status: 'revoked',
         revokedAt: new Date(),
-        metadata: metadata as Prisma.InputJsonValue
+        metadata: metadata as Drizzle.InputJsonValue
       }
     });
 
@@ -98,7 +98,7 @@ export class AcknowledgementsService {
   }
 
   async getById(id: string) {
-    const row = await this.prisma.acknowledgement.findUnique({
+    const row = await this.drizzle.acknowledgement.findUnique({
       where: { id },
       include: {
         user: {
@@ -128,7 +128,7 @@ export class AcknowledgementsService {
     const page = Math.max(1, Number(query.page ?? 1));
     const perPage = Math.min(100, Math.max(1, Number(query.per_page ?? 20)));
 
-    const where: Prisma.AcknowledgementWhereInput = {};
+    const where: Drizzle.AcknowledgementWhereInput = {};
 
     if (query.subject_type) where.subjectType = String(query.subject_type).toLowerCase();
     if (query.subject_id) where.subjectId = String(query.subject_id);
@@ -142,8 +142,8 @@ export class AcknowledgementsService {
       }
     }
 
-    const [rows, total] = await this.prisma.$transaction([
-      this.prisma.acknowledgement.findMany({
+    const [rows, total] = await this.drizzle.$transaction([
+      this.drizzle.acknowledgement.findMany({
         where,
         include: {
           user: {
@@ -167,7 +167,7 @@ export class AcknowledgementsService {
         skip: (page - 1) * perPage,
         take: perPage
       }),
-      this.prisma.acknowledgement.count({ where })
+      this.drizzle.acknowledgement.count({ where })
     ]);
 
     return paginatedResponse(rows.map((row) => this.serialize(row)), { page, per_page: perPage, total });

@@ -6,7 +6,7 @@ Staff portal for StanforteEdge — a monorepo with a NestJS API backend and two 
 
 | Workspace | Path | Stack |
 |-----------|------|-------|
-| **API** | `apps/api/` | NestJS, TypeScript, Prisma (Postgres), JWT auth, Swagger |
+| **API** | `apps/api/` | NestJS, TypeScript, Drizzle (Postgres), JWT auth, Swagger |
 | **Web (PWA)** | `apps/web/` | React 18, Vite, Tailwind — browser app, no Tauri code |
 | **Desktop** | `apps/desktop/` | React 18, Vite, Tailwind + Tauri 2 (native shell, tray, updates, deep links) |
 | **PWA (legacy)** | `PWA/` | React 18, Vite, Redux, CKEditor, FullCalendar |
@@ -56,7 +56,7 @@ NestJS application bootstrapped in `apps/api/src/main.ts` with:
 | `health` | Health check |
 
 **Shared infrastructure** (`apps/api/src/common/`):
-- `prisma/` — Database client
+- `drizzle/` — Database client
 - `auth/` — JWT guards, decorators
 - `mail/` — Nodemailer SMTP
 - `pdf/` — Puppeteer PDF generation
@@ -105,7 +105,7 @@ cp apps/desktop/.env.example apps/desktop/.env.local
 # Edit apps/api/.env — set DATABASE_URL, JWT_SECRET, JWT_REFRESH_SECRET
 
 # Run database migrations
-pnpm --filter portal-api prisma:migrate
+pnpm --filter portal-api drizzle:migrate
 
 # Seed RBAC roles & permissions
 pnpm --filter portal-api seed:rbac
@@ -165,8 +165,8 @@ pnpm --filter portal-api seed:release-baseline
 | `pnpm run build:desktop` | Build desktop frontend |
 | `pnpm run tauri:dev` | Start Tauri dev (desktop) |
 | `pnpm run tauri:build` | Build Tauri (desktop) |
-| `pnpm --filter portal-api prisma:migrate` | Run dev migrations |
-| `pnpm --filter portal-api prisma:generate` | Regenerate Prisma client |
+| `pnpm --filter portal-api drizzle:migrate` | Run dev migrations |
+| `pnpm --filter portal-api drizzle:generate` | Regenerate Drizzle client |
 
 ## Testing
 
@@ -196,7 +196,7 @@ Three GitHub Actions workflows trigger on push to `main`:
 
 ### `deploy-api.yml`
 - Trigger: changes to `apps/api/**`, `package.json`, or the workflow itself
-- Steps: install deps, generate Prisma client, build API, SCP to server, run migrations + seeds, reload PM2
+- Steps: install deps, generate Drizzle client, build API, SCP to server, run migrations + seeds, reload PM2
 - Required secrets: `API_SSH_HOST`, `API_SSH_USER`, `API_SSH_PRIVATE_KEY`, `API_APP_DIR`
 - Runs via PM2 (`apps/api/ecosystem.config.cjs`) — single instance, fork mode, 500MB limit
 
@@ -214,12 +214,12 @@ Three GitHub Actions workflows trigger on push to `main`:
 
 ### "Cannot find module" or import errors
 
-Prisma client needs to be regenerated after schema changes:
+Drizzle client needs to be regenerated after schema changes:
 ```bash
-pnpm --filter portal-api prisma:generate
+pnpm --filter portal-api drizzle:generate
 ```
 
-### Prisma migration fails
+### Drizzle migration fails
 
 Ensure PostgreSQL is running and `DATABASE_URL` in `apps/api/.env` is correct. Test connectivity:
 ```bash
@@ -262,7 +262,7 @@ Ensure Rust is installed (`rustc --version`) and system dependencies are met. Se
 
 ## Database
 
-See [apps/api/prisma/README.md](./apps/api/prisma/README.md) for the model reference (118 models, 13 domains).
+See `apps/api/src/db/` schema files for the model reference (118 models, 13 domains).
 
 ## Design System
 

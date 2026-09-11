@@ -1,16 +1,16 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
-import { PrismaService } from '$common/prisma/prisma.service';
+import { Drizzle } from '$common/db/drizzle-compat';
+import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { toBigInt } from '$common/utils/ids';
 import { SubmitOnboardingFormDto, UpdateOnboardingDto } from '$modules/hr/onboarding/dto/onboarding.dto';
 
 @Injectable()
 export class OnboardingService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly drizzle: DrizzleService) {}
 
   async getMyOnboarding(profileId: string) {
     const userId = toBigInt(profileId);
-    const user = await this.prisma.profile.findUnique({
+    const user = await this.drizzle.profile.findUnique({
       where: { id: userId },
       include: {
         employeeProfile: true,
@@ -23,7 +23,7 @@ export class OnboardingService {
     if (!user) throw new NotFoundException('User not found');
 
     const roleSlugs = user.roles.map((row) => row.role.slug);
-    const emergencyContactsMeta = await this.prisma.employeeMeta.findUnique({
+    const emergencyContactsMeta = await this.drizzle.employeeMeta.findUnique({
       where: {
         employee_meta_unique: {
           userId: user.id,
@@ -31,7 +31,7 @@ export class OnboardingService {
         }
       }
     });
-    const assignments = await this.prisma.formAssignment.findMany({
+    const assignments = await this.drizzle.formAssignment.findMany({
       where: {
         OR: [{ assignedToProfileId: user.id }, { assignedToRole: { in: roleSlugs } }]
       },
@@ -49,10 +49,10 @@ export class OnboardingService {
     });
 
     const uniqueForms = Array.from(
-      new Map(assignments.filter((a) => a.form.isActive).map((a) => [a.formId, a.form])).values()
+      new Map<string, any>(assignments.filter((a) => a.form.isActive).map((a) => [a.formId, a.form])).values()
     );
 
-    const submissions = await this.prisma.formSubmission.findMany({
+    const submissions = await this.drizzle.formSubmission.findMany({
       where: {
         submittedByProfileId: user.id,
         formId: { in: uniqueForms.map((f) => f.id) }
@@ -68,7 +68,7 @@ export class OnboardingService {
 
     const progress =
       user.onboardingProgress ??
-      (await this.prisma.onboardingProgress.create({
+      (await this.drizzle.onboardingProgress.create({
         data: {
           userId: user.id,
           status: user.status === 'active' ? 'profile_pending' : 'invited',
@@ -103,12 +103,12 @@ export class OnboardingService {
   async updateMyOnboarding(profileId: string, dto: UpdateOnboardingDto) {
     const userId = toBigInt(profileId);
 
-    const user = await this.prisma.profile.findUnique({ where: { id: userId } });
+    const user = await this.drizzle.profile.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
 
     const progress =
-      (await this.prisma.onboardingProgress.findUnique({ where: { userId } })) ??
-      (await this.prisma.onboardingProgress.create({
+      (await this.drizzle.onboardingProgress.findUnique({ where: { userId } })) ??
+      (await this.drizzle.onboardingProgress.create({
         data: {
           userId,
           status: user.status === 'active' ? 'profile_pending' : 'invited',
@@ -120,7 +120,7 @@ export class OnboardingService {
 
     if (dto.action === 'save_profile') {
       const payload = (dto.payload ?? {}) as Record<string, any>;
-      await this.prisma.profile.update({
+      await this.drizzle.profile.update({
         where: { id: userId },
         data: {
           firstName: payload.first_name ?? user.firstName,
@@ -134,7 +134,7 @@ export class OnboardingService {
         }
       });
 
-      await this.prisma.onboardingProgress.update({
+      await this.drizzle.onboardingProgress.update({
         where: { userId },
         data: {
           status: 'profile_pending',
@@ -145,7 +145,7 @@ export class OnboardingService {
               completed: true,
               at: new Date().toISOString()
             }
-          } as Prisma.InputJsonValue
+          } as Drizzle.InputJsonValue
         }
       });
 
@@ -153,7 +153,7 @@ export class OnboardingService {
     }
 
     if (dto.action === 'save_contacts') {
-      await this.prisma.employeeMeta.upsert({
+      await this.drizzle.employeeMeta.upsert({
         where: {
           employee_meta_unique: {
             userId,
@@ -161,16 +161,16 @@ export class OnboardingService {
           }
         },
         update: {
-          metaValue: (dto.payload ?? { contacts: [] }) as Prisma.InputJsonValue
+          metaValue: (dto.payload ?? { contacts: [] }) as Drizzle.InputJsonValue
         },
         create: {
           userId,
           metaKey: 'emergency_contacts',
-          metaValue: (dto.payload ?? { contacts: [] }) as Prisma.InputJsonValue
+          metaValue: (dto.payload ?? { contacts: [] }) as Drizzle.InputJsonValue
         }
       });
 
-      await this.prisma.onboardingProgress.update({
+      await this.drizzle.onboardingProgress.update({
         where: { userId },
         data: {
           status: 'forms_pending',
@@ -181,7 +181,7 @@ export class OnboardingService {
               completed: true,
               at: new Date().toISOString()
             }
-          } as Prisma.InputJsonValue
+          } as Drizzle.InputJsonValue
         }
       });
 
@@ -199,7 +199,7 @@ export class OnboardingService {
           ? 'completed'
           : progress.status;
 
-      await this.prisma.onboardingProgress.update({
+      await this.drizzle.onboardingProgress.update({
         where: { userId },
         data: {
           status: nextStatus,
@@ -211,7 +211,7 @@ export class OnboardingService {
               completed: true,
               at: new Date().toISOString()
             }
-          } as Prisma.InputJsonValue
+          } as Drizzle.InputJsonValue
         }
       });
 
@@ -224,17 +224,17 @@ export class OnboardingService {
   async submitForm(profileId: string, dto: SubmitOnboardingFormDto) {
     const userId = toBigInt(profileId);
 
-    const form = await this.prisma.form.findUnique({ where: { id: dto.form_id } });
+    const form = await this.drizzle.form.findUnique({ where: { id: dto.form_id } });
     if (!form || !form.isActive) throw new NotFoundException('Form not found');
-    const fields = await this.prisma.formField.findMany({
+    const fields = await this.drizzle.formField.findMany({
       where: { formId: form.id },
       orderBy: { displayOrder: 'asc' }
     });
 
-    const count = await this.prisma.formSubmission.count({ where: { formId: form.id } });
+    const count = await this.drizzle.formSubmission.count({ where: { formId: form.id } });
     const submissionNumber = `FM-${new Date().getFullYear()}-${String(count + 1).padStart(5, '0')}`;
 
-    const submission = await this.prisma.formSubmission.create({
+    const submission = await this.drizzle.formSubmission.create({
       data: {
         formId: form.id,
         submissionNumber,
@@ -265,7 +265,7 @@ export class OnboardingService {
           throw new BadRequestException(`Field ${field.fieldKey} is missing document_id binding`);
         }
 
-        const doc = await this.prisma.document.findUnique({
+        const doc = await this.drizzle.document.findUnique({
           where: { id: documentId },
           select: { id: true, version: true }
         });
@@ -274,7 +274,7 @@ export class OnboardingService {
         const boolValue = raw === true || String(raw).toLowerCase() === 'true' || String(raw) === '1';
         if (!boolValue) throw new BadRequestException(`Field ${field.fieldKey} must be acknowledged`);
 
-        await this.prisma.documentAcknowledgement.upsert({
+        await this.drizzle.documentAcknowledgement.upsert({
           where: {
             unique_document_ack: {
               documentId: doc.id,
@@ -292,7 +292,7 @@ export class OnboardingService {
         });
       }
 
-      await this.prisma.formSubmissionData.create({
+      await this.drizzle.formSubmissionData.create({
         data: {
           submissionId: submission.id,
           fieldId: field.id,
@@ -302,7 +302,7 @@ export class OnboardingService {
       });
     }
 
-    await this.prisma.formSubmissionHistory.create({
+    await this.drizzle.formSubmissionHistory.create({
       data: {
         submissionId: submission.id,
         actionType: 'submit',
@@ -311,10 +311,10 @@ export class OnboardingService {
       }
     });
 
-    const progress = await this.prisma.onboardingProgress.findUnique({ where: { userId } });
+    const progress = await this.drizzle.onboardingProgress.findUnique({ where: { userId } });
     if (progress) {
       const steps = (progress.stepsJson as Record<string, unknown> | null) ?? {};
-      await this.prisma.onboardingProgress.update({
+      await this.drizzle.onboardingProgress.update({
         where: { userId },
         data: {
           status: 'forms_pending',
@@ -325,7 +325,7 @@ export class OnboardingService {
               touched: true,
               at: new Date().toISOString()
             }
-          } as Prisma.InputJsonValue
+          } as Drizzle.InputJsonValue
         }
       });
     }

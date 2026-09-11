@@ -32,8 +32,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Generate Prisma Client
-        run: pnpm --filter portal-api prisma:generate
+      - name: Generate Drizzle Client
+        run: pnpm --filter portal-api drizzle:generate
 
       - name: Build API
         run: pnpm run build:api

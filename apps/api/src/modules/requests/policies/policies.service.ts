@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma, Policy } from '@prisma/client';
-import { PrismaService } from '$common/prisma/prisma.service';
+import { Drizzle, Policy } from '$common/db/drizzle-compat';
+import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { toBigInt } from '$common/utils/ids';
 import { CreatePolicyDto } from '$modules/requests/policies/dto/create-policy.dto';
 import { ResolvePolicyDto } from '$modules/requests/policies/dto/resolve-policy.dto';
@@ -16,13 +16,13 @@ type PolicyContext = {
 
 @Injectable()
 export class PoliciesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly drizzle: DrizzleService) {}
 
   async list(query: Record<string, any>) {
     const page = Math.max(1, Number(query.page ?? 1));
     const perPage = Math.min(100, Math.max(1, Number(query.per_page ?? 20)));
 
-    const where: Prisma.PolicyWhereInput = {};
+    const where: Drizzle.PolicyWhereInput = {};
     if (query.modules && Array.isArray(query.modules)) {
       where.module = { in: query.modules.map((m: string) => m.trim().toLowerCase()) };
     } else if (query.module) {
@@ -35,8 +35,8 @@ export class PoliciesService {
       where.isActive = query.is_active === 'true';
     }
 
-    const [rows, total] = await this.prisma.$transaction([
-      this.prisma.policy.findMany({
+    const [rows, total] = await this.drizzle.$transaction([
+      this.drizzle.policy.findMany({
         where,
         include: {
           document: {
@@ -47,7 +47,7 @@ export class PoliciesService {
         skip: (page - 1) * perPage,
         take: perPage
       }),
-      this.prisma.policy.count({ where })
+      this.drizzle.policy.count({ where })
     ]);
 
     return paginatedResponse(rows.map((row) => this.serialize(row)), { page, per_page: perPage, total });
@@ -55,7 +55,7 @@ export class PoliciesService {
 
   async create(dto: CreatePolicyDto, actorId?: string) {
     const payload = await this.mapDtoToCreatePayload(dto, actorId);
-    const row = await this.prisma.policy.create({
+    const row = await this.drizzle.policy.create({
       data: payload,
       include: {
         document: { select: { id: true, title: true, version: true, status: true } }
@@ -65,16 +65,16 @@ export class PoliciesService {
   }
 
   async update(id: string, dto: UpdatePolicyDto, actorId?: string) {
-    const existing = await this.prisma.policy.findUnique({ where: { id } });
+    const existing = await this.drizzle.policy.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Policy not found');
 
-    const payload: Prisma.PolicyUncheckedUpdateInput = {};
+    const payload: Drizzle.PolicyUncheckedUpdateInput = {};
     if (dto.module !== undefined) payload.module = dto.module.trim().toLowerCase();
     if (dto.policy_key !== undefined) payload.policyKey = dto.policy_key.trim().toLowerCase();
     if (dto.scope_type !== undefined) payload.scopeType = dto.scope_type.trim().toLowerCase();
     if (dto.scope_id !== undefined) payload.scopeId = dto.scope_id || null;
     if (dto.priority !== undefined) payload.priority = dto.priority;
-    if (dto.config_json !== undefined) payload.configJson = dto.config_json as Prisma.InputJsonValue;
+    if (dto.config_json !== undefined) payload.configJson = dto.config_json as Drizzle.InputJsonValue;
     if (dto.effective_from !== undefined) payload.effectiveFrom = dto.effective_from ? new Date(dto.effective_from) : null;
     if (dto.effective_to !== undefined) payload.effectiveTo = dto.effective_to ? new Date(dto.effective_to) : null;
     if (dto.is_active !== undefined) payload.isActive = dto.is_active;
@@ -87,7 +87,7 @@ export class PoliciesService {
       await this.ensureDocument(dto.document_id);
     }
 
-    const row = await this.prisma.policy.update({
+    const row = await this.drizzle.policy.update({
       where: { id },
       data: payload,
       include: {
@@ -103,7 +103,7 @@ export class PoliciesService {
     const context = dto.context ?? {};
     const now = new Date();
 
-    const rows = await this.prisma.policy.findMany({
+    const rows = await this.drizzle.policy.findMany({
       where: {
         module,
         policyKey,
@@ -125,7 +125,7 @@ export class PoliciesService {
         return a.createdAt.getTime() - b.createdAt.getTime();
       });
 
-    const mergedConfig = matched.reduce<Record<string, unknown>>((acc, row) => {
+    const mergedConfig = (matched as any[]).reduce((acc: Record<string, unknown>, row) => {
       const cfg =
         row.configJson && typeof row.configJson === 'object' && !Array.isArray(row.configJson)
           ? (row.configJson as Record<string, unknown>)
@@ -144,13 +144,13 @@ export class PoliciesService {
   }
 
   async delete(id: string) {
-    const existing = await this.prisma.policy.findUnique({ where: { id } });
+    const existing = await this.drizzle.policy.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Policy not found');
-    await this.prisma.policy.delete({ where: { id } });
+    await this.drizzle.policy.delete({ where: { id } });
     return { success: true };
   }
 
-  private async mapDtoToCreatePayload(dto: CreatePolicyDto, actorId?: string): Promise<Prisma.PolicyUncheckedCreateInput> {
+  private async mapDtoToCreatePayload(dto: CreatePolicyDto, actorId?: string): Promise<Drizzle.PolicyUncheckedCreateInput> {
     if (dto.document_id) {
       await this.ensureDocument(dto.document_id);
     }
@@ -170,7 +170,7 @@ export class PoliciesService {
       scopeType,
       scopeId,
       priority: dto.priority ?? 100,
-      configJson: dto.config_json as Prisma.InputJsonValue,
+      configJson: dto.config_json as Drizzle.InputJsonValue,
       effectiveFrom: dto.effective_from ? new Date(dto.effective_from) : null,
       effectiveTo: dto.effective_to ? new Date(dto.effective_to) : null,
       isActive: dto.is_active ?? true,
@@ -232,7 +232,7 @@ export class PoliciesService {
   }
 
   private async ensureDocument(documentId: string) {
-    const exists = await this.prisma.document.count({ where: { id: documentId } });
+    const exists = await this.drizzle.document.count({ where: { id: documentId } });
     if (!exists) throw new BadRequestException('Invalid document_id');
   }
 }

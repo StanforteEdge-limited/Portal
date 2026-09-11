@@ -1,5 +1,5 @@
 import { Injectable, BadRequestException, NotFoundException, ConflictException } from '@nestjs/common';
-import { PrismaService } from '$common/prisma/prisma.service';
+import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { DocumentGeneratorService } from '$common/documents/document-generator.service';
 import { DocumentIds } from '$common/documents/document.types';
 import { RequestPdfDocument } from '$modules/requests/requests/documents/request-pdf.document';
@@ -29,7 +29,7 @@ import { WorkflowService } from '$modules/requests/workflow/workflow.service';
 import { normalizeWorkflowStepApprover } from '$modules/requests/workflow/workflow-approvers';
 import { FormsService } from '$modules/requests/forms/forms.service';
 import { NotificationsService } from '$modules/platform/notifications/notifications.service';
-import { GroupUserRole, Prisma } from '@prisma/client';
+import { GroupUserRole, Drizzle } from '$common/db/drizzle-compat';
 
 const MANUAL_REQUEST_ID_MIN = BigInt(1);
 const MANUAL_REQUEST_ID_MAX = BigInt(99999);
@@ -50,7 +50,7 @@ type RequestNotificationSummary = {
 @Injectable()
 export class RequestsService {
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly drizzle: DrizzleService,
     private readonly workflowService: WorkflowService,
     private readonly formsService: FormsService,
     private readonly notificationsService: NotificationsService,
@@ -58,13 +58,13 @@ export class RequestsService {
   ) {}
 
   async listGroups() {
-    const rows = await this.prisma.requestGroup.findMany({ where: { isActive: true } });
+    const rows = await this.drizzle.requestGroup.findMany({ where: { isActive: true } });
     return paginatedResponse(rows, { page: 1, per_page: rows.length, total: rows.length });
   }
 
   async createGroup(dto: CreateGroupDto) {
     if (!dto.code) throw new BadRequestException('code is required');
-    return this.prisma.requestGroup.create({
+    return this.drizzle.requestGroup.create({
       data: {
         name: dto.name,
         code: dto.code,
@@ -74,7 +74,7 @@ export class RequestsService {
   }
 
   async updateGroup(id: string, dto: UpdateGroupDto) {
-    return this.prisma.requestGroup.update({
+    return this.drizzle.requestGroup.update({
       where: { id },
       data: {
         name: dto.name,
@@ -85,13 +85,13 @@ export class RequestsService {
   }
 
   async deleteGroup(id: string) {
-    await this.prisma.requestGroup.delete({ where: { id } });
+    await this.drizzle.requestGroup.delete({ where: { id } });
     return { success: true };
   }
 
   async listCategories(groupId?: string) {
     const where = groupId ? { groupId } : {};
-    const rows = await this.prisma.requestCategory.findMany({
+    const rows = await this.drizzle.requestCategory.findMany({
       where,
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
       include: { group: { select: { name: true } } },
@@ -100,9 +100,9 @@ export class RequestsService {
   }
 
   async createCategory(dto: CreateCategoryDto) {
-    const existing = await this.prisma.requestCategory.findUnique({ where: { code: dto.code } });
+    const existing = await this.drizzle.requestCategory.findUnique({ where: { code: dto.code } });
     if (existing) throw new ConflictException(`Category code "${dto.code}" already exists`);
-    return this.prisma.requestCategory.create({
+    return this.drizzle.requestCategory.create({
       data: {
         groupId: dto.group_id,
         name: dto.name,
@@ -114,7 +114,7 @@ export class RequestsService {
   }
 
   async updateCategory(id: string, dto: UpdateCategoryDto) {
-    return this.prisma.requestCategory.update({
+    return this.drizzle.requestCategory.update({
       where: { id },
       data: {
         name: dto.name,
@@ -127,7 +127,7 @@ export class RequestsService {
   }
 
   async deleteCategory(id: string) {
-    await this.prisma.requestCategory.delete({ where: { id } });
+    await this.drizzle.requestCategory.delete({ where: { id } });
     return { success: true };
   }
 
@@ -139,14 +139,14 @@ export class RequestsService {
       typeWhere.categoryId = categoryId;
     } else if (groupId) {
       const categoryIds = (
-        await this.prisma.requestCategory.findMany({
+        await this.drizzle.requestCategory.findMany({
           where: { groupId },
           select: { id: true }
         })
       ).map((c) => c.id);
       typeWhere.categoryId = { in: categoryIds };
     }
-    let rows = await this.prisma.requestType.findMany({
+    let rows = await this.drizzle.requestType.findMany({
       where: typeWhere,
       include: { category: true }
     });
@@ -165,20 +165,20 @@ export class RequestsService {
   }
 
   async getType(id: string) {
-    const type = await this.prisma.requestType.findUnique({ where: { id } });
+    const type = await this.drizzle.requestType.findUnique({ where: { id } });
     if (!type) throw new NotFoundException('Request type not found');
     return type;
   }
 
   async createType(dto: CreateTypeDto, actorId?: string) {
-    const category = await this.prisma.requestCategory.findUnique({
+    const category = await this.drizzle.requestCategory.findUnique({
       where: { id: dto.category_id },
       select: { groupId: true }
     });
     if (!category) throw new NotFoundException('Category not found');
 
     await this.assertRequestTypeGroupAccess(category.groupId, actorId);
-    const group = await this.prisma.requestGroup.findUnique({
+    const group = await this.drizzle.requestGroup.findUnique({
       where: { id: category.groupId },
       select: { code: true, name: true }
     });
@@ -195,28 +195,28 @@ export class RequestsService {
       ? this.ensureApproverInApprovalFlow(dto.approval_flow_json, 'coo')
       : dto.approval_flow_json;
 
-    return this.prisma.requestType.create({
+    return this.drizzle.requestType.create({
       data: {
         categoryId: dto.category_id,
         name: dto.name,
         codePrefix: dto.code_prefix,
-        taxonomyKeys: dto.taxonomy_keys as Prisma.InputJsonValue | undefined,
-        formSchema: dto.form_schema as Prisma.InputJsonValue | undefined,
+        taxonomyKeys: dto.taxonomy_keys as Drizzle.InputJsonValue | undefined,
+        formSchema: dto.form_schema as Drizzle.InputJsonValue | undefined,
         description: dto.description,
         storageType: dto.storage_type ?? 'json',
         formId: dto.form_id,
-        approvalFlowJson: approvalFlowJson as Prisma.InputJsonValue | undefined,
+        approvalFlowJson: approvalFlowJson as Drizzle.InputJsonValue | undefined,
         approvalLimit: dto.approval_limit,
         workflowType: dto.workflow_type ?? null,
         handlerRoleLabel: dto.handler_role_label ?? null,
-        visibleToRoles: dto.visible_to_roles as Prisma.InputJsonValue | undefined,
+        visibleToRoles: dto.visible_to_roles as Drizzle.InputJsonValue | undefined,
         isActive: dto.is_active ?? true,
       }
     });
   }
 
   async updateType(id: string, dto: UpdateTypeDto, actorId?: string) {
-    const existing = await this.prisma.requestType.findUnique({
+    const existing = await this.drizzle.requestType.findUnique({
       where: { id },
       select: {
         categoryId: true,
@@ -230,14 +230,14 @@ export class RequestsService {
     if (!existing) throw new NotFoundException('Request type not found');
 
     const resolvedCategoryId = dto.category_id ?? existing.categoryId;
-    const category = await this.prisma.requestCategory.findUnique({
+    const category = await this.drizzle.requestCategory.findUnique({
       where: { id: resolvedCategoryId },
       select: { groupId: true }
     });
     if (!category) throw new NotFoundException('Category not found');
 
     await this.assertRequestTypeGroupAccess(category.groupId, actorId);
-    const group = await this.prisma.requestGroup.findUnique({
+    const group = await this.drizzle.requestGroup.findUnique({
       where: { id: category.groupId },
       select: { code: true, name: true }
     });
@@ -260,55 +260,55 @@ export class RequestsService {
       ? this.ensureApproverInApprovalFlow(mergedApprovalFlow, 'coo')
       : dto.approval_flow_json;
 
-    return this.prisma.requestType.update({
+    return this.drizzle.requestType.update({
       where: { id },
       data: {
         name: dto.name,
         categoryId: dto.category_id,
         codePrefix: dto.code_prefix,
-        taxonomyKeys: dto.taxonomy_keys as Prisma.InputJsonValue | undefined,
+        taxonomyKeys: dto.taxonomy_keys as Drizzle.InputJsonValue | undefined,
         formSchema:
           dto.form_schema !== undefined
-            ? (dto.form_schema as Prisma.InputJsonValue)
+            ? (dto.form_schema as Drizzle.InputJsonValue)
             : undefined,
         description: dto.description,
         storageType: dto.storage_type,
         formId: dto.form_id,
         approvalFlowJson:
           normalizedApprovalFlow !== undefined
-            ? (normalizedApprovalFlow as Prisma.InputJsonValue)
+            ? (normalizedApprovalFlow as Drizzle.InputJsonValue)
             : undefined,
         approvalLimit: dto.approval_limit,
         isActive: dto.is_active,
         ...(dto.workflow_type !== undefined && { workflowType: dto.workflow_type }),
         ...(dto.handler_role_label !== undefined && { handlerRoleLabel: dto.handler_role_label }),
-        visibleToRoles: dto.visible_to_roles !== undefined ? (dto.visible_to_roles as Prisma.InputJsonValue) : undefined,
+        visibleToRoles: dto.visible_to_roles !== undefined ? (dto.visible_to_roles as Drizzle.InputJsonValue) : undefined,
       }
     });
   }
 
   async deleteType(id: string, actorId?: string) {
-    const existing = await this.prisma.requestType.findUnique({
+    const existing = await this.drizzle.requestType.findUnique({
       where: { id },
       select: { id: true, categoryId: true }
     });
     if (!existing) throw new NotFoundException('Request type not found');
 
-    const category = await this.prisma.requestCategory.findUnique({
+    const category = await this.drizzle.requestCategory.findUnique({
       where: { id: existing.categoryId },
       select: { groupId: true }
     });
     if (!category) throw new NotFoundException('Category not found');
     await this.assertRequestTypeGroupAccess(category.groupId, actorId);
 
-    const usageCount = await this.prisma.requestInstance.count({
+    const usageCount = await this.drizzle.requestInstance.count({
       where: { requestTypeId: existing.id }
     });
     if (usageCount > 0) {
       throw new BadRequestException('Cannot delete request type with existing requests. Set it inactive instead.');
     }
 
-    await this.prisma.requestType.delete({ where: { id: existing.id } });
+    await this.drizzle.requestType.delete({ where: { id: existing.id } });
     return { success: true };
   }
 
@@ -384,7 +384,7 @@ export class RequestsService {
   }
 
   private async getActorRoleSlugs(actorId: string) {
-    const roles = await this.prisma.userRole.findMany({
+    const roles = await this.drizzle.userRole.findMany({
       where: { profileId: toBigInt(actorId) },
       select: { role: { select: { slug: true } } }
     });
@@ -404,7 +404,7 @@ export class RequestsService {
   }
 
   async createRequest(userId: string, dto: CreateRequestDto) {
-    const requestType = await this.prisma.requestType.findUnique({ where: { id: dto.request_type_id }, include: { category: true } });
+    const requestType = await this.drizzle.requestType.findUnique({ where: { id: dto.request_type_id }, include: { category: true } });
     if (!requestType || !requestType.isActive) throw new BadRequestException('Invalid request type');
     await this.formsService.validateRequestTypePayload(requestType.id, dto.data);
     await this.validateLeaveRequestPayload(
@@ -430,7 +430,7 @@ export class RequestsService {
       if (invalid) throw new BadRequestException('Invalid item amount or quantity');
     }
 
-    const created = await this.prisma.$transaction(async (tx) => {
+    const created = await this.drizzle.$transaction(async (tx) => {
       await this.ensureStaffRequestSequenceFloor(tx);
 
       const computedTotal = dto.items && dto.items.length
@@ -503,21 +503,21 @@ export class RequestsService {
   }
 
   async createManualEntry(userId: string, dto: CreateManualRequestDto) {
-    const requestType = await this.prisma.requestType.findUnique({ where: { id: dto.request_type_id }, include: { category: true } });
+    const requestType = await this.drizzle.requestType.findUnique({ where: { id: dto.request_type_id }, include: { category: true } });
     if (!requestType || !requestType.isActive) throw new BadRequestException('Invalid request type');
 
-    const staff = await this.prisma.profile.findUnique({
+    const staff = await this.drizzle.profile.findUnique({
       where: { id: toBigInt(dto.staff_id) },
       select: { id: true, email: true, username: true, firstName: true, lastName: true }
     });
     if (!staff) throw new BadRequestException('Invalid staff_id');
 
     if (dto.team_id) {
-      const team = await this.prisma.group.findUnique({ where: { id: toBigInt(dto.team_id) }, select: { id: true } });
+      const team = await this.drizzle.group.findUnique({ where: { id: toBigInt(dto.team_id) }, select: { id: true } });
       if (!team) throw new BadRequestException('Invalid team_id');
     }
     if (dto.organization_id) {
-      const organization = await this.prisma.organization.findUnique({
+      const organization = await this.drizzle.organization.findUnique({
         where: { id: toBigInt(dto.organization_id) },
         select: { id: true }
       });
@@ -530,7 +530,7 @@ export class RequestsService {
       .flatMap((x) => x.retirement_file_ids ?? [])
       .filter((x): x is string => Boolean(x));
     const allFileIds = Array.from(new Set([...itemFileIds, ...voucherEvidenceIds, ...retirementIds]));
-    if (allFileIds.length) await this.ensureFileAssetsExist(this.prisma, allFileIds);
+    if (allFileIds.length) await this.ensureFileAssetsExist(this.drizzle, allFileIds);
     const paidFromAccountIds = Array.from(
       new Set(
         (dto.disbursements ?? [])
@@ -539,7 +539,7 @@ export class RequestsService {
       )
     );
     if (paidFromAccountIds.length > 0) {
-      const count = await this.prisma.financeAccount.count({
+      const count = await this.drizzle.financeAccount.count({
         where: { id: { in: paidFromAccountIds }, isActive: true }
       });
       if (count !== paidFromAccountIds.length) throw new BadRequestException('Invalid paid_from_account_id');
@@ -555,7 +555,7 @@ export class RequestsService {
     const explicitRequestId = dto.request_id ? toBigInt(dto.request_id) : null;
     if (explicitRequestId) {
       this.assertManualRequestIdRange(explicitRequestId);
-      const taken = await this.prisma.requestInstance.findUnique({ where: { id: explicitRequestId }, select: { id: true } });
+      const taken = await this.drizzle.requestInstance.findUnique({ where: { id: explicitRequestId }, select: { id: true } });
       if (taken) throw new BadRequestException(`request_id ${dto.request_id} already exists`);
     }
 
@@ -569,7 +569,7 @@ export class RequestsService {
       } else {
         const disbDate = row.disbursed_at ? new Date(row.disbursed_at) : createdAt;
         const year = disbDate.getFullYear();
-        const count = await this.prisma.financePaymentVoucher.count({
+        const count = await this.drizzle.financePaymentVoucher.count({
           where: { disbursedAt: { gte: new Date(year, 0, 1), lt: new Date(year + 1, 0, 1) } }
         });
         resolvedDisbursements.push({ ...row, voucher_number: `PV/${year}/${String(count + 1 + pvSeqOffset++).padStart(3, '0')}` });
@@ -590,7 +590,7 @@ export class RequestsService {
       imported_by: userId
     };
     const status = (dto.status ?? 'completed') as any;
-    const created = await this.prisma.$transaction(async (tx) => {
+    const created = await this.drizzle.$transaction(async (tx) => {
       const request = await tx.requestInstance.create({
         data: {
           ...(explicitRequestId ? { id: explicitRequestId } : {}),
@@ -600,7 +600,7 @@ export class RequestsService {
           teamId: dto.team_id ? toBigInt(dto.team_id) : null,
           organizationId: dto.organization_id ? toBigInt(dto.organization_id) : null,
           status,
-          data: baseData as Prisma.InputJsonValue,
+          data: baseData as Drizzle.InputJsonValue,
           totalAmount,
           currency: dto.currency || 'NGN',
           createdAt,
@@ -675,7 +675,7 @@ export class RequestsService {
                     refund_date: row.refund_date ?? null,
                   }
                 } : {})
-              } as Prisma.InputJsonValue
+              } as Drizzle.InputJsonValue
             }
           });
           if (evidenceFileIds.length > 0) {
@@ -726,23 +726,23 @@ export class RequestsService {
   }
 
   async updateManualEntry(id: string, userId: string, dto: CreateManualRequestDto) {
-    const requestType = await this.prisma.requestType.findUnique({ where: { id: dto.request_type_id }, include: { category: true } });
+    const requestType = await this.drizzle.requestType.findUnique({ where: { id: dto.request_type_id }, include: { category: true } });
     if (!requestType || !requestType.isActive) throw new BadRequestException('Invalid request type');
 
     const existing = await this.getRequestOrThrow(id);
 
-    const staff = await this.prisma.profile.findUnique({
+    const staff = await this.drizzle.profile.findUnique({
       where: { id: toBigInt(dto.staff_id) },
       select: { id: true }
     });
     if (!staff) throw new BadRequestException('Invalid staff_id');
 
     if (dto.team_id) {
-      const team = await this.prisma.group.findUnique({ where: { id: toBigInt(dto.team_id) }, select: { id: true } });
+      const team = await this.drizzle.group.findUnique({ where: { id: toBigInt(dto.team_id) }, select: { id: true } });
       if (!team) throw new BadRequestException('Invalid team_id');
     }
     if (dto.organization_id) {
-      const organization = await this.prisma.organization.findUnique({
+      const organization = await this.drizzle.organization.findUnique({
         where: { id: toBigInt(dto.organization_id) },
         select: { id: true }
       });
@@ -755,7 +755,7 @@ export class RequestsService {
       .flatMap((x) => x.retirement_file_ids ?? [])
       .filter((x): x is string => Boolean(x));
     const allFileIds = Array.from(new Set([...itemFileIds, ...voucherEvidenceIds, ...retirementIds]));
-    if (allFileIds.length) await this.ensureFileAssetsExist(this.prisma, allFileIds);
+    if (allFileIds.length) await this.ensureFileAssetsExist(this.drizzle, allFileIds);
     const paidFromAccountIds = Array.from(
       new Set(
         (dto.disbursements ?? [])
@@ -764,7 +764,7 @@ export class RequestsService {
       )
     );
     if (paidFromAccountIds.length > 0) {
-      const count = await this.prisma.financeAccount.count({
+      const count = await this.drizzle.financeAccount.count({
         where: { id: { in: paidFromAccountIds }, isActive: true }
       });
       if (count !== paidFromAccountIds.length) throw new BadRequestException('Invalid paid_from_account_id');
@@ -782,7 +782,7 @@ export class RequestsService {
       this.assertManualRequestIdRange(desiredRequestId);
     }
     if (isRequestIdChanged) {
-      const taken = await this.prisma.requestInstance.findUnique({
+      const taken = await this.drizzle.requestInstance.findUnique({
         where: { id: desiredRequestId },
         select: { id: true }
       });
@@ -799,7 +799,7 @@ export class RequestsService {
       } else {
         const disbDate = row.disbursed_at ? new Date(row.disbursed_at) : createdAt;
         const year = disbDate.getFullYear();
-        const count = await this.prisma.financePaymentVoucher.count({
+        const count = await this.drizzle.financePaymentVoucher.count({
           where: { disbursedAt: { gte: new Date(year, 0, 1), lt: new Date(year + 1, 0, 1) } }
         });
         resolvedDisbursements.push({ ...row, voucher_number: `PV/${year}/${String(count + 1 + pvSeqOffsetU++).padStart(3, '0')}` });
@@ -820,7 +820,7 @@ export class RequestsService {
       imported_by: userId
     };
     const status = (dto.status ?? existing.status) as any;
-    await this.prisma.$transaction(async (tx) => {
+    await this.drizzle.$transaction(async (tx) => {
       if (isRequestIdChanged) {
         await tx.requestInstance.create({
           data: {
@@ -832,7 +832,7 @@ export class RequestsService {
             organizationId: dto.organization_id ? toBigInt(dto.organization_id) : null,
             workflowInstanceId: null,
             status,
-            data: baseData as Prisma.InputJsonValue,
+            data: baseData as Drizzle.InputJsonValue,
             totalAmount,
             currency: dto.currency || existing.currency || 'NGN',
             createdAt,
@@ -849,7 +849,7 @@ export class RequestsService {
             teamId: dto.team_id ? toBigInt(dto.team_id) : null,
             organizationId: dto.organization_id ? toBigInt(dto.organization_id) : null,
             status,
-            data: baseData as Prisma.InputJsonValue,
+            data: baseData as Drizzle.InputJsonValue,
             totalAmount,
             currency: dto.currency || existing.currency || 'NGN',
             createdAt,
@@ -928,7 +928,7 @@ export class RequestsService {
                     refund_date: row.refund_date ?? null,
                   }
                 } : {})
-              } as Prisma.InputJsonValue
+              } as Drizzle.InputJsonValue
             }
           });
           if (evidenceFileIds.length > 0) {
@@ -987,7 +987,7 @@ export class RequestsService {
       throw new BadRequestException('Only manual-import requests can be deleted from manual entry');
     }
 
-    await this.prisma.requestInstance.delete({ where: { id: existing.id } });
+    await this.drizzle.requestInstance.delete({ where: { id: existing.id } });
     return { success: true };
   }
 
@@ -1000,13 +1000,13 @@ export class RequestsService {
       return { exists: false };
     }
 
-    const where: Prisma.RequestInstanceWhereInput = {
+    const where: Drizzle.RequestInstanceWhereInput = {
       ...(requestTypeId ? { requestTypeId } : {}),
       ...(excludeId ? { id: { not: toBigInt(excludeId) } } : {}),
       id: toBigInt(raw)
     };
 
-    const found = await this.prisma.requestInstance.findFirst({
+    const found = await this.drizzle.requestInstance.findFirst({
       where,
       select: { id: true }
     });
@@ -1022,7 +1022,7 @@ export class RequestsService {
       return { exists: false };
     }
 
-    const found = await this.prisma.financePaymentVoucher.findFirst({
+    const found = await this.drizzle.financePaymentVoucher.findFirst({
       where: {
         voucherNumber: raw,
         ...(excludeRequestId ? { requestId: { not: toBigInt(excludeRequestId) } } : {})
@@ -1066,7 +1066,7 @@ export class RequestsService {
     // If workflow exists, request is now in generic approval stage.
     if (workflowStart.instanceId) {
       const nextStatus = workflowStart.workflowStatus === 'approved' ? 'cleared' : 'approval';
-      await this.prisma.requestInstance.update({
+      await this.drizzle.requestInstance.update({
         where: { id: request.id },
         data: {
           status: nextStatus as any,
@@ -1153,7 +1153,7 @@ export class RequestsService {
           throw error;
         }
 
-        const currentInstance = await this.prisma.workflowInstance.findUnique({
+        const currentInstance = await this.drizzle.workflowInstance.findUnique({
           where: { id: request.workflowInstanceId },
           select: { status: true }
         });
@@ -1166,7 +1166,7 @@ export class RequestsService {
       }
 
       if (stepResult.status === 'pending') {
-        await this.prisma.requestInstance.update({
+        await this.drizzle.requestInstance.update({
           where: { id: request.id },
           data: { status: 'approval' }
         });
@@ -1257,7 +1257,7 @@ export class RequestsService {
           throw error;
         }
 
-        const currentInstance = await this.prisma.workflowInstance.findUnique({
+        const currentInstance = await this.drizzle.workflowInstance.findUnique({
           where: { id: request.workflowInstanceId },
           select: { status: true }
         });
@@ -1341,7 +1341,7 @@ export class RequestsService {
             throw error;
           }
 
-          const currentInstance = await this.prisma.workflowInstance.findUnique({
+          const currentInstance = await this.drizzle.workflowInstance.findUnique({
             where: { id: request.workflowInstanceId },
             select: { status: true }
           });
@@ -1352,7 +1352,7 @@ export class RequestsService {
         }
       }
 
-      const updated = await this.prisma.requestInstance.update({
+      const updated = await this.drizzle.requestInstance.update({
         where: { id: request.id },
         data: {
           status: 'returned',
@@ -1402,7 +1402,7 @@ export class RequestsService {
         error,
       });
 
-      const current = await this.prisma.requestInstance.findUnique({
+      const current = await this.drizzle.requestInstance.findUnique({
         where: { id: request.id },
         include: this.documentGenerator.getRequestInclude()
       });
@@ -1422,7 +1422,7 @@ export class RequestsService {
     const limit = filters.per_page ? Math.max(1, parseInt(String(filters.per_page), 10)) : 1000;
     const skip = (page - 1) * limit;
 
-    const where: any = {};
+    const where: Drizzle.RequestInstanceWhereInput = {};
 
     if (filters.id) where.id = toBigInt(filters.id);
     if (filters.group_id) where.groupId = filters.group_id;
@@ -1450,8 +1450,8 @@ export class RequestsService {
     }
 
     const [total, data] = await Promise.all([
-      this.prisma.requestInstance.count({ where }),
-      this.prisma.requestInstance.findMany({
+      this.drizzle.requestInstance.count({ where }),
+      this.drizzle.requestInstance.findMany({
         where,
         include: this.documentGenerator.getRequestInclude(),
         orderBy: { createdAt: 'desc' },
@@ -1475,7 +1475,7 @@ export class RequestsService {
   }
 
   async getRequest(id: string, _userId: string): Promise<RequestResponseDto> {
-    const request = await this.prisma.requestInstance.findUnique({
+    const request = await this.drizzle.requestInstance.findUnique({
       where: { id: toBigInt(id) },
       include: this.documentGenerator.getRequestInclude()
     });
@@ -1522,7 +1522,7 @@ export class RequestsService {
 
     if (dto.data) {
       await this.formsService.validateRequestTypePayload(request.requestTypeId, dto.data);
-      const requestType = await this.prisma.requestType.findUnique({
+      const requestType = await this.drizzle.requestType.findUnique({
         where: { id: request.requestTypeId },
         select: { name: true, taxonomyKeys: true, formSchema: true }
       });
@@ -1549,7 +1549,7 @@ export class RequestsService {
     });
     const normalizedData = this.withBudgetSelection(nextDataSource ?? {}, budgetSelection);
 
-    const updated = await this.prisma.$transaction(async (tx) => {
+    const updated = await this.drizzle.$transaction(async (tx) => {
       const computedTotal = dto.items && dto.items.length
         ? dto.items.reduce((sum, item) => sum + (item.amount * (item.quantity ?? 1)), 0)
         : undefined;
@@ -1623,7 +1623,7 @@ export class RequestsService {
       throw new BadRequestException('Only draft requests can be deleted');
     }
 
-    await this.prisma.requestInstance.delete({ where: { id: request.id } });
+    await this.drizzle.requestInstance.delete({ where: { id: request.id } });
     return { success: true };
   }
 
@@ -1631,7 +1631,7 @@ export class RequestsService {
     const page = Math.max(1, Number(filters.page) || 1);
     const perPage = Math.min(100, Math.max(1, Number(filters.per_page) || 20));
 
-    const data = await this.prisma.requestInstance.findMany({
+    const data = await this.drizzle.requestInstance.findMany({
       where: {
         workflowInstanceId: { not: null }
       },
@@ -1645,7 +1645,7 @@ export class RequestsService {
       .filter((id): id is string => Boolean(id));
     const myHistory =
       instanceIds.length > 0
-        ? await this.prisma.workflowHistory.findMany({
+        ? await this.drizzle.workflowHistory.findMany({
             where: {
               instanceId: { in: instanceIds },
               performedBy: userIdBigInt,
@@ -1711,18 +1711,18 @@ export class RequestsService {
     const year = Number(query.year ?? new Date().getFullYear());
     const leaveTypeKey = query.leave_type_key ? String(query.leave_type_key).trim().toLowerCase() : undefined;
 
-    const where: Prisma.LeaveBalanceLedgerWhereInput = {
+    const where: Drizzle.LeaveBalanceLedgerWhereInput = {
       userId: actorId,
       periodYear: year,
       ...(leaveTypeKey ? { leaveTypeKey } : {})
     };
 
-    const [rows, aggregate] = await this.prisma.$transaction([
-      this.prisma.leaveBalanceLedger.findMany({
+    const [rows, aggregate] = await this.drizzle.$transaction([
+      this.drizzle.leaveBalanceLedger.findMany({
         where,
         orderBy: { createdAt: 'asc' }
       }),
-      this.prisma.leaveBalanceLedger.groupBy({
+      this.drizzle.leaveBalanceLedger.groupBy({
         by: ['leaveTypeKey'],
         where,
         orderBy: { leaveTypeKey: 'asc' },
@@ -1776,7 +1776,7 @@ export class RequestsService {
   async getApprovalHistory(id: string, _userId: string) {
     const request = await this.getRequestOrThrow(id);
     if (!request.workflowInstanceId) return [];
-    return this.prisma.workflowHistory.findMany({
+    return this.drizzle.workflowHistory.findMany({
       where: { instanceId: request.workflowInstanceId }
     });
   }
@@ -1904,7 +1904,7 @@ export class RequestsService {
     if (request.createdBy !== toBigInt(userId)) {
       throw new BadRequestException('Only owner can confirm disbursement');
     }
-    const voucher = await this.prisma.financePaymentVoucher.findFirst({
+    const voucher = await this.drizzle.financePaymentVoucher.findFirst({
       where: { requestId: request.id, id: voucherId }
     });
     if (!voucher) throw new NotFoundException('Payment voucher not found');
@@ -1913,14 +1913,14 @@ export class RequestsService {
       voucher.metadata && typeof voucher.metadata === 'object' && !Array.isArray(voucher.metadata)
         ? ({ ...(voucher.metadata as Record<string, unknown>) } as Record<string, unknown>)
         : {};
-    await this.prisma.financePaymentVoucher.update({
+    await this.drizzle.financePaymentVoucher.update({
       where: { id: voucher.id },
       data: {
         metadata: {
           ...metadata,
           confirmed_by: userId,
           confirmed_at: new Date().toISOString()
-        } as Prisma.InputJsonValue
+        } as Drizzle.InputJsonValue
       }
     });
     await this.logWorkflowEvent(request.workflowInstanceId, 'pv_confirmed', userId, {
@@ -1929,7 +1929,7 @@ export class RequestsService {
       voucher_number: voucher.voucherNumber
     });
 
-    const vouchers = await this.prisma.financePaymentVoucher.findMany({
+    const vouchers = await this.drizzle.financePaymentVoucher.findMany({
       where: { requestId: request.id },
       select: { amount: true, grossAmount: true }
     });
@@ -1980,14 +1980,14 @@ export class RequestsService {
     }
 
     if (dto.retirement_file_ids?.length) {
-      await this.ensureFileAssetsExist(this.prisma, dto.retirement_file_ids);
+      await this.ensureFileAssetsExist(this.drizzle, dto.retirement_file_ids);
     }
 
     if (request.status === 'retired') {
       const resetWhere = dto.voucher_id
         ? { requestId: request.id, id: dto.voucher_id }
         : { requestId: request.id };
-      await this.prisma.financePaymentVoucher.updateMany({
+      await this.drizzle.financePaymentVoucher.updateMany({
         where: resetWhere,
         data: { retiredAmount: 0, retirementStatus: 'not_retired' }
       });
@@ -1998,7 +1998,7 @@ export class RequestsService {
     const nextStatus = shouldMarkRetired ? 'retired' : request.status;
     const retirementAction = shouldMarkRetired ? 'retire' : 'retire_partial';
 
-    const updated = await this.prisma.requestInstance.update({
+    const updated = await this.drizzle.requestInstance.update({
       where: { id: request.id },
       data: {
         status: nextStatus as any,
@@ -2054,7 +2054,7 @@ export class RequestsService {
 
   async verifyRetirement(id: string, _userId: string) {
     const request = await this.getRequestOrThrow(id);
-    const vouchers = await this.prisma.financePaymentVoucher.findMany({
+    const vouchers = await this.drizzle.financePaymentVoucher.findMany({
       where: { requestId: request.id },
       orderBy: { disbursedAt: 'asc' }
     });
@@ -2081,7 +2081,7 @@ export class RequestsService {
       const refund = (breakdown.refund ?? {}) as Record<string, unknown>;
       return sum + (typeof refund.refund_amount === 'number' ? refund.refund_amount : 0);
     }, 0);
-    const deductionAgg = await this.prisma.financeRequestDeduction.aggregate({
+    const deductionAgg = await this.drizzle.financeRequestDeduction.aggregate({
       where: { requestId: request.id },
       _sum: { amount: true }
     });
@@ -2092,7 +2092,7 @@ export class RequestsService {
 
     const vouchersToVerify = vouchers.filter((voucher) => voucher.retirementStatus === 'retired');
     if (vouchersToVerify.length > 0) {
-      await this.prisma.financePaymentVoucher.updateMany({
+      await this.drizzle.financePaymentVoucher.updateMany({
         where: { id: { in: vouchersToVerify.map((voucher) => voucher.id) } },
         data: {
           retirementStatus: 'verified',
@@ -2153,7 +2153,7 @@ export class RequestsService {
       throw new BadRequestException('budget_id and budget_line_id must be provided together');
     }
 
-    const budget = await this.prisma.financeBudget.findUnique({
+    const budget = await this.drizzle.financeBudget.findUnique({
       where: { id: String(data.budget_id) },
       include: {
         currentActiveRevision: {
@@ -2187,19 +2187,19 @@ export class RequestsService {
 
   private withBudgetSelection(data: Record<string, any>, selection: { budgetId: string; budgetRevisionId: string; budgetLineId: string } | null) {
     const base = { ...data } as Record<string, unknown>;
-    if (!selection) return base as Prisma.InputJsonValue;
+    if (!selection) return base as Drizzle.InputJsonValue;
     return {
       ...base,
       budget_id: selection.budgetId,
       budget_revision_id: selection.budgetRevisionId,
       budget_line_id: selection.budgetLineId,
-    } as Prisma.InputJsonValue;
+    } as Drizzle.InputJsonValue;
   }
 
   private async syncBudgetCommitmentForRequest(request: {
     id: bigint;
     status: string;
-    totalAmount?: Prisma.Decimal | number | null;
+    totalAmount?: Drizzle.Decimal | number | null;
     data?: unknown;
   }) {
     const data = request.data && typeof request.data === 'object' && !Array.isArray(request.data)
@@ -2207,7 +2207,7 @@ export class RequestsService {
       : {};
 
     if (!data.budget_id || !data.budget_line_id || !data.budget_revision_id) {
-      await this.prisma.financeBudgetCommitment.updateMany({
+      await this.drizzle.financeBudgetCommitment.updateMany({
         where: { requestId: request.id },
         data: { status: 'released', actualizedAmount: null },
       });
@@ -2222,7 +2222,7 @@ export class RequestsService {
         : 'released';
     const amount = Number(request.totalAmount ?? 0);
 
-    await this.prisma.financeBudgetCommitment.upsert({
+    await this.drizzle.financeBudgetCommitment.upsert({
       where: {
         unique_request_budget_line_commitment: {
           requestId: request.id,
@@ -2247,7 +2247,7 @@ export class RequestsService {
   }
 
   private async getRequestOrThrow(id: string) {
-    const request = await this.prisma.requestInstance.findUnique({
+    const request = await this.drizzle.requestInstance.findUnique({
       where: { id: toBigInt(id) }
     });
     if (!request) throw new NotFoundException('Request not found');
@@ -2255,12 +2255,12 @@ export class RequestsService {
   }
 
   private async hasEligibleHandoverColleague(userId: bigint): Promise<boolean> {
-    const memberships = await this.prisma.groupUser.findMany({
+    const memberships = await this.drizzle.groupUser.findMany({
       where: { userId },
       select: { groupId: true }
     });
     if (!memberships.length) return false;
-    const colleague = await this.prisma.groupUser.findFirst({
+    const colleague = await this.drizzle.groupUser.findFirst({
       where: {
         groupId: { in: memberships.map((m) => m.groupId) },
         userId: { not: userId }
@@ -2336,7 +2336,7 @@ export class RequestsService {
     const leave = await this.getLeaveRequestMeta(requestId);
     if (!leave) return;
 
-    const existingDebit = await this.prisma.leaveBalanceLedger.findFirst({
+    const existingDebit = await this.drizzle.leaveBalanceLedger.findFirst({
       where: {
         sourceRequestId: requestId,
         entryType: 'request_debit'
@@ -2346,7 +2346,7 @@ export class RequestsService {
 
     await this.ensureLeaveBalanceForApproval(requestId);
 
-    await this.prisma.leaveBalanceLedger.create({
+    await this.drizzle.leaveBalanceLedger.create({
       data: {
         userId: leave.user_id,
         leaveTypeKey: leave.leave_type_key,
@@ -2359,7 +2359,7 @@ export class RequestsService {
         metadata: {
           request_id: requestId.toString(),
           leave_type_key: leave.leave_type_key
-        } as Prisma.InputJsonValue
+        } as Drizzle.InputJsonValue
       }
     });
   }
@@ -2368,7 +2368,7 @@ export class RequestsService {
     const leave = await this.getLeaveRequestMeta(requestId);
     if (!leave) return;
 
-    const existingDebit = await this.prisma.leaveBalanceLedger.findFirst({
+    const existingDebit = await this.drizzle.leaveBalanceLedger.findFirst({
       where: {
         sourceRequestId: requestId,
         entryType: 'request_debit'
@@ -2376,7 +2376,7 @@ export class RequestsService {
     });
     if (existingDebit) return;
 
-    const request = await this.prisma.requestInstance.findUnique({
+    const request = await this.drizzle.requestInstance.findUnique({
       where: { id: requestId },
       select: { data: true }
     });
@@ -2386,7 +2386,7 @@ export class RequestsService {
     const entitlements = await this.resolveLeaveEntitlements(leave.user_id, leave.period_year);
     const entitledDays = Number(entitlements[leave.leave_type_key] ?? 0);
 
-    const aggregate = await this.prisma.leaveBalanceLedger.aggregate({
+    const aggregate = await this.drizzle.leaveBalanceLedger.aggregate({
       where: {
         userId: leave.user_id,
         leaveTypeKey: leave.leave_type_key,
@@ -2404,7 +2404,7 @@ export class RequestsService {
   }
 
   private async revertLeaveDebitIfNeeded(requestId: bigint, actorId: string, reason: string) {
-    const debit = await this.prisma.leaveBalanceLedger.findFirst({
+    const debit = await this.drizzle.leaveBalanceLedger.findFirst({
       where: {
         sourceRequestId: requestId,
         entryType: 'request_debit'
@@ -2412,7 +2412,7 @@ export class RequestsService {
     });
     if (!debit) return;
 
-    const existingReversal = await this.prisma.leaveBalanceLedger.findFirst({
+    const existingReversal = await this.drizzle.leaveBalanceLedger.findFirst({
       where: {
         sourceRequestId: requestId,
         entryType: 'reversal'
@@ -2420,7 +2420,7 @@ export class RequestsService {
     });
     if (existingReversal) return;
 
-    await this.prisma.leaveBalanceLedger.create({
+    await this.drizzle.leaveBalanceLedger.create({
       data: {
         userId: debit.userId,
         leaveTypeKey: debit.leaveTypeKey,
@@ -2433,7 +2433,7 @@ export class RequestsService {
         metadata: {
           request_id: requestId.toString(),
           reason
-        } as Prisma.InputJsonValue
+        } as Drizzle.InputJsonValue
       }
     });
   }
@@ -2444,7 +2444,7 @@ export class RequestsService {
     days_requested: number;
     period_year: number;
   } | null> {
-    const request = await this.prisma.requestInstance.findUnique({
+    const request = await this.drizzle.requestInstance.findUnique({
       where: { id: requestId },
       include: {
         requestType: { select: { name: true, taxonomyKeys: true, formSchema: true } }
@@ -2509,7 +2509,7 @@ export class RequestsService {
     const now = new Date();
     const context = userId ? await this.resolvePolicyContextForUser(userId) : null;
 
-    const rows = await this.prisma.policy.findMany({
+    const rows = await this.drizzle.policy.findMany({
       where: {
         module: 'leave',
         policyKey: { in: ['leave_entitlements', 'entitlement'] },
@@ -2547,7 +2547,7 @@ export class RequestsService {
 
     if (userId && Number.isFinite(year) && year > 2000) {
       const previousYear = year - 1;
-      const previousDeltaRows = await this.prisma.leaveBalanceLedger.groupBy({
+      const previousDeltaRows = await this.drizzle.leaveBalanceLedger.groupBy({
         by: ['leaveTypeKey'],
         where: {
           userId,
@@ -2607,7 +2607,7 @@ export class RequestsService {
   }
 
   private async getDefaultLeaveRulesFromRequestTypes() {
-    const types = await this.prisma.requestType.findMany({
+    const types = await this.drizzle.requestType.findMany({
       where: { isActive: true },
       select: {
         name: true,
@@ -2639,14 +2639,14 @@ export class RequestsService {
   }
 
   private async resolvePolicyContextForUser(userId: bigint) {
-    const [profile, primaryTeam] = await this.prisma.$transaction([
-      this.prisma.profile.findUnique({
+    const [profile, primaryTeam] = await this.drizzle.$transaction([
+      this.drizzle.profile.findUnique({
         where: { id: userId },
         include: {
           employeeProfile: { select: { employmentType: true } }
         }
       }),
-      this.prisma.groupUser.findFirst({
+      this.drizzle.groupUser.findFirst({
         where: { userId, isPrimary: true },
         select: { groupId: true }
       })
@@ -2794,7 +2794,7 @@ export class RequestsService {
   }
 
   private async getFormattedRequestNumber(requestId: bigint): Promise<string> {
-    const request = await this.prisma.requestInstance.findUnique({
+    const request = await this.drizzle.requestInstance.findUnique({
       where: { id: requestId },
       select: {
         id: true,
@@ -2844,7 +2844,7 @@ export class RequestsService {
   }
 
   private async getRequestNotificationSummary(requestId: bigint): Promise<RequestNotificationSummary> {
-    const request = await this.prisma.requestInstance.findUnique({
+    const request = await this.drizzle.requestInstance.findUnique({
       where: { id: requestId },
       select: {
         id: true,
@@ -2971,7 +2971,7 @@ export class RequestsService {
   }
 
   private async getApprovalSummary(instanceId: string) {
-    const instance = await this.prisma.workflowInstance.findUnique({
+    const instance = await this.drizzle.workflowInstance.findUnique({
       where: { id: instanceId },
       include: {
         currentStep: {
@@ -3002,12 +3002,12 @@ export class RequestsService {
     );
     const performers =
       performerIds.length > 0
-        ? await this.prisma.profile.findMany({
-            where: { id: { in: performerIds.map((id) => toBigInt(id)) } },
+        ? await this.drizzle.profile.findMany({
+            where: { id: { in: (performerIds as string[]).map((id) => toBigInt(id)) } },
             select: { id: true, username: true, email: true, firstName: true, lastName: true }
           })
         : [];
-    const performerMap = new Map(
+    const performerMap = new Map<string, { name: string; email: string | null }>(
       performers.map((user) => {
         const fullName = `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim();
         return [user.id.toString(), { name: fullName || user.username || user.email, email: user.email ?? null }];
@@ -3046,7 +3046,7 @@ export class RequestsService {
     return { done, pending, required_steps };
   }
 
-  private async ensureFileAssetsExist(tx: Prisma.TransactionClient | PrismaService, fileIds: string[]) {
+  private async ensureFileAssetsExist(tx: Drizzle.TransactionClient | DrizzleService, fileIds: string[]) {
     const count = await tx.fileAsset.count({
       where: { id: { in: fileIds } }
     });
@@ -3061,7 +3061,7 @@ export class RequestsService {
     actorId: string,
     details?: { action?: string; comment?: string }
   ) {
-    return this.prisma.requestInstance.update({
+    return this.drizzle.requestInstance.update({
       where: { id: request.id },
       data: {
         status: nextStatus as any,
@@ -3079,7 +3079,7 @@ export class RequestsService {
   private withStateEvent(
     data: unknown,
     event: { from: string; to: string; by: string; action?: string; comment?: string }
-  ): Prisma.InputJsonValue {
+  ): Drizzle.InputJsonValue {
     const base =
       data && typeof data === 'object' && !Array.isArray(data)
         ? ({ ...(data as Record<string, unknown>) } as Record<string, unknown>)
@@ -3096,10 +3096,10 @@ export class RequestsService {
     return {
       ...base,
       state_events: [...existing, stateEvent]
-    } as Prisma.InputJsonValue;
+    } as Drizzle.InputJsonValue;
   }
 
-  private withRetirementData(data: Prisma.InputJsonValue, dto: RetireRequestDto): Prisma.InputJsonValue {
+  private withRetirementData(data: Drizzle.InputJsonValue, dto: RetireRequestDto): Drizzle.InputJsonValue {
     const base =
       data && typeof data === 'object' && !Array.isArray(data)
         ? ({ ...(data as Record<string, unknown>) } as Record<string, unknown>)
@@ -3114,14 +3114,14 @@ export class RequestsService {
         breakdown: dto.breakdown ?? null,
         submitted_at: new Date().toISOString()
       }
-    } as Prisma.InputJsonValue;
+    } as Drizzle.InputJsonValue;
   }
 
   private async applyRetirementToPaymentVouchers(requestId: bigint, dto: RetireRequestDto) {
     const voucherWhere = dto.voucher_id
       ? { requestId, id: dto.voucher_id }
       : { requestId };
-    const vouchers = await this.prisma.financePaymentVoucher.findMany({
+    const vouchers = await this.drizzle.financePaymentVoucher.findMany({
       where: voucherWhere,
       orderBy: { disbursedAt: 'asc' }
     });
@@ -3139,7 +3139,7 @@ export class RequestsService {
     }
     let remaining = dto.retired_amount ?? totalVoucherBalance;
     if (remaining <= 0) {
-      const allVouchers = await this.prisma.financePaymentVoucher.findMany({ where: { requestId } });
+      const allVouchers = await this.drizzle.financePaymentVoucher.findMany({ where: { requestId } });
       const outstanding = allVouchers.reduce(
         (sum, voucher) => sum + Math.max(0, Number(voucher.amount) - Number(voucher.retiredAmount)),
         0
@@ -3160,7 +3160,7 @@ export class RequestsService {
       const nextStatus =
         nextRetired >= voucherAmount ? 'retired' : nextRetired > 0 ? 'partial' : 'not_retired';
 
-      await this.prisma.financePaymentVoucher.update({
+      await this.drizzle.financePaymentVoucher.update({
         where: { id: voucher.id },
         data: {
           retiredAmount: nextRetired,
@@ -3173,7 +3173,7 @@ export class RequestsService {
             retirement_notes: dto.notes ?? null,
             retirement_file_ids: dto.retirement_file_ids ?? [],
             breakdown: dto.breakdown ?? null
-          } as Prisma.InputJsonValue
+          } as Drizzle.InputJsonValue
         }
       });
       touched.push({ id: voucher.id, voucher_number: voucher.voucherNumber, allocated: allocate });
@@ -3181,7 +3181,7 @@ export class RequestsService {
       remaining -= allocate;
     }
 
-    const allVouchers = await this.prisma.financePaymentVoucher.findMany({ where: { requestId } });
+    const allVouchers = await this.drizzle.financePaymentVoucher.findMany({ where: { requestId } });
     const outstanding = allVouchers.reduce(
       (sum, voucher) => sum + Math.max(0, Number(voucher.amount) - Number(voucher.retiredAmount)),
       0
@@ -3190,13 +3190,13 @@ export class RequestsService {
   }
 
   private async isPendingApprovalForUser(requestId: string, userId: string) {
-    const request = await this.prisma.requestInstance.findUnique({
+    const request = await this.drizzle.requestInstance.findUnique({
       where: { id: toBigInt(requestId) },
       select: { workflowInstanceId: true, teamId: true, status: true }
     });
     if (!request?.workflowInstanceId || !['sent', 'approval'].includes(request.status)) return false;
 
-    const instance = await this.prisma.workflowInstance.findUnique({
+    const instance = await this.drizzle.workflowInstance.findUnique({
       where: { id: request.workflowInstanceId },
       include: { currentStep: { include: { approvers: true } } }
     });
@@ -3215,12 +3215,12 @@ export class RequestsService {
   }
 
   private async listCurrentApproverUserIds(requestId: bigint): Promise<string[]> {
-    const request = await this.prisma.requestInstance.findUnique({
+    const request = await this.drizzle.requestInstance.findUnique({
       where: { id: requestId },
       select: { teamId: true, workflowInstanceId: true }
     });
     if (!request?.workflowInstanceId) return [];
-    const instance = await this.prisma.workflowInstance.findUnique({
+    const instance = await this.drizzle.workflowInstance.findUnique({
       where: { id: request.workflowInstanceId },
       include: { currentStep: { include: { approvers: true } } }
     });
@@ -3253,7 +3253,7 @@ export class RequestsService {
     ) {
       if (!teamId) return false;
       return (
-        (await this.prisma.groupUser.count({
+        (await this.drizzle.groupUser.count({
           where: {
             groupId: teamId,
             userId: toBigInt(userId),
@@ -3268,7 +3268,7 @@ export class RequestsService {
       (approverType === 'role' && (approverId === 'team_lead_or_manager' || approverId === 'manager'))
     ) {
       if (teamId) {
-        const leadOrManager = await this.prisma.groupUser.count({
+        const leadOrManager = await this.drizzle.groupUser.count({
           where: {
             groupId: teamId,
             userId: toBigInt(userId),
@@ -3279,7 +3279,7 @@ export class RequestsService {
       }
 
       return (
-        (await this.prisma.userRole.count({
+        (await this.drizzle.userRole.count({
           where: {
             profileId: toBigInt(userId),
             role: { slug: 'manager' },
@@ -3293,7 +3293,7 @@ export class RequestsService {
         approverType === 'role' && approverId === 'accountant'
           ? ['accountant', 'finance_manager']
           : [approverId];
-      const hasRole = await this.prisma.userRole.count({
+      const hasRole = await this.drizzle.userRole.count({
         where: {
           profileId: toBigInt(userId),
           role: { slug: { in: roleSlugs } },
@@ -3315,7 +3315,7 @@ export class RequestsService {
               ? 'hr.approve'
               : approverId;
 
-      const hasPermission = await this.prisma.rolePermission.count({
+      const hasPermission = await this.drizzle.rolePermission.count({
         where: {
           permission: { slug: permissionSlug },
           role: {
@@ -3346,7 +3346,7 @@ export class RequestsService {
       (approverType === 'role' && approverId === 'team_lead')
     ) {
       if (!teamId) return [];
-      const rows = await this.prisma.groupUser.findMany({
+      const rows = await this.drizzle.groupUser.findMany({
         where: { groupId: teamId, role: GroupUserRole.moderator },
         select: { userId: true },
       });
@@ -3359,14 +3359,14 @@ export class RequestsService {
     ) {
       const ids = new Set<string>();
       if (teamId) {
-        const rows = await this.prisma.groupUser.findMany({
+        const rows = await this.drizzle.groupUser.findMany({
           where: { groupId: teamId, role: { in: [GroupUserRole.moderator, GroupUserRole.admin] } },
           select: { userId: true },
         });
         for (const row of rows) ids.add(row.userId.toString());
       }
 
-      const managers = await this.prisma.userRole.findMany({
+      const managers = await this.drizzle.userRole.findMany({
         where: { role: { slug: 'manager' } },
         select: { profileId: true },
       });
@@ -3381,7 +3381,7 @@ export class RequestsService {
         approverType === 'role' && approverId === 'accountant'
           ? ['accountant', 'finance_manager']
           : [approverId];
-      const directRoleUsers = await this.prisma.userRole.findMany({
+      const directRoleUsers = await this.drizzle.userRole.findMany({
         where: { role: { slug: { in: roleSlugs } } },
         select: { profileId: true },
       });
@@ -3400,7 +3400,7 @@ export class RequestsService {
             : approverId === 'hr'
               ? 'hr.approve'
               : approverId;
-      const permissionUsers = await this.prisma.userRole.findMany({
+      const permissionUsers = await this.drizzle.userRole.findMany({
         where: {
           role: {
             permissions: {
@@ -3435,7 +3435,7 @@ export class RequestsService {
     for (const targetUserId of recipients) {
       if (excludedUserId && targetUserId === excludedUserId) continue;
       await this.notificationsService.create({
-        userId: targetUserId,
+        userId: String(targetUserId),
         type: 'action',
         title: 'Request awaiting approval',
         message,
@@ -3459,7 +3459,7 @@ export class RequestsService {
   ) {
     let instanceId = workflowInstanceId;
     if (!instanceId) {
-      const request = await this.prisma.requestInstance.findUnique({
+      const request = await this.drizzle.requestInstance.findUnique({
         where: { id: requestId },
         select: { workflowInstanceId: true }
       });
@@ -3467,7 +3467,7 @@ export class RequestsService {
     }
     if (!instanceId) return;
 
-    const history = await this.prisma.workflowHistory.findMany({
+    const history = await this.drizzle.workflowHistory.findMany({
       where: { instanceId },
       select: { performedBy: true }
     });
@@ -3486,7 +3486,7 @@ export class RequestsService {
     for (const targetUserId of previousApprovers) {
       if (excludedUserId && targetUserId === excludedUserId) continue;
       await this.notificationsService.create({
-        userId: targetUserId,
+        userId: String(targetUserId),
         type: 'action',
         title: 'Request Action Update',
         message,
@@ -3507,17 +3507,17 @@ export class RequestsService {
     data?: Record<string, unknown>
   ) {
     if (!instanceId) return;
-    await this.prisma.workflowHistory.create({
+    await this.drizzle.workflowHistory.create({
       data: {
         instanceId,
         action,
         performedBy: toBigInt(performedBy),
-        data: (data ?? {}) as Prisma.InputJsonValue
+        data: (data ?? {}) as Drizzle.InputJsonValue
       }
     });
   }
 
-  private async ensureStaffRequestSequenceFloor(db: Prisma.TransactionClient | PrismaService) {
+  private async ensureStaffRequestSequenceFloor(db: Drizzle.TransactionClient | DrizzleService) {
     const floor = (STAFF_REQUEST_SEQUENCE_START - BigInt(1)).toString();
     await db.$executeRawUnsafe(
       `SELECT setval(pg_get_serial_sequence('sta_request_instances','id'), GREATEST((SELECT COALESCE(MAX(id), 1) FROM sta_request_instances), ${floor}), true)`

@@ -1,14 +1,14 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '$common/prisma/prisma.service';
+import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { AttachFileDto } from '$modules/platform/files/dto/attach-file.dto';
-import { Prisma } from '@prisma/client';
+import { Drizzle } from '$common/db/drizzle-compat';
 import { toBigInt } from '$common/utils/ids';
 import { paginatedResponse } from '$common/helpers/paginated-response';
 import { extname } from 'node:path';
 
 @Injectable()
 export class FilesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly drizzle: DrizzleService) {}
 
   private buildPublicUrl(storagePath: string) {
     const base = (process.env.FILE_BASE_URL || process.env.APP_URL || process.env.APP_BASE_URL || '').replace(/\/+$/, '');
@@ -20,8 +20,8 @@ export class FilesService {
     const page = Math.max(1, Number(query.page ?? 1));
     const perPage = Math.min(100, Math.max(1, Number(query.per_page ?? 20)));
 
-    const where: Prisma.FileAssetWhereInput = {};
-    const andConditions: Prisma.FileAssetWhereInput[] = [];
+    const where: Drizzle.FileAssetWhereInput = {};
+    const andConditions: Drizzle.FileAssetWhereInput[] = [];
 
     if (query.organization_id) {
       where.organizationId = toBigInt(String(query.organization_id));
@@ -68,8 +68,8 @@ export class FilesService {
       where.AND = andConditions;
     }
 
-    const [data, total] = await this.prisma.$transaction([
-      this.prisma.fileAsset.findMany({
+    const [data, total] = await this.drizzle.$transaction([
+      this.drizzle.fileAsset.findMany({
         where,
         include: {
           uploader: {
@@ -84,7 +84,7 @@ export class FilesService {
         skip: (page - 1) * perPage,
         take: perPage
       }),
-      this.prisma.fileAsset.count({ where })
+      this.drizzle.fileAsset.count({ where })
     ]);
 
     const withUsage =
@@ -113,14 +113,14 @@ export class FilesService {
     }
 
     if (dto.organization_id) {
-      const org = await this.prisma.organization.findUnique({
+      const org = await this.drizzle.organization.findUnique({
         where: { id: toBigInt(dto.organization_id) },
         select: { id: true }
       });
       if (!org) throw new NotFoundException('Organization not found');
     }
 
-    return this.prisma.fileAsset.create({
+    return this.drizzle.fileAsset.create({
       data: {
         storageDisk: dto.storage_disk ?? 'local',
         storagePath: dto.storage_path || dto.file_url!,
@@ -130,7 +130,7 @@ export class FilesService {
         publicUrl: dto.file_url ?? null,
         organizationId: dto.organization_id ? toBigInt(dto.organization_id) : null,
         uploadedBy: userId ? toBigInt(userId) : null,
-        metadata: (dto.metadata ?? null) as Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput
+        metadata: (dto.metadata ?? null) as Drizzle.InputJsonValue | Drizzle.NullableJsonNullValueInput
       }
     });
   }
@@ -148,7 +148,7 @@ export class FilesService {
   ) {
     if (!file?.filename) throw new BadRequestException('file is required');
     if (payload?.organization_id) {
-      const org = await this.prisma.organization.findUnique({
+      const org = await this.drizzle.organization.findUnique({
         where: { id: toBigInt(payload.organization_id) },
         select: { id: true }
       });
@@ -159,7 +159,7 @@ export class FilesService {
     const mimeType = file.mimetype || (ext === '.pdf' ? 'application/pdf' : 'application/octet-stream');
     const storagePath = `uploads/files/${file.filename}`;
 
-    return this.prisma.fileAsset.create({
+    return this.drizzle.fileAsset.create({
       data: {
         storageDisk: 'local',
         storagePath,
@@ -169,13 +169,13 @@ export class FilesService {
         publicUrl: this.buildPublicUrl(storagePath),
         organizationId: payload?.organization_id ? toBigInt(payload.organization_id) : null,
         uploadedBy: userId ? toBigInt(userId) : null,
-        metadata: (payload?.metadata ?? { local_path: file.path }) as Prisma.InputJsonValue
+        metadata: (payload?.metadata ?? { local_path: file.path }) as Drizzle.InputJsonValue
       }
     });
   }
 
   async remove(id: string) {
-    const file = await this.prisma.fileAsset.findUnique({
+    const file = await this.drizzle.fileAsset.findUnique({
       where: { id },
       select: { id: true, fileName: true, storagePath: true }
     });
@@ -186,12 +186,12 @@ export class FilesService {
       throw new BadRequestException('Cannot delete file because it is attached to request records');
     }
 
-    await this.prisma.fileAsset.delete({ where: { id } });
+    await this.drizzle.fileAsset.delete({ where: { id } });
     return { success: true, id: file.id, file_name: file.fileName };
   }
 
   async findOne(id: string) {
-    const file = await this.prisma.fileAsset.findUnique({
+    const file = await this.drizzle.fileAsset.findUnique({
       where: { id },
       select: { id: true, fileName: true, mimeType: true, fileSize: true, storagePath: true, publicUrl: true },
     });
@@ -207,7 +207,7 @@ export class FilesService {
   }
 
   async getUsage(id: string) {
-    const file = await this.prisma.fileAsset.findUnique({
+    const file = await this.drizzle.fileAsset.findUnique({
       where: { id },
       select: { id: true, fileName: true, storagePath: true, publicUrl: true }
     });
@@ -217,14 +217,14 @@ export class FilesService {
   }
 
   private async getUsageSummary(fileId: string) {
-    const [requestItems, vouchers] = await this.prisma.$transaction([
-      this.prisma.requestItem.count({ where: { fileId } }),
-      this.prisma.financePaymentVoucher.count({ where: { evidenceFileId: fileId } })
+    const [requestItems, vouchers] = await this.drizzle.$transaction([
+      this.drizzle.requestItem.count({ where: { fileId } }),
+      this.drizzle.financePaymentVoucher.count({ where: { evidenceFileId: fileId } })
     ]);
 
-    const retirementCandidates = await this.prisma.financePaymentVoucher.findMany({
+    const retirementCandidates = await this.drizzle.financePaymentVoucher.findMany({
       where: {
-        metadata: { not: Prisma.DbNull }
+        metadata: { not: Drizzle.DbNull }
       },
       select: { id: true, voucherNumber: true, metadata: true }
     });

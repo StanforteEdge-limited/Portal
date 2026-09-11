@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '$common/prisma/prisma.service';
+import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { toBigInt } from '$common/utils/ids';
-import { Prisma } from '@prisma/client';
+import { Drizzle } from '$common/db/drizzle-compat';
 import { MailService } from '$common/mail/mail.service';
 
 type NotificationInput = {
@@ -10,7 +10,7 @@ type NotificationInput = {
   title: string;
   message: string;
   link?: string;
-  data?: Prisma.InputJsonValue;
+  data?: Drizzle.InputJsonValue;
   sentVia?: string[];
   notifiableType?: string;
   notifiableId?: string | number | bigint;
@@ -25,7 +25,7 @@ type NotificationInput = {
 @Injectable()
 export class NotificationsService {
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly drizzle: DrizzleService,
     private readonly mailService: MailService
   ) {}
 
@@ -50,7 +50,7 @@ export class NotificationsService {
   }
 
   async create(input: NotificationInput) {
-    const created = await this.prisma.notification.create({
+    const created = await this.drizzle.notification.create({
       data: {
         userId: toBigInt(input.userId),
         type: input.type ?? 'info',
@@ -71,7 +71,7 @@ export class NotificationsService {
       const recipientEmail =
         input.emailTo ??
         (
-          await this.prisma.profile.findUnique({
+          await this.drizzle.profile.findUnique({
             where: { id: toBigInt(input.userId) },
             select: { email: true }
           })
@@ -98,7 +98,7 @@ export class NotificationsService {
           });
 
           if (result.sent) {
-            await this.prisma.notification.update({
+            await this.drizzle.notification.update({
               where: { id: created.id },
               data: { sentVia: ['in-app', 'email'] }
             });
@@ -113,7 +113,7 @@ export class NotificationsService {
   }
 
   async listForUser(userId: string, status?: 'read' | 'unread') {
-    return this.prisma.notification.findMany({
+    return this.drizzle.notification.findMany({
       where: {
         userId: toBigInt(userId),
         ...(status ? { status } : {})
@@ -123,7 +123,7 @@ export class NotificationsService {
   }
 
   async markRead(userId: string, notificationId: string) {
-    return this.prisma.notification.updateMany({
+    return this.drizzle.notification.updateMany({
       where: {
         id: toBigInt(notificationId),
         userId: toBigInt(userId),
@@ -137,7 +137,7 @@ export class NotificationsService {
   }
 
   async markAllRead(userId: string) {
-    return this.prisma.notification.updateMany({
+    return this.drizzle.notification.updateMany({
       where: {
         userId: toBigInt(userId),
         status: 'unread'
@@ -150,7 +150,7 @@ export class NotificationsService {
   }
 
   async getOneForUser(userId: string, notificationId: string) {
-    return this.prisma.notification.findFirst({
+    return this.drizzle.notification.findFirst({
       where: {
         id: toBigInt(notificationId),
         userId: toBigInt(userId)
@@ -159,7 +159,7 @@ export class NotificationsService {
   }
 
   async unreadCount(userId: string) {
-    return this.prisma.notification.count({
+    return this.drizzle.notification.count({
       where: {
         userId: toBigInt(userId),
         status: 'unread'

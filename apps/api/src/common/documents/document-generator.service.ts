@@ -4,8 +4,8 @@ import { readFile } from 'node:fs/promises';
 import { extname, resolve } from 'node:path';
 import JSZip from 'jszip';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
-import { Prisma } from '@prisma/client';
-import { PrismaService } from '$common/prisma/prisma.service';
+import { Drizzle } from '$common/db/drizzle-compat';
+import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { PdfService } from '$common/pdf/pdf.service';
 import { MailService } from '$common/mail/mail.service';
 import { DeductionService } from '$modules/finance/finance/deduction.service';
@@ -27,7 +27,7 @@ import {
 @Injectable()
 export class DocumentGeneratorService {
   constructor(
-    readonly prisma: PrismaService,
+    readonly drizzle: DrizzleService,
     private readonly pdfService: PdfService,
     private readonly mailService: MailService,
     private readonly deductionService: DeductionService,
@@ -44,7 +44,7 @@ export class DocumentGeneratorService {
   }
 
   async fetchRequestRemittanceAllocationSummary(requestId: string): Promise<RequestRemittanceAllocationSummary[]> {
-    const rows = await this.prisma.financeRequestDeduction.findMany({
+    const rows = await this.drizzle.financeRequestDeduction.findMany({
       where: { requestId: toBigInt(requestId), remittanceAllocations: { some: {} } },
       include: {
         deductionType: { select: { name: true, code: true } },
@@ -175,7 +175,7 @@ export class DocumentGeneratorService {
   // ── Data Fetchers ─────────────────────────────────────────────────────────
 
   async fetchRequest(id: string) {
-    const request = await this.prisma.requestInstance.findUnique({
+    const request = await this.drizzle.requestInstance.findUnique({
       where: { id: toBigInt(id) },
       include: this.getRequestInclude(),
     });
@@ -184,7 +184,7 @@ export class DocumentGeneratorService {
   }
 
   async fetchSignatories(): Promise<Signatories> {
-    const row = await this.prisma.financeSetting.findUnique({
+    const row = await this.drizzle.financeSetting.findUnique({
       where: { key: 'default' },
       select: { config: true },
     });
@@ -206,7 +206,7 @@ export class DocumentGeneratorService {
 
   async resolveSignatureDataUri(fileId: unknown): Promise<string | null> {
     if (typeof fileId !== 'string' || !fileId) return null;
-    const asset = await this.prisma.fileAsset.findUnique({ where: { id: fileId } });
+    const asset = await this.drizzle.fileAsset.findUnique({ where: { id: fileId } });
     if (!asset) return null;
     const buf = await this.readAssetFileBuffer(asset);
     if (!buf) return null;
@@ -217,7 +217,7 @@ export class DocumentGeneratorService {
 
   async fetchApprovals(workflowInstanceId: string | null | undefined): Promise<ApprovalSummary> {
     if (!workflowInstanceId) return { done: [], pending: [] };
-    const instance = await this.prisma.workflowInstance.findUnique({
+    const instance = await this.drizzle.workflowInstance.findUnique({
       where: { id: workflowInstanceId },
       include: {
         currentStep: { include: { approvers: true } },
@@ -226,7 +226,7 @@ export class DocumentGeneratorService {
       },
     });
     if (!instance) return { done: [], pending: [] };
-    const stepMap = new Map(instance.workflow.steps.map((s) => [s.id, s.name]));
+    const stepMap = new Map<string, string>((instance.workflow.steps as any[]).map((s) => [String(s.id), s.name]));
     const performerIds = Array.from(
       new Set(
         instance.history
@@ -235,12 +235,12 @@ export class DocumentGeneratorService {
       ),
     );
     const performers = performerIds.length
-      ? await this.prisma.profile.findMany({
-          where: { id: { in: performerIds.map((id) => toBigInt(id)) } },
+      ? await this.drizzle.profile.findMany({
+          where: { id: { in: (performerIds as string[]).map((id) => toBigInt(id)) } },
           select: { id: true, username: true, email: true, firstName: true, lastName: true },
         })
       : [];
-    const performerMap = new Map(
+    const performerMap = new Map<string, { name: string; email: string | null }>(
       performers.map((u) => {
         const name = `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim();
         return [u.id.toString(), { name: name || u.username || u.email, email: u.email ?? null }];
@@ -269,7 +269,7 @@ export class DocumentGeneratorService {
   }
 
   async fetchPaymentVouchers(requestId: string): Promise<FullPaymentVoucher[]> {
-    return this.prisma.financePaymentVoucher.findMany({
+    return this.drizzle.financePaymentVoucher.findMany({
       where: { requestId: toBigInt(requestId) },
       include: {
         deductions: { include: { deductionType: true } },
@@ -287,7 +287,7 @@ export class DocumentGeneratorService {
   }
 
   async fetchPaymentVoucher(requestId: string, voucherId: string): Promise<FullPaymentVoucher> {
-    const pv = await this.prisma.financePaymentVoucher.findFirst({
+    const pv = await this.drizzle.financePaymentVoucher.findFirst({
       where: { requestId: toBigInt(requestId), id: voucherId },
       include: {
         deductions: { include: { deductionType: true } },
@@ -306,7 +306,7 @@ export class DocumentGeneratorService {
   }
 
   async recordArtifact(requestId: bigint, artifact: Record<string, string>) {
-    const request = await this.prisma.requestInstance.findUnique({
+    const request = await this.drizzle.requestInstance.findUnique({
       where: { id: requestId },
       select: { data: true },
     });
@@ -315,14 +315,14 @@ export class DocumentGeneratorService {
         ? ({ ...(request.data as Record<string, unknown>) } as Record<string, unknown>)
         : {};
     const currentArtifacts = Array.isArray(base.generated_artifacts) ? (base.generated_artifacts as unknown[]) : [];
-    await this.prisma.requestInstance.update({
+    await this.drizzle.requestInstance.update({
       where: { id: requestId },
       data: {
         data: {
           ...base,
           ...(artifact.voucher_no ? { voucher_number: artifact.voucher_no } : {}),
           generated_artifacts: [...currentArtifacts, artifact],
-        } as Prisma.InputJsonValue,
+        } as Drizzle.InputJsonValue,
       },
     });
   }
@@ -369,15 +369,15 @@ export class DocumentGeneratorService {
     const raw = String(value);
     try {
       if (kind === 'team' && /^\d+$/.test(raw)) {
-        const team = await this.prisma.group.findUnique({ where: { id: toBigInt(raw) }, select: { name: true } });
+        const team = await this.drizzle.group.findUnique({ where: { id: toBigInt(raw) }, select: { name: true } });
         return team?.name ?? raw;
       }
       if (kind === 'organization' && /^\d+$/.test(raw)) {
-        const org = await this.prisma.organization.findUnique({ where: { id: toBigInt(raw) }, select: { name: true } });
+        const org = await this.drizzle.organization.findUnique({ where: { id: toBigInt(raw) }, select: { name: true } });
         return org?.name ?? raw;
       }
       if (kind === 'taxonomy_term' && this.looksLikeUuid(raw)) {
-        const term = await this.prisma.taxonomyTerm.findUnique({ where: { id: raw }, select: { label: true } });
+        const term = await this.drizzle.taxonomyTerm.findUnique({ where: { id: raw }, select: { label: true } });
         return term?.label ?? raw;
       }
       return raw;
@@ -833,7 +833,7 @@ export class DocumentGeneratorService {
   // ── Request Thread ────────────────────────────────────────────────────────
 
   async fetchThread(requestId: string): Promise<RequestThread> {
-    const request = await this.prisma.requestInstance.findUnique({
+    const request = await this.drizzle.requestInstance.findUnique({
       where: { id: toBigInt(requestId) },
       include: {
         creator: { select: { id: true, username: true, email: true, firstName: true, lastName: true } },
@@ -876,7 +876,7 @@ export class DocumentGeneratorService {
       }
     }
     if (missingFileIds.size > 0) {
-      const extra = await this.prisma.fileAsset.findMany({
+      const extra = await this.drizzle.fileAsset.findMany({
         where: { id: { in: Array.from(missingFileIds) } },
         select: { id: true, fileName: true },
       });
@@ -916,7 +916,7 @@ export class DocumentGeneratorService {
     const isManualImport = Boolean(data.manual_import);
 
     // Fetch all workflow instances for this request to gather history across returns/resubmissions
-    const instances = await this.prisma.workflowInstance.findMany({
+    const instances = await this.drizzle.workflowInstance.findMany({
       where: {
         entityType: 'request',
         entityId: requestId,
@@ -971,7 +971,7 @@ export class DocumentGeneratorService {
       ),
     ];
     const performers = performerIds.length
-      ? await this.prisma.profile.findMany({
+      ? await this.drizzle.profile.findMany({
           where: { id: { in: performerIds.map((id) => toBigInt(id)) } },
           select: { id: true, username: true, email: true, firstName: true, lastName: true },
         })
@@ -1028,8 +1028,8 @@ export class DocumentGeneratorService {
       }
       thread.push({
         type: entryType,
-        actor_name: performer?.name ?? 'System',
-        actor_email: performer?.email ?? null,
+	        actor_name: (performer as any)?.name ?? 'System',
+	        actor_email: (performer as any)?.email ?? null,
         role_label: step ?? (entry.action === 'auto_approve' ? 'System' : 'Approver'),
         comment,
         at: entry.createdAt,

@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
-import { PrismaService } from '$common/prisma/prisma.service';
+import { Drizzle } from '$common/db/drizzle-compat';
+import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { paginatedResponse } from '$common/helpers/paginated-response';
 import { CreateTaxonomyDto } from '$modules/requests/taxonomy/dto/create-taxonomy.dto';
 import { SyncTaxonomyTermsDto } from '$modules/requests/taxonomy/dto/sync-taxonomy-terms.dto';
@@ -11,24 +11,24 @@ import { ReplaceEntityTagsDto } from '$modules/requests/taxonomy/dto/replace-ent
 
 @Injectable()
 export class TaxonomyService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly drizzle: DrizzleService) {}
 
   async list(query: Record<string, any>) {
     const includeInactive = query.include_inactive === 'true';
 
-    const [requestGroups, requestTypes, formFields] = await this.prisma.$transaction([
-      this.prisma.requestGroup.findMany({
+    const [requestGroups, requestTypes, formFields] = await this.drizzle.$transaction([
+      this.drizzle.requestGroup.findMany({
         where: includeInactive ? {} : { isActive: true },
         orderBy: { name: 'asc' }
       }),
-      this.prisma.requestType.findMany({
+      this.drizzle.requestType.findMany({
         where: {
           ...(includeInactive ? {} : { isActive: true }),
           ...(query.group_id ? { groupId: String(query.group_id) } : {})
         },
         orderBy: { name: 'asc' }
       }),
-      this.prisma.formField.findMany({
+      this.drizzle.formField.findMany({
         where: {
           fieldType: { in: ['select', 'radio', 'checkbox', 'multiselect'] }
         },
@@ -56,7 +56,7 @@ export class TaxonomyService {
     const includeInactive = query.include_inactive === 'true';
     const moduleFilter = query.module ? String(query.module) : undefined;
 
-    const items = await this.prisma.taxonomy.findMany({
+    const items = await this.drizzle.taxonomy.findMany({
       where: {
         ...(includeInactive ? {} : { isActive: true }),
         ...(moduleFilter ? { module: moduleFilter } : {})
@@ -74,7 +74,7 @@ export class TaxonomyService {
 
   async createTaxonomy(dto: CreateTaxonomyDto) {
     const key = dto.key.trim().toLowerCase().replace(/\s+/g, '_');
-    return this.prisma.taxonomy.create({
+    return this.drizzle.taxonomy.create({
       data: {
         key,
         name: dto.name.trim(),
@@ -87,11 +87,11 @@ export class TaxonomyService {
   }
 
   async updateTaxonomy(id: string, dto: UpdateTaxonomyDto) {
-    const existing = await this.prisma.taxonomy.findUnique({ where: { id } });
+    const existing = await this.drizzle.taxonomy.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Taxonomy not found');
 
     try {
-      return await this.prisma.taxonomy.update({
+      return await this.drizzle.taxonomy.update({
         where: { id },
         data: {
           key: dto.key ? dto.key.trim().toLowerCase().replace(/\s+/g, '_') : undefined,
@@ -104,7 +104,7 @@ export class TaxonomyService {
         include: { terms: { orderBy: [{ sortOrder: 'asc' }, { label: 'asc' }] } }
       });
     } catch (err) {
-      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      if (err instanceof Drizzle.DrizzleClientKnownRequestError && err.code === 'P2002') {
         throw new ConflictException('A taxonomy with this key already exists.');
       }
       throw err;
@@ -112,21 +112,21 @@ export class TaxonomyService {
   }
 
   async deleteTaxonomy(id: string) {
-    const existing = await this.prisma.taxonomy.findUnique({ where: { id } });
+    const existing = await this.drizzle.taxonomy.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Taxonomy not found');
-    await this.prisma.taxonomy.delete({ where: { id } });
+    await this.drizzle.taxonomy.delete({ where: { id } });
     return { success: true };
   }
 
   async syncTerms(taxonomyId: string, dto: SyncTaxonomyTermsDto) {
-    const taxonomy = await this.prisma.taxonomy.findUnique({ where: { id: taxonomyId } });
+    const taxonomy = await this.drizzle.taxonomy.findUnique({ where: { id: taxonomyId } });
     if (!taxonomy) throw new NotFoundException('Taxonomy not found');
 
     const terms = dto.terms
       .map((term) => term.trim())
       .filter((term, index, all) => term.length > 0 && all.indexOf(term) === index);
 
-    await this.prisma.$transaction(async (tx) => {
+    await this.drizzle.$transaction(async (tx) => {
       await tx.taxonomyTerm.deleteMany({ where: { taxonomyId } });
       if (terms.length > 0) {
         await tx.taxonomyTerm.createMany({
@@ -141,14 +141,14 @@ export class TaxonomyService {
       }
     });
 
-    return this.prisma.taxonomy.findUnique({
+    return this.drizzle.taxonomy.findUnique({
       where: { id: taxonomyId },
       include: { terms: { orderBy: [{ sortOrder: 'asc' }, { label: 'asc' }] } }
     });
   }
 
   async updateFieldOptions(fieldId: string, dto: UpdateFieldOptionsDto) {
-    const field = await this.prisma.formField.findUnique({ where: { id: fieldId } });
+    const field = await this.drizzle.formField.findUnique({ where: { id: fieldId } });
     if (!field) throw new NotFoundException('Form field not found');
 
     if (!['select', 'radio', 'checkbox', 'multiselect'].includes(field.fieldType)) {
@@ -159,10 +159,10 @@ export class TaxonomyService {
       .map((option) => option.trim())
       .filter((option, index, arr) => option.length > 0 && arr.indexOf(option) === index);
 
-    const updated = await this.prisma.formField.update({
+    const updated = await this.drizzle.formField.update({
       where: { id: fieldId },
       data: {
-        fieldOptions: options as Prisma.InputJsonValue
+        fieldOptions: options as Drizzle.InputJsonValue
       },
       include: {
         form: { select: { id: true, name: true } }
@@ -181,14 +181,14 @@ export class TaxonomyService {
   }
 
   async suggestTagTerms(taxonomyKey: string, query?: string) {
-    const taxonomy = await this.prisma.taxonomy.findUnique({
+    const taxonomy = await this.drizzle.taxonomy.findUnique({
       where: { key: this.normalizeTaxonomyKey(taxonomyKey) },
       select: { id: true },
     });
     if (!taxonomy) throw new NotFoundException('Taxonomy not found');
 
     const termQuery = String(query ?? '').trim();
-    const items = await this.prisma.taxonomyTerm.findMany({
+    const items = await this.drizzle.taxonomyTerm.findMany({
       where: {
         taxonomyId: taxonomy.id,
         isActive: true,
@@ -214,7 +214,7 @@ export class TaxonomyService {
 
     const preferredValue = dto.value?.trim() || this.slugify(label);
     const value = preferredValue.slice(0, 120);
-    const existing = await this.prisma.taxonomyTerm.findFirst({
+    const existing = await this.drizzle.taxonomyTerm.findFirst({
       where: {
         taxonomyId: taxonomy.id,
         OR: [
@@ -225,11 +225,11 @@ export class TaxonomyService {
     });
     if (existing) return existing;
 
-    const sortAnchor = await this.prisma.taxonomyTerm.count({
+    const sortAnchor = await this.drizzle.taxonomyTerm.count({
       where: { taxonomyId: taxonomy.id },
     });
 
-    return this.prisma.taxonomyTerm.create({
+    return this.drizzle.taxonomyTerm.create({
       data: {
         taxonomyId: taxonomy.id,
         value,
@@ -241,13 +241,13 @@ export class TaxonomyService {
   }
 
   async listEntityTags(entityType: string, entityId: string, taxonomyKey: string) {
-    const taxonomy = await this.prisma.taxonomy.findUnique({
+    const taxonomy = await this.drizzle.taxonomy.findUnique({
       where: { key: this.normalizeTaxonomyKey(taxonomyKey) },
       select: { id: true, key: true, name: true, module: true },
     });
     if (!taxonomy) throw new NotFoundException('Taxonomy not found');
 
-    const rows = await this.prisma.taxonomyTagAssignment.findMany({
+    const rows = await this.drizzle.taxonomyTagAssignment.findMany({
       where: {
         taxonomyId: taxonomy.id,
         entityType: this.normalizeEntityType(entityType),
@@ -292,7 +292,7 @@ export class TaxonomyService {
     const wantedTermIds = Array.from(new Set([...termIds, ...createdTerms.map((term) => term.id)]));
 
     const existingTerms = wantedTermIds.length > 0
-      ? await this.prisma.taxonomyTerm.findMany({
+      ? await this.drizzle.taxonomyTerm.findMany({
           where: {
             taxonomyId: taxonomy.id,
             id: { in: wantedTermIds },
@@ -303,7 +303,7 @@ export class TaxonomyService {
     const validTermIds = new Set(existingTerms.map((term) => term.id));
     const filteredTermIds = wantedTermIds.filter((id) => validTermIds.has(id));
 
-    await this.prisma.$transaction(async (tx) => {
+    await this.drizzle.$transaction(async (tx) => {
       await tx.taxonomyTagAssignment.deleteMany({
         where: {
           taxonomyId: taxonomy.id,
@@ -329,7 +329,7 @@ export class TaxonomyService {
     return this.listEntityTags(normalizedEntityType, normalizedEntityId, taxonomy.key);
   }
 
-  private normalizeOptions(fieldOptions: Prisma.JsonValue | null): string[] {
+  private normalizeOptions(fieldOptions: Drizzle.JsonValue | null): string[] {
     if (Array.isArray(fieldOptions)) {
       return fieldOptions.filter((value): value is string => typeof value === 'string');
     }
@@ -372,10 +372,10 @@ export class TaxonomyService {
 
   private async resolveOrCreateTagTaxonomy(taxonomyKey: string, module?: string) {
     const key = this.normalizeTaxonomyKey(taxonomyKey);
-    const existing = await this.prisma.taxonomy.findUnique({ where: { key } });
+    const existing = await this.drizzle.taxonomy.findUnique({ where: { key } });
     if (existing) return existing;
 
-    return this.prisma.taxonomy.create({
+    return this.drizzle.taxonomy.create({
       data: {
         key,
         name: key

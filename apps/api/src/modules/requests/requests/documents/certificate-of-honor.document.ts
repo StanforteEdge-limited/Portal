@@ -27,7 +27,7 @@ export class CertificateOfHonorDocument implements Document<CertificateContext> 
 
     let signatureDataUri: string | null = null;
     if (options.signature_file_id) {
-      const sigAsset = await this.engine.prisma.fileAsset.findUnique({
+      const sigAsset = await this.engine.drizzle.fileAsset.findUnique({
         where: { id: options.signature_file_id as string },
       });
       if (sigAsset) {

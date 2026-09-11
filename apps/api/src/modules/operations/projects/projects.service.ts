@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { GroupUserRole, Prisma } from '@prisma/client';
-import { PrismaService } from '$common/prisma/prisma.service';
+import { GroupUserRole, Drizzle } from '$common/db/drizzle-compat';
+import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { paginatedResponse } from '$common/helpers/paginated-response';
 import { toBigInt } from '$common/utils/ids';
 import { AddProjectMemberDto } from '$modules/operations/projects/dto/add-project-member.dto';
@@ -9,10 +9,10 @@ import { UpdateProjectDto } from '$modules/operations/projects/dto/update-projec
 
 @Injectable()
 export class ProjectsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly drizzle: DrizzleService) {}
 
   async list(query: Record<string, any>) {
-    const where: Prisma.ProjectWhereInput = {};
+    const where: Drizzle.ProjectWhereInput = {};
     if (query.organization_id) where.organizationId = this.parseId(String(query.organization_id), 'organization id');
     if (query.active_only === 'true') where.isActive = true;
     if (query.search) {
@@ -28,7 +28,7 @@ export class ProjectsService {
       };
     }
 
-    const rows = await this.prisma.project.findMany({
+    const rows = await this.drizzle.project.findMany({
       where,
       include: {
         organization: true,
@@ -47,7 +47,7 @@ export class ProjectsService {
 
   async get(id: string) {
     const projectId = this.parseId(id, 'project id');
-    const project = await this.prisma.project.findUnique({
+    const project = await this.drizzle.project.findUnique({
       where: { id: projectId },
       include: {
         organization: true,
@@ -71,13 +71,13 @@ export class ProjectsService {
       : null;
 
     if (organizationId) {
-      const org = await this.prisma.organization.findUnique({ where: { id: organizationId } });
+      const org = await this.drizzle.organization.findUnique({ where: { id: organizationId } });
       if (!org) throw new NotFoundException('Organization not found');
     }
 
     const ownerId = dto.owner_user_id ? this.parseId(dto.owner_user_id, 'owner user id') : createdById;
 
-    const project = await this.prisma.$transaction(async (tx) => {
+    const project = await this.drizzle.$transaction(async (tx) => {
       const created = await tx.project.create({
         data: {
           name: dto.name,
@@ -145,13 +145,13 @@ export class ProjectsService {
     const actorId = this.parseId(userId, 'user id');
     await this.ensureProjectAccess(projectId, actorId);
 
-    const existing = await this.prisma.project.findUnique({
+    const existing = await this.drizzle.project.findUnique({
       where: { id: projectId },
       include: { governance: true }
     });
     if (!existing) throw new NotFoundException('Project not found');
 
-    const projectData: Prisma.ProjectUpdateInput = {
+    const projectData: Drizzle.ProjectUpdateInput = {
       updatedBy: actorId
     };
     if (dto.name !== undefined) projectData.name = dto.name;
@@ -165,7 +165,7 @@ export class ProjectsService {
     if (dto.governance_status !== undefined) governanceData.governanceStatus = dto.governance_status;
     if (dto.owner_user_id !== undefined) governanceData.ownerUserId = this.parseId(dto.owner_user_id, 'owner user id');
 
-    await this.prisma.$transaction(async (tx) => {
+    await this.drizzle.$transaction(async (tx) => {
       await tx.project.update({
         where: { id: projectId },
         data: projectData
@@ -188,7 +188,7 @@ export class ProjectsService {
     const actorId = this.parseId(userId, 'user id');
     await this.ensureProjectAccess(projectId, actorId);
 
-    const project = await this.prisma.project.findUnique({
+    const project = await this.drizzle.project.findUnique({
       where: { id: projectId },
       include: { governance: true }
     });
@@ -199,7 +199,7 @@ export class ProjectsService {
       throw new BadRequestException('Cannot archive project with open requests');
     }
 
-    await this.prisma.$transaction(async (tx) => {
+    await this.drizzle.$transaction(async (tx) => {
       await tx.project.update({
         where: { id: projectId },
         data: {
@@ -228,13 +228,13 @@ export class ProjectsService {
     const actorId = this.parseId(userId, 'user id');
     await this.ensureProjectAccess(projectId, actorId);
 
-    const project = await this.prisma.project.findUnique({
+    const project = await this.drizzle.project.findUnique({
       where: { id: projectId },
       include: { governance: true }
     });
     if (!project) throw new NotFoundException('Project not found');
 
-    await this.prisma.$transaction(async (tx) => {
+    await this.drizzle.$transaction(async (tx) => {
       await tx.project.update({
         where: { id: projectId },
         data: {
@@ -270,12 +270,12 @@ export class ProjectsService {
     await this.ensureProjectAccess(projectId, actor);
 
     const userId = this.parseId(dto.user_id, 'user id');
-    const profile = await this.prisma.profile.findUnique({ where: { id: userId } });
+    const profile = await this.drizzle.profile.findUnique({ where: { id: userId } });
     if (!profile) throw new NotFoundException('User not found');
 
     const role = (dto.role ?? 'member') as GroupUserRole;
 
-    await this.prisma.projectMember.upsert({
+    await this.drizzle.projectMember.upsert({
       where: {
         unique_project_user: {
           projectId,
@@ -299,7 +299,7 @@ export class ProjectsService {
     const actor = this.parseId(actorId, 'user id');
     await this.ensureProjectAccess(projectId, actor);
 
-    await this.prisma.projectMember.delete({
+    await this.drizzle.projectMember.delete({
       where: {
         unique_project_user: {
           projectId,
@@ -312,7 +312,7 @@ export class ProjectsService {
   }
 
   private async ensureProjectAccess(projectId: bigint, actorId: bigint) {
-    const membership = await this.prisma.projectMember.findFirst({
+    const membership = await this.drizzle.projectMember.findFirst({
       where: {
         projectId,
         userId: actorId,
@@ -341,14 +341,14 @@ export class ProjectsService {
 
   private async getProjectUsage(id: string) {
     const projectId = this.parseId(id, 'project id');
-    const project = await this.prisma.project.findUnique({
+    const project = await this.drizzle.project.findUnique({
       where: { id: projectId },
       select: { id: true, name: true }
     });
     if (!project) throw new NotFoundException('Project not found');
 
-    const requests = await this.prisma.requestInstance.findMany({
-      where: { data: { not: Prisma.DbNull } },
+    const requests = await this.drizzle.requestInstance.findMany({
+      where: { data: { not: Drizzle.DbNull } },
       select: { id: true, status: true, data: true }
     });
 

@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { PrismaService } from '$common/prisma/prisma.service';
+import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { WorkflowService } from '$modules/requests/workflow/workflow.service';
 import { NotificationsService } from '$modules/platform/notifications/notifications.service';
 import { MailService } from '$common/mail/mail.service';
@@ -11,11 +11,12 @@ import { CreateGrnDto } from '$modules/finance/procurement/dto/create-grn.dto';
 import { ConfirmGrnDto } from '$modules/finance/procurement/dto/confirm-grn.dto';
 import { AttachProcurementFileDto } from '$modules/finance/procurement/dto/attach-procurement-file.dto';
 import { PurchaseOrderDocument } from '$modules/finance/procurement/documents/purchase-order.document';
+import { Drizzle } from '$common/db/drizzle-compat';
 
 @Injectable()
 export class ProcurementService {
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly drizzle: DrizzleService,
     private readonly workflowService: WorkflowService,
     private readonly notificationsService: NotificationsService,
     private readonly mailService: MailService,
@@ -25,7 +26,7 @@ export class ProcurementService {
   private async nextNumber(prefix: 'PR' | 'PO' | 'GRN'): Promise<string> {
     const year = new Date().getFullYear();
     const modelMap = { PR: 'procurementRequisition', PO: 'procurementOrder', GRN: 'procurementGRN' } as const;
-    const count = await (this.prisma[modelMap[prefix]] as any).count();
+    const count = await (this.drizzle[modelMap[prefix]] as any).count();
     const base = 500;
     return `${prefix}-${year}-${String(base + count + 1).padStart(4, '0')}`;
   }
@@ -33,7 +34,7 @@ export class ProcurementService {
   async createPr(userId: string, dto: CreatePrDto) {
     const number = await this.nextNumber('PR');
     const estimatedTotal = dto.items.reduce((sum, i) => sum + i.qty * i.estimatedUnitCost, 0);
-    return this.prisma.procurementRequisition.create({
+    return this.drizzle.procurementRequisition.create({
       data: {
         requisitionNumber: number,
         title: dto.title,
@@ -51,7 +52,7 @@ export class ProcurementService {
   }
 
   async submitPr(id: string, userId: string) {
-    const pr = await this.prisma.procurementRequisition.findUnique({ where: { id } });
+    const pr = await this.drizzle.procurementRequisition.findUnique({ where: { id } });
     if (!pr) throw new NotFoundException('Requisition not found');
     if (pr.status !== 'draft') throw new BadRequestException('Only draft requisitions can be submitted');
 
@@ -65,25 +66,25 @@ export class ProcurementService {
       name: `${pr.requisitionNumber} Approval`,
     });
 
-    return this.prisma.procurementRequisition.update({
+    return this.drizzle.procurementRequisition.update({
       where: { id },
       data: { status: 'submitted', workflowInstanceId: instanceId },
     });
   }
 
   async approvePr(id: string, userId: string, comment?: string) {
-    const pr = await this.prisma.procurementRequisition.findUnique({ where: { id } });
+    const pr = await this.drizzle.procurementRequisition.findUnique({ where: { id } });
     if (!pr) throw new NotFoundException('Requisition not found');
-    return this.prisma.procurementRequisition.update({
+    return this.drizzle.procurementRequisition.update({
       where: { id },
       data: { status: 'approved' },
     });
   }
 
   async rejectPr(id: string, userId: string, comment?: string) {
-    const pr = await this.prisma.procurementRequisition.findUnique({ where: { id } });
+    const pr = await this.drizzle.procurementRequisition.findUnique({ where: { id } });
     if (!pr) throw new NotFoundException('Requisition not found');
-    return this.prisma.procurementRequisition.update({
+    return this.drizzle.procurementRequisition.update({
       where: { id },
       data: { status: 'rejected' },
     });
@@ -91,7 +92,7 @@ export class ProcurementService {
 
   async listPrs(userId: string, role: string) {
     const where = role === 'procurement_officer' || role === 'admin' ? {} : { requestedBy: toBigInt(userId) };
-    return this.prisma.procurementRequisition.findMany({
+    return this.drizzle.procurementRequisition.findMany({
       where,
       orderBy: { createdAt: 'desc' },
       include: {
@@ -102,7 +103,7 @@ export class ProcurementService {
   }
 
   async getPr(id: string) {
-    const pr = await this.prisma.procurementRequisition.findUnique({
+    const pr = await this.drizzle.procurementRequisition.findUnique({
       where: { id },
       include: {
         requester: { select: { id: true, firstName: true, lastName: true } },
@@ -131,16 +132,16 @@ export class ProcurementService {
   }
 
   async attachToRequisition(id: string, dto: AttachProcurementFileDto) {
-    const pr = await this.prisma.procurementRequisition.findUnique({
+    const pr = await this.drizzle.procurementRequisition.findUnique({
       where: { id },
       include: { procurementCase: true },
     });
     if (!pr?.procurementCase) throw new NotFoundException('Procurement case not found for requisition');
 
-    const file = await this.prisma.fileAsset.findUnique({ where: { id: dto.fileId } });
+    const file = await this.drizzle.fileAsset.findUnique({ where: { id: dto.fileId } });
     if (!file) throw new NotFoundException('File not found');
 
-    return this.prisma.procurementAttachment.create({
+    return this.drizzle.procurementAttachment.create({
       data: {
         caseId: pr.procurementCase.id,
         fileId: dto.fileId,
@@ -153,7 +154,7 @@ export class ProcurementService {
 
   async createPo(userId: string, dto: CreatePoDto) {
     const sourceCase = dto.caseId
-      ? await this.prisma.procurementCase.findUnique({
+      ? await this.drizzle.procurementCase.findUnique({
           where: { id: dto.caseId },
           include: { requisition: true, request: true },
         })
@@ -162,7 +163,7 @@ export class ProcurementService {
     const requisitionId = dto.requisitionId || sourceCase?.requisitionId;
     if (!requisitionId) throw new BadRequestException('Requisition or procurement case is required');
 
-    const pr = await this.prisma.procurementRequisition.findUnique({
+    const pr = await this.drizzle.procurementRequisition.findUnique({
       where: { id: requisitionId },
       include: { procurementCase: true },
     });
@@ -177,7 +178,7 @@ export class ProcurementService {
     const number = await this.nextNumber('PO');
     const totalAmount = dto.items.reduce((sum, i) => sum + i.qty * i.unitCost, 0);
 
-    const po = await this.prisma.procurementOrder.create({
+    const po = await this.drizzle.procurementOrder.create({
       data: {
         poNumber: number,
         requisitionId,
@@ -203,20 +204,20 @@ export class ProcurementService {
       name: `${number} Approval`,
     });
 
-    return this.prisma.procurementOrder.update({
+    return this.drizzle.procurementOrder.update({
       where: { id: po.id },
       data: { status: 'pending_approval', workflowInstanceId: instanceId },
     });
   }
 
   async approvePo(id: string, userId: string, comment?: string) {
-    const po = await this.prisma.procurementOrder.findUnique({
+    const po = await this.drizzle.procurementOrder.findUnique({
       where: { id },
       include: { vendor: { include: { contactPersons: true } }, requisition: true },
     });
     if (!po) throw new NotFoundException('Order not found');
 
-    const updated = await this.prisma.procurementOrder.update({
+    const updated = await this.drizzle.procurementOrder.update({
       where: { id },
       data: { status: 'approved' },
     });
@@ -231,7 +232,7 @@ export class ProcurementService {
       });
     }
 
-    await this.prisma.procurementRequisition.update({
+    await this.drizzle.procurementRequisition.update({
       where: { id: po.requisitionId },
       data: { status: 'converted_to_po' },
     });
@@ -240,13 +241,13 @@ export class ProcurementService {
   }
 
   async rejectPo(id: string, userId: string, comment?: string) {
-    const po = await this.prisma.procurementOrder.findUnique({ where: { id } });
+    const po = await this.drizzle.procurementOrder.findUnique({ where: { id } });
     if (!po) throw new NotFoundException('Order not found');
-    return this.prisma.procurementOrder.update({ where: { id }, data: { status: 'cancelled' } });
+    return this.drizzle.procurementOrder.update({ where: { id }, data: { status: 'cancelled' } });
   }
 
   async listPos(userId: string) {
-    return this.prisma.procurementOrder.findMany({
+    return this.drizzle.procurementOrder.findMany({
       orderBy: { createdAt: 'desc' },
       include: {
         vendor: { select: { id: true, name: true } },
@@ -263,7 +264,7 @@ export class ProcurementService {
   }
 
   async getPo(id: string) {
-    const po = await this.prisma.procurementOrder.findUnique({
+    const po = await this.drizzle.procurementOrder.findUnique({
       where: { id },
       include: {
         vendor: true,
@@ -296,13 +297,13 @@ export class ProcurementService {
   }
 
   async attachToOrder(id: string, dto: AttachProcurementFileDto) {
-    const po = await this.prisma.procurementOrder.findUnique({ where: { id } });
+    const po = await this.drizzle.procurementOrder.findUnique({ where: { id } });
     if (!po) throw new NotFoundException('Order not found');
 
-    const file = await this.prisma.fileAsset.findUnique({ where: { id: dto.fileId } });
+    const file = await this.drizzle.fileAsset.findUnique({ where: { id: dto.fileId } });
     if (!file) throw new NotFoundException('File not found');
 
-    return this.prisma.procurementAttachment.create({
+    return this.drizzle.procurementAttachment.create({
       data: {
         orderId: po.id,
         fileId: dto.fileId,
@@ -322,14 +323,14 @@ export class ProcurementService {
   }
 
   async createGrn(userId: string, dto: CreateGrnDto) {
-    const po = await this.prisma.procurementOrder.findUnique({ where: { id: dto.poId } });
+    const po = await this.drizzle.procurementOrder.findUnique({ where: { id: dto.poId } });
     if (!po) throw new NotFoundException('Order not found');
     if (!['approved', 'sent', 'acknowledged'].includes(po.status)) {
       throw new BadRequestException('GRN can only be raised for approved/sent/acknowledged orders');
     }
 
     const number = await this.nextNumber('GRN');
-    return this.prisma.procurementGRN.create({
+    return this.drizzle.procurementGRN.create({
       data: {
         grnNumber: number,
         poId: dto.poId,
@@ -344,10 +345,10 @@ export class ProcurementService {
   }
 
   async confirmGrn(id: string, userId: string, dto: ConfirmGrnDto) {
-    const grn = await this.prisma.procurementGRN.findUnique({ where: { id }, include: { po: true } });
+    const grn = await this.drizzle.procurementGRN.findUnique({ where: { id }, include: { po: true } });
     if (!grn) throw new NotFoundException('GRN not found');
 
-    const updatedGrn = await this.prisma.procurementGRN.update({
+    const updatedGrn = await this.drizzle.procurementGRN.update({
       where: { id },
       data: {
         status: dto.status,
@@ -358,13 +359,13 @@ export class ProcurementService {
     });
 
     if (dto.status === 'confirmed') {
-      await this.prisma.procurementOrder.update({
+      await this.drizzle.procurementOrder.update({
         where: { id: grn.poId },
         data: { status: 'received' },
       });
 
       // Find all users with finance.approve permission or accountant role
-      const financeUsers = await this.prisma.userRole.findMany({
+      const financeUsers = await this.drizzle.userRole.findMany({
         where: {
           OR: [
             { role: { slug: { in: ['administrator', 'admin', 'finance_manager', 'accountant'] } } },
@@ -380,7 +381,7 @@ export class ProcurementService {
         select: { profileId: true },
       });
 
-      const uniqueUserIds = Array.from(new Set(financeUsers.map((u) => u.profileId.toString())));
+      const uniqueUserIds = Array.from(new Set<string>(financeUsers.map((u) => u.profileId.toString())));
       for (const fUserId of uniqueUserIds) {
         await this.notificationsService.create({
           userId: fUserId,
@@ -396,12 +397,12 @@ export class ProcurementService {
   }
 
   async listIntake(userId: string, role: string) {
-    const where: any = {
+    const where: Drizzle.RequestInstanceWhereInput = {
       status: 'approved',
       requestType: { workflowType: 'procurement' },
       procurementCase: null,
     };
-    return this.prisma.requestInstance.findMany({
+    return this.drizzle.requestInstance.findMany({
       where,
       include: {
         requestType: { select: { id: true, name: true, workflowType: true } },
@@ -412,7 +413,7 @@ export class ProcurementService {
   }
 
   async createCaseFromRequest(requestId: string, userId: string, dto: { note?: string }) {
-    const request = await this.prisma.requestInstance.findUnique({
+    const request = await this.drizzle.requestInstance.findUnique({
       where: { id: toBigInt(requestId) },
       include: { requestType: true },
     });
@@ -422,7 +423,7 @@ export class ProcurementService {
     const data = request.data as Record<string, unknown> | null;
     const requisitionNumber = await this.nextNumber('PR');
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.drizzle.$transaction(async (tx) => {
       const requisition = await tx.procurementRequisition.create({
         data: {
           requisitionNumber,

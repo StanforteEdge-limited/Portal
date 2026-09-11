@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
-import { PrismaService } from '$common/prisma/prisma.service';
+import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { MailCryptoService } from './mail-crypto.service';
 import { google } from 'googleapis';
-import type { MailAccount } from '@prisma/client';
+import type { MailAccount } from '$common/db/drizzle-compat';
 
 const GOOGLE_SCOPES = ['https://mail.google.com/', 'email', 'profile'];
 
@@ -28,7 +28,7 @@ const MICROSOFT_IMAP_SCOPES = [
 @Injectable()
 export class MailAccountService {
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly drizzle: DrizzleService,
     private readonly crypto: MailCryptoService,
   ) {}
 
@@ -78,7 +78,7 @@ export class MailAccountService {
     const oauth2 = google.oauth2({ version: 'v2', auth: client });
     const { data } = await oauth2.userinfo.get();
 
-    const account = await this.prisma.mailAccount.create({
+    const account = await this.drizzle.mailAccount.create({
       data: {
         profileId,
         provider: 'GOOGLE',
@@ -167,7 +167,7 @@ export class MailAccountService {
 
     const email = profile.mail ?? profile.userPrincipalName ?? '';
 
-    const account = await this.prisma.mailAccount.create({
+    const account = await this.drizzle.mailAccount.create({
       data: {
         profileId,
         provider: 'MICROSOFT',
@@ -243,7 +243,7 @@ export class MailAccountService {
 
       const data = await res.json() as any;
       if (data?.id) {
-        await this.prisma.mailAccount.update({
+        await this.drizzle.mailAccount.update({
           where: { id: account.id },
           data: { outlookSubscriptionId: data.id },
         });
@@ -254,7 +254,7 @@ export class MailAccountService {
   }
 
   async renewMicrosoftSubscriptions(): Promise<void> {
-    const accounts = await this.prisma.mailAccount.findMany({
+    const accounts = await this.drizzle.mailAccount.findMany({
       where: { provider: 'MICROSOFT', outlookSubscriptionId: { not: null } },
     });
     for (const a of accounts) {
@@ -296,7 +296,7 @@ export class MailAccountService {
     const client = this.googleOAuth2Client();
     client.setCredentials({ refresh_token: this.crypto.decrypt(account.refreshToken) });
     const { credentials } = await client.refreshAccessToken();
-    await this.prisma.mailAccount.update({
+    await this.drizzle.mailAccount.update({
       where: { id: account.id },
       data: {
         accessToken: this.crypto.encrypt(credentials.access_token!),
@@ -325,7 +325,7 @@ export class MailAccountService {
     const tokens = await res.json() as { access_token: string; expires_in: number; error?: string };
     if (tokens.error) throw new Error(`Microsoft token refresh failed: ${tokens.error}`);
 
-    await this.prisma.mailAccount.update({
+    await this.drizzle.mailAccount.update({
       where: { id: account.id },
       data: {
         accessToken: this.crypto.encrypt(tokens.access_token),
@@ -338,7 +338,7 @@ export class MailAccountService {
   // ── CRUD ────────────────────────────────────────────────────────────────────
 
   listAccounts(profileId: bigint) {
-    return this.prisma.mailAccount.findMany({
+    return this.drizzle.mailAccount.findMany({
       where: { profileId },
       select: {
         id: true,
@@ -359,21 +359,21 @@ export class MailAccountService {
 
   async updateSignature(id: bigint, profileId: bigint, signature: string | null): Promise<void> {
     const account = await this.findAccountForUser(id, profileId);
-    await this.prisma.mailAccount.update({
+    await this.drizzle.mailAccount.update({
       where: { id: account.id },
       data: { signature },
     });
   }
 
   async deleteAccount(id: bigint, profileId: bigint): Promise<void> {
-    const account = await this.prisma.mailAccount.findUnique({ where: { id } });
+    const account = await this.drizzle.mailAccount.findUnique({ where: { id } });
     if (!account) throw new NotFoundException('Account not found');
     if (account.profileId !== profileId) throw new ForbiddenException();
-    await this.prisma.mailAccount.delete({ where: { id } });
+    await this.drizzle.mailAccount.delete({ where: { id } });
   }
 
   async findAccountForUser(accountId: bigint, profileId: bigint): Promise<MailAccount> {
-    const account = await this.prisma.mailAccount.findUnique({ where: { id: accountId } });
+    const account = await this.drizzle.mailAccount.findUnique({ where: { id: accountId } });
     if (!account) throw new NotFoundException('Mail account not found');
     if (account.profileId !== profileId) throw new ForbiddenException();
     return account;

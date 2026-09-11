@@ -4,13 +4,13 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Drizzle } from '$common/db/drizzle-compat';
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { extname, resolve } from 'node:path';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 import { paginatedResponse } from '$common/helpers/paginated-response';
-import { PrismaService } from '$common/prisma/prisma.service';
+import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { toBigInt } from '$common/utils/ids';
 import { UpsertDeductionTypeDto } from '$modules/finance/finance/dto/upsert-deduction-type.dto';
 import { ApplyPVDeductionsDto } from '$modules/finance/finance/dto/apply-pv-deductions.dto';
@@ -23,11 +23,11 @@ export class DeductionService {
   private readonly logger = new Logger(DeductionService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly drizzle: DrizzleService,
     private readonly pdfService: PdfService,
   ) {}
 
-  private sumAllocatedAmount(allocations: Array<{ allocatedAmount: Prisma.Decimal | number | string }>): number {
+  private sumAllocatedAmount(allocations: Array<{ allocatedAmount: Drizzle.Decimal | number | string }>): number {
     return allocations.reduce((sum, allocation) => sum + Number(allocation.allocatedAmount ?? 0), 0);
   }
 
@@ -48,7 +48,7 @@ export class DeductionService {
 
   private async nextRequestRemittanceNumber(remittedAt: Date) {
     const year = remittedAt.getFullYear();
-    const count = await this.prisma.financeRequestRemittance.count({
+    const count = await this.drizzle.financeRequestRemittance.count({
       where: {
         createdAt: {
           gte: new Date(year, 0, 1),
@@ -62,7 +62,7 @@ export class DeductionService {
   private async hydrateEvidenceFiles(fileIds: unknown) {
     const ids = Array.isArray(fileIds) ? fileIds.map(String) : [];
     if (ids.length === 0) return [];
-    const files = await this.prisma.fileAsset.findMany({
+    const files = await this.drizzle.fileAsset.findMany({
       where: { id: { in: ids } },
       select: { id: true, fileName: true, publicUrl: true },
     });
@@ -133,7 +133,7 @@ export class DeductionService {
   }
 
   private async syncDeductionRemittanceSummary(
-    tx: Prisma.TransactionClient,
+    tx: Drizzle.TransactionClient,
     deductionId: string,
   ) {
     const deduction = await tx.financeRequestDeduction.findUnique({
@@ -186,7 +186,7 @@ export class DeductionService {
     approved_title: string;
     approved_signature: string | null;
   }> {
-    const row = await this.prisma.financeSetting.findUnique({ where: { key: 'default' }, select: { config: true } });
+    const row = await this.drizzle.financeSetting.findUnique({ where: { key: 'default' }, select: { config: true } });
     const cfg: any = (row?.config && typeof row.config === 'object' && !Array.isArray(row.config)) ? row.config : {};
     const [prepared_signature, approved_signature] = await Promise.all([
       this.resolveSignatureDataUri(cfg?.prepared_by?.signature_file_id),
@@ -205,7 +205,7 @@ export class DeductionService {
 
   private async resolveSignatureDataUri(fileId: unknown): Promise<string | null> {
     if (typeof fileId !== 'string' || !fileId) return null;
-    const asset = await this.prisma.fileAsset.findUnique({ where: { id: fileId } });
+    const asset = await this.drizzle.fileAsset.findUnique({ where: { id: fileId } });
     if (!asset) return null;
     const storagePath = asset.storagePath || asset.publicUrl || '';
     if (!storagePath) return null;
@@ -382,12 +382,12 @@ export class DeductionService {
   // ── Deduction Types ──────────────────────────────────────────────────────
 
   async listDeductionTypes(query: Record<string, any>) {
-    const where: any = {};
+    const where: Drizzle.FinanceRequestDeductionWhereInput = {};
     if (query.organization_id) where.organizationId = toBigInt(query.organization_id);
     if (query.is_active !== undefined) where.isActive = query.is_active === 'true' || query.is_active === true;
     if (query.applies_to) where.appliesTo = String(query.applies_to);
 
-    const rows = await this.prisma.financeDeductionType.findMany({
+    const rows = await this.drizzle.financeDeductionType.findMany({
       where,
       orderBy: { name: 'asc' },
       include: { glAccount: { select: { id: true, name: true, code: true } } },
@@ -415,16 +415,16 @@ export class DeductionService {
       if (dto.gl_account_id !== undefined) data.glAccountId = dto.gl_account_id ?? null;
 
       if (id) {
-        const existing = await this.prisma.financeDeductionType.findUnique({ where: { id } });
+        const existing = await this.drizzle.financeDeductionType.findUnique({ where: { id } });
         if (!existing) throw new NotFoundException('Deduction type not found');
-        return await this.prisma.financeDeductionType.update({ where: { id }, data });
+        return await this.drizzle.financeDeductionType.update({ where: { id }, data });
       }
 
       if (!dto.name || !dto.code || dto.rate === undefined) {
         throw new BadRequestException('name, code, and rate are required when creating a deduction type');
       }
 
-      return await this.prisma.financeDeductionType.create({
+      return await this.drizzle.financeDeductionType.create({
         data: {
           ...data,
           name: dto.name,
@@ -445,7 +445,7 @@ export class DeductionService {
   // ── PV Deductions ────────────────────────────────────────────────────────
 
   async applyPVDeductions(pvId: string, dto: ApplyPVDeductionsDto, userId: number) {
-    const pv = await this.prisma.financePaymentVoucher.findUnique({
+    const pv = await this.drizzle.financePaymentVoucher.findUnique({
       where: { id: pvId },
       include: { contact: true },
     });
@@ -453,7 +453,7 @@ export class DeductionService {
 
     const now = new Date();
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.drizzle.$transaction(async (tx) => {
       const existingPVDeductions = await tx.financePVDeduction.findMany({
         where: { paymentVoucherId: pvId },
         select: { requestDeductionId: true },
@@ -469,7 +469,7 @@ export class DeductionService {
         await tx.financeRequestDeduction.deleteMany({ where: { id: { in: linkedRequestDeductionIds } } });
       }
 
-      const createdDeductions = [] as Array<{ id: string; deductionTypeId: string; grossAmount: Prisma.Decimal; deductionAmount: Prisma.Decimal; requestDeductionId: string | null }>;
+      const createdDeductions = [] as Array<{ id: string; deductionTypeId: string; grossAmount: Drizzle.Decimal; deductionAmount: Drizzle.Decimal; requestDeductionId: string | null }>;
       for (const line of dto.deductions) {
         const requestDeduction = pv.requestId
           ? await tx.financeRequestDeduction.create({
@@ -539,7 +539,7 @@ export class DeductionService {
   }
 
   async listPVDeductions(pvId: string) {
-    const rows = await this.prisma.financePVDeduction.findMany({
+    const rows = await this.drizzle.financePVDeduction.findMany({
       where: { paymentVoucherId: pvId },
       include: { deductionType: true, requestDeduction: true },
       orderBy: { createdAt: 'asc' },
@@ -550,13 +550,13 @@ export class DeductionService {
   // ── Vendor WHT Accruals ──────────────────────────────────────────────────
 
   async listVendorAccruals(vendorId: string, query: Record<string, any>) {
-    const where: any = { vendorId };
+    const where: Drizzle.FinanceRequestDeductionWhereInput = { vendorId };
     if (query.period_year) where.periodYear = Number(query.period_year);
     if (query.period_month) where.periodMonth = Number(query.period_month);
     if (query.unremitted === 'true') where.remittanceId = null;
     if (query.deduction_type_id) where.deductionTypeId = String(query.deduction_type_id);
 
-    const rows = await this.prisma.financeVendorWHTAccrual.findMany({
+    const rows = await this.drizzle.financeVendorWHTAccrual.findMany({
       where,
       include: {
         deductionType: true,
@@ -574,7 +574,7 @@ export class DeductionService {
       throw new BadRequestException('accrual_ids must not be empty');
     }
 
-    const accruals = await this.prisma.financeVendorWHTAccrual.findMany({
+    const accruals = await this.drizzle.financeVendorWHTAccrual.findMany({
       where: { id: { in: dto.accrual_ids } },
     });
 
@@ -587,13 +587,13 @@ export class DeductionService {
 
     const year = dto.period_year;
     const month = String(dto.period_month).padStart(2, '0');
-    const seq = await this.prisma.financeWHTRemittance.count({
+    const seq = await this.drizzle.financeWHTRemittance.count({
       where: { periodYear: dto.period_year, periodMonth: dto.period_month },
     });
     const remittanceNumber = `WHT-${year}-${month}-${String(seq + 1).padStart(3, '0')}`;
     const now = new Date();
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.drizzle.$transaction(async (tx) => {
       const remittance = await tx.financeWHTRemittance.create({
         data: {
           remittanceNumber,
@@ -623,14 +623,14 @@ export class DeductionService {
   }
 
   async listWHTRemittances(query: Record<string, any>) {
-    const where: any = {};
+    const where: Drizzle.FinanceRequestRemittanceWhereInput = {};
     if (query.period_year) where.periodYear = Number(query.period_year);
     if (query.period_month) where.periodMonth = Number(query.period_month);
     if (query.deduction_type_id) where.deductionTypeId = String(query.deduction_type_id);
     if (query.status) where.status = String(query.status);
     if (query.organization_id) where.organizationId = toBigInt(query.organization_id);
 
-    const rows = await this.prisma.financeWHTRemittance.findMany({
+    const rows = await this.drizzle.financeWHTRemittance.findMany({
       where,
       include: {
         deductionType: true,
@@ -643,7 +643,7 @@ export class DeductionService {
   }
 
   async getWHTRemittance(id: string) {
-    const remittance = await this.prisma.financeWHTRemittance.findUnique({
+    const remittance = await this.drizzle.financeWHTRemittance.findUnique({
       where: { id },
       include: {
         deductionType: true,
@@ -667,12 +667,12 @@ export class DeductionService {
     const perPage = Math.min(200, Math.max(1, Number(query.per_page ?? 50)));
     const skip = (page - 1) * perPage;
 
-    const where: Prisma.FinanceRequestDeductionWhereInput = {};
+    const where: Drizzle.FinanceRequestDeductionWhereInput = {};
     if (query.id) where.id = query.id;
     if (query.status) where.status = query.status;
     if (query.deduction_type_id) where.deductionTypeId = query.deduction_type_id;
     if (query.request_id) where.requestId = toBigInt(query.request_id);
-    const remittanceAllocationFilters: Prisma.FinanceRequestDeductionRemittanceAllocationWhereInput[] = [];
+    const remittanceAllocationFilters: Drizzle.FinanceRequestDeductionRemittanceAllocationWhereInput[] = [];
     if (query.remittance_ref) remittanceAllocationFilters.push({ requestRemittance: { reference: query.remittance_ref } });
     if (query.remittance_number) remittanceAllocationFilters.push({ requestRemittance: { remittanceNumber: query.remittance_number } });
     if (query.payment_voucher_id) remittanceAllocationFilters.push({ requestRemittance: { paymentVoucherId: query.payment_voucher_id } });
@@ -693,7 +693,7 @@ export class DeductionService {
     }
 
     const [rows, total] = await Promise.all([
-      this.prisma.financeRequestDeduction.findMany({
+      this.drizzle.financeRequestDeduction.findMany({
         where,
         include: {
           deductionType: { select: { id: true, name: true, code: true } },
@@ -722,7 +722,7 @@ export class DeductionService {
         skip,
         take: perPage,
       }),
-      this.prisma.financeRequestDeduction.count({ where }),
+      this.drizzle.financeRequestDeduction.count({ where }),
     ]);
 
     const extraEvidenceIds = Array.from(
@@ -737,7 +737,7 @@ export class DeductionService {
       ),
     );
     const extraEvidenceFiles = extraEvidenceIds.length > 0
-      ? await this.prisma.fileAsset.findMany({
+      ? await this.drizzle.fileAsset.findMany({
           where: { id: { in: extraEvidenceIds } },
           select: { id: true, fileName: true, publicUrl: true },
         })
@@ -823,7 +823,7 @@ export class DeductionService {
     const perPage = Math.min(200, Math.max(1, Number(query.per_page ?? 50)));
     const skip = (page - 1) * perPage;
 
-    const where: Prisma.FinanceRequestRemittanceWhereInput = {};
+    const where: Drizzle.FinanceRequestRemittanceWhereInput = {};
     if (query.id) where.id = query.id;
     if (query.remittance_number) where.remittanceNumber = query.remittance_number;
     if (query.reference) where.reference = query.reference;
@@ -836,7 +836,7 @@ export class DeductionService {
     }
 
     const [rows, total] = await Promise.all([
-      this.prisma.financeRequestRemittance.findMany({
+      this.drizzle.financeRequestRemittance.findMany({
         where,
         include: {
           paymentVoucher: { select: { id: true, voucherNumber: true } },
@@ -866,7 +866,7 @@ export class DeductionService {
         skip,
         take: perPage,
       }),
-      this.prisma.financeRequestRemittance.count({ where }),
+      this.drizzle.financeRequestRemittance.count({ where }),
     ]);
 
     const items = await Promise.all(rows.map((row) => this.mapRequestRemittance(row)));
@@ -883,7 +883,7 @@ export class DeductionService {
     const now = dto.remitted_at ? new Date(dto.remitted_at) : new Date();
     const year = now.getFullYear();
 
-    const existing = await this.prisma.financeRequestDeduction.findMany({
+    const existing = await this.drizzle.financeRequestDeduction.findMany({
       where: { id: { in: ids } },
       select: { id: true, status: true, amount: true, remittanceAllocations: { select: { allocatedAmount: true } } },
     });
@@ -912,7 +912,7 @@ export class DeductionService {
 
     const remittanceNumber = dto.remittance_number?.trim() || await this.nextRequestRemittanceNumber(now);
 
-    const created = await this.prisma.$transaction(async (tx) => {
+    const created = await this.drizzle.$transaction(async (tx) => {
       const remittance = await tx.financeRequestRemittance.create({
         data: {
           remittanceNumber,
@@ -984,12 +984,12 @@ export class DeductionService {
     rate?: number;
     notes?: string;
   }) {
-    const existing = await this.prisma.financeRequestDeduction.findUnique({ where: { id } });
+    const existing = await this.drizzle.financeRequestDeduction.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Deduction not found');
     if (existing.status !== 'pending') throw new BadRequestException('Only pending deductions can be edited');
 
     if (dto.deduction_type_id) {
-      const dt = await this.prisma.financeDeductionType.findUnique({ where: { id: dto.deduction_type_id } });
+      const dt = await this.drizzle.financeDeductionType.findUnique({ where: { id: dto.deduction_type_id } });
       if (!dt) throw new BadRequestException('Invalid deduction_type_id');
     }
 
@@ -1007,7 +1007,7 @@ export class DeductionService {
     if (dto.rate !== undefined) data.rate = dto.rate;
     if (dto.notes !== undefined) data.notes = dto.notes || null;
 
-    return this.prisma.financeRequestDeduction.update({ where: { id }, data });
+    return this.drizzle.financeRequestDeduction.update({ where: { id }, data });
   }
 
   async updateRemittanceRecord(id: string, dto: {
@@ -1023,13 +1023,13 @@ export class DeductionService {
     notes?: string;
     allocations?: Array<{ id?: string; allocated_amount?: number }>;
   }) {
-    const existing = await this.prisma.financeRequestRemittance.findUnique({
+    const existing = await this.drizzle.financeRequestRemittance.findUnique({
       where: { id },
       include: { allocations: { include: { requestDeduction: { select: { id: true, amount: true } } } } },
     });
     if (!existing) throw new NotFoundException('Remittance not found');
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.drizzle.$transaction(async (tx) => {
       const allocations = await tx.financeRequestDeductionRemittanceAllocation.findMany({
         where: { requestRemittanceId: id },
         include: { requestDeduction: { select: { id: true, amount: true, remittanceAllocations: { select: { id: true, allocatedAmount: true } } } } },
@@ -1119,17 +1119,17 @@ export class DeductionService {
   }
 
   async addRemittanceAllocations(id: string, dto: { deduction_ids: string[]; allocations?: Array<{ id?: string; allocated_amount?: number }> }, userId: number) {
-    const remittance = await this.prisma.financeRequestRemittance.findUnique({ where: { id } });
+    const remittance = await this.drizzle.financeRequestRemittance.findUnique({ where: { id } });
     if (!remittance) throw new NotFoundException('Remittance not found');
 
-    const deductions = await this.prisma.financeRequestDeduction.findMany({
+    const deductions = await this.drizzle.financeRequestDeduction.findMany({
       where: { id: { in: dto.deduction_ids } },
       select: { id: true, amount: true, remittanceAllocations: { select: { allocatedAmount: true } } },
     });
     if (deductions.length !== dto.deduction_ids.length) throw new NotFoundException('Some deductions were not found');
 
     const allocationMap = new Map((dto.allocations ?? []).map((allocation) => [allocation.id, Number(allocation.allocated_amount)]));
-    const currentRemittanceAllocated = await this.prisma.financeRequestDeductionRemittanceAllocation.aggregate({
+    const currentRemittanceAllocated = await this.drizzle.financeRequestDeductionRemittanceAllocation.aggregate({
       where: { requestRemittanceId: id },
       _sum: { allocatedAmount: true },
     });
@@ -1148,7 +1148,7 @@ export class DeductionService {
       throw new BadRequestException('Allocations exceed remittance total amount');
     }
 
-    await this.prisma.$transaction(async (tx) => {
+    await this.drizzle.$transaction(async (tx) => {
       for (const deduction of deductions) {
         const alreadyAllocated = this.sumAllocatedAmount(deduction.remittanceAllocations);
         const remaining = Number(deduction.amount) - alreadyAllocated;
@@ -1171,7 +1171,7 @@ export class DeductionService {
   // ── TRM Slip PDF ──────────────────────────────────────────────────────────
 
   async listRemittedDeductionsForRequest(requestId: string) {
-    return this.prisma.financeRequestRemittance.findMany({
+    return this.drizzle.financeRequestRemittance.findMany({
       where: { allocations: { some: { requestDeduction: { requestId: toBigInt(requestId) } } } },
       select: { id: true, remittanceNumber: true },
       orderBy: [{ remittedAt: 'asc' }, { createdAt: 'asc' }],
@@ -1184,7 +1184,7 @@ export class DeductionService {
   }
 
   async buildTrmSlipPdf(id: string): Promise<{ buffer: Buffer; fileName: string }> {
-    const remittance = await this.prisma.financeRequestRemittance.findUnique({
+    const remittance = await this.drizzle.financeRequestRemittance.findUnique({
       where: { id },
       include: {
         createdByUser: { select: { id: true, firstName: true, lastName: true, email: true } },
@@ -1226,7 +1226,7 @@ export class DeductionService {
     const totalAllocatedAmount = this.sumAllocatedAmount(remittance.allocations);
     const evidenceIds = Array.isArray(remittance.evidenceFileIds) ? remittance.evidenceFileIds.map(String) : [];
     const evidenceFiles = evidenceIds.length > 0
-      ? await this.prisma.fileAsset.findMany({
+      ? await this.drizzle.fileAsset.findMany({
           where: { id: { in: evidenceIds } },
           select: { id: true, fileName: true },
         })
@@ -1368,7 +1368,7 @@ export class DeductionService {
     await this.appendPdfBuffer(mergedPdf, slipBuffer);
     const skippedFiles: string[] = [];
     for (const file of evidenceFiles) {
-      const asset = await this.prisma.fileAsset.findUnique({ where: { id: file.id }, select: { id: true, fileName: true, mimeType: true, publicUrl: true, storagePath: true } });
+      const asset = await this.drizzle.fileAsset.findUnique({ where: { id: file.id }, select: { id: true, fileName: true, mimeType: true, publicUrl: true, storagePath: true } });
       if (!asset) {
         skippedFiles.push(`${file.fileName} (missing metadata)`);
         continue;
@@ -1387,7 +1387,7 @@ export class DeductionService {
   // ── WHT Certificate PDF ───────────────────────────────────────────────────
 
   async generateWhtCertificatePdf(pvDeductionId: string) {
-    const pvd = await this.prisma.financePVDeduction.findUnique({
+    const pvd = await this.drizzle.financePVDeduction.findUnique({
       where: { id: pvDeductionId },
       include: {
         deductionType: true,
@@ -1422,11 +1422,11 @@ export class DeductionService {
     if (!certificateNumber) {
       const year = new Date().getFullYear();
       const startsWith = `WHT/${year}/`;
-      const count = await this.prisma.financePVDeduction.count({
+      const count = await this.drizzle.financePVDeduction.count({
         where: { certificateNumber: { startsWith } },
       });
       certificateNumber = `WHT/${year}/${String(count + 1).padStart(3, '0')}`;
-      await this.prisma.financePVDeduction.update({
+      await this.drizzle.financePVDeduction.update({
         where: { id: pvd.id },
         data: { certificateNumber },
       });

@@ -1,15 +1,15 @@
 import { BadRequestException } from '@nestjs/common';
 import { FinanceService } from '$modules/finance/finance/finance.service';
 
-function createService(prisma) {
-  return new FinanceService(prisma, {} as any, {} as any, {} as any);
+function createService(drizzle) {
+  return new FinanceService(drizzle, {} as any, {} as any, {} as any);
 }
 
 describe('FinanceService — statutory deduction manual entries', () => {
-  let prisma;
+  let drizzle;
 
   beforeEach(() => {
-    prisma = {
+    drizzle = {
       financeJournalEntry: {
         findMany: jest.fn().mockResolvedValue([]),
         findUnique: jest.fn().mockResolvedValue(null),
@@ -24,7 +24,7 @@ describe('FinanceService — statutory deduction manual entries', () => {
       },
       $transaction: jest.fn(async (fns) => {
         if (Array.isArray(fns)) return Promise.all(fns);
-        return fns(prisma);
+        return fns(drizzle);
       }),
     };
     jest.clearAllMocks();
@@ -32,15 +32,15 @@ describe('FinanceService — statutory deduction manual entries', () => {
 
   describe('listStatutoryDeductionManualEntries', () => {
     it('filters by sourceType statutory_deduction_manual_entry', async () => {
-      prisma.financeJournalEntry.findMany.mockResolvedValue([
+      drizzle.financeJournalEntry.findMany.mockResolvedValue([
         { id: 'je-1', sourceType: 'statutory_deduction_manual_entry', lines: [] },
       ]);
-      prisma.financeJournalEntry.count.mockResolvedValue(1);
+      drizzle.financeJournalEntry.count.mockResolvedValue(1);
 
-      const service = createService(prisma);
+      const service = createService(drizzle);
       const result = await service.listStatutoryDeductionManualEntries({ page: 1, per_page: 10 });
 
-      expect(prisma.financeJournalEntry.findMany).toHaveBeenCalledWith(
+      expect(drizzle.financeJournalEntry.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({ sourceType: 'statutory_deduction_manual_entry' }),
         }),
@@ -54,10 +54,10 @@ describe('FinanceService — statutory deduction manual entries', () => {
     });
 
     it('supports date range filtering', async () => {
-      const service = createService(prisma);
+      const service = createService(drizzle);
       await service.listStatutoryDeductionManualEntries({ from: '2026-01-01', to: '2026-06-30' });
 
-      expect(prisma.financeJournalEntry.findMany).toHaveBeenCalledWith(
+      expect(drizzle.financeJournalEntry.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
             sourceType: 'statutory_deduction_manual_entry',
@@ -71,11 +71,11 @@ describe('FinanceService — statutory deduction manual entries', () => {
     });
 
     it('paginates results', async () => {
-      prisma.financeJournalEntry.count.mockResolvedValue(25);
-      const service = createService(prisma);
+      drizzle.financeJournalEntry.count.mockResolvedValue(25);
+      const service = createService(drizzle);
       const result = await service.listStatutoryDeductionManualEntries({ page: 2, per_page: 10 });
 
-      expect(prisma.financeJournalEntry.findMany).toHaveBeenCalledWith(
+      expect(drizzle.financeJournalEntry.findMany).toHaveBeenCalledWith(
         expect.objectContaining({ skip: 10, take: 10 }),
       );
       expect(result.data.meta).toEqual(
@@ -99,7 +99,7 @@ describe('FinanceService — statutory deduction manual entries', () => {
     };
 
     it('throws when fewer than 2 lines', async () => {
-      const service = createService(prisma);
+      const service = createService(drizzle);
       await expect(
         service.createStatutoryDeductionManualEntry({
           ...validDto,
@@ -109,7 +109,7 @@ describe('FinanceService — statutory deduction manual entries', () => {
     });
 
     it('throws when debits and credits do not balance', async () => {
-      const service = createService(prisma);
+      const service = createService(drizzle);
       await expect(
         service.createStatutoryDeductionManualEntry({
           ...validDto,
@@ -122,7 +122,7 @@ describe('FinanceService — statutory deduction manual entries', () => {
     });
 
     it('throws when deduction_type_id is missing', async () => {
-      const service = createService(prisma);
+      const service = createService(drizzle);
       await expect(
         service.createStatutoryDeductionManualEntry({
           ...validDto,
@@ -132,7 +132,7 @@ describe('FinanceService — statutory deduction manual entries', () => {
     });
 
     it('throws when gross_amount is zero', async () => {
-      const service = createService(prisma);
+      const service = createService(drizzle);
       await expect(
         service.createStatutoryDeductionManualEntry({
           ...validDto,
@@ -142,7 +142,7 @@ describe('FinanceService — statutory deduction manual entries', () => {
     });
 
     it('throws when withheld_amount exceeds gross_amount', async () => {
-      const service = createService(prisma);
+      const service = createService(drizzle);
       await expect(
         service.createStatutoryDeductionManualEntry({
           ...validDto,
@@ -153,8 +153,8 @@ describe('FinanceService — statutory deduction manual entries', () => {
     });
 
     it('throws when deduction type not found', async () => {
-      prisma.financeDeductionType.findUnique.mockResolvedValue(null);
-      const service = createService(prisma);
+      drizzle.financeDeductionType.findUnique.mockResolvedValue(null);
+      const service = createService(drizzle);
 
       await expect(
         service.createStatutoryDeductionManualEntry(validDto),
@@ -162,14 +162,14 @@ describe('FinanceService — statutory deduction manual entries', () => {
     });
 
     it('creates journal entry with statutory_deduction_manual_entry sourceType', async () => {
-      prisma.financeDeductionType.findUnique.mockResolvedValue({ id: 'dt-1', name: 'PAYE' });
-      prisma.financeJournalEntry.findUnique.mockResolvedValue({
+      drizzle.financeDeductionType.findUnique.mockResolvedValue({ id: 'dt-1', name: 'PAYE' });
+      drizzle.financeJournalEntry.findUnique.mockResolvedValue({
         id: 'je-new',
         sourceType: 'statutory_deduction_manual_entry',
         lines: [],
       });
 
-      const service = createService(prisma);
+      const service = createService(drizzle);
       (service).ensureReportingPeriod = jest.fn().mockResolvedValue({ id: 'rp-1' });
       (service).createJournalEntry = jest.fn().mockResolvedValue({ id: 'je-new' });
 
@@ -181,7 +181,7 @@ describe('FinanceService — statutory deduction manual entries', () => {
           memo: expect.stringContaining('PAYE'),
         }),
       );
-      expect(prisma.financeJournalEntry.findUnique).toHaveBeenCalledWith(
+      expect(drizzle.financeJournalEntry.findUnique).toHaveBeenCalledWith(
         expect.objectContaining({ where: { id: 'je-new' } }),
       );
     });

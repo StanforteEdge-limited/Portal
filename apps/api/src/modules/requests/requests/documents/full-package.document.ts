@@ -113,7 +113,7 @@ export class FullPackageDocument implements Document<FullPackageContext> {
       if (voucher.metadata && typeof voucher.metadata === 'object' && !Array.isArray(voucher.metadata)) {
         const retirementIds = (voucher.metadata as Record<string, unknown>).retirement_file_ids;
         if (Array.isArray(retirementIds)) {
-          const retirementFiles = await this.engine.prisma.fileAsset.findMany({
+          const retirementFiles = await this.engine.drizzle.fileAsset.findMany({
             where: { id: { in: retirementIds.filter((x): x is string => typeof x === 'string') } },
           });
           for (const file of retirementFiles) {

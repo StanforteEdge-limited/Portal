@@ -1,1 +1,0 @@
-ALTER TYPE "TokenType" ADD VALUE IF NOT EXISTS 'invite';

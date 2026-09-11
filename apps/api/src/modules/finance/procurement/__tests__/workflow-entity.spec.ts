@@ -1,13 +1,13 @@
 import { WorkflowService } from '$modules/requests/workflow/workflow.service';
-import { PrismaService } from '$common/prisma/prisma.service';
+import { DrizzleService } from '$common/drizzle/drizzle.service';
 
 describe('WorkflowService.startForEntity', () => {
   let service: WorkflowService;
-  let prisma: jest.Mocked<PrismaService>;
+  let drizzle: jest.Mocked<DrizzleService>;
 
   beforeEach(() => {
-    prisma = { $transaction: jest.fn(), workflow: { create: jest.fn() }, workflowStep: { create: jest.fn() }, workflowInstance: { create: jest.fn() } } as any;
-    service = new WorkflowService(prisma as any);
+    drizzle = { $transaction: jest.fn(), workflow: { create: jest.fn() }, workflowStep: { create: jest.fn() }, workflowInstance: { create: jest.fn() } } as any;
+    service = new WorkflowService(drizzle as any);
   });
 
   it('returns none when approvalFlowJson has no steps', async () => {

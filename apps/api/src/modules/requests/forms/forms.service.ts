@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
-import { PrismaService } from '$common/prisma/prisma.service';
+import { Drizzle } from '$common/db/drizzle-compat';
+import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { paginatedResponse } from '$common/helpers/paginated-response';
 import {
   CreateFormAssignmentDto,
@@ -13,12 +13,12 @@ import { toBigInt } from '$common/utils/ids';
 
 @Injectable()
 export class FormsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly drizzle: DrizzleService) {}
 
   async list(query?: Record<string, any>) {
-    const where: Prisma.FormWhereInput = { isActive: true };
+    const where: Drizzle.FormWhereInput = { isActive: true };
     if (query?.module) where.module = String(query.module);
-    const items = await this.prisma.form.findMany({
+    const items = await this.drizzle.form.findMany({
       where,
       orderBy: { createdAt: 'desc' }
     });
@@ -26,7 +26,7 @@ export class FormsService {
   }
 
   async getFormById(id: string) {
-    const form = await this.prisma.form.findUnique({
+    const form = await this.drizzle.form.findUnique({
       where: { id },
       include: { fields: true }
     });
@@ -36,7 +36,7 @@ export class FormsService {
   }
 
   async listForManagement(query: Record<string, any>) {
-    const where: Prisma.FormWhereInput = {};
+    const where: Drizzle.FormWhereInput = {};
     if (query.module) where.module = String(query.module);
     if (query.include_inactive !== 'true') where.isActive = true;
     if (query.search) {
@@ -46,7 +46,7 @@ export class FormsService {
       ];
     }
 
-    const items = await this.prisma.form.findMany({
+    const items = await this.drizzle.form.findMany({
       where,
       include: {
         fields: { orderBy: { displayOrder: 'asc' } },
@@ -58,7 +58,7 @@ export class FormsService {
   }
 
   async createForm(actorId: string, dto: CreateFormDto) {
-    return this.prisma.form.create({
+    return this.drizzle.form.create({
       data: {
         name: dto.name,
         description: dto.description ?? null,
@@ -71,10 +71,10 @@ export class FormsService {
   }
 
   async updateForm(id: string, dto: UpdateFormDto) {
-    const existing = await this.prisma.form.findUnique({ where: { id } });
+    const existing = await this.drizzle.form.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Form not found');
 
-    return this.prisma.form.update({
+    return this.drizzle.form.update({
       where: { id },
       data: {
         name: dto.name ?? existing.name,
@@ -92,55 +92,55 @@ export class FormsService {
 
   async createField(formId: string, dto: CreateFormFieldDto) {
     await this.ensureForm(formId);
-    return this.prisma.formField.create({
+    return this.drizzle.formField.create({
       data: {
         formId,
         fieldKey: dto.field_key,
         fieldLabel: dto.field_label,
         fieldType: dto.field_type,
-        fieldOptions: (dto.field_options ?? null) as Prisma.InputJsonValue,
+        fieldOptions: (dto.field_options ?? null) as Drizzle.InputJsonValue,
         isRequired: dto.is_required ?? false,
-        validationRules: (dto.validation_rules ?? null) as Prisma.InputJsonValue,
+        validationRules: (dto.validation_rules ?? null) as Drizzle.InputJsonValue,
         displayOrder: dto.display_order ?? 0
       }
     });
   }
 
   async updateField(formId: string, fieldId: string, dto: UpdateFormFieldDto) {
-    const field = await this.prisma.formField.findFirst({ where: { id: fieldId, formId } });
+    const field = await this.drizzle.formField.findFirst({ where: { id: fieldId, formId } });
     if (!field) throw new NotFoundException('Field not found');
 
-    return this.prisma.formField.update({
+    return this.drizzle.formField.update({
       where: { id: field.id },
       data: {
         fieldLabel: dto.field_label ?? field.fieldLabel,
         fieldType: dto.field_type ?? field.fieldType,
         fieldOptions:
           dto.field_options !== undefined
-            ? (dto.field_options as Prisma.InputJsonValue)
-            : (field.fieldOptions ?? Prisma.JsonNull),
+            ? (dto.field_options as Drizzle.InputJsonValue)
+            : (field.fieldOptions ?? Drizzle.JsonNull),
         isRequired: dto.is_required ?? field.isRequired,
         validationRules:
           dto.validation_rules !== undefined
-            ? (dto.validation_rules as Prisma.InputJsonValue)
-            : (field.validationRules ?? Prisma.JsonNull),
+            ? (dto.validation_rules as Drizzle.InputJsonValue)
+            : (field.validationRules ?? Drizzle.JsonNull),
         displayOrder: dto.display_order ?? field.displayOrder
       }
     });
   }
 
   async deleteField(formId: string, fieldId: string) {
-    const field = await this.prisma.formField.findFirst({ where: { id: fieldId, formId } });
+    const field = await this.drizzle.formField.findFirst({ where: { id: fieldId, formId } });
     if (!field) throw new NotFoundException('Field not found');
-    await this.prisma.formField.delete({ where: { id: field.id } });
+    await this.drizzle.formField.delete({ where: { id: field.id } });
     return { success: true };
   }
 
   async listAssignments(query: Record<string, any>) {
-    const where: Prisma.FormAssignmentWhereInput = {};
+    const where: Drizzle.FormAssignmentWhereInput = {};
     if (query.form_id) where.formId = String(query.form_id);
 
-    const items = await this.prisma.formAssignment.findMany({
+    const items = await this.drizzle.formAssignment.findMany({
       where,
       include: {
         form: { select: { id: true, name: true, module: true } }
@@ -160,11 +160,11 @@ export class FormsService {
       : null;
 
     if (assignedToProfileId) {
-      const profile = await this.prisma.profile.findUnique({ where: { id: assignedToProfileId } });
+      const profile = await this.drizzle.profile.findUnique({ where: { id: assignedToProfileId } });
       if (!profile) throw new NotFoundException('Assigned profile not found');
     }
 
-    return this.prisma.formAssignment.create({
+    return this.drizzle.formAssignment.create({
       data: {
         formId: dto.form_id,
         assignedToRole: dto.assigned_to_role ?? null,
@@ -175,14 +175,14 @@ export class FormsService {
   }
 
   async deleteAssignment(id: string) {
-    const existing = await this.prisma.formAssignment.findUnique({ where: { id } });
+    const existing = await this.drizzle.formAssignment.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Assignment not found');
-    await this.prisma.formAssignment.delete({ where: { id } });
+    await this.drizzle.formAssignment.delete({ where: { id } });
     return { success: true };
   }
 
   async validateRequestTypePayload(requestTypeId: string, data: Record<string, unknown>) {
-    const requestType = await this.prisma.requestType.findUnique({
+    const requestType = await this.drizzle.requestType.findUnique({
       where: { id: requestTypeId },
       select: { id: true, storageType: true, formId: true, isActive: true }
     });
@@ -196,7 +196,7 @@ export class FormsService {
       throw new BadRequestException('Form-backed request type is missing form binding');
     }
 
-    const form = await this.prisma.form.findUnique({
+    const form = await this.drizzle.form.findUnique({
       where: { id: requestType.formId },
       include: { fields: true }
     });
@@ -221,7 +221,7 @@ export class FormsService {
   }
 
   private async ensureForm(id: string) {
-    const form = await this.prisma.form.findUnique({ where: { id } });
+    const form = await this.drizzle.form.findUnique({ where: { id } });
     if (!form) throw new NotFoundException('Form not found');
     return form;
   }

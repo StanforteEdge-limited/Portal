@@ -7,7 +7,7 @@
     "dev": "ts-node-dev -r ./path-alias-register.js --respawn --transpile-only src/main.ts",
     "build": "NODE_OPTIONS=--max-old-space-size=4096 tsc -p tsconfig.build.json",
     "start": "node -r ./path-alias-register.js dist/main.js",
-    "prepare:runtime": "prisma migrate deploy && prisma generate && npm run seed:version",
+    "prepare:runtime": "drizzle-kit migrate && npm run seed:version",
     "deploy:server": "npm run prepare:runtime && npm run build",
     "db:seed": "node scripts/seed-rbac.js",
     "seed:rbac": "node scripts/seed-rbac.js",
@@ -25,9 +25,10 @@
     "seed:loans-system": "node scripts/seed-loans-system.js",
     "seed:grant-all-roles": "node scripts/grant-all-roles.js",
     "repair:request-workflows": "node scripts/repair-request-workflow-links.js",
-    "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev",
-    "prisma:migrate:deploy": "prisma migrate deploy"
+    "drizzle:generate": "drizzle-kit generate",
+    "drizzle:migrate": "drizzle-kit migrate",
+    "drizzle:push": "drizzle-kit push",
+    "drizzle:studio": "drizzle-kit studio"
   },
   "dependencies": {
     "@nestjs/common": "^10.3.0",
@@ -36,12 +37,13 @@
     "@nestjs/passport": "^10.0.2",
     "@nestjs/platform-express": "^10.3.0",
     "@nestjs/swagger": "^7.4.2",
-    "@prisma/client": "^5.12.0",
     "@types/nodemailer": "^7.0.10",
     "bcryptjs": "^2.4.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
+    "decimal.js": "^10.6.0",
     "dotenv": "^17.3.1",
+    "drizzle-orm": "1.0.0-rc.4",
     "express": "^4.19.2",
     "express-rate-limit": "^8.2.1",
     "googleapis": "^173.0.0",
@@ -53,13 +55,11 @@
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "pdf-lib": "^1.17.1",
+    "pg": "^8.23.0",
     "puppeteer": "^24.37.4",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "swagger-ui-express": "^5.0.1"
-  },
-  "prisma": {
-    "seed": "node scripts/seed-rbac.js"
   },
   "devDependencies": {
     "@nestjs/testing": "^10.3.0",
@@ -69,9 +69,11 @@
     "@types/multer": "^2.0.0",
     "@types/node": "^20.11.30",
     "@types/passport-jwt": "^4.0.1",
-    "prisma": "^5.12.0",
+    "@types/pg": "^8.23.1",
+    "drizzle-kit": "1.0.0-rc.4",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
+    "tsx": "^4.23.13",
     "typescript": "^5.4.3"
   }
 }

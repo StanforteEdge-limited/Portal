@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { OrganizationType, Prisma } from '@prisma/client';
-import { PrismaService } from '$common/prisma/prisma.service';
+import { OrganizationType, Drizzle } from '$common/db/drizzle-compat';
+import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { paginatedResponse } from '$common/helpers/paginated-response';
 import { toBigInt } from '$common/utils/ids';
 import { CreateOrganizationDto } from '$modules/directory/organizations/dto/create-organization.dto';
@@ -8,10 +8,10 @@ import { UpdateOrganizationDto } from '$modules/directory/organizations/dto/upda
 
 @Injectable()
 export class OrganizationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly drizzle: DrizzleService) {}
 
   async listOrganizations(params: Record<string, any>) {
-    const where: any = {};
+    const where: Drizzle.OrganizationWhereInput = {};
     if (params.is_active !== undefined) where.isActive = params.is_active === 'true';
     if (params.organization_type) where.organizationType = params.organization_type;
     if (params.search) {
@@ -21,7 +21,7 @@ export class OrganizationsService {
       ];
     }
 
-    const items = await this.prisma.organization.findMany({
+    const items = await this.drizzle.organization.findMany({
       where,
       include: { childOrganizations: true },
       orderBy: { createdAt: 'desc' }
@@ -30,7 +30,7 @@ export class OrganizationsService {
   }
 
   async getMyOrganizations(profileId: string) {
-    const rows = await this.prisma.profileOrganization.findMany({
+    const rows = await this.drizzle.profileOrganization.findMany({
       where: { profileId: toBigInt(profileId) },
       include: { organization: true }
     });
@@ -46,17 +46,17 @@ export class OrganizationsService {
 
   async createOrganization(dto: CreateOrganizationDto) {
     const code = dto.code.trim();
-    const exists = await this.prisma.organization.findUnique({ where: { code } });
+    const exists = await this.drizzle.organization.findUnique({ where: { code } });
     if (exists) throw new BadRequestException('Organization code already exists');
 
-    return this.prisma.organization.create({
+    return this.drizzle.organization.create({
       data: {
         name: dto.name,
         code,
         organizationType: (dto.organization_type ?? 'venture') as OrganizationType,
         isActive: dto.is_active ?? true,
         parentOrganizationId: dto.parent_organization_id ? toBigInt(dto.parent_organization_id) : null,
-        metadata: dto.metadata as Prisma.InputJsonValue | undefined,
+        metadata: dto.metadata as Drizzle.InputJsonValue | undefined,
         createdAt: new Date(),
         updatedAt: new Date()
       }
@@ -64,15 +64,15 @@ export class OrganizationsService {
   }
 
   async updateOrganization(id: string, dto: UpdateOrganizationDto) {
-    const org = await this.prisma.organization.findUnique({ where: { id: toBigInt(id) } });
+    const org = await this.drizzle.organization.findUnique({ where: { id: toBigInt(id) } });
     if (!org) throw new NotFoundException('Organization not found');
 
     if (dto.code && dto.code !== org.code) {
-      const codeExists = await this.prisma.organization.findUnique({ where: { code: dto.code } });
+      const codeExists = await this.drizzle.organization.findUnique({ where: { code: dto.code } });
       if (codeExists) throw new BadRequestException('Organization code already exists');
     }
 
-    return this.prisma.organization.update({
+    return this.drizzle.organization.update({
       where: { id: org.id },
       data: {
         name: dto.name ?? org.name,
@@ -87,15 +87,15 @@ export class OrganizationsService {
               : org.parentOrganizationId,
         metadata:
           dto.metadata !== undefined
-            ? (dto.metadata as Prisma.InputJsonValue)
-            : (org.metadata ?? Prisma.JsonNull),
+            ? (dto.metadata as Drizzle.InputJsonValue)
+            : (org.metadata ?? Drizzle.JsonNull),
         updatedAt: new Date()
       }
     });
   }
 
   async deleteOrganization(id: string) {
-    const org = await this.prisma.organization.findUnique({
+    const org = await this.drizzle.organization.findUnique({
       where: { id: toBigInt(id) },
       include: { childOrganizations: { select: { id: true } } }
     });
@@ -104,12 +104,12 @@ export class OrganizationsService {
       throw new BadRequestException('Cannot delete organization with child organizations');
     }
 
-    await this.prisma.organization.delete({ where: { id: org.id } });
+    await this.drizzle.organization.delete({ where: { id: org.id } });
     return { success: true };
   }
 
   async getOrganization(id: string) {
-    const org = await this.prisma.organization.findUnique({
+    const org = await this.drizzle.organization.findUnique({
       where: { id: toBigInt(id) },
     });
     if (!org) throw new NotFoundException('Organization not found');

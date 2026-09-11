@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { GroupUserRole, Prisma } from '@prisma/client';
-import { PrismaService } from '$common/prisma/prisma.service';
+import { GroupUserRole, Drizzle } from '$common/db/drizzle-compat';
+import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { paginatedResponse } from '$common/helpers/paginated-response';
 import { toBigInt } from '$common/utils/ids';
 import { AddGroupMemberDto } from '$modules/directory/groups/dto/add-group-member.dto';
@@ -11,11 +11,11 @@ import { UpdateTeamDto } from '$modules/directory/groups/dto/update-team.dto';
 
 @Injectable()
 export class GroupsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly drizzle: DrizzleService) {}
 
   async list(query: Record<string, any>) {
     const groupType = query.group_type ? String(query.group_type) : undefined;
-    const where: Prisma.GroupWhereInput = groupType
+    const where: Drizzle.GroupWhereInput = groupType
       ? { type: groupType }
       : { type: { in: ['team', 'department'] } };
     if (query.organization_id) {
@@ -24,7 +24,7 @@ export class GroupsService {
     }
     if (query.active_only === 'true') where.isActive = true;
     if (query.search) {
-      const searchConditions: Prisma.GroupWhereInput[] = [
+      const searchConditions: Drizzle.GroupWhereInput[] = [
         { name: { contains: String(query.search), mode: 'insensitive' } },
         { description: { contains: String(query.search), mode: 'insensitive' } }
       ];
@@ -36,7 +36,7 @@ export class GroupsService {
       }
     }
 
-    const groups = await this.prisma.group.findMany({
+    const groups = await this.drizzle.group.findMany({
       where,
       include: this.groupInclude(),
       orderBy: { name: 'asc' }
@@ -57,7 +57,7 @@ export class GroupsService {
 
     await this.ensureOrganizationsExist(organizationIds);
 
-    const team = await this.prisma.$transaction(async (tx) => {
+    const team = await this.drizzle.$transaction(async (tx) => {
       const created = await tx.group.create({
         data: {
           name: dto.name,
@@ -87,7 +87,7 @@ export class GroupsService {
   }
 
   async get(id: string) {
-    const team = await this.prisma.group.findUnique({
+    const team = await this.drizzle.group.findUnique({
       where: { id: this.parseId(id, 'team id') },
       include: this.groupInclude()
     });
@@ -99,7 +99,7 @@ export class GroupsService {
     const teamId = this.parseId(id, 'team id');
     const actor = this.parseId(userId, 'user id');
 
-    const existing = await this.prisma.group.findUnique({ where: { id: teamId } });
+    const existing = await this.drizzle.group.findUnique({ where: { id: teamId } });
     if (!existing) throw new NotFoundException('Group not found');
 
     const organizationIds = dto.organization_ids
@@ -114,7 +114,7 @@ export class GroupsService {
 
     if (organizationIds) await this.ensureOrganizationsExist(organizationIds);
 
-    await this.prisma.$transaction(async (tx) => {
+    await this.drizzle.$transaction(async (tx) => {
       await tx.group.update({
         where: { id: teamId },
         data: {
@@ -145,7 +145,7 @@ export class GroupsService {
     const organizationIds = this.parseOrganizationIds(dto.organization_ids);
     await this.ensureOrganizationsBelongToGroup(groupId, organizationIds);
 
-    await this.prisma.$transaction(async (tx) => {
+    await this.drizzle.$transaction(async (tx) => {
       const membership = await tx.groupUser.upsert({
         where: {
           unique_group_user: {
@@ -174,7 +174,7 @@ export class GroupsService {
     const groupId = this.parseId(id, 'group id');
     const memberId = this.parseId(userId, 'user id');
 
-    await this.prisma.groupUser.delete({
+    await this.drizzle.groupUser.delete({
       where: {
         unique_group_user: {
           groupId,
@@ -197,7 +197,7 @@ export class GroupsService {
 
     await this.ensureOrganizationsExist(organizationIds);
 
-    await this.prisma.$transaction(async (tx) => {
+    await this.drizzle.$transaction(async (tx) => {
       await this.syncGroupOrganizationsTx(tx, groupId, organizationIds, primaryOrganizationId);
       await tx.group.update({
         where: { id: groupId },
@@ -214,7 +214,7 @@ export class GroupsService {
   async forUser(userId: string, query: { organization_id?: string }) {
     const profileId = this.parseId(userId, 'user id');
 
-    const groupWhere: Prisma.GroupWhereInput = {};
+    const groupWhere: Drizzle.GroupWhereInput = {};
     if (query.organization_id) {
       const orgId = this.parseId(query.organization_id, 'organization id');
       groupWhere.OR = [
@@ -223,7 +223,7 @@ export class GroupsService {
       ];
     }
 
-    const memberships = await this.prisma.groupUser.findMany({
+    const memberships = await this.drizzle.groupUser.findMany({
       where: {
         userId: profileId,
         group: groupWhere
@@ -250,12 +250,12 @@ export class GroupsService {
     const organizationIds = this.parseOrganizationIds(dto.organization_ids);
     await this.ensureOrganizationsBelongToGroup(groupId, organizationIds);
 
-    const membership = await this.prisma.groupUser.findUnique({
+    const membership = await this.drizzle.groupUser.findUnique({
       where: { unique_group_user: { groupId, userId: memberId } }
     });
     if (!membership) throw new NotFoundException('Group member not found');
 
-    await this.prisma.$transaction(async (tx) => {
+    await this.drizzle.$transaction(async (tx) => {
       await this.syncGroupMemberScopesTx(tx, membership.id, organizationIds, dto.scope_role);
     });
 
@@ -297,7 +297,7 @@ export class GroupsService {
         },
         orderBy: [{ role: 'desc' as const }, { user: { firstName: 'asc' as const } }]
       }
-    } satisfies Prisma.GroupInclude;
+    } satisfies Drizzle.GroupInclude;
   }
 
   private serializeGroup(group: any) {
@@ -344,13 +344,13 @@ export class GroupsService {
   }
 
   private async ensureGroupExists(groupId: bigint) {
-    const group = await this.prisma.group.findUnique({ where: { id: groupId }, select: { id: true } });
+    const group = await this.drizzle.group.findUnique({ where: { id: groupId }, select: { id: true } });
     if (!group) throw new NotFoundException('Group not found');
   }
 
   private async ensureOrganizationsExist(organizationIds: bigint[]) {
     if (organizationIds.length === 0) return;
-    const found = await this.prisma.organization.findMany({
+    const found = await this.drizzle.organization.findMany({
       where: { id: { in: organizationIds } },
       select: { id: true }
     });
@@ -361,7 +361,7 @@ export class GroupsService {
 
   private async ensureOrganizationsBelongToGroup(groupId: bigint, organizationIds: bigint[]) {
     if (organizationIds.length === 0) return;
-    const mappings = await this.prisma.groupOrganization.findMany({
+    const mappings = await this.drizzle.groupOrganization.findMany({
       where: { groupId, organizationId: { in: organizationIds } },
       select: { organizationId: true }
     });
@@ -371,7 +371,7 @@ export class GroupsService {
   }
 
   private async syncGroupOrganizationsTx(
-    tx: Prisma.TransactionClient,
+    tx: Drizzle.TransactionClient,
     groupId: bigint,
     organizationIds: bigint[],
     primaryOrganizationId: bigint | null
@@ -388,7 +388,7 @@ export class GroupsService {
   }
 
   private async syncGroupMemberScopesTx(
-    tx: Prisma.TransactionClient,
+    tx: Drizzle.TransactionClient,
     groupUserId: bigint,
     organizationIds: bigint[],
     scopeRole?: string

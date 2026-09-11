@@ -78,7 +78,7 @@ export class FullDocumentDocument implements Document<FullDocumentContext> {
       if (pv.metadata && typeof pv.metadata === 'object' && !Array.isArray(pv.metadata)) {
         const ids = (pv.metadata as Record<string, unknown>).retirement_file_ids;
         if (Array.isArray(ids)) {
-          const retirementFiles = await this.engine.prisma.fileAsset.findMany({
+          const retirementFiles = await this.engine.drizzle.fileAsset.findMany({
             where: { id: { in: ids.filter((x): x is string => typeof x === 'string') } },
           });
           for (const file of retirementFiles) {

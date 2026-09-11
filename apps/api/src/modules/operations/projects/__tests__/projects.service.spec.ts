@@ -1,22 +1,22 @@
-import { GroupUserRole } from '@prisma/client';
+import { GroupUserRole } from '$common/db/drizzle-compat';
 import { ProjectsService } from '$modules/operations/projects/projects.service';
 
 describe('ProjectsService transaction boundaries', () => {
-  const prisma: any = {
+  const drizzle: any = {
     organization: { findUnique: jest.fn() },
     project: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
     projectMember: { upsert: jest.fn(), findFirst: jest.fn() },
     projectGovernance: { upsert: jest.fn(), update: jest.fn() },
     requestInstance: { findMany: jest.fn() },
-    $transaction: jest.fn(async (callback: any) => callback(prisma)),
+    $transaction: jest.fn(async (callback: any) => callback(drizzle)),
   };
 
-  const service = new ProjectsService(prisma);
+  const service = new ProjectsService(drizzle);
 
   beforeEach(() => {
     jest.clearAllMocks();
-    prisma.organization.findUnique.mockResolvedValue({ id: 2n });
-    prisma.project.findUnique.mockResolvedValue({
+    drizzle.organization.findUnique.mockResolvedValue({ id: 2n });
+    drizzle.project.findUnique.mockResolvedValue({
       id: 10n,
       name: 'Alpha',
       description: null,
@@ -25,9 +25,9 @@ describe('ProjectsService transaction boundaries', () => {
       members: [],
       organization: null,
     });
-    prisma.project.create.mockResolvedValue({ id: 10n });
-    prisma.projectMember.findFirst.mockResolvedValue({ role: GroupUserRole.admin });
-    prisma.requestInstance.findMany.mockResolvedValue([]);
+    drizzle.project.create.mockResolvedValue({ id: 10n });
+    drizzle.projectMember.findFirst.mockResolvedValue({ role: GroupUserRole.admin });
+    drizzle.requestInstance.findMany.mockResolvedValue([]);
   });
 
   it('creates a project inside a transaction', async () => {
@@ -38,8 +38,8 @@ describe('ProjectsService transaction boundaries', () => {
       project_code: 'P-1',
     });
 
-    expect(prisma.$transaction).toHaveBeenCalled();
-    expect(prisma.projectMember.upsert).toHaveBeenCalledWith(
+    expect(drizzle.$transaction).toHaveBeenCalled();
+    expect(drizzle.projectMember.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { unique_project_user: { projectId: 10n, userId: 1n } },
       })
@@ -52,19 +52,19 @@ describe('ProjectsService transaction boundaries', () => {
       governance_status: 'on_hold',
     });
 
-    expect(prisma.$transaction).toHaveBeenCalled();
-    expect(prisma.project.update).toHaveBeenCalled();
-    expect(prisma.projectGovernance.upsert).toHaveBeenCalled();
+    expect(drizzle.$transaction).toHaveBeenCalled();
+    expect(drizzle.project.update).toHaveBeenCalled();
+    expect(drizzle.projectGovernance.upsert).toHaveBeenCalled();
   });
 
   it('archives project and governance inside a transaction', async () => {
     await service.archive('10', '1');
 
-    expect(prisma.$transaction).toHaveBeenCalled();
-    expect(prisma.project.update).toHaveBeenCalledWith(
+    expect(drizzle.$transaction).toHaveBeenCalled();
+    expect(drizzle.project.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ isActive: false }) })
     );
-    expect(prisma.projectGovernance.upsert).toHaveBeenCalledWith(
+    expect(drizzle.projectGovernance.upsert).toHaveBeenCalledWith(
       expect.objectContaining({ update: { governanceStatus: 'archived' } })
     );
   });

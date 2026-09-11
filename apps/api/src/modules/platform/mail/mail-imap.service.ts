@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ImapFlow } from 'imapflow';
 import { simpleParser } from 'mailparser';
-import type { MailAccount } from '@prisma/client';
+import type { MailAccount } from '$common/db/drizzle-compat';
 
 export type FolderItem = {
   name: string;

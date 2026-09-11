@@ -1,24 +1,24 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
-import { PrismaService } from '$common/prisma/prisma.service';
+import { Drizzle } from '$common/db/drizzle-compat';
+import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { toBigInt } from '$common/utils/ids';
 import { CreateAuditEventDto } from '$modules/auth/audit/dto/create-audit-event.dto';
 import { paginatedResponse } from '$common/helpers/paginated-response';
 
 @Injectable()
 export class AuditService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly drizzle: DrizzleService) {}
 
   async listEvents(query: Record<string, any>) {
     const page = Math.max(1, Number(query.page ?? 1));
     const perPage = Math.min(100, Math.max(1, Number(query.per_page ?? 25)));
 
-    const where: Prisma.WorkflowHistoryWhereInput = {};
+    const where: Drizzle.WorkflowHistoryWhereInput = {};
     if (query.action) where.action = String(query.action);
     if (query.instance_id) where.instanceId = String(query.instance_id);
     if (query.actor_id) where.performedBy = this.parseId(String(query.actor_id), 'actor id');
 
-    const instanceWhere: Prisma.WorkflowInstanceWhereInput = {};
+    const instanceWhere: Drizzle.WorkflowInstanceWhereInput = {};
     if (query.entity_type) instanceWhere.entityType = String(query.entity_type);
     if (query.entity_id) instanceWhere.entityId = String(query.entity_id);
     if (Object.keys(instanceWhere).length > 0) {
@@ -39,7 +39,7 @@ export class AuditService {
       }
     }
 
-    const events = await this.prisma.workflowHistory.findMany({
+    const events = await this.drizzle.workflowHistory.findMany({
       where,
       include: {
         instance: {
@@ -55,7 +55,7 @@ export class AuditService {
       skip: (page - 1) * perPage,
       take: perPage
     });
-    const total = await this.prisma.workflowHistory.count({ where });
+    const total = await this.drizzle.workflowHistory.count({ where });
 
     return paginatedResponse(events.map((event) => ({
       id: event.id,
@@ -77,15 +77,15 @@ export class AuditService {
   }
 
   async createEvent(dto: CreateAuditEventDto, performedBy?: string) {
-    const instance = await this.prisma.workflowInstance.findUnique({ where: { id: dto.instance_id } });
+    const instance = await this.drizzle.workflowInstance.findUnique({ where: { id: dto.instance_id } });
     if (!instance) throw new NotFoundException('Workflow instance not found');
 
-    const event = await this.prisma.workflowHistory.create({
+    const event = await this.drizzle.workflowHistory.create({
       data: {
         instanceId: dto.instance_id,
         action: dto.action,
         comment: dto.comment,
-        data: dto.data ? (dto.data as Prisma.InputJsonValue) : undefined,
+        data: dto.data ? (dto.data as Drizzle.InputJsonValue) : undefined,
         performedBy: performedBy ? this.parseId(performedBy, 'performed_by') : null
       }
     });
@@ -102,7 +102,7 @@ export class AuditService {
   }
 
   async getRequestAudit(requestId: string) {
-    const instances = await this.prisma.workflowInstance.findMany({
+    const instances = await this.drizzle.workflowInstance.findMany({
       where: {
         entityType: 'request',
         entityId: requestId
@@ -147,7 +147,7 @@ export class AuditService {
     const page = Math.max(1, Number(query.page ?? 1));
     const perPage = Math.min(100, Math.max(1, Number(query.per_page ?? 25)));
 
-    const where: Prisma.EmailLogWhereInput = {};
+    const where: Drizzle.EmailLogWhereInput = {};
     if (query.status) where.status = String(query.status);
     if (query.to_email) where.toEmail = { contains: String(query.to_email), mode: 'insensitive' };
     if (query.user_id) where.userId = this.parseId(String(query.user_id), 'user id');
@@ -168,8 +168,8 @@ export class AuditService {
       }
     }
 
-    const [data, total] = await this.prisma.$transaction([
-      this.prisma.emailLog.findMany({
+    const [data, total] = await this.drizzle.$transaction([
+      this.drizzle.emailLog.findMany({
         where,
         include: {
           user: {
@@ -180,7 +180,7 @@ export class AuditService {
         skip: (page - 1) * perPage,
         take: perPage
       }),
-      this.prisma.emailLog.count({ where })
+      this.drizzle.emailLog.count({ where })
     ]);
 
     return paginatedResponse(data.map((item) => ({
