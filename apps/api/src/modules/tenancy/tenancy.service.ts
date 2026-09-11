@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { sql } from 'drizzle-orm';
 import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { TenantContext } from '$common/auth/tenant-context';
+import { TenantContextService } from '$common/auth/tenant-context.service';
 import { UsersService } from '$modules/auth/users/users.service';
 import { InviteUserDto } from '$modules/auth/users/dto/invite-user.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
@@ -51,6 +52,7 @@ export class TenancyService {
   constructor(
     private readonly drizzle: DrizzleService,
     private readonly usersService: UsersService,
+    private readonly tenantContext: TenantContextService,
   ) {}
 
   private requireOwner(context: TenantContext) {
@@ -179,10 +181,12 @@ export class TenancyService {
 
   async inviteMember(context: TenantContext, emailValue: string, message?: string) {
     const email = emailValue.trim().toLowerCase();
-    const profile = await this.drizzle.profile.findUnique({
-      where: { email },
-      select: { id: true, status: true },
-    });
+    const profile = await this.tenantContext.runSystem('tenancy.inviteMember', () =>
+      this.drizzle.profile.findUnique({
+        where: { email },
+        select: { id: true, status: true },
+      }),
+    );
     if (!profile) throw new NotFoundException('User account not found; create the user account before inviting it');
 
     const existing = await this.drizzle.tenantMembership.findFirst({

@@ -14,12 +14,14 @@ import { generateUniqueUsername, makeUsernameSeed } from '$common/utils/username
 import { paginatedResponse } from '$common/helpers/paginated-response';
 import { Drizzle } from '$common/db/drizzle-compat';
 import { TenantContext } from '$common/auth/tenant-context';
+import { TenantContextService } from '$common/auth/tenant-context.service';
 
 @Injectable()
 export class UsersService {
   constructor(
     private readonly drizzle: DrizzleService,
-    private readonly mailService: MailService
+    private readonly mailService: MailService,
+    private readonly tenantContext: TenantContextService
   ) {}
 
   async getMyProfile(profileId: string, tenant?: TenantContext) {
@@ -155,7 +157,9 @@ export class UsersService {
 
   async createUser(dto: CreateUserDto, tenant?: TenantContext) {
     const email = dto.email.trim().toLowerCase();
-    const existing = await this.drizzle.profile.findUnique({ where: { email } });
+    const existing = await this.tenantContext.runSystem('users.createUser.emailCheck', () =>
+      this.drizzle.profile.findUnique({ where: { email } }),
+    );
     if (existing) throw new BadRequestException('Email already exists');
     const shouldSetPassword = dto.set_password ?? Boolean(dto.password);
     if (shouldSetPassword && !dto.password) {
@@ -329,7 +333,9 @@ export class UsersService {
       nextEmail = dto.email.trim().toLowerCase();
       if (!nextEmail) throw new BadRequestException('Email is required');
       if (nextEmail !== existing.email) {
-        const emailExists = await this.drizzle.profile.findUnique({ where: { email: nextEmail } });
+        const emailExists = await this.tenantContext.runSystem('users.updateUser.emailCheck', () =>
+          this.drizzle.profile.findUnique({ where: { email: nextEmail } }),
+        );
         if (emailExists && emailExists.id !== existing.id) {
           throw new BadRequestException('Email already exists');
         }
@@ -529,9 +535,9 @@ export class UsersService {
       throw new BadRequestException(`Unknown role(s): ${missing.join(', ')}`);
     }
 
-    await this.drizzle.$transaction([
-      this.drizzle.userRole.deleteMany({ where: tenant ? { profileId, tenantId: tenant.tenantId } : { profileId } }),
-      this.drizzle.userRole.createMany({
+    await this.drizzle.$transaction(async (tx) => {
+      await tx.userRole.deleteMany({ where: tenant ? { profileId, tenantId: tenant.tenantId } : { profileId } });
+      await tx.userRole.createMany({
         data: roles.map((role, index) => ({
           profileId,
           roleId: role.id,
@@ -540,8 +546,8 @@ export class UsersService {
           isPrimaryRole: index === 0
         })),
         skipDuplicates: true
-      })
-    ]);
+      });
+    });
 
     return {
       user: {
@@ -584,11 +590,11 @@ export class UsersService {
     const tokenHash = sha256(inviteToken);
     const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7);
 
-    await this.drizzle.$transaction([
-      this.drizzle.token.deleteMany({
+    await this.drizzle.$transaction(async (tx) => {
+      await tx.token.deleteMany({
         where: { profileId, type: 'invite' }
-      }),
-      this.drizzle.token.create({
+      });
+      await tx.token.create({
         data: {
           id: randomToken(24),
           profileId,
@@ -597,12 +603,12 @@ export class UsersService {
           tokenHash,
           expiresAt
         }
-      }),
-      this.drizzle.profile.update({
+      });
+      await tx.profile.update({
         where: { id: profileId },
         data: { status }
-      }),
-      this.drizzle.onboardingProgress.upsert({
+      });
+      await tx.onboardingProgress.upsert({
         where: { userId: profileId },
         update: {
           status: 'invited',
@@ -615,8 +621,8 @@ export class UsersService {
           currentStep: 'invite',
           dueDate: expiresAt
         }
-      })
-    ]);
+      });
+    });
 
     return { inviteToken, expiresAt };
   }

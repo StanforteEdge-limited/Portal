@@ -123,7 +123,7 @@ export class HrController {
     return this.hrService.updateOnboardingFormAssignment(id, dto);
   }
 
-  @Get('leave/balance')
+  @Get('leave/balances')
   @Permissions('hr.manage', 'leave.manage', 'leave.view')
   leaveBalance(@Query() query: Record<string, any>) {
     return this.hrService.getLeaveBalance(query);

@@ -77,7 +77,7 @@ export async function getHrLeaveBalances(params?: {
   if (params?.year) query.set("year", String(params.year));
   if (params?.user_id) query.set("user_id", String(params.user_id));
   const suffix = query.toString() ? `?${query.toString()}` : "";
-  return httpRequest<HrLeaveBalancesResponse>(`/hr/leave/balance${suffix}`);
+  return httpRequest<HrLeaveBalancesResponse>(`/hr/leave/balances${suffix}`);
 }
 
 // Re-export for use in the page without additional imports

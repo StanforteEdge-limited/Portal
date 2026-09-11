@@ -42,7 +42,12 @@ function compact<T>(values: Array<T | undefined>) {
 }
 
 function tableColumns(table: any) {
-  return getTableColumns(table) as Record<string, any>;
+  if (!table || typeof table !== 'object') return undefined;
+  try {
+    return getTableColumns(table) as Record<string, any>;
+  } catch {
+    return undefined;
+  }
 }
 
 function singularize(value: string) {
@@ -56,6 +61,24 @@ function relationNames(value: string) {
   const normalized = lowerFirst(value);
   const singular = singularize(normalized);
   return new Set([normalized, singular, `${normalized}s`, `${singular}s`]);
+}
+
+function expandedRelationNames(value: string) {
+  const set = relationNames(value);
+  for (const token of camelTokens(value)) {
+    const tokenSingular = singularize(token);
+    set.add(token);
+    set.add(tokenSingular);
+    set.add(`${token}s`);
+    set.add(`${tokenSingular}s`);
+  }
+  return set;
+}
+
+function camelTokens(value: string) {
+  return value
+    .split(/(?=[A-Z])/)
+    .map((part) => lowerFirst(part));
 }
 
 function normalizeCompoundWhere(where: Record<string, any>, columns: Record<string, any>) {
@@ -140,6 +163,18 @@ function buildColumns(table: any, select?: Record<string, boolean>) {
   return Object.keys(selected).length ? selected : undefined;
 }
 
+function splitSelection(select?: Record<string, any>) {
+  const columns: Record<string, boolean> = {};
+  const relationIncludes: Record<string, any> = {};
+  if (!select) return { columns: undefined, relationIncludes };
+  for (const [key, value] of Object.entries(select)) {
+    if (typeof value === 'boolean') columns[key] = value;
+    else if (value && typeof value === 'object') relationIncludes[key] = value;
+    else columns[key] = Boolean(value);
+  }
+  return { columns, relationIncludes };
+}
+
 function buildOrderBy(table: any, orderBy?: any) {
   if (!orderBy) return undefined;
   const columns = tableColumns(table);
@@ -192,7 +227,7 @@ class TableRepository {
     protected readonly tenantContext?: TenantContextService,
   ) {}
 
-  private async scopedWhere(where?: Record<string, any>) {
+  public async scopedWhere(where?: Record<string, any>) {
     const context = this.tenantContext?.get();
     if (context?.scope === 'system') return where;
     const tenantId = context?.tenantId;
@@ -227,7 +262,8 @@ class TableRepository {
   }
 
   async findMany(args: QueryArgs = {}): Promise<any[]> {
-    let query = this.db.select(buildColumns(this.table, args?.select)).from(this.table).$dynamic();
+    const { columns, relationIncludes } = splitSelection(args?.select);
+    let query = this.db.select(buildColumns(this.table, columns)).from(this.table).$dynamic();
     const where = buildWhere(this.table, await this.scopedWhere(args?.where));
     const orderBy = buildOrderBy(this.table, args?.orderBy);
     if (where) query = query.where(where);
@@ -235,7 +271,7 @@ class TableRepository {
     if (args?.skip != null) query = query.offset(Number(args.skip));
     if (args?.take != null) query = query.limit(Math.abs(Number(args.take)));
     const rows = await query;
-    return this.attachIncludes(rows, args?.include);
+    return this.attachIncludes(rows, { ...relationIncludes, ...(args?.include ?? {}) });
   }
 
   async findFirst(args: QueryArgs = {}): Promise<any> {
@@ -351,17 +387,17 @@ class TableRepository {
         mapped._sum = {};
         for (const key of Object.keys(args._sum)) mapped._sum[key] = row[`_sum_${key}`] ?? null;
       }
-      if (args?._count) mapped._count = row._count ?? 0;
+      if (args?._count) mapped._count = { _all: row._count ?? 0 };
       return mapped;
     });
   }
 
-  private async attachIncludes<T>(rows: T[], include?: Record<string, any>): Promise<T[]> {
+  public async attachIncludes<T>(rows: T[], include?: Record<string, any>): Promise<T[]> {
     if (!include) return rows;
     return Promise.all(rows.map((row) => this.attachInclude(row, include)));
   }
 
-  private async attachInclude<T>(row: T, include?: Record<string, any>): Promise<T> {
+  public async attachInclude<T>(row: T, include?: Record<string, any>): Promise<T> {
     if (!row || !include) return row;
     const result = { ...(row as any) };
     for (const [relationName, relationArgs] of Object.entries(include)) {
@@ -373,7 +409,10 @@ class TableRepository {
       if (!relation) continue;
       const args = relationArgs === true ? {} : (relationArgs ?? {});
       const relatedRows = await relation.repository.findMany({
-        where: { [relation.foreignKey]: relation.foreignValue(result) },
+        where: {
+          ...(args.where ?? {}),
+          [relation.foreignKey]: relation.foreignValue(result),
+        },
         select: args.select,
         include: args.include,
         orderBy: args.orderBy,
@@ -389,12 +428,65 @@ class TableRepository {
     const names = relationNames(relationName);
     const sourceColumns = tableColumns(this.table);
     const sourceId = row.id;
+
+    const singularName = singularize(lowerFirst(relationName));
+
+    if (singularName === 'user' && sourceColumns.userId && tableMap.profile) {
+      return {
+        repository: new TableRepository(this.db, 'profile', tableMap.profile, this.tenantContext),
+        foreignKey: 'id',
+        foreignValue: (value: Record<string, any>) => value.userId,
+        many: false,
+      };
+    }
+
+    const directKey = [...names].map((name) => `${name}Id`).find((key) => sourceColumns[key]);
+    if (directKey) {
+      const resolved = this.resolveDirectKeyTarget(directKey, names, sourceColumns);
+      if (resolved) {
+        return {
+          repository: new TableRepository(this.db, resolved.tableName, resolved.target, this.tenantContext),
+          foreignKey: 'id',
+          foreignValue: (value: Record<string, any>) => value[directKey],
+          many: false,
+        };
+      }
+    }
+
     if (sourceId === undefined) return undefined;
+
+    const aliasDirectKey = this.resolveAliasDirectKey(relationName, names, sourceColumns);
+    if (aliasDirectKey) {
+      return {
+        repository: new TableRepository(this.db, aliasDirectKey.tableName, aliasDirectKey.target, this.tenantContext),
+        foreignKey: 'id',
+        foreignValue: (value: Record<string, any>) => value[aliasDirectKey.column],
+        many: false,
+      };
+    }
+
+    if (singularName === 'member') {
+      const sourceName = lowerFirst(this.tableName);
+      for (const [joinTableName, table] of Object.entries(tableMap)) {
+        if (table === this.table || joinTableName === this.tableName) continue;
+        const columns = tableColumns(table);
+        if (!columns) continue;
+        const fk = [`${sourceName}Id`, `${singularize(sourceName)}Id`].find((key) => columns[key]);
+        if (fk && columns.userId) {
+          return {
+            repository: new TableRepository(this.db, joinTableName, table, this.tenantContext),
+            foreignKey: fk,
+            foreignValue: () => sourceId,
+            many: true,
+          };
+        }
+      }
+      return undefined;
+    }
 
     for (const candidateName of names) {
       const target = tableMap[candidateName];
       if (!target || target === this.table) continue;
-      const targetColumns = tableColumns(target);
       const directKey = [...names].map((name) => `${name}Id`).find((key) => sourceColumns[key]);
       if (directKey) {
         return {
@@ -404,19 +496,109 @@ class TableRepository {
           many: false,
         };
       }
-      const reverseKey = [`${lowerFirst(this.tableName)}Id`, `${singularize(lowerFirst(this.tableName))}Id`]
+    }
+
+    if (sourceId === undefined) return undefined;
+
+    for (const candidateName of names) {
+      const target = tableMap[candidateName];
+      if (!target || target === this.table) continue;
+      const targetColumns = tableColumns(target);
+      const reverseKey = [`${lowerFirst(this.tableName)}Id`, `${singularize(lowerFirst(this.tableName))}Id`, 'userId']
         .find((key) => targetColumns[key]);
       if (reverseKey) {
+        const reverseColumn = targetColumns[reverseKey];
         return {
           repository: new TableRepository(this.db, candidateName, target, this.tenantContext),
           foreignKey: reverseKey,
           foreignValue: () => sourceId,
-          many: true,
+          many: typeof reverseColumn?.isUnique !== 'boolean' || !reverseColumn.isUnique,
         };
       }
     }
 
     return this.resolveJoinRelation(relationName, row, names, sourceId);
+  }
+
+  private resolveDirectKeyTarget(
+    directKey: string,
+    names: Set<string>,
+    sourceColumns: Record<string, any>,
+  ): { tableName: string; target: any } | undefined {
+    const fkColumn = sourceColumns[directKey];
+    const fkType = fkColumn?.dataType;
+    const nameTargets = [...names]
+      .map((name) => ({ name, target: tableMap[name] }))
+      .filter((entry): entry is { name: string; target: any } => Boolean(entry.target) && entry.target !== this.table);
+
+    const typeMatches = (name: string, target: any) => {
+      if (!fkType) return false;
+      const idColumn = tableColumns(target)?.id;
+      return Boolean(idColumn && (idColumn as any).dataType === fkType);
+    };
+
+    const exactType = nameTargets.find((entry) => typeMatches(entry.name, entry.target));
+    if (exactType) return { tableName: exactType.name, target: exactType.target };
+
+    const baseNames = new Set<string>();
+    for (const name of names) {
+      baseNames.add(singularize(name));
+      baseNames.add(singularize(name) + 's');
+      baseNames.add(lowerFirst(name));
+    }
+    const broad = Object.entries(tableMap)
+      .filter(([tableName, target]) => {
+        if (!target || target === this.table) return false;
+        if (!typeMatches(tableName, target)) return false;
+        const lower = tableName.toLowerCase();
+        return [...baseNames].some((base) => lower === base.toLowerCase() || lower.endsWith(base.toLowerCase()));
+      })
+      .sort((a, b) => a[0].length - b[0].length);
+    if (broad.length > 0) return { tableName: broad[0][0], target: broad[0][1] };
+
+    if (fkType) return undefined;
+    const fallback = nameTargets[0];
+    if (fallback) return { tableName: fallback.name, target: fallback.target };
+    return undefined;
+  }
+
+  private resolveAliasDirectKey(
+    relationName: string,
+    names: Set<string>,
+    sourceColumns: Record<string, any>,
+  ): { tableName: string; target: any; column: string } | undefined {
+    const candidates = new Set<string>([...names, relationName]);
+    for (const name of candidates) {
+      if (sourceColumns[`${name}Id`]) {
+        const resolved = this.resolveAliasTarget(name);
+        if (resolved) return { ...resolved, column: `${name}Id` };
+      }
+      if (sourceColumns[`${name}UserId`]) {
+        const resolved = this.resolveAliasTarget(`${name}User`);
+        if (resolved) return { ...resolved, column: `${name}UserId` };
+      }
+    }
+    return undefined;
+  }
+
+  private resolveAliasTarget(alias: string): { tableName: string; target: any } | undefined {
+    const normalized = lowerFirst(alias);
+    if (tableMap[normalized] && tableMap[normalized] !== this.table) {
+      return { tableName: normalized, target: tableMap[normalized] };
+    }
+    const tokens = camelTokens(normalized);
+    const candidates = new Set<string>();
+    for (let i = tokens.length - 1; i >= 0; i--) candidates.add(tokens.slice(i).join(''));
+    if (normalized.endsWith('User')) candidates.add('user');
+
+    for (const targetName of candidates) {
+      if (targetName === 'user' || targetName === 'users') {
+        if (tableMap.profile) return { tableName: 'profile', target: tableMap.profile };
+      }
+      const target = tableMap[targetName];
+      if (target && target !== this.table) return { tableName: targetName, target };
+    }
+    return undefined;
   }
 
   private resolveJoinRelation(
@@ -427,35 +609,64 @@ class TableRepository {
   ) {
     const sourceKeyNames = relationNames(this.tableName);
     const sourceForeignKeys = [...sourceKeyNames].map((name) => `${name}Id`);
-    const targetName = [...names]
+    if (this.tableName === 'profile' && !sourceForeignKeys.includes('userId')) {
+      sourceForeignKeys.push('userId');
+    }
+    const targetName = [...expandedRelationNames(relationName)]
       .map((name) => tableMap[name] ? name : undefined)
       .find(Boolean);
     if (!targetName) return undefined;
     const target = tableMap[targetName];
-    const targetColumns = tableColumns(target);
 
+    const candidates: Array<{
+      joinTable: any;
+      sourceForeignKey: string;
+      targetForeignKey: string;
+      joinName: string;
+      nameScore: number;
+      extra: number;
+    }> = [];
+    const sourceName = lowerFirst(this.tableName);
+    const singularSourceName = singularize(sourceName);
+    const targetNameLower = lowerFirst(targetName);
+    const targetSingular = singularize(targetNameLower);
     for (const [joinName, joinTable] of Object.entries(tableMap)) {
       if (joinTable === this.table || joinTable === target) continue;
       const joinColumns = tableColumns(joinTable);
+      if (!joinColumns) continue;
       const sourceForeignKey = sourceForeignKeys.find((key) => joinColumns[key]);
       const targetForeignKey = [...relationNames(targetName)].map((name) => `${name}Id`).find((key) => joinColumns[key]);
       if (!sourceForeignKey || !targetForeignKey) continue;
-      return {
-        repository: new JoinTableRepository(
-          this.db,
-          joinTable,
-          target,
-          sourceForeignKey,
-          targetForeignKey,
-          sourceId,
-          this.tenantContext,
-        ),
-        foreignKey: 'id',
-        foreignValue: (value: Record<string, any>) => value.id,
-        many: true,
-      };
+      const metadata = new Set([
+        'id', 'tenantId', 'createdAt', 'updatedAt', 'assignedAt', 'isActive',
+        'isPrimary', 'isPrimaryRole', 'status', sourceForeignKey, targetForeignKey,
+      ]);
+      const extra = Object.keys(joinColumns).filter((key) => !metadata.has(key)).length;
+      const joinLower = joinName.toLowerCase();
+      const nameScore =
+        [sourceName, singularSourceName].filter((name) => joinLower.includes(name)).length +
+        [targetNameLower, targetSingular].filter((name) => joinLower.includes(name)).length;
+      candidates.push({ joinTable, sourceForeignKey, targetForeignKey, joinName, nameScore, extra });
     }
-    return undefined;
+
+    candidates.sort((a, b) => b.nameScore - a.nameScore || a.extra - b.extra);
+    const best = candidates.find((c) => c.nameScore >= 2 || c.extra <= 2);
+    if (!best) return undefined;
+
+    return {
+      repository: new JoinTableRepository(
+        this.db,
+        best.joinTable,
+        target,
+        best.sourceForeignKey,
+        best.targetForeignKey,
+        sourceId,
+        this.tenantContext,
+      ),
+      foreignKey: best.sourceForeignKey,
+      foreignValue: () => sourceId,
+      many: true,
+    };
   }
 
   private async loadRelationCounts(row: Record<string, any>, args: any) {
@@ -495,13 +706,22 @@ class JoinTableRepository extends TableRepository {
   }
 
   async findMany(args: QueryArgs = {}): Promise<any[]> {
-    const joins = await this.db.select().from(this.joinTable).where(eq(tableColumns(this.joinTable)[this.sourceForeignKey], this.sourceId));
-    const ids = joins.map((join: any) => join[this.targetForeignKey]).filter((id: any) => id !== undefined);
-    if (!ids.length) return [];
-    return super.findMany({
-      ...args,
-      where: { AND: [{ id: { in: ids } }, ...(args.where ? [args.where] : [])] },
-    });
+    const columns = tableColumns(this.joinTable);
+    let query = this.db.select().from(this.joinTable).$dynamic();
+    const scoped = await this.scopedWhere(args?.where);
+    const where = buildWhere(this.joinTable, scoped);
+    const conditions = [where, eq(columns[this.sourceForeignKey], this.sourceId)].filter(Boolean);
+    if (conditions.length) query = query.where(and(...conditions));
+    const orderBy = buildOrderBy(this.joinTable, args?.orderBy);
+    if (orderBy?.length) query = query.orderBy(...orderBy);
+    if (args?.skip != null) query = query.offset(Number(args.skip));
+    if (args?.take != null) query = query.limit(Math.abs(Number(args.take)));
+    const rows = await query;
+
+    const joinName = Object.entries(tableMap).find(([, entry]) => entry === this.joinTable)?.[0];
+    if (!joinName) return rows;
+    const joinRepository = new TableRepository(this.db, joinName, this.joinTable, this.tenantContext);
+    return joinRepository.attachIncludes(rows, args?.include);
   }
 }
 
@@ -559,7 +779,9 @@ export class RepositoryService {
   async $queryRaw<T = any>(query: SQL | TemplateStringsArray, ...values: unknown[]): Promise<T> {
     requireRawTenantContext(this.tenantContext);
     const statement = Array.isArray(query) && 'raw' in query ? valuesForRaw(query, values) : (query as SQL);
-    return this.dbService.client.execute(statement) as unknown as Promise<T>;
+    const result = await this.dbService.client.execute(statement) as unknown;
+    if (Array.isArray(result)) return result as T;
+    return (result && typeof result === 'object' && 'rows' in result ? (result as { rows: T }).rows : result) as T;
   }
 
   async $executeRaw<T = any>(query: SQL): Promise<T>;

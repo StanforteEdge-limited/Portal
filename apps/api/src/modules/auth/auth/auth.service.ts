@@ -328,11 +328,11 @@ export class AuthService {
     const tokenHash = sha256(resetToken);
     const expiresAt = new Date(Date.now() + 1000 * 60 * 30);
 
-    await this.drizzle.$transaction([
-      this.drizzle.token.deleteMany({
+    await this.drizzle.$transaction(async (tx) => {
+      await tx.token.deleteMany({
         where: { profileId: profile.id, type: 'reset' }
-      }),
-      this.drizzle.token.create({
+      });
+      await tx.token.create({
         data: {
           id: randomToken(24),
           profileId: profile.id,
@@ -340,8 +340,8 @@ export class AuthService {
           tokenHash,
           expiresAt
         }
-      })
-    ]);
+      });
+    });
 
     const appUrl = process.env.APP_BASE_URL || 'http://localhost:3000';
     const resetLink = `${appUrl}/reset-password?token=${encodeURIComponent(resetToken)}`;
@@ -370,13 +370,13 @@ export class AuthService {
 
     const newHash = await bcrypt.hash(dto.new_password, 12);
 
-    await this.drizzle.$transaction([
-      this.drizzle.profile.update({
+    await this.drizzle.$transaction(async (tx) => {
+      await tx.profile.update({
         where: { id: tokenRow.profileId },
         data: { passwordHash: newHash }
-      }),
-      this.drizzle.token.deleteMany({ where: { profileId: tokenRow.profileId } })
-    ]);
+      });
+      await tx.token.deleteMany({ where: { profileId: tokenRow.profileId } });
+    });
 
     return { success: true };
   }
@@ -404,23 +404,23 @@ export class AuthService {
     }
 
     const passwordHash = await bcrypt.hash(dto.new_password, 12);
-    await this.drizzle.$transaction([
-      this.drizzle.profile.update({
+    await this.drizzle.$transaction(async (tx) => {
+      await tx.profile.update({
         where: { id: tokenRow.profileId },
         data: { passwordHash, status: 'active' }
-      }),
-      this.drizzle.onboardingProgress.upsert({
+      });
+      await tx.onboardingProgress.upsert({
         where: { userId: tokenRow.profileId },
         update: { status: 'accepted', currentStep: 'profile' },
         create: { userId: tokenRow.profileId, status: 'accepted', currentStep: 'profile' }
-      }),
-      this.drizzle.token.deleteMany({
+      });
+      await tx.token.deleteMany({
         where: {
           profileId: tokenRow.profileId,
           type: { in: ['invite'] }
         }
-      })
-    ]);
+      });
+    });
 
     return { success: true };
   }
@@ -598,7 +598,8 @@ export class AuthService {
     if (!membership) return null;
 
     const tenant = await this.drizzle.tenant.findUnique({ where: { id: tenantId } });
-    if (!tenant || tenant.status !== 'active') return null;
+    if (!tenant) return null;
+    if (tenant.status !== 'active' && !membership.isOwner) return null;
     return {
       tenantId: tenant.id,
       membershipId: membership.id,

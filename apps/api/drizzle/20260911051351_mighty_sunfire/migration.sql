@@ -1,5 +1,24 @@
+CREATE TYPE "employment_status" AS ENUM('draft', 'active', 'suspended', 'exited');--> statement-breakpoint
+CREATE TYPE "employment_type" AS ENUM('full_time', 'contract', 'intern', 'consultant');--> statement-breakpoint
+CREATE TYPE "grn_status" AS ENUM('pending', 'confirmed', 'disputed');--> statement-breakpoint
+CREATE TYPE "group_user_role" AS ENUM('member', 'admin', 'moderator');--> statement-breakpoint
+CREATE TYPE "mail_provider" AS ENUM('GOOGLE', 'MICROSOFT');--> statement-breakpoint
+CREATE TYPE "onboarding_status" AS ENUM('invited', 'accepted', 'profile_pending', 'forms_pending', 'hr_review', 'completed');--> statement-breakpoint
+CREATE TYPE "organization_type" AS ENUM('group', 'venture', 'shared_function');--> statement-breakpoint
+CREATE TYPE "payment_pattern" AS ENUM('post_delivery', 'pre_payment', 'milestone');--> statement-breakpoint
+CREATE TYPE "po_status" AS ENUM('draft', 'pending_approval', 'approved', 'sent', 'acknowledged', 'partially_received', 'received', 'completed', 'cancelled');--> statement-breakpoint
+CREATE TYPE "procurement_category" AS ENUM('goods', 'services', 'works');--> statement-breakpoint
+CREATE TYPE "procurement_status" AS ENUM('draft', 'submitted', 'approved', 'rejected', 'returned', 'converted_to_po', 'cancelled');--> statement-breakpoint
+CREATE TYPE "request_status" AS ENUM('draft', 'returned', 'sent', 'approval', 'cleared', 'approved', 'rejected', 'cancelled', 'payment_processing', 'disbursed', 'confirmed', 'partially_disbursed', 'pending_retirement', 'retired', 'completed');--> statement-breakpoint
+CREATE TYPE "token_type" AS ENUM('access', 'refresh', 'reset', 'invite');--> statement-breakpoint
+CREATE TYPE "work_item_status" AS ENUM('planned', 'in_progress', 'completed', 'blocked', 'carried_over', 'cancelled');--> statement-breakpoint
+CREATE TYPE "work_item_type" AS ENUM('weekly_task', 'daily_task', 'project_activity', 'recurring_responsibility', 'ad_hoc');--> statement-breakpoint
+CREATE TYPE "work_log_approval_status" AS ENUM('draft', 'submitted', 'approved', 'rejected');--> statement-breakpoint
+CREATE TYPE "work_mode" AS ENUM('onsite', 'hybrid', 'remote');--> statement-breakpoint
+CREATE TYPE "work_priority" AS ENUM('low', 'medium', 'high', 'critical');--> statement-breakpoint
 CREATE TABLE "sta_email_logs" (
 	"id" bigserial PRIMARY KEY,
+	"tenant_id" bigint,
 	"user_id" bigint,
 	"to_email" varchar(255) NOT NULL,
 	"subject" varchar(255) NOT NULL,
@@ -18,6 +37,7 @@ CREATE TABLE "sta_email_logs" (
 --> statement-breakpoint
 CREATE TABLE "sta_notifications" (
 	"id" bigserial PRIMARY KEY,
+	"tenant_id" bigint,
 	"user_id" bigint NOT NULL,
 	"type" varchar(50) DEFAULT 'info' NOT NULL,
 	"title" varchar(255) NOT NULL,
@@ -94,6 +114,7 @@ CREATE TABLE "sta_role_permissions" (
 CREATE TABLE "sta_tokens" (
 	"id" varchar(255) PRIMARY KEY,
 	"profile_id" bigint NOT NULL,
+	"tenant_id" bigint,
 	"type" "token_type" NOT NULL,
 	"token_hash" varchar(255) NOT NULL,
 	"expires_at" timestamp(6) NOT NULL,
@@ -106,6 +127,7 @@ CREATE TABLE "sta_tokens" (
 --> statement-breakpoint
 CREATE TABLE "sta_user_roles" (
 	"id" bigserial PRIMARY KEY,
+	"tenant_id" bigint,
 	"profile_id" bigint NOT NULL,
 	"role_id" bigint NOT NULL,
 	"organization_id" bigint,
@@ -114,8 +136,181 @@ CREATE TABLE "sta_user_roles" (
 	"created_at" timestamp(6) DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "sta_attendance_corrections" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"tenant_id" bigint,
+	"user_id" bigint NOT NULL,
+	"attendance_daily_id" uuid,
+	"attendance_entry_id" uuid,
+	"office_location_id" bigint,
+	"request_type" varchar(40) NOT NULL,
+	"status" varchar(20) DEFAULT 'pending' NOT NULL,
+	"requested_at" timestamp(6) DEFAULT now() NOT NULL,
+	"requested_by" bigint NOT NULL,
+	"reviewed_at" timestamp(6),
+	"reviewed_by" bigint,
+	"reason" text NOT NULL,
+	"work_date" date NOT NULL,
+	"proposed_at" timestamp(6),
+	"proposed_mode" varchar(30),
+	"proposed_office_location_id" bigint,
+	"proposed_latitude" numeric(10,7),
+	"proposed_longitude" numeric(10,7),
+	"review_notes" text,
+	"snapshot_json" jsonb,
+	"metadata" jsonb,
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_attendance_daily" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"tenant_id" bigint,
+	"user_id" bigint NOT NULL,
+	"work_date" date NOT NULL,
+	"status" varchar(20) DEFAULT 'absent' NOT NULL,
+	"attendance_mode" varchar(30),
+	"expected_mode" varchar(30),
+	"reconciliation_status" varchar(30),
+	"office_location_id" bigint,
+	"geofence_status" varchar(30),
+	"scheduled_minutes" integer DEFAULT 0 NOT NULL,
+	"worked_minutes" integer DEFAULT 0 NOT NULL,
+	"late_minutes" integer DEFAULT 0 NOT NULL,
+	"overtime_minutes" integer DEFAULT 0 NOT NULL,
+	"first_in_at" timestamp(6),
+	"last_out_at" timestamp(6),
+	"policy_snapshot" jsonb,
+	"computed_at" timestamp(6) DEFAULT now() NOT NULL,
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_attendance_entries" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"tenant_id" bigint,
+	"user_id" bigint NOT NULL,
+	"entry_type" varchar(30) NOT NULL,
+	"entry_at" timestamp(6) NOT NULL,
+	"work_date" date NOT NULL,
+	"attendance_mode" varchar(30),
+	"office_location_id" bigint,
+	"latitude" numeric(10,7),
+	"longitude" numeric(10,7),
+	"geofence_status" varchar(30),
+	"source" varchar(30) DEFAULT 'web' NOT NULL,
+	"metadata" jsonb,
+	"created_by" bigint,
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_attendance_exceptions" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"tenant_id" bigint,
+	"user_id" bigint NOT NULL,
+	"attendance_daily_id" uuid,
+	"attendance_entry_id" uuid,
+	"office_location_id" bigint,
+	"exception_type" varchar(40) NOT NULL,
+	"status" varchar(20) DEFAULT 'active' NOT NULL,
+	"work_date" date NOT NULL,
+	"attendance_mode" varchar(30),
+	"reason" text NOT NULL,
+	"notes" text,
+	"created_by" bigint NOT NULL,
+	"reviewed_by" bigint,
+	"reviewed_at" timestamp(6),
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_attendance_holidays" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"tenant_id" bigint,
+	"organization_id" bigint,
+	"office_location_id" bigint,
+	"holiday_date" date NOT NULL,
+	"name" varchar(255) NOT NULL,
+	"is_recurring" boolean DEFAULT false NOT NULL,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"created_by" bigint,
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_employee_meta" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"user_id" bigint NOT NULL,
+	"meta_key" varchar(120) NOT NULL,
+	"meta_value" jsonb,
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_employee_profiles" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"tenant_id" bigint,
+	"user_id" bigint NOT NULL UNIQUE,
+	"employee_code" varchar(60) UNIQUE,
+	"job_title" varchar(120),
+	"job_description" text,
+	"manager_user_id" bigint,
+	"employment_type" "employment_type",
+	"employment_status" "employment_status" DEFAULT 'draft'::"employment_status" NOT NULL,
+	"hire_date" date,
+	"confirmation_date" date,
+	"exit_date" date,
+	"work_mode" "work_mode",
+	"created_by" bigint,
+	"updated_by" bigint,
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) NOT NULL,
+	"designation_id" bigint
+);
+--> statement-breakpoint
+CREATE TABLE "sta_hr_designations" (
+	"id" bigserial PRIMARY KEY,
+	"name" varchar(100) NOT NULL UNIQUE,
+	"code" varchar(20) UNIQUE,
+	"description" text,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"document_id" uuid,
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_leave_balance_ledger" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"tenant_id" bigint,
+	"user_id" bigint NOT NULL,
+	"leave_type_key" varchar(100) NOT NULL,
+	"period_year" integer NOT NULL,
+	"delta_days" numeric(7,2) NOT NULL,
+	"entry_type" varchar(30) NOT NULL,
+	"source_request_id" bigint,
+	"notes" text,
+	"metadata" jsonb,
+	"created_by" bigint,
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_onboarding_progress" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"user_id" bigint NOT NULL UNIQUE,
+	"status" "onboarding_status" DEFAULT 'invited'::"onboarding_status" NOT NULL,
+	"current_step" varchar(80),
+	"steps_json" jsonb,
+	"due_date" date,
+	"completed_at" timestamp(6),
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "sta_groups" (
 	"id" bigserial PRIMARY KEY,
+	"tenant_id" bigint,
 	"name" varchar(255) NOT NULL,
 	"description" text,
 	"type" varchar(50) DEFAULT 'general' NOT NULL,
@@ -131,6 +326,7 @@ CREATE TABLE "sta_groups" (
 --> statement-breakpoint
 CREATE TABLE "sta_group_organizations" (
 	"id" bigserial PRIMARY KEY,
+	"tenant_id" bigint,
 	"group_id" bigint NOT NULL,
 	"organization_id" bigint NOT NULL,
 	"is_primary" boolean DEFAULT false NOT NULL,
@@ -149,6 +345,7 @@ CREATE TABLE "sta_group_users" (
 --> statement-breakpoint
 CREATE TABLE "sta_group_user_organization_scopes" (
 	"id" bigserial PRIMARY KEY,
+	"tenant_id" bigint,
 	"group_user_id" bigint NOT NULL,
 	"organization_id" bigint NOT NULL,
 	"scope_role" varchar(50),
@@ -172,6 +369,7 @@ CREATE TABLE "sta_office_locations" (
 --> statement-breakpoint
 CREATE TABLE "sta_organizations" (
 	"id" bigserial PRIMARY KEY,
+	"tenant_id" bigint,
 	"name" varchar(255) NOT NULL,
 	"code" varchar(50) NOT NULL UNIQUE,
 	"parent_organization_id" bigint,
@@ -184,6 +382,7 @@ CREATE TABLE "sta_organizations" (
 --> statement-breakpoint
 CREATE TABLE "sta_organization_office_locations" (
 	"id" bigserial PRIMARY KEY,
+	"tenant_id" bigint,
 	"organization_id" bigint NOT NULL,
 	"office_location_id" bigint NOT NULL,
 	"is_primary" boolean DEFAULT false NOT NULL,
@@ -192,6 +391,7 @@ CREATE TABLE "sta_organization_office_locations" (
 --> statement-breakpoint
 CREATE TABLE "sta_profile_organizations" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"tenant_id" bigint,
 	"profile_id" bigint NOT NULL,
 	"organization_id" bigint NOT NULL,
 	"is_primary" boolean DEFAULT false NOT NULL,
@@ -200,8 +400,372 @@ CREATE TABLE "sta_profile_organizations" (
 	"created_at" timestamp(6) NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "sta_projects" (
+	"id" bigserial PRIMARY KEY,
+	"tenant_id" bigint,
+	"organization_id" bigint,
+	"name" varchar(255) NOT NULL,
+	"description" text,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"created_by" bigint,
+	"updated_by" bigint,
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_project_governance" (
+	"id" bigserial PRIMARY KEY,
+	"project_id" bigint NOT NULL UNIQUE,
+	"project_code" varchar(50),
+	"owner_user_id" bigint,
+	"start_date" date,
+	"end_date" date,
+	"governance_status" varchar(30) DEFAULT 'planned' NOT NULL,
+	"metadata" jsonb
+);
+--> statement-breakpoint
+CREATE TABLE "sta_project_members" (
+	"id" bigserial PRIMARY KEY,
+	"project_id" bigint NOT NULL,
+	"user_id" bigint NOT NULL,
+	"role" "group_user_role" DEFAULT 'member'::"group_user_role" NOT NULL,
+	"joined_at" timestamp(6) DEFAULT now() NOT NULL,
+	"added_by" bigint,
+	"is_primary" boolean DEFAULT false NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_project_timesheet_entries" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"source_work_log_id" uuid UNIQUE,
+	"worker_id" uuid NOT NULL,
+	"component_id" uuid,
+	"organization_id" bigint,
+	"team_id" bigint,
+	"project_id" bigint,
+	"fund_id" uuid,
+	"grant_id" uuid,
+	"synced_run_id" uuid,
+	"work_date" date NOT NULL,
+	"hours" numeric(10,2) NOT NULL,
+	"description" text,
+	"status" varchar(20) DEFAULT 'draft' NOT NULL,
+	"approved_by" bigint,
+	"approved_at" timestamp(6),
+	"created_by" bigint,
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_team_goals" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"organization_id" bigint,
+	"team_id" bigint,
+	"owner_user_id" bigint,
+	"created_by_id" bigint,
+	"title" varchar(255) NOT NULL,
+	"description" text,
+	"period_year" integer NOT NULL,
+	"period_type" varchar(20) DEFAULT 'annual' NOT NULL,
+	"period_label" varchar(80),
+	"status" varchar(20) DEFAULT 'draft' NOT NULL,
+	"weight" numeric(8,2),
+	"start_date" date,
+	"end_date" date,
+	"metadata" jsonb,
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_team_kpis" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"goal_id" uuid,
+	"objective_id" uuid,
+	"organization_id" bigint,
+	"team_id" bigint,
+	"owner_user_id" bigint,
+	"created_by_id" bigint,
+	"title" varchar(255) NOT NULL,
+	"description" text,
+	"target_type" varchar(30),
+	"target_value" numeric(15,2),
+	"unit_label" varchar(50),
+	"period_year" integer,
+	"quarter" integer,
+	"status" varchar(20) DEFAULT 'draft' NOT NULL,
+	"weight" numeric(8,2),
+	"metadata" jsonb,
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_team_objectives" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"goal_id" uuid,
+	"organization_id" bigint,
+	"team_id" bigint,
+	"owner_user_id" bigint,
+	"created_by_id" bigint,
+	"title" varchar(255) NOT NULL,
+	"description" text,
+	"status" varchar(20) DEFAULT 'draft' NOT NULL,
+	"weight" numeric(8,2),
+	"due_date" date,
+	"metadata" jsonb,
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_work_items" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"title" varchar(255) NOT NULL,
+	"description" text,
+	"item_type" "work_item_type" DEFAULT 'weekly_task'::"work_item_type" NOT NULL,
+	"status" "work_item_status" DEFAULT 'planned'::"work_item_status" NOT NULL,
+	"priority" "work_priority" DEFAULT 'medium'::"work_priority" NOT NULL,
+	"organization_id" bigint,
+	"owner_team_id" bigint,
+	"secondary_team_id" bigint,
+	"project_id" bigint,
+	"fund_id" uuid,
+	"grant_id" uuid,
+	"goal_id" uuid,
+	"objective_id" uuid,
+	"kpi_id" uuid,
+	"assigned_to_id" bigint,
+	"assigned_by_id" bigint,
+	"created_by_id" bigint,
+	"planned_start_date" date,
+	"due_date" date,
+	"expected_hours" numeric(10,2),
+	"week_start_date" date,
+	"is_staff_added" boolean DEFAULT false NOT NULL,
+	"requires_manager_ack" boolean DEFAULT false NOT NULL,
+	"metadata" jsonb,
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_work_logs" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"work_item_id" uuid NOT NULL,
+	"staff_id" bigint NOT NULL,
+	"organization_id" bigint,
+	"team_id" bigint,
+	"project_id" bigint,
+	"fund_id" uuid,
+	"grant_id" uuid,
+	"log_date" date NOT NULL,
+	"hours_spent" numeric(10,2) DEFAULT '0' NOT NULL,
+	"status" "work_item_status" DEFAULT 'in_progress'::"work_item_status" NOT NULL,
+	"progress_percent" numeric(5,2),
+	"note" text,
+	"blocker_note" text,
+	"carried_over" boolean DEFAULT false NOT NULL,
+	"carry_over_to_date" date,
+	"approval_status" "work_log_approval_status" DEFAULT 'draft'::"work_log_approval_status" NOT NULL,
+	"approved_by_id" bigint,
+	"approved_at" timestamp(6),
+	"metadata" jsonb,
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_acknowledgements" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"user_id" bigint NOT NULL,
+	"subject_type" varchar(60) NOT NULL,
+	"subject_id" varchar(191) NOT NULL,
+	"subject_label" varchar(255),
+	"version" varchar(60),
+	"status" varchar(20) DEFAULT 'acknowledged' NOT NULL,
+	"acknowledged_at" timestamp(6) DEFAULT now() NOT NULL,
+	"revoked_at" timestamp(6),
+	"source_form_submission_id" uuid,
+	"metadata" jsonb,
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_request_categories" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"group_id" uuid NOT NULL,
+	"name" varchar(100) NOT NULL,
+	"code" varchar(20) NOT NULL UNIQUE,
+	"description" text,
+	"sort_order" integer DEFAULT 0 NOT NULL,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_request_groups" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"tenant_id" bigint,
+	"organization_id" bigint,
+	"name" varchar(100) NOT NULL,
+	"code" varchar(20) NOT NULL UNIQUE,
+	"description" text,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_request_instances" (
+	"id" bigserial PRIMARY KEY,
+	"tenant_id" bigint,
+	"request_type_id" uuid NOT NULL,
+	"group_id" uuid NOT NULL,
+	"organization_id" bigint,
+	"created_by" bigint NOT NULL,
+	"team_id" bigint,
+	"workflow_instance_id" uuid,
+	"status" "request_status" DEFAULT 'draft'::"request_status" NOT NULL,
+	"data" jsonb,
+	"current_approval_step" integer DEFAULT 0 NOT NULL,
+	"audit_log_id" uuid,
+	"total_amount" numeric(15,2),
+	"currency" varchar(3) DEFAULT 'NGN' NOT NULL,
+	"contact_id" uuid,
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_request_items" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"request_id" bigint NOT NULL,
+	"file_id" uuid,
+	"category_id" uuid,
+	"subcategory_id" uuid,
+	"description" text NOT NULL,
+	"amount" numeric(15,2) NOT NULL,
+	"quantity" integer DEFAULT 1 NOT NULL,
+	"due_date" date,
+	"notes" text,
+	"bank_name" varchar(120),
+	"account_number" varchar(50),
+	"account_name" varchar(120),
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_request_item_files" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"request_item_id" uuid NOT NULL,
+	"file_id" uuid NOT NULL,
+	"sort_order" integer DEFAULT 0 NOT NULL,
+	"created_at" timestamp(6) DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_request_types" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"category_id" uuid NOT NULL,
+	"name" varchar(100) NOT NULL,
+	"code_prefix" varchar(10) NOT NULL,
+	"taxonomy_keys" jsonb,
+	"description" text,
+	"storage_type" varchar(20),
+	"form_schema" jsonb,
+	"approval_flow_json" jsonb,
+	"approval_limit" numeric(15,2),
+	"visible_to_roles" jsonb,
+	"sequence_counter" integer DEFAULT 0 NOT NULL,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"workflow_type" varchar(20),
+	"handler_role_label" varchar(100),
+	"form_id" uuid,
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_workflows" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"name" varchar(150) NOT NULL,
+	"description" text,
+	"entity_type" varchar(100) NOT NULL,
+	"config" jsonb,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"created_by" bigint,
+	"updated_by" bigint,
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_workflow_history" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"instance_id" uuid NOT NULL,
+	"transition_id" uuid,
+	"from_step_id" uuid,
+	"to_step_id" uuid,
+	"action" varchar(50) NOT NULL,
+	"performed_by" bigint,
+	"comment" text,
+	"data" jsonb,
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_workflow_instances" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"workflow_id" uuid NOT NULL,
+	"entity_type" varchar(100) NOT NULL,
+	"entity_id" varchar(36) NOT NULL,
+	"current_step_id" uuid,
+	"status" varchar(32) DEFAULT 'pending' NOT NULL,
+	"initiated_by" bigint,
+	"completed_at" timestamp(6),
+	"metadata" jsonb,
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_workflow_steps" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"workflow_id" uuid NOT NULL,
+	"name" varchar(150) NOT NULL,
+	"description" text,
+	"step_type" varchar(50) DEFAULT 'approval' NOT NULL,
+	"order" integer DEFAULT 0 NOT NULL,
+	"is_initial" boolean DEFAULT false NOT NULL,
+	"is_final" boolean DEFAULT false NOT NULL,
+	"config" jsonb,
+	"created_by" bigint,
+	"updated_by" bigint,
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_workflow_step_approvers" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"step_id" uuid NOT NULL,
+	"approver_type" varchar(10) NOT NULL,
+	"approver_id" varchar(64) NOT NULL,
+	"is_required" boolean DEFAULT true NOT NULL,
+	"approval_order" integer DEFAULT 0 NOT NULL,
+	"created_by" bigint,
+	"updated_by" bigint,
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_workflow_transitions" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"workflow_id" uuid NOT NULL,
+	"from_step_id" uuid NOT NULL,
+	"to_step_id" uuid NOT NULL,
+	"name" text,
+	"description" text,
+	"action" varchar(50) NOT NULL,
+	"conditions" jsonb,
+	"config" jsonb,
+	"created_by" bigint,
+	"updated_by" bigint,
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "sta_finance_accounts" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"tenant_id" bigint,
 	"organization_id" bigint,
 	"name" varchar(150) NOT NULL,
 	"code" varchar(60),
@@ -312,6 +876,7 @@ CREATE TABLE "sta_finance_bill_lines" (
 --> statement-breakpoint
 CREATE TABLE "sta_finance_budgets" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"tenant_id" bigint,
 	"organization_id" bigint,
 	"team_id" bigint,
 	"project_id" bigint,
@@ -555,6 +1120,7 @@ CREATE TABLE "sta_finance_donors" (
 --> statement-breakpoint
 CREATE TABLE "sta_finance_expenses" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"tenant_id" bigint,
 	"expense_number" varchar(60) NOT NULL UNIQUE,
 	"contact_id" uuid,
 	"account_id" uuid NOT NULL,
@@ -582,6 +1148,7 @@ CREATE TABLE "sta_finance_expenses" (
 --> statement-breakpoint
 CREATE TABLE "sta_finance_funds" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"tenant_id" bigint,
 	"organization_id" bigint,
 	"project_id" bigint,
 	"donor_id" uuid,
@@ -665,7 +1232,8 @@ CREATE TABLE "sta_finance_items" (
 --> statement-breakpoint
 CREATE TABLE "sta_finance_journal_entries" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	"entry_no" varchar(60) NOT NULL UNIQUE,
+	"tenant_id" bigint,
+	"entry_no" varchar(60) NOT NULL,
 	"entry_date" timestamp(6) NOT NULL,
 	"period_id" uuid NOT NULL,
 	"source_type" varchar(60),
@@ -683,6 +1251,7 @@ CREATE TABLE "sta_finance_journal_entries" (
 --> statement-breakpoint
 CREATE TABLE "sta_finance_journal_lines" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"tenant_id" bigint,
 	"journal_entry_id" uuid NOT NULL,
 	"chart_account_id" uuid NOT NULL,
 	"organization_id" bigint,
@@ -699,6 +1268,7 @@ CREATE TABLE "sta_finance_journal_lines" (
 --> statement-breakpoint
 CREATE TABLE "sta_finance_journal_sequences" (
 	"id" varchar(32) PRIMARY KEY,
+	"tenant_id" bigint,
 	"prefix" varchar(10) NOT NULL,
 	"sequence_year" integer NOT NULL,
 	"last_number" integer DEFAULT 0 NOT NULL,
@@ -708,6 +1278,7 @@ CREATE TABLE "sta_finance_journal_sequences" (
 --> statement-breakpoint
 CREATE TABLE "sta_finance_ledger_entries" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"tenant_id" bigint,
 	"account_id" uuid NOT NULL,
 	"direction" varchar(10) NOT NULL,
 	"amount" numeric(15,2) NOT NULL,
@@ -859,6 +1430,7 @@ CREATE TABLE "sta_finance_report_notes" (
 --> statement-breakpoint
 CREATE TABLE "sta_finance_reporting_periods" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"tenant_id" bigint,
 	"year" integer NOT NULL,
 	"month" integer NOT NULL,
 	"quarter" integer NOT NULL,
@@ -1015,266 +1587,6 @@ CREATE TABLE "sta_finance_wht_remittances" (
 	"updated_at" timestamp(6) NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "sta_procurement_attachments" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	"case_id" uuid,
-	"order_id" uuid,
-	"file_id" uuid NOT NULL,
-	"label" varchar(150),
-	"visibility" varchar(20) DEFAULT 'internal' NOT NULL,
-	"created_at" timestamp(6) DEFAULT now() NOT NULL,
-	"updated_at" timestamp(6) NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "sta_procurement_cases" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	"request_id" bigint NOT NULL UNIQUE,
-	"requisition_id" uuid UNIQUE,
-	"assigned_officer_id" bigint,
-	"status" varchar(30) DEFAULT 'new' NOT NULL,
-	"category" varchar(20),
-	"note" text,
-	"created_by" bigint,
-	"created_at" timestamp(6) DEFAULT now() NOT NULL,
-	"updated_at" timestamp(6) NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "sta_procurement_grns" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	"grn_number" varchar(30) NOT NULL UNIQUE,
-	"po_id" uuid NOT NULL,
-	"raised_by" bigint NOT NULL,
-	"received_date" date NOT NULL,
-	"items" jsonb NOT NULL,
-	"overall_condition" varchar(20) DEFAULT 'satisfactory' NOT NULL,
-	"notes" text,
-	"confirmed_by_officer" boolean DEFAULT false NOT NULL,
-	"confirmed_at" timestamp(6),
-	"confirmed_by" bigint,
-	"status" "grn_status" DEFAULT 'pending'::"grn_status" NOT NULL,
-	"created_at" timestamp(6) DEFAULT now() NOT NULL,
-	"updated_at" timestamp(6) NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "sta_procurement_orders" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	"po_number" varchar(30) NOT NULL UNIQUE,
-	"requisition_id" uuid NOT NULL,
-	"vendor_id" uuid NOT NULL,
-	"prepared_by" bigint NOT NULL,
-	"organization_id" bigint,
-	"items" jsonb NOT NULL,
-	"total_amount" numeric(15,2) NOT NULL,
-	"payment_pattern" "payment_pattern" DEFAULT 'post_delivery'::"payment_pattern" NOT NULL,
-	"milestones" jsonb,
-	"payment_terms" varchar(100),
-	"delivery_date" date,
-	"delivery_address" text,
-	"workflow_instance_id" uuid,
-	"status" "po_status" DEFAULT 'draft'::"po_status" NOT NULL,
-	"vendor_acknowledged_at" timestamp(6),
-	"vendor_acknowledge_note" text,
-	"pdf_file_id" uuid,
-	"created_at" timestamp(6) DEFAULT now() NOT NULL,
-	"updated_at" timestamp(6) NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "sta_procurement_requisitions" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	"requisition_number" varchar(30) NOT NULL UNIQUE,
-	"organization_id" bigint,
-	"team_id" bigint,
-	"requested_by" bigint NOT NULL,
-	"title" varchar(200) NOT NULL,
-	"category" "procurement_category" NOT NULL,
-	"payment_pattern" "payment_pattern" DEFAULT 'post_delivery'::"payment_pattern" NOT NULL,
-	"items" jsonb NOT NULL,
-	"estimated_total" numeric(15,2) NOT NULL,
-	"justification" text,
-	"budget_line_id" uuid,
-	"workflow_instance_id" uuid,
-	"status" "procurement_status" DEFAULT 'draft'::"procurement_status" NOT NULL,
-	"created_at" timestamp(6) DEFAULT now() NOT NULL,
-	"updated_at" timestamp(6) NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "sta_vendor_portal_users" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	"vendor_id" uuid NOT NULL,
-	"email" varchar(255) NOT NULL UNIQUE,
-	"hashed_password" text,
-	"name" varchar(120) NOT NULL,
-	"status" varchar(20) DEFAULT 'active' NOT NULL,
-	"last_login_at" timestamp(6),
-	"created_at" timestamp(6) DEFAULT now() NOT NULL,
-	"updated_at" timestamp(6) NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "sta_attendance_corrections" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	"user_id" bigint NOT NULL,
-	"attendance_daily_id" uuid,
-	"attendance_entry_id" uuid,
-	"office_location_id" bigint,
-	"request_type" varchar(40) NOT NULL,
-	"status" varchar(20) DEFAULT 'pending' NOT NULL,
-	"requested_at" timestamp(6) DEFAULT now() NOT NULL,
-	"requested_by" bigint NOT NULL,
-	"reviewed_at" timestamp(6),
-	"reviewed_by" bigint,
-	"reason" text NOT NULL,
-	"work_date" date NOT NULL,
-	"proposed_at" timestamp(6),
-	"proposed_mode" varchar(30),
-	"proposed_office_location_id" bigint,
-	"proposed_latitude" numeric(10,7),
-	"proposed_longitude" numeric(10,7),
-	"review_notes" text,
-	"snapshot_json" jsonb,
-	"metadata" jsonb,
-	"created_at" timestamp(6) DEFAULT now() NOT NULL,
-	"updated_at" timestamp(6) NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "sta_attendance_daily" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	"user_id" bigint NOT NULL,
-	"work_date" date NOT NULL,
-	"status" varchar(20) DEFAULT 'absent' NOT NULL,
-	"attendance_mode" varchar(30),
-	"expected_mode" varchar(30),
-	"reconciliation_status" varchar(30),
-	"office_location_id" bigint,
-	"geofence_status" varchar(30),
-	"scheduled_minutes" integer DEFAULT 0 NOT NULL,
-	"worked_minutes" integer DEFAULT 0 NOT NULL,
-	"late_minutes" integer DEFAULT 0 NOT NULL,
-	"overtime_minutes" integer DEFAULT 0 NOT NULL,
-	"first_in_at" timestamp(6),
-	"last_out_at" timestamp(6),
-	"policy_snapshot" jsonb,
-	"computed_at" timestamp(6) DEFAULT now() NOT NULL,
-	"created_at" timestamp(6) DEFAULT now() NOT NULL,
-	"updated_at" timestamp(6) NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "sta_attendance_entries" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	"user_id" bigint NOT NULL,
-	"entry_type" varchar(30) NOT NULL,
-	"entry_at" timestamp(6) NOT NULL,
-	"work_date" date NOT NULL,
-	"attendance_mode" varchar(30),
-	"office_location_id" bigint,
-	"latitude" numeric(10,7),
-	"longitude" numeric(10,7),
-	"geofence_status" varchar(30),
-	"source" varchar(30) DEFAULT 'web' NOT NULL,
-	"metadata" jsonb,
-	"created_by" bigint,
-	"created_at" timestamp(6) DEFAULT now() NOT NULL,
-	"updated_at" timestamp(6) NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "sta_attendance_exceptions" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	"user_id" bigint NOT NULL,
-	"attendance_daily_id" uuid,
-	"attendance_entry_id" uuid,
-	"office_location_id" bigint,
-	"exception_type" varchar(40) NOT NULL,
-	"status" varchar(20) DEFAULT 'active' NOT NULL,
-	"work_date" date NOT NULL,
-	"attendance_mode" varchar(30),
-	"reason" text NOT NULL,
-	"notes" text,
-	"created_by" bigint NOT NULL,
-	"reviewed_by" bigint,
-	"reviewed_at" timestamp(6),
-	"created_at" timestamp(6) DEFAULT now() NOT NULL,
-	"updated_at" timestamp(6) NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "sta_attendance_holidays" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	"organization_id" bigint,
-	"office_location_id" bigint,
-	"holiday_date" date NOT NULL,
-	"name" varchar(255) NOT NULL,
-	"is_recurring" boolean DEFAULT false NOT NULL,
-	"is_active" boolean DEFAULT true NOT NULL,
-	"created_by" bigint,
-	"created_at" timestamp(6) DEFAULT now() NOT NULL,
-	"updated_at" timestamp(6) NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "sta_employee_meta" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	"user_id" bigint NOT NULL,
-	"meta_key" varchar(120) NOT NULL,
-	"meta_value" jsonb,
-	"created_at" timestamp(6) DEFAULT now() NOT NULL,
-	"updated_at" timestamp(6) NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "sta_employee_profiles" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	"user_id" bigint NOT NULL UNIQUE,
-	"employee_code" varchar(60) UNIQUE,
-	"job_title" varchar(120),
-	"job_description" text,
-	"manager_user_id" bigint,
-	"employment_type" "employment_type",
-	"employment_status" "employment_status" DEFAULT 'draft'::"employment_status" NOT NULL,
-	"hire_date" date,
-	"confirmation_date" date,
-	"exit_date" date,
-	"work_mode" "work_mode",
-	"created_by" bigint,
-	"updated_by" bigint,
-	"created_at" timestamp(6) DEFAULT now() NOT NULL,
-	"updated_at" timestamp(6) NOT NULL,
-	"designation_id" bigint
-);
---> statement-breakpoint
-CREATE TABLE "sta_hr_designations" (
-	"id" bigserial PRIMARY KEY,
-	"name" varchar(100) NOT NULL UNIQUE,
-	"code" varchar(20) UNIQUE,
-	"description" text,
-	"is_active" boolean DEFAULT true NOT NULL,
-	"document_id" uuid,
-	"created_at" timestamp(6) DEFAULT now() NOT NULL,
-	"updated_at" timestamp(6) NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "sta_leave_balance_ledger" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	"user_id" bigint NOT NULL,
-	"leave_type_key" varchar(100) NOT NULL,
-	"period_year" integer NOT NULL,
-	"delta_days" numeric(7,2) NOT NULL,
-	"entry_type" varchar(30) NOT NULL,
-	"source_request_id" bigint,
-	"notes" text,
-	"metadata" jsonb,
-	"created_by" bigint,
-	"created_at" timestamp(6) DEFAULT now() NOT NULL,
-	"updated_at" timestamp(6) NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "sta_onboarding_progress" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	"user_id" bigint NOT NULL UNIQUE,
-	"status" "onboarding_status" DEFAULT 'invited'::"onboarding_status" NOT NULL,
-	"current_step" varchar(80),
-	"steps_json" jsonb,
-	"due_date" date,
-	"completed_at" timestamp(6),
-	"created_at" timestamp(6) DEFAULT now() NOT NULL,
-	"updated_at" timestamp(6) NOT NULL
-);
---> statement-breakpoint
 CREATE TABLE "sta_payroll_accounting_postings" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 	"run_id" uuid NOT NULL,
@@ -1389,6 +1701,7 @@ CREATE TABLE "sta_payroll_payslip_distributions" (
 --> statement-breakpoint
 CREATE TABLE "sta_payroll_runs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"tenant_id" bigint,
 	"organization_id" bigint,
 	"paid_from_account_id" uuid,
 	"workflow_instance_id" uuid,
@@ -1544,6 +1857,7 @@ CREATE TABLE "sta_payroll_tax_tables" (
 --> statement-breakpoint
 CREATE TABLE "sta_payroll_workers" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"tenant_id" bigint,
 	"profile_id" bigint,
 	"organization_id" bigint,
 	"team_id" bigint,
@@ -1617,221 +1931,40 @@ CREATE TABLE "sta_payroll_worker_profile_components" (
 	"updated_at" timestamp(6) NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "sta_projects" (
-	"id" bigserial PRIMARY KEY,
-	"organization_id" bigint,
-	"name" varchar(255) NOT NULL,
-	"description" text,
-	"is_active" boolean DEFAULT true NOT NULL,
-	"created_by" bigint,
-	"updated_by" bigint,
-	"created_at" timestamp(6) DEFAULT now() NOT NULL,
-	"updated_at" timestamp(6) NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "sta_project_governance" (
-	"id" bigserial PRIMARY KEY,
-	"project_id" bigint NOT NULL UNIQUE,
-	"project_code" varchar(50),
-	"owner_user_id" bigint,
-	"start_date" date,
-	"end_date" date,
-	"governance_status" varchar(30) DEFAULT 'planned' NOT NULL,
-	"metadata" jsonb
-);
---> statement-breakpoint
-CREATE TABLE "sta_project_members" (
-	"id" bigserial PRIMARY KEY,
-	"project_id" bigint NOT NULL,
+CREATE TABLE "sta_leave_requests" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"tenant_id" bigint NOT NULL,
 	"user_id" bigint NOT NULL,
-	"role" "group_user_role" DEFAULT 'member'::"group_user_role" NOT NULL,
-	"joined_at" timestamp(6) DEFAULT now() NOT NULL,
-	"added_by" bigint,
-	"is_primary" boolean DEFAULT false NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "sta_project_timesheet_entries" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	"source_work_log_id" uuid UNIQUE,
-	"worker_id" uuid NOT NULL,
-	"component_id" uuid,
-	"organization_id" bigint,
-	"team_id" bigint,
-	"project_id" bigint,
-	"fund_id" uuid,
-	"grant_id" uuid,
-	"synced_run_id" uuid,
-	"work_date" date NOT NULL,
-	"hours" numeric(10,2) NOT NULL,
-	"description" text,
-	"status" varchar(20) DEFAULT 'draft' NOT NULL,
-	"approved_by" bigint,
-	"approved_at" timestamp(6),
-	"created_by" bigint,
-	"created_at" timestamp(6) DEFAULT now() NOT NULL,
-	"updated_at" timestamp(6) NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "sta_team_goals" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	"organization_id" bigint,
-	"team_id" bigint,
-	"owner_user_id" bigint,
-	"created_by_id" bigint,
-	"title" varchar(255) NOT NULL,
-	"description" text,
-	"period_year" integer NOT NULL,
-	"period_type" varchar(20) DEFAULT 'annual' NOT NULL,
-	"period_label" varchar(80),
-	"status" varchar(20) DEFAULT 'draft' NOT NULL,
-	"weight" numeric(8,2),
-	"start_date" date,
-	"end_date" date,
+	"leave_type_id" uuid NOT NULL,
+	"start_date" date NOT NULL,
+	"end_date" date NOT NULL,
+	"days" integer NOT NULL,
+	"reason" text NOT NULL,
+	"status" varchar(30) DEFAULT 'pending' NOT NULL,
+	"reviewed_by" bigint,
+	"reviewed_at" timestamp(6),
+	"review_notes" text,
 	"metadata" jsonb,
 	"created_at" timestamp(6) DEFAULT now() NOT NULL,
 	"updated_at" timestamp(6) NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "sta_team_kpis" (
+CREATE TABLE "sta_leave_types" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	"goal_id" uuid,
-	"objective_id" uuid,
-	"organization_id" bigint,
-	"team_id" bigint,
-	"owner_user_id" bigint,
-	"created_by_id" bigint,
-	"title" varchar(255) NOT NULL,
-	"description" text,
-	"target_type" varchar(30),
-	"target_value" numeric(15,2),
-	"unit_label" varchar(50),
-	"period_year" integer,
-	"quarter" integer,
-	"status" varchar(20) DEFAULT 'draft' NOT NULL,
-	"weight" numeric(8,2),
+	"tenant_id" bigint,
+	"code" varchar(50) NOT NULL,
+	"name" varchar(120) NOT NULL,
+	"annual_entitlement_days" integer DEFAULT 0 NOT NULL,
+	"requires_approval" integer DEFAULT 1 NOT NULL,
+	"is_active" integer DEFAULT 1 NOT NULL,
 	"metadata" jsonb,
-	"created_at" timestamp(6) DEFAULT now() NOT NULL,
-	"updated_at" timestamp(6) NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "sta_team_objectives" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	"goal_id" uuid,
-	"organization_id" bigint,
-	"team_id" bigint,
-	"owner_user_id" bigint,
-	"created_by_id" bigint,
-	"title" varchar(255) NOT NULL,
-	"description" text,
-	"status" varchar(20) DEFAULT 'draft' NOT NULL,
-	"weight" numeric(8,2),
-	"due_date" date,
-	"metadata" jsonb,
-	"created_at" timestamp(6) DEFAULT now() NOT NULL,
-	"updated_at" timestamp(6) NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "sta_work_items" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	"title" varchar(255) NOT NULL,
-	"description" text,
-	"item_type" "work_item_type" DEFAULT 'weekly_task'::"work_item_type" NOT NULL,
-	"status" "work_item_status" DEFAULT 'planned'::"work_item_status" NOT NULL,
-	"priority" "work_priority" DEFAULT 'medium'::"work_priority" NOT NULL,
-	"organization_id" bigint,
-	"owner_team_id" bigint,
-	"secondary_team_id" bigint,
-	"project_id" bigint,
-	"fund_id" uuid,
-	"grant_id" uuid,
-	"goal_id" uuid,
-	"objective_id" uuid,
-	"kpi_id" uuid,
-	"assigned_to_id" bigint,
-	"assigned_by_id" bigint,
-	"created_by_id" bigint,
-	"planned_start_date" date,
-	"due_date" date,
-	"expected_hours" numeric(10,2),
-	"week_start_date" date,
-	"is_staff_added" boolean DEFAULT false NOT NULL,
-	"requires_manager_ack" boolean DEFAULT false NOT NULL,
-	"metadata" jsonb,
-	"created_at" timestamp(6) DEFAULT now() NOT NULL,
-	"updated_at" timestamp(6) NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "sta_work_logs" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	"work_item_id" uuid NOT NULL,
-	"staff_id" bigint NOT NULL,
-	"organization_id" bigint,
-	"team_id" bigint,
-	"project_id" bigint,
-	"fund_id" uuid,
-	"grant_id" uuid,
-	"log_date" date NOT NULL,
-	"hours_spent" numeric(10,2) DEFAULT '0' NOT NULL,
-	"status" "work_item_status" DEFAULT 'in_progress'::"work_item_status" NOT NULL,
-	"progress_percent" numeric(5,2),
-	"note" text,
-	"blocker_note" text,
-	"carried_over" boolean DEFAULT false NOT NULL,
-	"carry_over_to_date" date,
-	"approval_status" "work_log_approval_status" DEFAULT 'draft'::"work_log_approval_status" NOT NULL,
-	"approved_by_id" bigint,
-	"approved_at" timestamp(6),
-	"metadata" jsonb,
-	"created_at" timestamp(6) DEFAULT now() NOT NULL,
-	"updated_at" timestamp(6) NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "mail_accounts" (
-	"id" bigserial PRIMARY KEY,
-	"profile_id" bigint NOT NULL,
-	"provider" "mail_provider" NOT NULL,
-	"email_address" varchar(255) NOT NULL,
-	"display_name" varchar(255),
-	"access_token" text NOT NULL,
-	"refresh_token" text NOT NULL,
-	"token_expires_at" timestamp(6) NOT NULL,
-	"is_shared" boolean DEFAULT false NOT NULL,
-	"label" varchar(100),
-	"last_synced_at" timestamp(6),
-	"signature" text,
-	"outlook_subscription_id" varchar(255),
-	"created_at" timestamp(6) DEFAULT now() NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "mail_headers" (
-	"id" bigserial PRIMARY KEY,
-	"account_id" bigint NOT NULL,
-	"uid" varchar(255) NOT NULL,
-	"folder" varchar(500) NOT NULL,
-	"subject" varchar(998),
-	"from_name" varchar(255),
-	"from_email" varchar(255),
-	"date" timestamp(6),
-	"is_read" boolean DEFAULT false NOT NULL,
-	"has_attachment" boolean DEFAULT false NOT NULL,
-	"snippet" varchar(500),
-	"synced_at" timestamp(6) DEFAULT now() NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "sta_system_versions" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	"platform" varchar(50) NOT NULL,
-	"module" varchar(50) NOT NULL,
-	"version" varchar(50) NOT NULL,
-	"min_version" varchar(50) NOT NULL,
-	"force_update" boolean DEFAULT false NOT NULL,
-	"release_notes" jsonb,
 	"created_at" timestamp(6) DEFAULT now() NOT NULL,
 	"updated_at" timestamp(6) NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "sta_documents" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"tenant_id" bigint,
 	"organization_id" bigint,
 	"title" varchar(255) NOT NULL,
 	"slug" varchar(180) NOT NULL UNIQUE,
@@ -1863,6 +1996,7 @@ CREATE TABLE "sta_document_acknowledgements" (
 --> statement-breakpoint
 CREATE TABLE "sta_file_assets" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"tenant_id" bigint,
 	"organization_id" bigint,
 	"uploaded_by" bigint,
 	"storage_disk" varchar(30) DEFAULT 'local' NOT NULL,
@@ -1892,6 +2026,41 @@ CREATE TABLE "sta_policies" (
 	"require_acknowledgement" boolean DEFAULT false NOT NULL,
 	"created_by" bigint,
 	"updated_by" bigint,
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_taxonomies" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"key" varchar(100) NOT NULL UNIQUE,
+	"name" varchar(120) NOT NULL,
+	"description" text,
+	"module" varchar(50),
+	"render_type" varchar(20) DEFAULT 'select' NOT NULL,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_taxonomy_tag_assignments" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"taxonomy_id" uuid NOT NULL,
+	"term_id" uuid NOT NULL,
+	"entity_type" varchar(80) NOT NULL,
+	"entity_id" varchar(80) NOT NULL,
+	"created_by" bigint,
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_taxonomy_terms" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"taxonomy_id" uuid NOT NULL,
+	"value" varchar(120) NOT NULL,
+	"label" varchar(120) NOT NULL,
+	"sort_order" integer DEFAULT 0 NOT NULL,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"metadata" jsonb,
 	"created_at" timestamp(6) DEFAULT now() NOT NULL,
 	"updated_at" timestamp(6) NOT NULL
 );
@@ -1980,235 +2149,291 @@ CREATE TABLE "sta_form_submission_history" (
 	"created_at" timestamp(6) DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "sta_acknowledgements" (
+CREATE TABLE "sta_procurement_attachments" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	"user_id" bigint NOT NULL,
-	"subject_type" varchar(60) NOT NULL,
-	"subject_id" varchar(191) NOT NULL,
-	"subject_label" varchar(255),
-	"version" varchar(60),
-	"status" varchar(20) DEFAULT 'acknowledged' NOT NULL,
-	"acknowledged_at" timestamp(6) DEFAULT now() NOT NULL,
-	"revoked_at" timestamp(6),
-	"source_form_submission_id" uuid,
-	"metadata" jsonb,
-	"created_at" timestamp(6) DEFAULT now() NOT NULL,
-	"updated_at" timestamp(6) NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "sta_request_categories" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	"group_id" uuid NOT NULL,
-	"name" varchar(100) NOT NULL,
-	"code" varchar(20) NOT NULL UNIQUE,
-	"description" text,
-	"sort_order" integer DEFAULT 0 NOT NULL,
-	"is_active" boolean DEFAULT true NOT NULL,
-	"created_at" timestamp(6) DEFAULT now() NOT NULL,
-	"updated_at" timestamp(6) NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "sta_request_groups" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	"organization_id" bigint,
-	"name" varchar(100) NOT NULL,
-	"code" varchar(20) NOT NULL UNIQUE,
-	"description" text,
-	"is_active" boolean DEFAULT true NOT NULL,
-	"created_at" timestamp(6) DEFAULT now() NOT NULL,
-	"updated_at" timestamp(6) NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "sta_request_instances" (
-	"id" bigserial PRIMARY KEY,
-	"request_type_id" uuid NOT NULL,
-	"group_id" uuid NOT NULL,
-	"organization_id" bigint,
-	"created_by" bigint NOT NULL,
-	"team_id" bigint,
-	"workflow_instance_id" uuid,
-	"status" "request_status" DEFAULT 'draft'::"request_status" NOT NULL,
-	"data" jsonb,
-	"current_approval_step" integer DEFAULT 0 NOT NULL,
-	"audit_log_id" uuid,
-	"total_amount" numeric(15,2),
-	"currency" varchar(3) DEFAULT 'NGN' NOT NULL,
-	"contact_id" uuid,
-	"created_at" timestamp(6) DEFAULT now() NOT NULL,
-	"updated_at" timestamp(6) NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "sta_request_items" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	"request_id" bigint NOT NULL,
-	"file_id" uuid,
-	"category_id" uuid,
-	"subcategory_id" uuid,
-	"description" text NOT NULL,
-	"amount" numeric(15,2) NOT NULL,
-	"quantity" integer DEFAULT 1 NOT NULL,
-	"due_date" date,
-	"notes" text,
-	"bank_name" varchar(120),
-	"account_number" varchar(50),
-	"account_name" varchar(120),
-	"created_at" timestamp(6) DEFAULT now() NOT NULL,
-	"updated_at" timestamp(6) NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "sta_request_item_files" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	"request_item_id" uuid NOT NULL,
+	"case_id" uuid,
+	"order_id" uuid,
 	"file_id" uuid NOT NULL,
-	"sort_order" integer DEFAULT 0 NOT NULL,
+	"label" varchar(150),
+	"visibility" varchar(20) DEFAULT 'internal' NOT NULL,
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_procurement_cases" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"request_id" bigint NOT NULL UNIQUE,
+	"requisition_id" uuid UNIQUE,
+	"assigned_officer_id" bigint,
+	"status" varchar(30) DEFAULT 'new' NOT NULL,
+	"category" varchar(20),
+	"note" text,
+	"created_by" bigint,
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_procurement_grns" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"grn_number" varchar(30) NOT NULL UNIQUE,
+	"po_id" uuid NOT NULL,
+	"raised_by" bigint NOT NULL,
+	"received_date" date NOT NULL,
+	"items" jsonb NOT NULL,
+	"overall_condition" varchar(20) DEFAULT 'satisfactory' NOT NULL,
+	"notes" text,
+	"confirmed_by_officer" boolean DEFAULT false NOT NULL,
+	"confirmed_at" timestamp(6),
+	"confirmed_by" bigint,
+	"status" "grn_status" DEFAULT 'pending'::"grn_status" NOT NULL,
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_procurement_orders" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"tenant_id" bigint,
+	"po_number" varchar(30) NOT NULL UNIQUE,
+	"requisition_id" uuid NOT NULL,
+	"vendor_id" uuid NOT NULL,
+	"prepared_by" bigint NOT NULL,
+	"organization_id" bigint,
+	"items" jsonb NOT NULL,
+	"total_amount" numeric(15,2) NOT NULL,
+	"payment_pattern" "payment_pattern" DEFAULT 'post_delivery'::"payment_pattern" NOT NULL,
+	"milestones" jsonb,
+	"payment_terms" varchar(100),
+	"delivery_date" date,
+	"delivery_address" text,
+	"workflow_instance_id" uuid,
+	"status" "po_status" DEFAULT 'draft'::"po_status" NOT NULL,
+	"vendor_acknowledged_at" timestamp(6),
+	"vendor_acknowledge_note" text,
+	"pdf_file_id" uuid,
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_procurement_requisitions" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"tenant_id" bigint,
+	"requisition_number" varchar(30) NOT NULL UNIQUE,
+	"organization_id" bigint,
+	"team_id" bigint,
+	"requested_by" bigint NOT NULL,
+	"title" varchar(200) NOT NULL,
+	"category" "procurement_category" NOT NULL,
+	"payment_pattern" "payment_pattern" DEFAULT 'post_delivery'::"payment_pattern" NOT NULL,
+	"items" jsonb NOT NULL,
+	"estimated_total" numeric(15,2) NOT NULL,
+	"justification" text,
+	"budget_line_id" uuid,
+	"workflow_instance_id" uuid,
+	"status" "procurement_status" DEFAULT 'draft'::"procurement_status" NOT NULL,
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_vendor_portal_users" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"vendor_id" uuid NOT NULL,
+	"email" varchar(255) NOT NULL UNIQUE,
+	"hashed_password" text,
+	"name" varchar(120) NOT NULL,
+	"status" varchar(20) DEFAULT 'active' NOT NULL,
+	"last_login_at" timestamp(6),
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_system_versions" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"platform" varchar(50) NOT NULL,
+	"module" varchar(50) NOT NULL,
+	"version" varchar(50) NOT NULL,
+	"min_version" varchar(50) NOT NULL,
+	"force_update" boolean DEFAULT false NOT NULL,
+	"release_notes" jsonb,
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "mail_accounts" (
+	"id" bigserial PRIMARY KEY,
+	"profile_id" bigint NOT NULL,
+	"provider" "mail_provider" NOT NULL,
+	"email_address" varchar(255) NOT NULL,
+	"display_name" varchar(255),
+	"access_token" text NOT NULL,
+	"refresh_token" text NOT NULL,
+	"token_expires_at" timestamp(6) NOT NULL,
+	"is_shared" boolean DEFAULT false NOT NULL,
+	"label" varchar(100),
+	"last_synced_at" timestamp(6),
+	"signature" text,
+	"outlook_subscription_id" varchar(255),
 	"created_at" timestamp(6) DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "sta_request_types" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	"category_id" uuid NOT NULL,
-	"name" varchar(100) NOT NULL,
-	"code_prefix" varchar(10) NOT NULL,
-	"taxonomy_keys" jsonb,
-	"description" text,
-	"storage_type" varchar(20),
-	"form_schema" jsonb,
-	"approval_flow_json" jsonb,
-	"approval_limit" numeric(15,2),
-	"visible_to_roles" jsonb,
-	"sequence_counter" integer DEFAULT 0 NOT NULL,
-	"is_active" boolean DEFAULT true NOT NULL,
-	"workflow_type" varchar(20),
-	"handler_role_label" varchar(100),
-	"form_id" uuid,
-	"created_at" timestamp(6) DEFAULT now() NOT NULL,
-	"updated_at" timestamp(6) NOT NULL
+CREATE TABLE "mail_headers" (
+	"id" bigserial PRIMARY KEY,
+	"account_id" bigint NOT NULL,
+	"uid" varchar(255) NOT NULL,
+	"folder" varchar(500) NOT NULL,
+	"subject" varchar(998),
+	"from_name" varchar(255),
+	"from_email" varchar(255),
+	"date" timestamp(6),
+	"is_read" boolean DEFAULT false NOT NULL,
+	"has_attachment" boolean DEFAULT false NOT NULL,
+	"snippet" varchar(500),
+	"synced_at" timestamp(6) DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "sta_workflows" (
+CREATE TABLE "sta_billing_invoices" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	"name" varchar(150) NOT NULL,
-	"description" text,
-	"entity_type" varchar(100) NOT NULL,
-	"config" jsonb,
-	"is_active" boolean DEFAULT true NOT NULL,
-	"created_by" bigint,
-	"updated_by" bigint,
-	"created_at" timestamp(6) DEFAULT now() NOT NULL,
-	"updated_at" timestamp(6) NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "sta_workflow_history" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	"instance_id" uuid NOT NULL,
-	"transition_id" uuid,
-	"from_step_id" uuid,
-	"to_step_id" uuid,
-	"action" varchar(50) NOT NULL,
-	"performed_by" bigint,
-	"comment" text,
-	"data" jsonb,
-	"created_at" timestamp(6) DEFAULT now() NOT NULL,
-	"updated_at" timestamp(6) NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "sta_workflow_instances" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	"workflow_id" uuid NOT NULL,
-	"entity_type" varchar(100) NOT NULL,
-	"entity_id" varchar(36) NOT NULL,
-	"current_step_id" uuid,
-	"status" varchar(32) DEFAULT 'pending' NOT NULL,
-	"initiated_by" bigint,
-	"completed_at" timestamp(6),
+	"tenant_id" bigint NOT NULL,
+	"subscription_id" uuid,
+	"plan_id" uuid NOT NULL,
+	"number" varchar(40) NOT NULL,
+	"amount_minor" integer NOT NULL,
+	"currency" varchar(3) NOT NULL,
+	"status" varchar(30) DEFAULT 'pending' NOT NULL,
+	"due_at" timestamp(6) NOT NULL,
+	"paid_at" timestamp(6),
+	"provider" varchar(30),
+	"provider_reference" varchar(255),
 	"metadata" jsonb,
 	"created_at" timestamp(6) DEFAULT now() NOT NULL,
-	"updated_at" timestamp(6) NOT NULL
+	"updated_at" timestamp(6) DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "sta_workflow_steps" (
+CREATE TABLE "sta_billing_payment_attempts" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	"workflow_id" uuid NOT NULL,
-	"name" varchar(150) NOT NULL,
-	"description" text,
-	"step_type" varchar(50) DEFAULT 'approval' NOT NULL,
-	"order" integer DEFAULT 0 NOT NULL,
-	"is_initial" boolean DEFAULT false NOT NULL,
-	"is_final" boolean DEFAULT false NOT NULL,
-	"config" jsonb,
-	"created_by" bigint,
-	"updated_by" bigint,
+	"tenant_id" bigint NOT NULL,
+	"invoice_id" uuid NOT NULL,
+	"provider" varchar(30) NOT NULL,
+	"reference" varchar(255) NOT NULL,
+	"status" varchar(30) DEFAULT 'initialized' NOT NULL,
+	"authorization_url" varchar(1000),
+	"paid_at" timestamp(6),
+	"metadata" jsonb,
 	"created_at" timestamp(6) DEFAULT now() NOT NULL,
-	"updated_at" timestamp(6) NOT NULL
+	"updated_at" timestamp(6) DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "sta_workflow_step_approvers" (
+CREATE TABLE "sta_billing_webhook_events" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	"step_id" uuid NOT NULL,
-	"approver_type" varchar(10) NOT NULL,
-	"approver_id" varchar(64) NOT NULL,
-	"is_required" boolean DEFAULT true NOT NULL,
-	"approval_order" integer DEFAULT 0 NOT NULL,
-	"created_by" bigint,
-	"updated_by" bigint,
-	"created_at" timestamp(6) DEFAULT now() NOT NULL,
-	"updated_at" timestamp(6) NOT NULL
+	"provider" varchar(30) NOT NULL,
+	"event_id" varchar(255) NOT NULL,
+	"event_type" varchar(100) NOT NULL,
+	"payload" jsonb NOT NULL,
+	"processed_at" timestamp(6),
+	"created_at" timestamp(6) DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "sta_workflow_transitions" (
+CREATE TABLE "sta_subscription_plans" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	"workflow_id" uuid NOT NULL,
-	"from_step_id" uuid NOT NULL,
-	"to_step_id" uuid NOT NULL,
-	"name" text,
-	"description" text,
-	"action" varchar(50) NOT NULL,
-	"conditions" jsonb,
-	"config" jsonb,
-	"created_by" bigint,
-	"updated_by" bigint,
-	"created_at" timestamp(6) DEFAULT now() NOT NULL,
-	"updated_at" timestamp(6) NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "sta_taxonomies" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	"key" varchar(100) NOT NULL UNIQUE,
+	"code" varchar(50) NOT NULL,
 	"name" varchar(120) NOT NULL,
-	"description" text,
-	"module" varchar(50),
-	"render_type" varchar(20) DEFAULT 'select' NOT NULL,
+	"description" varchar(500),
+	"features" jsonb DEFAULT '{}' NOT NULL,
+	"limits" jsonb DEFAULT '{}' NOT NULL,
 	"is_active" boolean DEFAULT true NOT NULL,
 	"created_at" timestamp(6) DEFAULT now() NOT NULL,
-	"updated_at" timestamp(6) NOT NULL
+	"updated_at" timestamp(6) DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "sta_taxonomy_tag_assignments" (
+CREATE TABLE "sta_subscription_plan_prices" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	"taxonomy_id" uuid NOT NULL,
-	"term_id" uuid NOT NULL,
-	"entity_type" varchar(80) NOT NULL,
-	"entity_id" varchar(80) NOT NULL,
-	"created_by" bigint,
-	"created_at" timestamp(6) DEFAULT now() NOT NULL,
-	"updated_at" timestamp(6) NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "sta_taxonomy_terms" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	"taxonomy_id" uuid NOT NULL,
-	"value" varchar(120) NOT NULL,
-	"label" varchar(120) NOT NULL,
-	"sort_order" integer DEFAULT 0 NOT NULL,
+	"plan_id" uuid NOT NULL,
+	"provider" varchar(30) NOT NULL,
+	"amount_minor" integer DEFAULT 0 NOT NULL,
+	"currency" varchar(3) DEFAULT 'NGN' NOT NULL,
+	"interval" varchar(20) DEFAULT 'monthly' NOT NULL,
 	"is_active" boolean DEFAULT true NOT NULL,
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_tenant_subscriptions" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"tenant_id" bigint NOT NULL,
+	"plan_id" uuid NOT NULL,
+	"status" varchar(30) DEFAULT 'active' NOT NULL,
+	"starts_at" timestamp(6) DEFAULT now() NOT NULL,
+	"ends_at" timestamp(6),
+	"trial_ends_at" timestamp(6),
+	"current_period_start" timestamp(6),
+	"current_period_end" timestamp(6),
+	"cancel_at_period_end" boolean DEFAULT false NOT NULL,
+	"provider" varchar(30),
+	"provider_subscription_id" varchar(255),
 	"metadata" jsonb,
 	"created_at" timestamp(6) DEFAULT now() NOT NULL,
-	"updated_at" timestamp(6) NOT NULL
+	"updated_at" timestamp(6) DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "sta_notification_jobs" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"tenant_id" bigint NOT NULL,
+	"notification_id" bigint NOT NULL,
+	"channel" varchar(30) NOT NULL,
+	"payload" jsonb NOT NULL,
+	"status" varchar(20) DEFAULT 'pending' NOT NULL,
+	"attempts" integer DEFAULT 0 NOT NULL,
+	"run_at" timestamp(6) DEFAULT now() NOT NULL,
+	"locked_at" timestamp(6),
+	"processed_at" timestamp(6),
+	"last_error" varchar(1000),
+	"created_at" timestamp(6) DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_analytics_events" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	"tenant_id" bigint,
+	"profile_id" bigint,
+	"name" varchar(120) NOT NULL,
+	"source" varchar(80) NOT NULL,
+	"properties" jsonb,
+	"occurred_at" timestamp(6) DEFAULT now() NOT NULL,
+	"created_at" timestamp(6) DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_tenants" (
+	"id" bigserial PRIMARY KEY,
+	"name" varchar(255) NOT NULL,
+	"slug" varchar(100) NOT NULL,
+	"status" varchar(30) DEFAULT 'active' NOT NULL,
+	"plan" varchar(50) DEFAULT 'trial' NOT NULL,
+	"metadata" jsonb,
+	"created_at" timestamp(6) DEFAULT now() NOT NULL,
+	"updated_at" timestamp(6) DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_tenant_memberships" (
+	"id" bigserial PRIMARY KEY,
+	"tenant_id" bigint NOT NULL,
+	"profile_id" bigint NOT NULL,
+	"status" varchar(30) DEFAULT 'active' NOT NULL,
+	"is_owner" boolean DEFAULT false NOT NULL,
+	"joined_at" timestamp(6) DEFAULT now() NOT NULL,
+	"removed_at" timestamp(6),
+	"created_at" timestamp(6) DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "sta_tenant_organizations" (
+	"id" bigserial PRIMARY KEY,
+	"tenant_id" bigint NOT NULL,
+	"organization_id" bigint NOT NULL,
+	"created_at" timestamp(6) DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE INDEX "emailLog_index_tenantId" ON "sta_email_logs" ("tenant_id");--> statement-breakpoint
 CREATE INDEX "emailLog_index_userId" ON "sta_email_logs" ("user_id");--> statement-breakpoint
 CREATE INDEX "emailLog_index_status" ON "sta_email_logs" ("status");--> statement-breakpoint
 CREATE INDEX "emailLog_index_notifiableType_notifiableId" ON "sta_email_logs" ("notifiable_type","notifiable_id");--> statement-breakpoint
+CREATE INDEX "notification_index_tenantId" ON "sta_notifications" ("tenant_id");--> statement-breakpoint
 CREATE INDEX "notification_index_userId" ON "sta_notifications" ("user_id");--> statement-breakpoint
 CREATE INDEX "notification_index_type" ON "sta_notifications" ("type");--> statement-breakpoint
 CREATE INDEX "notification_index_status" ON "sta_notifications" ("status");--> statement-breakpoint
@@ -2219,15 +2444,104 @@ CREATE INDEX "token_index_tokenHash" ON "sta_tokens" ("token_hash");--> statemen
 CREATE INDEX "token_index_type" ON "sta_tokens" ("type");--> statement-breakpoint
 CREATE INDEX "token_index_expiresAt" ON "sta_tokens" ("expires_at");--> statement-breakpoint
 CREATE UNIQUE INDEX "profile_role_org_unique" ON "sta_user_roles" ("profile_id","role_id","organization_id");--> statement-breakpoint
+CREATE INDEX "userRole_index_tenantId" ON "sta_user_roles" ("tenant_id");--> statement-breakpoint
+CREATE INDEX "attendanceCorrection_index_userId_workDate" ON "sta_attendance_corrections" ("user_id","work_date");--> statement-breakpoint
+CREATE INDEX "attendanceCorrection_index_status_requestedAt" ON "sta_attendance_corrections" ("status","requested_at");--> statement-breakpoint
+CREATE UNIQUE INDEX "unique_attendance_daily" ON "sta_attendance_daily" ("user_id","work_date");--> statement-breakpoint
+CREATE INDEX "attendanceDaily_index_status" ON "sta_attendance_daily" ("status");--> statement-breakpoint
+CREATE INDEX "attendanceEntry_index_userId_workDate" ON "sta_attendance_entries" ("user_id","work_date");--> statement-breakpoint
+CREATE INDEX "attendanceEntry_index_entryType_entryAt" ON "sta_attendance_entries" ("entry_type","entry_at");--> statement-breakpoint
+CREATE INDEX "attendanceException_index_userId_workDate" ON "sta_attendance_exceptions" ("user_id","work_date");--> statement-breakpoint
+CREATE INDEX "attendanceException_index_status_exceptionType" ON "sta_attendance_exceptions" ("status","exception_type");--> statement-breakpoint
+CREATE INDEX "attendanceHoliday_index_tenantId" ON "sta_attendance_holidays" ("tenant_id");--> statement-breakpoint
+CREATE INDEX "attendanceHoliday_index_organizationId_holidayDate" ON "sta_attendance_holidays" ("organization_id","holiday_date");--> statement-breakpoint
+CREATE INDEX "attendanceHoliday_index_officeLocationId_holidayDate" ON "sta_attendance_holidays" ("office_location_id","holiday_date");--> statement-breakpoint
+CREATE UNIQUE INDEX "employee_meta_unique" ON "sta_employee_meta" ("user_id","meta_key");--> statement-breakpoint
+CREATE INDEX "employeeMeta_index_metaKey" ON "sta_employee_meta" ("meta_key");--> statement-breakpoint
+CREATE INDEX "employeeProfile_index_tenantId" ON "sta_employee_profiles" ("tenant_id");--> statement-breakpoint
+CREATE INDEX "employeeProfile_index_managerUserId" ON "sta_employee_profiles" ("manager_user_id");--> statement-breakpoint
+CREATE INDEX "employeeProfile_index_employmentStatus" ON "sta_employee_profiles" ("employment_status");--> statement-breakpoint
+CREATE INDEX "leaveBalanceLedger_index_userId_leaveTypeKey_periodYear" ON "sta_leave_balance_ledger" ("user_id","leave_type_key","period_year");--> statement-breakpoint
+CREATE INDEX "leaveBalanceLedger_index_entryType" ON "sta_leave_balance_ledger" ("entry_type");--> statement-breakpoint
+CREATE INDEX "leaveBalanceLedger_index_sourceRequestId" ON "sta_leave_balance_ledger" ("source_request_id");--> statement-breakpoint
+CREATE INDEX "onboardingProgress_index_status" ON "sta_onboarding_progress" ("status");--> statement-breakpoint
 CREATE UNIQUE INDEX "unique_group_organization" ON "sta_group_organizations" ("group_id","organization_id");--> statement-breakpoint
+CREATE INDEX "groupOrganization_index_tenantId" ON "sta_group_organizations" ("tenant_id");--> statement-breakpoint
 CREATE INDEX "groupOrganization_index_organizationId" ON "sta_group_organizations" ("organization_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "unique_group_user" ON "sta_group_users" ("group_id","user_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "unique_group_user_organization_scope" ON "sta_group_user_organization_scopes" ("group_user_id","organization_id");--> statement-breakpoint
+CREATE INDEX "groupUserOrganizationScope_index_tenantId" ON "sta_group_user_organization_scopes" ("tenant_id");--> statement-breakpoint
 CREATE INDEX "groupUserOrganizationScope_index_organizationId" ON "sta_group_user_organization_scopes" ("organization_id");--> statement-breakpoint
+CREATE INDEX "organization_index_tenantId" ON "sta_organizations" ("tenant_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "unique_org_office_location" ON "sta_organization_office_locations" ("organization_id","office_location_id");--> statement-breakpoint
 CREATE INDEX "organizationOfficeLocation_index_officeLocationId" ON "sta_organization_office_locations" ("office_location_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "profile_org_unique" ON "sta_profile_organizations" ("profile_id","organization_id");--> statement-breakpoint
+CREATE INDEX "profileOrganization_index_tenantId" ON "sta_profile_organizations" ("tenant_id");--> statement-breakpoint
+CREATE INDEX "project_index_tenantId" ON "sta_projects" ("tenant_id");--> statement-breakpoint
+CREATE INDEX "project_index_organizationId" ON "sta_projects" ("organization_id");--> statement-breakpoint
+CREATE INDEX "project_index_isActive" ON "sta_projects" ("is_active");--> statement-breakpoint
+CREATE INDEX "projectGovernance_index_ownerUserId" ON "sta_project_governance" ("owner_user_id");--> statement-breakpoint
+CREATE INDEX "projectGovernance_index_governanceStatus" ON "sta_project_governance" ("governance_status");--> statement-breakpoint
+CREATE UNIQUE INDEX "unique_project_user" ON "sta_project_members" ("project_id","user_id");--> statement-breakpoint
+CREATE INDEX "projectMember_index_userId" ON "sta_project_members" ("user_id");--> statement-breakpoint
+CREATE INDEX "projectMember_index_role" ON "sta_project_members" ("role");--> statement-breakpoint
+CREATE INDEX "projectTimesheetEntry_index_workerId_workDate" ON "sta_project_timesheet_entries" ("worker_id","work_date");--> statement-breakpoint
+CREATE INDEX "projectTimesheetEntry_index_projectId" ON "sta_project_timesheet_entries" ("project_id");--> statement-breakpoint
+CREATE INDEX "projectTimesheetEntry_index_fundId" ON "sta_project_timesheet_entries" ("fund_id");--> statement-breakpoint
+CREATE INDEX "projectTimesheetEntry_index_grantId" ON "sta_project_timesheet_entries" ("grant_id");--> statement-breakpoint
+CREATE INDEX "projectTimesheetEntry_index_status" ON "sta_project_timesheet_entries" ("status");--> statement-breakpoint
+CREATE INDEX "projectTimesheetEntry_index_syncedRunId" ON "sta_project_timesheet_entries" ("synced_run_id");--> statement-breakpoint
+CREATE INDEX "projectTimesheetEntry_index_sourceWorkLogId" ON "sta_project_timesheet_entries" ("source_work_log_id");--> statement-breakpoint
+CREATE INDEX "teamGoal_index_teamId_periodYear" ON "sta_team_goals" ("team_id","period_year");--> statement-breakpoint
+CREATE INDEX "teamGoal_index_organizationId" ON "sta_team_goals" ("organization_id");--> statement-breakpoint
+CREATE INDEX "teamKpi_index_goalId" ON "sta_team_kpis" ("goal_id");--> statement-breakpoint
+CREATE INDEX "teamKpi_index_objectiveId" ON "sta_team_kpis" ("objective_id");--> statement-breakpoint
+CREATE INDEX "teamKpi_index_teamId_periodYear_quarter" ON "sta_team_kpis" ("team_id","period_year","quarter");--> statement-breakpoint
+CREATE INDEX "teamObjective_index_goalId" ON "sta_team_objectives" ("goal_id");--> statement-breakpoint
+CREATE INDEX "teamObjective_index_teamId" ON "sta_team_objectives" ("team_id");--> statement-breakpoint
+CREATE INDEX "workItem_index_assignedToId_status" ON "sta_work_items" ("assigned_to_id","status");--> statement-breakpoint
+CREATE INDEX "workItem_index_ownerTeamId_weekStartDate" ON "sta_work_items" ("owner_team_id","week_start_date");--> statement-breakpoint
+CREATE INDEX "workItem_index_projectId" ON "sta_work_items" ("project_id");--> statement-breakpoint
+CREATE INDEX "workItem_index_fundId" ON "sta_work_items" ("fund_id");--> statement-breakpoint
+CREATE INDEX "workItem_index_grantId" ON "sta_work_items" ("grant_id");--> statement-breakpoint
+CREATE INDEX "workItem_index_goalId" ON "sta_work_items" ("goal_id");--> statement-breakpoint
+CREATE INDEX "workItem_index_objectiveId" ON "sta_work_items" ("objective_id");--> statement-breakpoint
+CREATE INDEX "workItem_index_kpiId" ON "sta_work_items" ("kpi_id");--> statement-breakpoint
+CREATE INDEX "workLog_index_staffId_logDate" ON "sta_work_logs" ("staff_id","log_date");--> statement-breakpoint
+CREATE INDEX "workLog_index_approvalStatus_logDate" ON "sta_work_logs" ("approval_status","log_date");--> statement-breakpoint
+CREATE INDEX "workLog_index_projectId" ON "sta_work_logs" ("project_id");--> statement-breakpoint
+CREATE INDEX "workLog_index_fundId" ON "sta_work_logs" ("fund_id");--> statement-breakpoint
+CREATE INDEX "workLog_index_grantId" ON "sta_work_logs" ("grant_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "unique_ack_subject_version" ON "sta_acknowledgements" ("user_id","subject_type","subject_id","version");--> statement-breakpoint
+CREATE INDEX "acknowledgement_index_subjectType_subjectId" ON "sta_acknowledgements" ("subject_type","subject_id");--> statement-breakpoint
+CREATE INDEX "acknowledgement_index_status" ON "sta_acknowledgements" ("status");--> statement-breakpoint
+CREATE INDEX "requestInstance_index_requestTypeId" ON "sta_request_instances" ("request_type_id");--> statement-breakpoint
+CREATE INDEX "requestInstance_index_groupId" ON "sta_request_instances" ("group_id");--> statement-breakpoint
+CREATE INDEX "requestInstance_index_createdBy" ON "sta_request_instances" ("created_by");--> statement-breakpoint
+CREATE INDEX "requestInstance_index_teamId" ON "sta_request_instances" ("team_id");--> statement-breakpoint
+CREATE INDEX "requestInstance_index_status" ON "sta_request_instances" ("status");--> statement-breakpoint
+CREATE INDEX "requestInstance_index_workflowInstanceId" ON "sta_request_instances" ("workflow_instance_id");--> statement-breakpoint
+CREATE INDEX "requestItem_index_requestId" ON "sta_request_items" ("request_id");--> statement-breakpoint
+CREATE INDEX "requestItem_index_fileId" ON "sta_request_items" ("file_id");--> statement-breakpoint
+CREATE INDEX "requestItem_index_categoryId" ON "sta_request_items" ("category_id");--> statement-breakpoint
+CREATE INDEX "requestItem_index_subcategoryId" ON "sta_request_items" ("subcategory_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "unique_request_item_file" ON "sta_request_item_files" ("request_item_id","file_id");--> statement-breakpoint
+CREATE INDEX "requestItemFile_index_requestItemId_sortOrder" ON "sta_request_item_files" ("request_item_id","sort_order");--> statement-breakpoint
+CREATE INDEX "requestItemFile_index_fileId" ON "sta_request_item_files" ("file_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "unique_category_code_prefix" ON "sta_request_types" ("category_id","code_prefix");--> statement-breakpoint
+CREATE INDEX "workflow_index_entityType" ON "sta_workflows" ("entity_type");--> statement-breakpoint
+CREATE INDEX "workflow_index_isActive" ON "sta_workflows" ("is_active");--> statement-breakpoint
+CREATE INDEX "workflowHistory_index_instanceId" ON "sta_workflow_history" ("instance_id");--> statement-breakpoint
+CREATE INDEX "workflowInstance_index_workflowId" ON "sta_workflow_instances" ("workflow_id");--> statement-breakpoint
+CREATE INDEX "workflowInstance_index_status" ON "sta_workflow_instances" ("status");--> statement-breakpoint
+CREATE INDEX "workflowStep_index_workflowId" ON "sta_workflow_steps" ("workflow_id");--> statement-breakpoint
+CREATE INDEX "workflowStep_index_order" ON "sta_workflow_steps" ("order");--> statement-breakpoint
+CREATE INDEX "workflowStepApprover_index_stepId" ON "sta_workflow_step_approvers" ("step_id");--> statement-breakpoint
+CREATE INDEX "workflowTransition_index_workflowId" ON "sta_workflow_transitions" ("workflow_id");--> statement-breakpoint
+CREATE INDEX "workflowTransition_index_fromStepId" ON "sta_workflow_transitions" ("from_step_id");--> statement-breakpoint
+CREATE INDEX "workflowTransition_index_toStepId" ON "sta_workflow_transitions" ("to_step_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "unique_finance_account_name_per_org" ON "sta_finance_accounts" ("organization_id","name");--> statement-breakpoint
+CREATE INDEX "financeAccount_index_tenantId" ON "sta_finance_accounts" ("tenant_id");--> statement-breakpoint
 CREATE INDEX "financeAccount_index_organizationId" ON "sta_finance_accounts" ("organization_id");--> statement-breakpoint
 CREATE INDEX "financeAccount_index_accountType" ON "sta_finance_accounts" ("account_type");--> statement-breakpoint
 CREATE INDEX "financeAccount_index_isActive" ON "sta_finance_accounts" ("is_active");--> statement-breakpoint
@@ -2250,6 +2564,7 @@ CREATE INDEX "financeBillHeader_index_billDate" ON "sta_finance_bill_headers" ("
 CREATE INDEX "financeBillHeader_index_dueDate" ON "sta_finance_bill_headers" ("due_date");--> statement-breakpoint
 CREATE INDEX "financeBillLine_index_billId" ON "sta_finance_bill_lines" ("bill_id");--> statement-breakpoint
 CREATE INDEX "financeBillLine_index_chartAccountId" ON "sta_finance_bill_lines" ("chart_account_id");--> statement-breakpoint
+CREATE INDEX "financeBudget_index_tenantId" ON "sta_finance_budgets" ("tenant_id");--> statement-breakpoint
 CREATE INDEX "financeBudget_index_organizationId" ON "sta_finance_budgets" ("organization_id");--> statement-breakpoint
 CREATE INDEX "financeBudget_index_teamId" ON "sta_finance_budgets" ("team_id");--> statement-breakpoint
 CREATE INDEX "financeBudget_index_projectId" ON "sta_finance_budgets" ("project_id");--> statement-breakpoint
@@ -2292,8 +2607,10 @@ CREATE INDEX "financeExpense_index_status" ON "sta_finance_expenses" ("status");
 CREATE INDEX "financeExpense_index_expenseDate" ON "sta_finance_expenses" ("expense_date");--> statement-breakpoint
 CREATE INDEX "financeExpense_index_contactId" ON "sta_finance_expenses" ("contact_id");--> statement-breakpoint
 CREATE INDEX "financeExpense_index_accountId" ON "sta_finance_expenses" ("account_id");--> statement-breakpoint
+CREATE INDEX "financeExpense_index_tenantId" ON "sta_finance_expenses" ("tenant_id");--> statement-breakpoint
 CREATE INDEX "financeExpense_index_organizationId" ON "sta_finance_expenses" ("organization_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "unique_finance_fund_code_per_org" ON "sta_finance_funds" ("organization_id","code");--> statement-breakpoint
+CREATE INDEX "financeFund_index_tenantId" ON "sta_finance_funds" ("tenant_id");--> statement-breakpoint
 CREATE INDEX "financeFund_index_organizationId" ON "sta_finance_funds" ("organization_id");--> statement-breakpoint
 CREATE INDEX "financeFund_index_projectId" ON "sta_finance_funds" ("project_id");--> statement-breakpoint
 CREATE INDEX "financeFund_index_restrictionType" ON "sta_finance_funds" ("restriction_type");--> statement-breakpoint
@@ -2314,16 +2631,21 @@ CREATE INDEX "financeIncomeEntry_index_pledgeId" ON "sta_finance_income_entries"
 CREATE INDEX "financeItem_index_itemType" ON "sta_finance_items" ("item_type");--> statement-breakpoint
 CREATE INDEX "financeItem_index_isActive" ON "sta_finance_items" ("is_active");--> statement-breakpoint
 CREATE INDEX "financeItem_index_organizationId" ON "sta_finance_items" ("organization_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "unique_finance_journal_entry_no_per_tenant" ON "sta_finance_journal_entries" ("tenant_id","entry_no");--> statement-breakpoint
+CREATE INDEX "financeJournalEntry_index_tenantId" ON "sta_finance_journal_entries" ("tenant_id");--> statement-breakpoint
 CREATE INDEX "financeJournalEntry_index_periodId" ON "sta_finance_journal_entries" ("period_id");--> statement-breakpoint
 CREATE INDEX "financeJournalEntry_index_entryDate" ON "sta_finance_journal_entries" ("entry_date");--> statement-breakpoint
 CREATE INDEX "financeJournalEntry_index_sourceType_sourceId" ON "sta_finance_journal_entries" ("source_type","source_id");--> statement-breakpoint
+CREATE INDEX "financeJournalLine_index_tenantId" ON "sta_finance_journal_lines" ("tenant_id");--> statement-breakpoint
 CREATE INDEX "financeJournalLine_index_journalEntryId" ON "sta_finance_journal_lines" ("journal_entry_id");--> statement-breakpoint
 CREATE INDEX "financeJournalLine_index_chartAccountId" ON "sta_finance_journal_lines" ("chart_account_id");--> statement-breakpoint
 CREATE INDEX "financeJournalLine_index_organizationId" ON "sta_finance_journal_lines" ("organization_id");--> statement-breakpoint
 CREATE INDEX "financeJournalLine_index_teamId" ON "sta_finance_journal_lines" ("team_id");--> statement-breakpoint
 CREATE INDEX "financeJournalLine_index_fundId" ON "sta_finance_journal_lines" ("fund_id");--> statement-breakpoint
 CREATE INDEX "financeJournalLine_index_grantId" ON "sta_finance_journal_lines" ("grant_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "unique_finance_journal_sequence_prefix_year" ON "sta_finance_journal_sequences" ("prefix","sequence_year");--> statement-breakpoint
+CREATE UNIQUE INDEX "unique_finance_journal_sequence_prefix_year" ON "sta_finance_journal_sequences" ("tenant_id","prefix","sequence_year");--> statement-breakpoint
+CREATE INDEX "financeJournalSequence_index_tenantId" ON "sta_finance_journal_sequences" ("tenant_id");--> statement-breakpoint
+CREATE INDEX "financeLedgerEntry_index_tenantId" ON "sta_finance_ledger_entries" ("tenant_id");--> statement-breakpoint
 CREATE INDEX "financeLedgerEntry_index_accountId" ON "sta_finance_ledger_entries" ("account_id");--> statement-breakpoint
 CREATE INDEX "financeLedgerEntry_index_entryDate" ON "sta_finance_ledger_entries" ("entry_date");--> statement-breakpoint
 CREATE INDEX "financeLedgerEntry_index_sourceType_sourceId" ON "sta_finance_ledger_entries" ("source_type","source_id");--> statement-breakpoint
@@ -2358,7 +2680,8 @@ CREATE UNIQUE INDEX "unique_receipt_invoice_allocation" ON "sta_finance_receipt_
 CREATE INDEX "financeReceiptAllocation_index_receiptId" ON "sta_finance_receipt_allocations" ("receipt_id");--> statement-breakpoint
 CREATE INDEX "financeReceiptAllocation_index_salesInvoiceId" ON "sta_finance_receipt_allocations" ("sales_invoice_id");--> statement-breakpoint
 CREATE INDEX "financeReportNote_index_periodId_reportKey" ON "sta_finance_report_notes" ("period_id","report_key");--> statement-breakpoint
-CREATE UNIQUE INDEX "unique_finance_reporting_period" ON "sta_finance_reporting_periods" ("year","month");--> statement-breakpoint
+CREATE UNIQUE INDEX "unique_finance_reporting_period" ON "sta_finance_reporting_periods" ("tenant_id","year","month");--> statement-breakpoint
+CREATE INDEX "financeReportingPeriod_index_tenantId" ON "sta_finance_reporting_periods" ("tenant_id");--> statement-breakpoint
 CREATE INDEX "financeReportingPeriod_index_quarter" ON "sta_finance_reporting_periods" ("quarter");--> statement-breakpoint
 CREATE INDEX "financeReportingPeriod_index_status" ON "sta_finance_reporting_periods" ("status");--> statement-breakpoint
 CREATE INDEX "financeRequestDeduction_index_requestId" ON "sta_finance_request_deductions" ("request_id");--> statement-breakpoint
@@ -2388,39 +2711,6 @@ CREATE INDEX "financeVendorWHTAccrual_index_periodYear_periodMonth" ON "sta_fina
 CREATE INDEX "financeVendorWHTAccrual_index_remittanceId" ON "sta_finance_vendor_wht_accruals" ("remittance_id");--> statement-breakpoint
 CREATE INDEX "financeWHTRemittance_index_periodYear_periodMonth" ON "sta_finance_wht_remittances" ("period_year","period_month");--> statement-breakpoint
 CREATE INDEX "financeWHTRemittance_index_deductionTypeId" ON "sta_finance_wht_remittances" ("deduction_type_id");--> statement-breakpoint
-CREATE INDEX "procurementAttachment_index_caseId" ON "sta_procurement_attachments" ("case_id");--> statement-breakpoint
-CREATE INDEX "procurementAttachment_index_orderId" ON "sta_procurement_attachments" ("order_id");--> statement-breakpoint
-CREATE INDEX "procurementAttachment_index_fileId" ON "sta_procurement_attachments" ("file_id");--> statement-breakpoint
-CREATE INDEX "procurementAttachment_index_visibility" ON "sta_procurement_attachments" ("visibility");--> statement-breakpoint
-CREATE INDEX "procurementCase_index_status" ON "sta_procurement_cases" ("status");--> statement-breakpoint
-CREATE INDEX "procurementCase_index_assignedOfficerId" ON "sta_procurement_cases" ("assigned_officer_id");--> statement-breakpoint
-CREATE INDEX "procurementGRN_index_poId" ON "sta_procurement_grns" ("po_id");--> statement-breakpoint
-CREATE INDEX "procurementGRN_index_status" ON "sta_procurement_grns" ("status");--> statement-breakpoint
-CREATE INDEX "procurementOrder_index_requisitionId" ON "sta_procurement_orders" ("requisition_id");--> statement-breakpoint
-CREATE INDEX "procurementOrder_index_vendorId" ON "sta_procurement_orders" ("vendor_id");--> statement-breakpoint
-CREATE INDEX "procurementOrder_index_status" ON "sta_procurement_orders" ("status");--> statement-breakpoint
-CREATE INDEX "procurementRequisition_index_requestedBy" ON "sta_procurement_requisitions" ("requested_by");--> statement-breakpoint
-CREATE INDEX "procurementRequisition_index_status" ON "sta_procurement_requisitions" ("status");--> statement-breakpoint
-CREATE INDEX "procurementRequisition_index_organizationId" ON "sta_procurement_requisitions" ("organization_id");--> statement-breakpoint
-CREATE INDEX "vendorPortalUser_index_vendorId" ON "sta_vendor_portal_users" ("vendor_id");--> statement-breakpoint
-CREATE INDEX "attendanceCorrection_index_userId_workDate" ON "sta_attendance_corrections" ("user_id","work_date");--> statement-breakpoint
-CREATE INDEX "attendanceCorrection_index_status_requestedAt" ON "sta_attendance_corrections" ("status","requested_at");--> statement-breakpoint
-CREATE UNIQUE INDEX "unique_attendance_daily" ON "sta_attendance_daily" ("user_id","work_date");--> statement-breakpoint
-CREATE INDEX "attendanceDaily_index_status" ON "sta_attendance_daily" ("status");--> statement-breakpoint
-CREATE INDEX "attendanceEntry_index_userId_workDate" ON "sta_attendance_entries" ("user_id","work_date");--> statement-breakpoint
-CREATE INDEX "attendanceEntry_index_entryType_entryAt" ON "sta_attendance_entries" ("entry_type","entry_at");--> statement-breakpoint
-CREATE INDEX "attendanceException_index_userId_workDate" ON "sta_attendance_exceptions" ("user_id","work_date");--> statement-breakpoint
-CREATE INDEX "attendanceException_index_status_exceptionType" ON "sta_attendance_exceptions" ("status","exception_type");--> statement-breakpoint
-CREATE INDEX "attendanceHoliday_index_organizationId_holidayDate" ON "sta_attendance_holidays" ("organization_id","holiday_date");--> statement-breakpoint
-CREATE INDEX "attendanceHoliday_index_officeLocationId_holidayDate" ON "sta_attendance_holidays" ("office_location_id","holiday_date");--> statement-breakpoint
-CREATE UNIQUE INDEX "employee_meta_unique" ON "sta_employee_meta" ("user_id","meta_key");--> statement-breakpoint
-CREATE INDEX "employeeMeta_index_metaKey" ON "sta_employee_meta" ("meta_key");--> statement-breakpoint
-CREATE INDEX "employeeProfile_index_managerUserId" ON "sta_employee_profiles" ("manager_user_id");--> statement-breakpoint
-CREATE INDEX "employeeProfile_index_employmentStatus" ON "sta_employee_profiles" ("employment_status");--> statement-breakpoint
-CREATE INDEX "leaveBalanceLedger_index_userId_leaveTypeKey_periodYear" ON "sta_leave_balance_ledger" ("user_id","leave_type_key","period_year");--> statement-breakpoint
-CREATE INDEX "leaveBalanceLedger_index_entryType" ON "sta_leave_balance_ledger" ("entry_type");--> statement-breakpoint
-CREATE INDEX "leaveBalanceLedger_index_sourceRequestId" ON "sta_leave_balance_ledger" ("source_request_id");--> statement-breakpoint
-CREATE INDEX "onboardingProgress_index_status" ON "sta_onboarding_progress" ("status");--> statement-breakpoint
 CREATE UNIQUE INDEX "unique_payroll_posting" ON "sta_payroll_accounting_postings" ("run_id","journal_entry_id");--> statement-breakpoint
 CREATE INDEX "payrollAccountingPosting_index_journalEntryId" ON "sta_payroll_accounting_postings" ("journal_entry_id");--> statement-breakpoint
 CREATE INDEX "payrollComponent_index_chartAccountId" ON "sta_payroll_components" ("chart_account_id");--> statement-breakpoint
@@ -2448,6 +2738,7 @@ CREATE UNIQUE INDEX "unique_payroll_run_period" ON "sta_payroll_runs" ("organiza
 CREATE INDEX "payrollRun_index_status" ON "sta_payroll_runs" ("status");--> statement-breakpoint
 CREATE INDEX "payrollRun_index_workflowInstanceId" ON "sta_payroll_runs" ("workflow_instance_id");--> statement-breakpoint
 CREATE INDEX "payrollRun_index_paidFromAccountId" ON "sta_payroll_runs" ("paid_from_account_id");--> statement-breakpoint
+CREATE INDEX "payrollRun_index_tenantId" ON "sta_payroll_runs" ("tenant_id");--> statement-breakpoint
 CREATE INDEX "payrollRun_index_organizationId" ON "sta_payroll_runs" ("organization_id");--> statement-breakpoint
 CREATE INDEX "payrollRunEvent_index_runId_createdAt" ON "sta_payroll_run_events" ("run_id","created_at");--> statement-breakpoint
 CREATE INDEX "payrollRunEvent_index_eventType" ON "sta_payroll_run_events" ("event_type");--> statement-breakpoint
@@ -2481,6 +2772,7 @@ CREATE INDEX "payrollTaxBand_index_tableId_sortOrder" ON "sta_payroll_tax_bands"
 CREATE INDEX "payrollTaxTable_index_organizationId_workerType_status" ON "sta_payroll_tax_tables" ("organization_id","worker_type","status");--> statement-breakpoint
 CREATE INDEX "payrollTaxTable_index_effectiveFrom_effectiveTo" ON "sta_payroll_tax_tables" ("effective_from","effective_to");--> statement-breakpoint
 CREATE INDEX "payrollWorker_index_profileId" ON "sta_payroll_workers" ("profile_id");--> statement-breakpoint
+CREATE INDEX "payrollWorker_index_tenantId" ON "sta_payroll_workers" ("tenant_id");--> statement-breakpoint
 CREATE INDEX "payrollWorker_index_organizationId" ON "sta_payroll_workers" ("organization_id");--> statement-breakpoint
 CREATE INDEX "payrollWorker_index_teamId" ON "sta_payroll_workers" ("team_id");--> statement-breakpoint
 CREATE INDEX "payrollWorker_index_projectId" ON "sta_payroll_workers" ("project_id");--> statement-breakpoint
@@ -2497,87 +2789,69 @@ CREATE INDEX "payrollWorkerAllocation_index_grantId" ON "sta_payroll_worker_allo
 CREATE INDEX "payrollWorkerProfile_index_workerId_effectiveFrom_effectiveTo" ON "sta_payroll_worker_profiles" ("worker_id","effective_from","effective_to");--> statement-breakpoint
 CREATE UNIQUE INDEX "unique_payroll_profile_component" ON "sta_payroll_worker_profile_components" ("profile_id","component_id");--> statement-breakpoint
 CREATE INDEX "payrollWorkerProfileComponent_index_componentId" ON "sta_payroll_worker_profile_components" ("component_id");--> statement-breakpoint
-CREATE INDEX "project_index_organizationId" ON "sta_projects" ("organization_id");--> statement-breakpoint
-CREATE INDEX "project_index_isActive" ON "sta_projects" ("is_active");--> statement-breakpoint
-CREATE INDEX "projectGovernance_index_ownerUserId" ON "sta_project_governance" ("owner_user_id");--> statement-breakpoint
-CREATE INDEX "projectGovernance_index_governanceStatus" ON "sta_project_governance" ("governance_status");--> statement-breakpoint
-CREATE UNIQUE INDEX "unique_project_user" ON "sta_project_members" ("project_id","user_id");--> statement-breakpoint
-CREATE INDEX "projectMember_index_userId" ON "sta_project_members" ("user_id");--> statement-breakpoint
-CREATE INDEX "projectMember_index_role" ON "sta_project_members" ("role");--> statement-breakpoint
-CREATE INDEX "projectTimesheetEntry_index_workerId_workDate" ON "sta_project_timesheet_entries" ("worker_id","work_date");--> statement-breakpoint
-CREATE INDEX "projectTimesheetEntry_index_projectId" ON "sta_project_timesheet_entries" ("project_id");--> statement-breakpoint
-CREATE INDEX "projectTimesheetEntry_index_fundId" ON "sta_project_timesheet_entries" ("fund_id");--> statement-breakpoint
-CREATE INDEX "projectTimesheetEntry_index_grantId" ON "sta_project_timesheet_entries" ("grant_id");--> statement-breakpoint
-CREATE INDEX "projectTimesheetEntry_index_status" ON "sta_project_timesheet_entries" ("status");--> statement-breakpoint
-CREATE INDEX "projectTimesheetEntry_index_syncedRunId" ON "sta_project_timesheet_entries" ("synced_run_id");--> statement-breakpoint
-CREATE INDEX "projectTimesheetEntry_index_sourceWorkLogId" ON "sta_project_timesheet_entries" ("source_work_log_id");--> statement-breakpoint
-CREATE INDEX "teamGoal_index_teamId_periodYear" ON "sta_team_goals" ("team_id","period_year");--> statement-breakpoint
-CREATE INDEX "teamGoal_index_organizationId" ON "sta_team_goals" ("organization_id");--> statement-breakpoint
-CREATE INDEX "teamKpi_index_goalId" ON "sta_team_kpis" ("goal_id");--> statement-breakpoint
-CREATE INDEX "teamKpi_index_objectiveId" ON "sta_team_kpis" ("objective_id");--> statement-breakpoint
-CREATE INDEX "teamKpi_index_teamId_periodYear_quarter" ON "sta_team_kpis" ("team_id","period_year","quarter");--> statement-breakpoint
-CREATE INDEX "teamObjective_index_goalId" ON "sta_team_objectives" ("goal_id");--> statement-breakpoint
-CREATE INDEX "teamObjective_index_teamId" ON "sta_team_objectives" ("team_id");--> statement-breakpoint
-CREATE INDEX "workItem_index_assignedToId_status" ON "sta_work_items" ("assigned_to_id","status");--> statement-breakpoint
-CREATE INDEX "workItem_index_ownerTeamId_weekStartDate" ON "sta_work_items" ("owner_team_id","week_start_date");--> statement-breakpoint
-CREATE INDEX "workItem_index_projectId" ON "sta_work_items" ("project_id");--> statement-breakpoint
-CREATE INDEX "workItem_index_fundId" ON "sta_work_items" ("fund_id");--> statement-breakpoint
-CREATE INDEX "workItem_index_grantId" ON "sta_work_items" ("grant_id");--> statement-breakpoint
-CREATE INDEX "workItem_index_goalId" ON "sta_work_items" ("goal_id");--> statement-breakpoint
-CREATE INDEX "workItem_index_objectiveId" ON "sta_work_items" ("objective_id");--> statement-breakpoint
-CREATE INDEX "workItem_index_kpiId" ON "sta_work_items" ("kpi_id");--> statement-breakpoint
-CREATE INDEX "workLog_index_staffId_logDate" ON "sta_work_logs" ("staff_id","log_date");--> statement-breakpoint
-CREATE INDEX "workLog_index_approvalStatus_logDate" ON "sta_work_logs" ("approval_status","log_date");--> statement-breakpoint
-CREATE INDEX "workLog_index_projectId" ON "sta_work_logs" ("project_id");--> statement-breakpoint
-CREATE INDEX "workLog_index_fundId" ON "sta_work_logs" ("fund_id");--> statement-breakpoint
-CREATE INDEX "workLog_index_grantId" ON "sta_work_logs" ("grant_id");--> statement-breakpoint
-CREATE INDEX "mailAccount_index_profileId" ON "mail_accounts" ("profile_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniqueIndex_accountId_folder_uid" ON "mail_headers" ("account_id","folder","uid");--> statement-breakpoint
-CREATE INDEX "mailHeader_index_accountId_folder" ON "mail_headers" ("account_id","folder");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniqueIndex_platform_module" ON "sta_system_versions" ("platform","module");--> statement-breakpoint
+CREATE INDEX "leave_request_tenant_status_idx" ON "sta_leave_requests" ("tenant_id","status");--> statement-breakpoint
+CREATE INDEX "leave_request_user_dates_idx" ON "sta_leave_requests" ("user_id","start_date","end_date");--> statement-breakpoint
+CREATE UNIQUE INDEX "leave_type_tenant_code_unique" ON "sta_leave_types" ("tenant_id","code");--> statement-breakpoint
+CREATE INDEX "leave_type_tenant_idx" ON "sta_leave_types" ("tenant_id");--> statement-breakpoint
+CREATE INDEX "document_index_tenantId" ON "sta_documents" ("tenant_id");--> statement-breakpoint
 CREATE INDEX "document_index_organizationId" ON "sta_documents" ("organization_id");--> statement-breakpoint
 CREATE INDEX "document_index_status" ON "sta_documents" ("status");--> statement-breakpoint
 CREATE INDEX "document_index_category" ON "sta_documents" ("category");--> statement-breakpoint
 CREATE UNIQUE INDEX "unique_document_ack" ON "sta_document_acknowledgements" ("document_id","user_id","version");--> statement-breakpoint
 CREATE INDEX "documentAcknowledgement_index_userId" ON "sta_document_acknowledgements" ("user_id");--> statement-breakpoint
+CREATE INDEX "fileAsset_index_tenantId" ON "sta_file_assets" ("tenant_id");--> statement-breakpoint
 CREATE INDEX "fileAsset_index_organizationId" ON "sta_file_assets" ("organization_id");--> statement-breakpoint
 CREATE INDEX "fileAsset_index_uploadedBy" ON "sta_file_assets" ("uploaded_by");--> statement-breakpoint
 CREATE INDEX "policy_index_module_policyKey_isActive" ON "sta_policies" ("module","policy_key","is_active");--> statement-breakpoint
 CREATE INDEX "policy_index_scopeType_scopeId" ON "sta_policies" ("scope_type","scope_id");--> statement-breakpoint
 CREATE INDEX "policy_index_effectiveFrom_effectiveTo" ON "sta_policies" ("effective_from","effective_to");--> statement-breakpoint
-CREATE UNIQUE INDEX "unique_form_field_key" ON "sta_form_fields" ("form_id","field_key");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniqueIndex_submissionNumber" ON "sta_form_submissions" ("submission_number");--> statement-breakpoint
-CREATE UNIQUE INDEX "unique_submission_field" ON "sta_form_submission_data" ("submission_id","field_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "unique_ack_subject_version" ON "sta_acknowledgements" ("user_id","subject_type","subject_id","version");--> statement-breakpoint
-CREATE INDEX "acknowledgement_index_subjectType_subjectId" ON "sta_acknowledgements" ("subject_type","subject_id");--> statement-breakpoint
-CREATE INDEX "acknowledgement_index_status" ON "sta_acknowledgements" ("status");--> statement-breakpoint
-CREATE INDEX "requestInstance_index_requestTypeId" ON "sta_request_instances" ("request_type_id");--> statement-breakpoint
-CREATE INDEX "requestInstance_index_groupId" ON "sta_request_instances" ("group_id");--> statement-breakpoint
-CREATE INDEX "requestInstance_index_createdBy" ON "sta_request_instances" ("created_by");--> statement-breakpoint
-CREATE INDEX "requestInstance_index_teamId" ON "sta_request_instances" ("team_id");--> statement-breakpoint
-CREATE INDEX "requestInstance_index_status" ON "sta_request_instances" ("status");--> statement-breakpoint
-CREATE INDEX "requestInstance_index_workflowInstanceId" ON "sta_request_instances" ("workflow_instance_id");--> statement-breakpoint
-CREATE INDEX "requestItem_index_requestId" ON "sta_request_items" ("request_id");--> statement-breakpoint
-CREATE INDEX "requestItem_index_fileId" ON "sta_request_items" ("file_id");--> statement-breakpoint
-CREATE INDEX "requestItem_index_categoryId" ON "sta_request_items" ("category_id");--> statement-breakpoint
-CREATE INDEX "requestItem_index_subcategoryId" ON "sta_request_items" ("subcategory_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "unique_request_item_file" ON "sta_request_item_files" ("request_item_id","file_id");--> statement-breakpoint
-CREATE INDEX "requestItemFile_index_requestItemId_sortOrder" ON "sta_request_item_files" ("request_item_id","sort_order");--> statement-breakpoint
-CREATE INDEX "requestItemFile_index_fileId" ON "sta_request_item_files" ("file_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "unique_category_code_prefix" ON "sta_request_types" ("category_id","code_prefix");--> statement-breakpoint
-CREATE INDEX "workflow_index_entityType" ON "sta_workflows" ("entity_type");--> statement-breakpoint
-CREATE INDEX "workflow_index_isActive" ON "sta_workflows" ("is_active");--> statement-breakpoint
-CREATE INDEX "workflowHistory_index_instanceId" ON "sta_workflow_history" ("instance_id");--> statement-breakpoint
-CREATE INDEX "workflowInstance_index_workflowId" ON "sta_workflow_instances" ("workflow_id");--> statement-breakpoint
-CREATE INDEX "workflowInstance_index_status" ON "sta_workflow_instances" ("status");--> statement-breakpoint
-CREATE INDEX "workflowStep_index_workflowId" ON "sta_workflow_steps" ("workflow_id");--> statement-breakpoint
-CREATE INDEX "workflowStep_index_order" ON "sta_workflow_steps" ("order");--> statement-breakpoint
-CREATE INDEX "workflowStepApprover_index_stepId" ON "sta_workflow_step_approvers" ("step_id");--> statement-breakpoint
-CREATE INDEX "workflowTransition_index_workflowId" ON "sta_workflow_transitions" ("workflow_id");--> statement-breakpoint
-CREATE INDEX "workflowTransition_index_fromStepId" ON "sta_workflow_transitions" ("from_step_id");--> statement-breakpoint
-CREATE INDEX "workflowTransition_index_toStepId" ON "sta_workflow_transitions" ("to_step_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "unique_taxonomy_entity_tag" ON "sta_taxonomy_tag_assignments" ("taxonomy_id","term_id","entity_type","entity_id");--> statement-breakpoint
 CREATE INDEX "taxonomyTagAssignment_idx_taggable_entity" ON "sta_taxonomy_tag_assignments" ("entity_type","entity_id");--> statement-breakpoint
 CREATE INDEX "taxonomyTagAssignment_idx_taggable_taxonomy_term" ON "sta_taxonomy_tag_assignments" ("taxonomy_id","term_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "unique_taxonomy_term_value" ON "sta_taxonomy_terms" ("taxonomy_id","value");--> statement-breakpoint
-CREATE INDEX "taxonomyTerm_index_taxonomyId_isActive" ON "sta_taxonomy_terms" ("taxonomy_id","is_active");
+CREATE INDEX "taxonomyTerm_index_taxonomyId_isActive" ON "sta_taxonomy_terms" ("taxonomy_id","is_active");--> statement-breakpoint
+CREATE UNIQUE INDEX "unique_form_field_key" ON "sta_form_fields" ("form_id","field_key");--> statement-breakpoint
+CREATE UNIQUE INDEX "uniqueIndex_submissionNumber" ON "sta_form_submissions" ("submission_number");--> statement-breakpoint
+CREATE UNIQUE INDEX "unique_submission_field" ON "sta_form_submission_data" ("submission_id","field_id");--> statement-breakpoint
+CREATE INDEX "procurementAttachment_index_caseId" ON "sta_procurement_attachments" ("case_id");--> statement-breakpoint
+CREATE INDEX "procurementAttachment_index_orderId" ON "sta_procurement_attachments" ("order_id");--> statement-breakpoint
+CREATE INDEX "procurementAttachment_index_fileId" ON "sta_procurement_attachments" ("file_id");--> statement-breakpoint
+CREATE INDEX "procurementAttachment_index_visibility" ON "sta_procurement_attachments" ("visibility");--> statement-breakpoint
+CREATE INDEX "procurementCase_index_status" ON "sta_procurement_cases" ("status");--> statement-breakpoint
+CREATE INDEX "procurementCase_index_assignedOfficerId" ON "sta_procurement_cases" ("assigned_officer_id");--> statement-breakpoint
+CREATE INDEX "procurementGRN_index_poId" ON "sta_procurement_grns" ("po_id");--> statement-breakpoint
+CREATE INDEX "procurementGRN_index_status" ON "sta_procurement_grns" ("status");--> statement-breakpoint
+CREATE INDEX "procurementOrder_index_requisitionId" ON "sta_procurement_orders" ("requisition_id");--> statement-breakpoint
+CREATE INDEX "procurementOrder_index_vendorId" ON "sta_procurement_orders" ("vendor_id");--> statement-breakpoint
+CREATE INDEX "procurementOrder_index_tenantId" ON "sta_procurement_orders" ("tenant_id");--> statement-breakpoint
+CREATE INDEX "procurementOrder_index_status" ON "sta_procurement_orders" ("status");--> statement-breakpoint
+CREATE INDEX "procurementRequisition_index_requestedBy" ON "sta_procurement_requisitions" ("requested_by");--> statement-breakpoint
+CREATE INDEX "procurementRequisition_index_status" ON "sta_procurement_requisitions" ("status");--> statement-breakpoint
+CREATE INDEX "procurementRequisition_index_tenantId" ON "sta_procurement_requisitions" ("tenant_id");--> statement-breakpoint
+CREATE INDEX "procurementRequisition_index_organizationId" ON "sta_procurement_requisitions" ("organization_id");--> statement-breakpoint
+CREATE INDEX "vendorPortalUser_index_vendorId" ON "sta_vendor_portal_users" ("vendor_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "uniqueIndex_platform_module" ON "sta_system_versions" ("platform","module");--> statement-breakpoint
+CREATE INDEX "mailAccount_index_profileId" ON "mail_accounts" ("profile_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "uniqueIndex_accountId_folder_uid" ON "mail_headers" ("account_id","folder","uid");--> statement-breakpoint
+CREATE INDEX "mailHeader_index_accountId_folder" ON "mail_headers" ("account_id","folder");--> statement-breakpoint
+CREATE UNIQUE INDEX "billing_invoice_unique_number" ON "sta_billing_invoices" ("number");--> statement-breakpoint
+CREATE UNIQUE INDEX "billing_invoice_unique_provider_reference" ON "sta_billing_invoices" ("provider","provider_reference");--> statement-breakpoint
+CREATE INDEX "billing_invoice_tenant_idx" ON "sta_billing_invoices" ("tenant_id");--> statement-breakpoint
+CREATE INDEX "billing_invoice_tenant_status_idx" ON "sta_billing_invoices" ("tenant_id","status");--> statement-breakpoint
+CREATE UNIQUE INDEX "billing_attempt_unique_reference" ON "sta_billing_payment_attempts" ("provider","reference");--> statement-breakpoint
+CREATE INDEX "billing_attempt_tenant_idx" ON "sta_billing_payment_attempts" ("tenant_id");--> statement-breakpoint
+CREATE INDEX "billing_attempt_invoice_idx" ON "sta_billing_payment_attempts" ("invoice_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "billing_webhook_unique_event" ON "sta_billing_webhook_events" ("provider","event_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "subscription_plan_unique_code" ON "sta_subscription_plans" ("code");--> statement-breakpoint
+CREATE UNIQUE INDEX "subscription_plan_price_unique" ON "sta_subscription_plan_prices" ("plan_id","provider","currency","interval");--> statement-breakpoint
+CREATE INDEX "subscription_plan_price_plan_idx" ON "sta_subscription_plan_prices" ("plan_id");--> statement-breakpoint
+CREATE INDEX "tenant_subscription_tenant_status_idx" ON "sta_tenant_subscriptions" ("tenant_id","status");--> statement-breakpoint
+CREATE UNIQUE INDEX "tenant_subscription_provider_unique" ON "sta_tenant_subscriptions" ("provider","provider_subscription_id");--> statement-breakpoint
+CREATE INDEX "notification_job_status_run_idx" ON "sta_notification_jobs" ("status","run_at");--> statement-breakpoint
+CREATE INDEX "notification_job_tenant_idx" ON "sta_notification_jobs" ("tenant_id");--> statement-breakpoint
+CREATE INDEX "analytics_event_tenant_name_idx" ON "sta_analytics_events" ("tenant_id","name");--> statement-breakpoint
+CREATE INDEX "analytics_event_occurred_idx" ON "sta_analytics_events" ("occurred_at");--> statement-breakpoint
+CREATE UNIQUE INDEX "tenant_unique_slug" ON "sta_tenants" ("slug");--> statement-breakpoint
+CREATE UNIQUE INDEX "tenant_membership_unique_profile" ON "sta_tenant_memberships" ("tenant_id","profile_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "tenant_organization_unique" ON "sta_tenant_organizations" ("tenant_id","organization_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "tenant_organization_org_unique" ON "sta_tenant_organizations" ("organization_id");

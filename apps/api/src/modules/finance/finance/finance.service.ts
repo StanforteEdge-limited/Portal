@@ -2123,8 +2123,8 @@ export class FinanceService {
     const sourceId = `transfer:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`;
     const description = dto.note?.trim() || `Transfer ${currency} ${amount} from ${fromAccount.name} to ${toAccount.name}`;
 
-    await this.drizzle.$transaction([
-      this.drizzle.financeLedgerEntry.create({
+    await this.drizzle.$transaction(async (tx) => {
+      await tx.financeLedgerEntry.create({
         data: {
           accountId: fromAccount.id,
           direction: 'out',
@@ -2142,8 +2142,8 @@ export class FinanceService {
             grant_id: grant?.id ?? null
           } as Drizzle.InputJsonValue
         }
-      }),
-      this.drizzle.financeLedgerEntry.create({
+      });
+      await tx.financeLedgerEntry.create({
         data: {
           accountId: toAccount.id,
           direction: 'in',
@@ -2161,8 +2161,8 @@ export class FinanceService {
             grant_id: grant?.id ?? null
           } as Drizzle.InputJsonValue
         }
-      })
-    ]);
+      });
+    });
 
     const period = await this.ensureReportingPeriod(transferAt, actorId);
     const fromChart = await this.ensureFinanceAccountChartAccount(fromAccount.id, actorId);
@@ -3439,22 +3439,29 @@ export class FinanceService {
       const planned = Number(line.totalAmount ?? line.amount ?? 0);
       const actual = line.section === 'income' ? incomeTotal : expenseTotal;
       const variance = actual - planned;
-      return this.drizzle.financeBudgetLine.update({
-        where: { id: line.id },
-        data: {
-          totalAmount: planned,
-          actualTotalAmount: actual,
-          varianceAmount: variance,
-        },
-      });
+      return {
+        id: line.id,
+        planned,
+        actual,
+        variance,
+      };
     });
-    await this.drizzle.$transaction([
-      ...lineUpdates,
-      this.drizzle.financeBudget.update({
+    await this.drizzle.$transaction(async (tx) => {
+      for (const line of lineUpdates) {
+        await tx.financeBudgetLine.update({
+          where: { id: line.id },
+          data: {
+            totalAmount: line.planned,
+            actualTotalAmount: line.actual,
+            varianceAmount: line.variance,
+          },
+        });
+      }
+      await tx.financeBudget.update({
         where: { id: budget.id },
         data: { totalBudget: budget.lines.reduce((sum, line) => sum + Number(line.totalAmount ?? line.amount ?? 0), 0) },
-      }),
-    ]);
+      });
+    });
     return this.getBudget(id);
   }
 

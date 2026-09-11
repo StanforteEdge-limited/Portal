@@ -37,7 +37,7 @@ export class RbacService {
       where: includeInactive ? {} : { isActive: true },
       include: {
         permissions: { include: { permission: true } },
-        users: {
+        userRoles: {
           where: tenant ? { tenantId: tenant.tenantId } : undefined,
           include: {
             profile: { select: { id: true, email: true, username: true } },
@@ -62,7 +62,7 @@ export class RbacService {
         slug: rp.permission.slug,
         module: rp.permission.module
       })),
-      users: role.users.map((userRole) => ({
+      users: role.userRoles.map((userRole) => ({
         profile_id: userRole.profile.id.toString(),
         email: userRole.profile.email,
         username: userRole.profile.username,
@@ -141,13 +141,13 @@ export class RbacService {
       const permissionIds = this.parseIds(dto.permission_ids, 'permission id');
       await this.ensurePermissionsExist(permissionIds);
 
-      await this.drizzle.$transaction([
-        this.drizzle.rolePermission.deleteMany({ where: { roleId: id } }),
-        this.drizzle.rolePermission.createMany({
+      await this.drizzle.$transaction(async (tx) => {
+        await tx.rolePermission.deleteMany({ where: { roleId: id } });
+        await tx.rolePermission.createMany({
           data: permissionIds.map((permissionId) => ({ roleId: id, permissionId })),
           skipDuplicates: true
-        })
-      ]);
+        });
+      });
     }
 
     return this.getRoleById(id);
@@ -163,7 +163,9 @@ export class RbacService {
       select: {
         id: true,
         profileId: true,
-        organizationId: true,
+        organizationId: true
+      },
+      include: {
         profile: { select: { email: true, username: true } },
         organization: { select: { id: true, name: true, code: true } }
       },
@@ -273,14 +275,14 @@ export class RbacService {
     const permissionIds = this.parseIds(dto.permission_ids, 'permission id');
     await this.ensurePermissionsExist(permissionIds);
 
-    await this.drizzle.$transaction([
-      this.drizzle.rolePermission.deleteMany({ where: { roleId: id } }),
-      this.drizzle.rolePermission.createMany({
+    await this.drizzle.$transaction(async (tx) => {
+      await tx.rolePermission.deleteMany({ where: { roleId: id } });
+      await tx.rolePermission.createMany({
         data: permissionIds.map((permissionId) => ({ roleId: id, permissionId })),
         skipDuplicates: true
-      }),
-      this.drizzle.role.update({ where: { id }, data: { updatedAt: new Date() } })
-    ]);
+      });
+      await tx.role.update({ where: { id }, data: { updatedAt: new Date() } });
+    });
 
     return this.getRoleById(id);
   }
@@ -586,7 +588,8 @@ export class RbacService {
         await tx.userRole.deleteMany({
           where: {
             profileId: id,
-            ...scope
+            ...(tenant ? { tenantId: tenant.tenantId } : {}),
+            ...(organizationId ? { organizationId } : {})
           }
         });
       }

@@ -99,7 +99,7 @@ export class LeaveService {
       message: dto.notes ?? `Your leave request has been ${dto.status}.`,
       sentVia: ['in-app', 'email'],
       notifiableType: 'leave_request',
-      notifiableId: request.id,
+      emailThreadKey: `leave_request-${request.id}`,
     });
     return updated;
   }

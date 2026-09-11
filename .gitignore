@@ -29,3 +29,5 @@ docs/_archive/
 docs/**/*.zip
 docs/policies/
 docs/modules/
+test-results/
+apps/api/test-results/

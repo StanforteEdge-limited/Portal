@@ -1,3 +1,4 @@
+export * from "./enums";
 export * from '../modules/auth/auth/model/schema';
 export * from '../modules/hr/hr/model/schema';
 export * from '../modules/directory/groups/model/schema';

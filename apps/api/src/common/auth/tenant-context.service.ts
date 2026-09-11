@@ -36,4 +36,13 @@ export class TenantContextService {
     if (!normalizedReason) throw new Error('A reason is required for system context');
     return this.storage.run({ scope: 'system', reason: normalizedReason }, operation);
   }
+
+  /**
+   * Runs a tenant-scoped operation. Unlike `enterWith`, the store set here
+   * propagates to all async continuations created inside `operation`, so this
+   * is the reliable way to wrap a request handler in a tenant context.
+   */
+  async run<T>(context: TenantContext, operation: () => T | Promise<T>): Promise<T> {
+    return this.storage.run(context, operation);
+  }
 }

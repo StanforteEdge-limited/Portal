@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { DrizzleModule } from '$common/drizzle/drizzle.module';
+import { TenantContextInterceptor } from '$common/http/tenant-context.interceptor';
 import { HealthModule } from '$modules/platform/health/health.module';
 import { AuthModule } from '$modules/auth/auth/auth.module';
 import { RbacModule } from '$modules/auth/rbac/rbac.module';
@@ -71,6 +73,11 @@ import { SchedulingModule } from '$modules/scheduling/scheduling.module';
     AppCacheModule,
     SchedulingModule,
   ],
-  providers: [],
+  providers: [
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TenantContextInterceptor,
+    },
+  ],
 })
 export class AppModule {}

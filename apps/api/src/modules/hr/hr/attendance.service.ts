@@ -331,7 +331,7 @@ export class AttendanceService {
     });
 
     const summary: Record<string, number> = {};
-    for (const row of rows) summary[row.status] = row._count._all;
+    for (const row of rows) summary[row.status] = row._count?._all ?? 0;
     return {
       from: fromDate,
       to: toDate,
@@ -813,7 +813,6 @@ export class AttendanceService {
       link: '/attendance',
       sentVia: ['in-app', 'email'],
       notifiableType: 'attendance_correction',
-      notifiableId: correction.id,
     }).catch((err) => this.logger.warn(`Failed to send correction approval notification: ${err.message}`));
 
     return { success: true, daily };
@@ -843,7 +842,6 @@ export class AttendanceService {
       link: '/attendance',
       sentVia: ['in-app', 'email'],
       notifiableType: 'attendance_correction',
-      notifiableId: correction.id,
     }).catch((err) => this.logger.warn(`Failed to send correction rejection notification: ${err.message}`));
 
     return { success: true };
@@ -1016,8 +1014,8 @@ export class AttendanceService {
       status = 'off_day';
       reconciliationStatus = 'off_day';
     } else if (approvedCorrection) {
-      status = 'corrected';
       reconciliationStatus = 'corrected';
+      status = !firstInAt ? 'absent' : lateMinutes > 0 ? 'late' : 'present';
     } else if (activeException?.exceptionType === 'field_assignment') {
       reconciliationStatus = 'exception';
       status = !firstInAt ? 'absent' : lateMinutes > 0 ? 'late' : 'present';

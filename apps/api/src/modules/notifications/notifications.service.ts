@@ -89,8 +89,8 @@ export class NotificationsService {
           context && context.scope !== 'system'
             ? context.tenantId
             : (
-                await this.drizzle.profile.findUnique({
-                  where: { id: toBigInt(input.userId) },
+                await this.drizzle.tenantMembership.findFirst({
+                  where: { profileId: toBigInt(input.userId) },
                   select: { tenantId: true }
                 })
               )?.tenantId;

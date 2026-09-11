@@ -25,9 +25,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
     let details: unknown;
 
     if (!(exception instanceof HttpException)) {
+      const cause = (exception as any)?.cause;
+      const stack = exception instanceof Error ? exception.stack : String(exception);
       this.logger.error(
         `Unhandled exception for ${method} ${path} from ${ip}`,
-        exception instanceof Error ? exception.stack : String(exception)
+        cause ? `${stack}\ncause: ${cause?.stack ?? cause?.message ?? JSON.stringify(cause)}` : stack
       );
     }
 

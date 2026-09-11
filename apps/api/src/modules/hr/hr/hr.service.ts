@@ -336,16 +336,16 @@ export class HrService {
     });
 
     if (dto.is_primary) {
-      await this.drizzle.$transaction([
-        this.drizzle.profileOrganization.updateMany({
-          where: { profileId, organizationId: { not: organizationId }, isPrimary: true },
-          data: { isPrimary: false }
-        }),
-        this.drizzle.profile.update({
-          where: { id: profileId },
-          data: { primaryOrganizationId: organizationId }
-        })
-      ]);
+      await this.drizzle.$transaction(async (tx) => {
+      await tx.profileOrganization.updateMany({
+        where: { profileId, organizationId: { not: organizationId }, isPrimary: true },
+        data: { isPrimary: false }
+      });
+      await tx.profile.update({
+        where: { id: profileId },
+        data: { primaryOrganizationId: organizationId }
+      });
+    });
     }
 
     return this.getEmployee(id);
