@@ -21,6 +21,7 @@ export type NewOfficeLocation = typeof officeLocation.$inferInsert;
 
 export const organizationOfficeLocation = pgTable("sta_organization_office_locations", {
   id: bigserial("id", { mode: 'bigint' }).primaryKey(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }),
   organizationId: bigint("organization_id", { mode: 'bigint' }).notNull(),
   officeLocationId: bigint("office_location_id", { mode: 'bigint' }).notNull(),
   isPrimary: boolean("is_primary").default(false).notNull(),
@@ -104,12 +105,14 @@ export type NewGroupUser = typeof groupUser.$inferInsert;
 
 export const groupOrganization = pgTable("sta_group_organizations", {
   id: bigserial("id", { mode: 'bigint' }).primaryKey(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }),
   groupId: bigint("group_id", { mode: 'bigint' }).notNull(),
   organizationId: bigint("organization_id", { mode: 'bigint' }).notNull(),
   isPrimary: boolean("is_primary").default(false).notNull(),
   createdAt: timestamp("created_at", { mode: 'date', precision: 6 }).defaultNow().notNull(),
 }, (table) => [
     uniqueIndex("unique_group_organization").on(table.groupId, table.organizationId),
+    index("groupOrganization_index_tenantId").on(table.tenantId),
     index("groupOrganization_index_organizationId").on(table.organizationId),
 ]);
 
@@ -118,12 +121,14 @@ export type NewGroupOrganization = typeof groupOrganization.$inferInsert;
 
 export const groupUserOrganizationScope = pgTable("sta_group_user_organization_scopes", {
   id: bigserial("id", { mode: 'bigint' }).primaryKey(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }),
   groupUserId: bigint("group_user_id", { mode: 'bigint' }).notNull(),
   organizationId: bigint("organization_id", { mode: 'bigint' }).notNull(),
   scopeRole: varchar("scope_role", { length: 50 }),
   createdAt: timestamp("created_at", { mode: 'date', precision: 6 }).defaultNow().notNull(),
 }, (table) => [
     uniqueIndex("unique_group_user_organization_scope").on(table.groupUserId, table.organizationId),
+    index("groupUserOrganizationScope_index_tenantId").on(table.tenantId),
     index("groupUserOrganizationScope_index_organizationId").on(table.organizationId),
 ]);
 
