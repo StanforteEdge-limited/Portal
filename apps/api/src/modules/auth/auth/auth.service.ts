@@ -96,7 +96,7 @@ export class AuthService {
 
     const tenantContext = await this.resolveTenantContext(profile.id, organization.id);
     if (!tenantContext) this.throwUnauthorized('Tenant membership is required', 'AUTH_TENANT_REQUIRED');
-    const authContext = await this.buildAuthContext(profile.id);
+    const authContext = await this.buildAuthContext(profile.id, tenantContext.tenantId);
     const tokens = await this.issueTokens(profile.id, tenantContext.tenantId, authContext.permissions, authContext.roles);
     this.setAuthCookies(res, tokens.accessToken, tokens.refreshToken, tokens.expiresIn);
 
@@ -199,7 +199,7 @@ export class AuthService {
     });
     if (!profile) throw new NotFoundException('User not found');
     const tenantContext = await this.resolveTenantContext(profile.id, profile.primaryOrganizationId);
-    const authContext = await this.buildAuthContext(profile.id);
+    const authContext = await this.buildAuthContext(profile.id, tenantContext?.tenantId);
     return {
       id: profile.id.toString(),
       email: profile.email,
@@ -243,7 +243,7 @@ export class AuthService {
     const tenantContext = await this.resolveTenantContext(profileId, undefined, tenantId);
     if (!tenantContext) this.throwUnauthorized('Tenant membership is required', 'AUTH_TENANT_REQUIRED');
 
-    const authContext = await this.buildAuthContext(profileId);
+    const authContext = await this.buildAuthContext(profileId, tenantContext.tenantId);
     const tokens = await this.issueTokens(profileId, tenantContext.tenantId, authContext.permissions, authContext.roles);
     this.setAuthCookies(res, tokens.accessToken, tokens.refreshToken, tokens.expiresIn);
 
@@ -306,7 +306,7 @@ export class AuthService {
 
     const tenantContext = await this.resolveTenantContext(tokenRow.profileId);
     if (!tenantContext) this.throwUnauthorized('Tenant membership is required', 'AUTH_TENANT_REQUIRED');
-    const authContext = await this.buildAuthContext(tokenRow.profileId);
+    const authContext = await this.buildAuthContext(tokenRow.profileId, tenantContext.tenantId);
 
     // Rotate refresh token
     await this.drizzle.token.delete({ where: { id: tokenRow.id } });
@@ -463,7 +463,7 @@ export class AuthService {
 
       const tenantContext = await this.resolveTenantContext(profile.id, profile.primaryOrganizationId);
       if (!tenantContext) return `${appUrl}/login?error=tenant_context_missing`;
-      const authContext = await this.buildAuthContext(profile.id);
+      const authContext = await this.buildAuthContext(profile.id, tenantContext.tenantId);
       const issued = await this.issueTokens(profile.id, tenantContext.tenantId, authContext.permissions, authContext.roles);
       this.setAuthCookies(res, issued.accessToken, issued.refreshToken, issued.expiresIn);
 
@@ -490,8 +490,8 @@ export class AuthService {
     const tenantId = payload?.tenantId ? toBigInt(payload.tenantId) : null;
     const tenantContext = await this.resolveTenantContext(profileId, undefined, tenantId);
     if (!tenantContext) return null;
-    const roles = await this.getUserRoles(profileId);
-    const permissions = await this.getUserPermissions(profileId, roles);
+    const roles = await this.getUserRoles(profileId, tenantContext.tenantId);
+    const permissions = await this.getUserPermissions(profileId, roles, tenantContext.tenantId);
 
     return {
       id: profile.id.toString(),
@@ -563,9 +563,9 @@ export class AuthService {
     });
   }
 
-  private async buildAuthContext(profileId: bigint) {
-    const roles = await this.getUserRoles(profileId);
-    const permissions = await this.getUserPermissions(profileId, roles);
+  private async buildAuthContext(profileId: bigint, tenantId?: bigint) {
+    const roles = await this.getUserRoles(profileId, tenantId);
+    const permissions = await this.getUserPermissions(profileId, roles, tenantId);
     return { roles, permissions };
   }
 
@@ -629,21 +629,21 @@ export class AuthService {
     res.clearCookie(AUTH_REFRESH_COOKIE, clearAuthCookieOptions());
   }
 
-  private async getUserRoles(profileId: bigint): Promise<string[]> {
+  private async getUserRoles(profileId: bigint, tenantId?: bigint): Promise<string[]> {
     const roles = await this.drizzle.userRole.findMany({
-      where: { profileId },
+      where: tenantId ? { profileId, tenantId } : { profileId },
       include: { role: true }
     });
     return roles.map((r) => r.role.slug);
   }
 
-  private async getUserPermissions(profileId: bigint, roles?: string[]): Promise<string[]> {
+  private async getUserPermissions(profileId: bigint, roles?: string[], tenantId?: bigint): Promise<string[]> {
     const profile = await this.drizzle.profile.findUnique({
       where: { id: profileId },
       select: { type: true }
     });
 
-    const roleSlugs = roles ?? (await this.getUserRoles(profileId));
+    const roleSlugs = roles ?? (await this.getUserRoles(profileId, tenantId));
     if (roleSlugs.includes('administrator') || roleSlugs.includes('admin')) return ['*'];
 
     const roleIds = await this.drizzle.role.findMany({
