@@ -53,6 +53,7 @@ export type NewOrganization = typeof organization.$inferInsert;
 
 export const profileOrganization = pgTable("sta_profile_organizations", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }),
   profileId: bigint("profile_id", { mode: 'bigint' }).notNull(),
   organizationId: bigint("organization_id", { mode: 'bigint' }).notNull(),
   isPrimary: boolean("is_primary").default(false).notNull(),
@@ -61,6 +62,7 @@ export const profileOrganization = pgTable("sta_profile_organizations", {
   createdAt: timestamp("created_at", { mode: 'date', precision: 6 }).notNull(),
 }, (table) => [
     uniqueIndex("profile_org_unique").on(table.profileId, table.organizationId),
+    index("profileOrganization_index_tenantId").on(table.tenantId),
 ]);
 
 export type ProfileOrganization = typeof profileOrganization.$inferSelect;

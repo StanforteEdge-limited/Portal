@@ -72,6 +72,7 @@ export type NewRolePermission = typeof rolePermission.$inferInsert;
 
 export const userRole = pgTable("sta_user_roles", {
   id: bigserial("id", { mode: 'bigint' }).primaryKey(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }),
   profileId: bigint("profile_id", { mode: 'bigint' }).notNull(),
   roleId: bigint("role_id", { mode: 'bigint' }).notNull(),
   organizationId: bigint("organization_id", { mode: 'bigint' }),
@@ -80,6 +81,7 @@ export const userRole = pgTable("sta_user_roles", {
   createdAt: timestamp("created_at", { mode: 'date', precision: 6 }).defaultNow().notNull(),
 }, (table) => [
     uniqueIndex("profile_role_org_unique").on(table.profileId, table.roleId, table.organizationId),
+    index("userRole_index_tenantId").on(table.tenantId),
 ]);
 
 export type UserRole = typeof userRole.$inferSelect;
