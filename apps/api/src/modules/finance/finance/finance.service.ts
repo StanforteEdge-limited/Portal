@@ -30,6 +30,7 @@ import { CreateFinanceExpenseDto } from '$modules/finance/finance/dto/create-fin
 import { MailService } from '$common/mail/mail.service';
 import { PdfService } from '$common/pdf/pdf.service';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
+import { TenantContextService } from '$common/auth/tenant-context.service';
 
 @Injectable()
 export class FinanceService {
@@ -40,7 +41,8 @@ export class FinanceService {
     private readonly notificationsService: NotificationsService,
     private readonly mailService: MailService,
     private readonly payrollService: PayrollService,
-    private readonly pdfService: PdfService
+    private readonly pdfService: PdfService,
+    private readonly tenantContext: TenantContextService
   ) {}
 
   async summary(query: Record<string, any>) {
@@ -6436,7 +6438,7 @@ export class FinanceService {
       throw new BadRequestException('Journal entry is not balanced');
     }
     const entryNo = await this.nextSequenceValue(tx, 'JE', input.entryDate);
-    return tx.financeJournalEntry.create({
+    const entry = await tx.financeJournalEntry.create({
       data: {
         entryNo,
         entryDate: input.entryDate,
@@ -6449,25 +6451,28 @@ export class FinanceService {
         totalDebit,
         totalCredit,
         postedBy: input.postedBy ? toBigInt(input.postedBy) : null,
-        lines: {
-          create: input.lines.map((line) => ({
-            chartAccountId: line.chartAccountId,
-            organizationId: line.organizationId ?? null,
-            teamId: line.teamId ?? null,
-            fundId: line.fundId ?? null,
-            grantId: line.grantId ?? null,
-            debit: line.debit,
-            credit: line.credit,
-            description: line.description ?? null
-          }))
-        }
       }
     });
+    await tx.financeJournalLine.createMany({
+      data: input.lines.map((line) => ({
+        journalEntryId: entry.id,
+        chartAccountId: line.chartAccountId,
+        organizationId: line.organizationId ?? null,
+        teamId: line.teamId ?? null,
+        fundId: line.fundId ?? null,
+        grantId: line.grantId ?? null,
+        debit: line.debit,
+        credit: line.credit,
+        description: line.description ?? null
+      }))
+    });
+    return entry;
   }
 
   private async nextSequenceValue(tx: Drizzle.TransactionClient, prefix: string, date: Date) {
     const year = date.getFullYear();
-    const sequenceId = `${prefix}:${year}`;
+    const tenantId = this.tenantContext.get()?.tenantId ?? null;
+    const sequenceId = `${tenantId ? `${tenantId}:` : ''}${prefix}:${year}`;
     const rows = await tx.$queryRaw(
       Drizzle.sql`
         WITH current_max AS (
@@ -6481,10 +6486,12 @@ export class FinanceService {
           ) AS "max_number"
           FROM "sta_finance_journal_entries"
           WHERE "entry_no" LIKE ${`${prefix}/${year}/%`}
+            AND ("tenant_id" = ${tenantId} OR ("tenant_id" IS NULL AND ${tenantId} IS NULL))
         )
         INSERT INTO "sta_finance_journal_sequences" (
           "id",
           "prefix",
+          "tenant_id",
           "sequence_year",
           "last_number",
           "created_at",
@@ -6493,6 +6500,7 @@ export class FinanceService {
         VALUES (
           ${sequenceId},
           ${prefix},
+          ${tenantId},
           ${year},
           (SELECT "max_number" + 1 FROM current_max),
           NOW(),

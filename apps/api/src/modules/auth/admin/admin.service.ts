@@ -264,7 +264,11 @@ export class AdminService {
     const shouldSendInvite = dto.send_invite === true || dto.send_invite === 'true';
     if (shouldSendInvite) {
       try {
-        await this.usersService.inviteUser(String(user.id), { message: 'You have been added to the system.' });
+        await this.usersService.inviteUser(
+          String(user.id),
+          { message: 'You have been added to the system.' },
+          tenant?.tenantId,
+        );
       } catch (err) {
         console.error(`Failed to send invite email to ${dto.email}:`, err);
       }

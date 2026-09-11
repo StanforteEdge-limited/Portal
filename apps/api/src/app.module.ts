@@ -27,6 +27,7 @@ import { WorkModule } from '$modules/operations/work/work.module';
 import { VersionModule } from '$modules/platform/version/version.module';
 import { MailModule } from '$modules/platform/mail/mail.module';
 import { TenancyModule } from '$modules/tenancy/tenancy.module';
+import { BillingModule } from '$modules/platform/billing/billing.module';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { TenancyModule } from '$modules/tenancy/tenancy.module';
     VersionModule,
     MailModule,
     TenancyModule,
+    BillingModule,
   ],
   providers: [],
 })

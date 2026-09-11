@@ -182,6 +182,7 @@ export type NewFinanceChartAccount = typeof financeChartAccount.$inferInsert;
 
 export const financeReportingPeriod = pgTable("sta_finance_reporting_periods", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }),
   year: integer("year").notNull(),
   month: integer("month").notNull(),
   quarter: integer("quarter").notNull(),
@@ -194,7 +195,8 @@ export const financeReportingPeriod = pgTable("sta_finance_reporting_periods", {
   createdAt: timestamp("created_at", { mode: 'date', precision: 6 }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: 'date', precision: 6 }).notNull().$onUpdate(() => new Date()),
 }, (table) => [
-    uniqueIndex("unique_finance_reporting_period").on(table.year, table.month),
+    uniqueIndex("unique_finance_reporting_period").on(table.tenantId, table.year, table.month),
+    index("financeReportingPeriod_index_tenantId").on(table.tenantId),
     index("financeReportingPeriod_index_quarter").on(table.quarter),
     index("financeReportingPeriod_index_status").on(table.status),
 ]);
@@ -204,7 +206,8 @@ export type NewFinanceReportingPeriod = typeof financeReportingPeriod.$inferInse
 
 export const financeJournalEntry = pgTable("sta_finance_journal_entries", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
-  entryNo: varchar("entry_no", { length: 60 }).notNull().unique(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }),
+  entryNo: varchar("entry_no", { length: 60 }).notNull(),
   entryDate: timestamp("entry_date", { mode: 'date', precision: 6 }).notNull(),
   periodId: uuid("period_id").notNull(),
   sourceType: varchar("source_type", { length: 60 }),
@@ -219,6 +222,8 @@ export const financeJournalEntry = pgTable("sta_finance_journal_entries", {
   createdAt: timestamp("created_at", { mode: 'date', precision: 6 }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: 'date', precision: 6 }).notNull().$onUpdate(() => new Date()),
 }, (table) => [
+    uniqueIndex("unique_finance_journal_entry_no_per_tenant").on(table.tenantId, table.entryNo),
+    index("financeJournalEntry_index_tenantId").on(table.tenantId),
     index("financeJournalEntry_index_periodId").on(table.periodId),
     index("financeJournalEntry_index_entryDate").on(table.entryDate),
     index("financeJournalEntry_index_sourceType_sourceId").on(table.sourceType, table.sourceId),
@@ -229,13 +234,15 @@ export type NewFinanceJournalEntry = typeof financeJournalEntry.$inferInsert;
 
 export const financeJournalSequence = pgTable("sta_finance_journal_sequences", {
   id: varchar("id", { length: 32 }).primaryKey().notNull(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }),
   prefix: varchar("prefix", { length: 10 }).notNull(),
   sequenceYear: integer("sequence_year").notNull(),
   lastNumber: integer("last_number").default(0).notNull(),
   createdAt: timestamp("created_at", { mode: 'date', precision: 6 }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: 'date', precision: 6 }).notNull().$onUpdate(() => new Date()),
 }, (table) => [
-    uniqueIndex("unique_finance_journal_sequence_prefix_year").on(table.prefix, table.sequenceYear),
+    uniqueIndex("unique_finance_journal_sequence_prefix_year").on(table.tenantId, table.prefix, table.sequenceYear),
+    index("financeJournalSequence_index_tenantId").on(table.tenantId),
 ]);
 
 export type FinanceJournalSequence = typeof financeJournalSequence.$inferSelect;
@@ -243,6 +250,7 @@ export type NewFinanceJournalSequence = typeof financeJournalSequence.$inferInse
 
 export const financeJournalLine = pgTable("sta_finance_journal_lines", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }),
   journalEntryId: uuid("journal_entry_id").notNull(),
   chartAccountId: uuid("chart_account_id").notNull(),
   organizationId: bigint("organization_id", { mode: 'bigint' }),
@@ -256,6 +264,7 @@ export const financeJournalLine = pgTable("sta_finance_journal_lines", {
   createdAt: timestamp("created_at", { mode: 'date', precision: 6 }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: 'date', precision: 6 }).notNull().$onUpdate(() => new Date()),
 }, (table) => [
+    index("financeJournalLine_index_tenantId").on(table.tenantId),
     index("financeJournalLine_index_journalEntryId").on(table.journalEntryId),
     index("financeJournalLine_index_chartAccountId").on(table.chartAccountId),
     index("financeJournalLine_index_organizationId").on(table.organizationId),
@@ -269,6 +278,7 @@ export type NewFinanceJournalLine = typeof financeJournalLine.$inferInsert;
 
 export const financeLedgerEntry = pgTable("sta_finance_ledger_entries", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }),
   accountId: uuid("account_id").notNull(),
   direction: varchar("direction", { length: 10 }).notNull(),
   amount: numeric("amount", { precision: 15, scale: 2 }).notNull(),
@@ -282,6 +292,7 @@ export const financeLedgerEntry = pgTable("sta_finance_ledger_entries", {
   createdAt: timestamp("created_at", { mode: 'date', precision: 6 }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: 'date', precision: 6 }).notNull().$onUpdate(() => new Date()),
 }, (table) => [
+    index("financeLedgerEntry_index_tenantId").on(table.tenantId),
     index("financeLedgerEntry_index_accountId").on(table.accountId),
     index("financeLedgerEntry_index_entryDate").on(table.entryDate),
     index("financeLedgerEntry_index_sourceType_sourceId").on(table.sourceType, table.sourceId),

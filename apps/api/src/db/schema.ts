@@ -11,4 +11,5 @@ export * from '../modules/requests/forms/model/schema';
 export * from '../modules/finance/procurement/model/schema';
 export * from '../modules/platform/version/model/schema';
 export * from '../modules/platform/mail/model/schema';
+export * from '../modules/platform/billing/model/schema';
 export * from '../modules/tenancy/model/schema';
