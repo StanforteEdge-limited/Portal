@@ -7,10 +7,14 @@ import { InviteUserDto } from '$modules/auth/users/dto/invite-user.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 
 const TENANT_SCOPED_TABLES = [
+  'sta_tenant_memberships',
+  'sta_tenant_organizations',
   'sta_organizations',
   'sta_profile_organizations',
   'sta_user_roles',
   'sta_tokens',
+  'sta_notifications',
+  'sta_email_logs',
   'sta_projects',
   'sta_request_groups',
   'sta_request_instances',

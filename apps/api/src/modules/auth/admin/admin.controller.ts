@@ -38,12 +38,12 @@ export class AdminController {
   }
 
   @Post(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateAdminUserDto) {
-    return this.adminService.updateUser(id, dto);
+  update(@CurrentTenant() tenant: TenantContext, @Param('id') id: string, @Body() dto: UpdateAdminUserDto) {
+    return this.adminService.updateUser(id, dto, tenant);
   }
 
   @Post(':id/status')
-  updateStatus(@Param('id') id: string, @Body() dto: UpdateUserStatusDto) {
-    return this.adminService.updateStatus(id, dto);
+  updateStatus(@CurrentTenant() tenant: TenantContext, @Param('id') id: string, @Body() dto: UpdateUserStatusDto) {
+    return this.adminService.updateStatus(id, dto, tenant);
   }
 }

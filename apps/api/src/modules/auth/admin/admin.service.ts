@@ -82,6 +82,7 @@ export class AdminService {
             include: { organization: true }
           },
           roles: {
+            where: tenant ? { tenantId: tenant.tenantId } : undefined,
             include: {
               role: { select: { id: true, name: true, slug: true } },
               organization: { select: { id: true, name: true, code: true } }
@@ -111,6 +112,7 @@ export class AdminService {
       include: {
         organizations: { include: { organization: true } },
         roles: {
+          where: tenant ? { tenantId: tenant.tenantId } : undefined,
           include: {
             role: true,
             organization: true
@@ -246,6 +248,7 @@ export class AdminService {
         include: {
           organizations: { include: { organization: true } },
           roles: {
+            where: tenant ? { tenantId: tenant.tenantId } : undefined,
             include: {
               role: true,
               organization: true
@@ -270,8 +273,14 @@ export class AdminService {
     return serialized;
   }
 
-  async updateUser(profileId: string, dto: UpdateAdminUserDto) {
+  async updateUser(profileId: string, dto: UpdateAdminUserDto, tenant?: TenantContext) {
     const id = this.parseId(profileId, 'profile id');
+    if (tenant) {
+      const membership = await this.drizzle.tenantMembership.findFirst({
+        where: { tenantId: tenant.tenantId, profileId: id, status: 'active' },
+      });
+      if (!membership) throw new NotFoundException('Profile not found');
+    }
     const existing = await this.drizzle.profile.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Profile not found');
 
@@ -335,6 +344,12 @@ export class AdminService {
         select: { id: true }
       });
       if (!organization) throw new BadRequestException('Organization not found');
+      if (tenant) {
+        const mapping = await this.drizzle.tenantOrganization.findFirst({
+          where: { tenantId: tenant.tenantId, organizationId: nextPrimaryOrganizationId },
+        });
+        if (!mapping) throw new BadRequestException('Organization does not belong to the active tenant');
+      }
     }
 
     const user = await this.drizzle.$transaction(async (tx) => {
@@ -372,6 +387,7 @@ export class AdminService {
         include: {
           organizations: { include: { organization: true } },
           roles: {
+            where: tenant ? { tenantId: tenant.tenantId } : undefined,
             include: {
               role: true,
               organization: true
@@ -384,8 +400,14 @@ export class AdminService {
     return this.serializeUser(user);
   }
 
-  async updateStatus(profileId: string, dto: UpdateUserStatusDto) {
+  async updateStatus(profileId: string, dto: UpdateUserStatusDto, tenant?: TenantContext) {
     const id = this.parseId(profileId, 'profile id');
+    if (tenant) {
+      const membership = await this.drizzle.tenantMembership.findFirst({
+        where: { tenantId: tenant.tenantId, profileId: id, status: 'active' },
+      });
+      if (!membership) throw new NotFoundException('Profile not found');
+    }
     const existing = await this.drizzle.profile.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Profile not found');
 
@@ -397,6 +419,7 @@ export class AdminService {
       },
       include: {
         roles: {
+          where: tenant ? { tenantId: tenant.tenantId } : undefined,
           include: {
             role: true,
             organization: true

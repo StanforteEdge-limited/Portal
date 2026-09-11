@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { paginatedResponse } from '$common/helpers/paginated-response';
 import { toBigInt } from '$common/utils/ids';
+import { TenantContext } from '$common/auth/tenant-context';
 import { AssignUserRolesDto } from '$modules/auth/rbac/dto/assign-user-roles.dto';
 import { CreatePermissionDto } from '$modules/auth/rbac/dto/create-permission.dto';
 import { CreateRoleDto } from '$modules/auth/rbac/dto/create-role.dto';
@@ -13,11 +14,15 @@ import { UpdateRoleDto } from '$modules/auth/rbac/dto/update-role.dto';
 export class RbacService {
   constructor(private readonly drizzle: DrizzleService) {}
 
-  async getOverview(includeInactive = false) {
+  async getOverview(includeInactive = false, tenant?: TenantContext) {
     const [roles, permissions, usersWithRoles] = await this.drizzle.$transaction([
       this.drizzle.role.count({ where: includeInactive ? {} : { isActive: true } }),
       this.drizzle.permission.count(),
-      this.drizzle.userRole.groupBy({ by: ['profileId'], orderBy: { profileId: 'asc' } })
+      this.drizzle.userRole.groupBy({
+        by: ['profileId'],
+        where: tenant ? { tenantId: tenant.tenantId } : undefined,
+        orderBy: { profileId: 'asc' }
+      })
     ]);
 
     return {
@@ -27,12 +32,13 @@ export class RbacService {
     };
   }
 
-  async listRoles(includeInactive = false) {
+  async listRoles(includeInactive = false, tenant?: TenantContext) {
     const roles = await this.drizzle.role.findMany({
       where: includeInactive ? {} : { isActive: true },
       include: {
         permissions: { include: { permission: true } },
         users: {
+          where: tenant ? { tenantId: tenant.tenantId } : undefined,
           include: {
             profile: { select: { id: true, email: true, username: true } },
             organization: { select: { id: true, name: true, code: true } }
@@ -147,13 +153,13 @@ export class RbacService {
     return this.getRoleById(id);
   }
 
-  async getRoleDeleteImpact(roleId: string) {
+  async getRoleDeleteImpact(roleId: string, tenant?: TenantContext) {
     const id = this.parseId(roleId, 'role id');
     const role = await this.drizzle.role.findUnique({ where: { id } });
     if (!role) throw new NotFoundException('Role not found');
 
     const assignments = await this.drizzle.userRole.findMany({
-      where: { roleId: id },
+      where: { roleId: id, ...(tenant ? { tenantId: tenant.tenantId } : {}) },
       select: {
         id: true,
         profileId: true,
@@ -189,13 +195,13 @@ export class RbacService {
     };
   }
 
-  async deleteRole(roleId: string, replacementRoleId?: string) {
+  async deleteRole(roleId: string, replacementRoleId?: string, tenant?: TenantContext) {
     const id = this.parseId(roleId, 'role id');
     const role = await this.drizzle.role.findUnique({ where: { id } });
     if (!role) throw new NotFoundException('Role not found');
 
     const assignments = await this.drizzle.userRole.findMany({
-      where: { roleId: id },
+      where: { roleId: id, ...(tenant ? { tenantId: tenant.tenantId } : {}) },
       select: {
         id: true,
         profileId: true,
@@ -226,7 +232,8 @@ export class RbacService {
             where: {
               profileId: assignment.profileId,
               roleId: replacementId,
-              organizationId: assignment.organizationId
+              organizationId: assignment.organizationId,
+              ...(tenant ? { tenantId: tenant.tenantId } : {})
             }
           });
 
@@ -463,13 +470,21 @@ export class RbacService {
     };
   }
 
-  async getUserRoles(profileId: string) {
+  async getUserRoles(profileId: string, tenant?: TenantContext) {
     const id = this.parseId(profileId, 'profile id');
+
+    if (tenant) {
+      const membership = await this.drizzle.tenantMembership.findFirst({
+        where: { tenantId: tenant.tenantId, profileId: id, status: 'active' }
+      });
+      if (!membership) throw new NotFoundException('Profile not found');
+    }
 
     const profile = await this.drizzle.profile.findUnique({
       where: { id },
       include: {
         roles: {
+          where: tenant ? { tenantId: tenant.tenantId } : undefined,
           include: {
             role: {
               include: {
@@ -524,10 +539,16 @@ export class RbacService {
     };
   }
 
-  async assignUserRoles(profileId: string, dto: AssignUserRolesDto) {
+  async assignUserRoles(profileId: string, dto: AssignUserRolesDto, tenant?: TenantContext) {
     const id = this.parseId(profileId, 'profile id');
     const profile = await this.drizzle.profile.findUnique({ where: { id } });
     if (!profile) throw new NotFoundException('Profile not found');
+    if (tenant) {
+      const membership = await this.drizzle.tenantMembership.findFirst({
+        where: { tenantId: tenant.tenantId, profileId: id, status: 'active' }
+      });
+      if (!membership) throw new NotFoundException('Profile not found');
+    }
 
     const roleIds = Array.from(new Set(this.parseIds(dto.role_ids, 'role id')));
     if (roleIds.length === 0) {
@@ -536,7 +557,12 @@ export class RbacService {
 
     const organizationId = dto.organization_id ? this.parseId(dto.organization_id, 'organization id') : null;
     if (organizationId) {
-      const organization = await this.drizzle.organization.findUnique({ where: { id: organizationId } });
+      const organization = await this.drizzle.organization.findFirst({
+        where: {
+          id: organizationId,
+          ...(tenant ? { tenantId: tenant.tenantId } : {})
+        }
+      });
       if (!organization) throw new NotFoundException('Organization not found');
     }
 
@@ -551,7 +577,10 @@ export class RbacService {
     }
 
     await this.drizzle.$transaction(async (tx) => {
-      const scope = organizationId === null ? { organizationId: null } : { organizationId };
+      const scope = {
+        ...(tenant ? { tenantId: tenant.tenantId } : {}),
+        ...(organizationId === null ? { organizationId: null } : { organizationId })
+      };
 
       if (dto.replace_existing) {
         await tx.userRole.deleteMany({
@@ -578,6 +607,7 @@ export class RbacService {
           where: {
             profileId: id,
             roleId,
+            ...(tenant ? { tenantId: tenant.tenantId } : {}),
             ...scope
           }
         });
@@ -596,6 +626,7 @@ export class RbacService {
           data: {
             profileId: id,
             roleId,
+            tenantId: tenant?.tenantId,
             organizationId,
             isPrimaryRole: primaryRoleId ? roleId === primaryRoleId : false
           }
@@ -603,7 +634,7 @@ export class RbacService {
       }
     });
 
-    return this.getUserRoles(profileId);
+    return this.getUserRoles(profileId, tenant);
   }
 
   private async getRoleById(id: bigint) {

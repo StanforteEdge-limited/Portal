@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '$common/auth/jwt-auth.guard';
 import { Permissions } from '$common/auth/permissions.decorator';
 import { PermissionsGuard } from '$common/auth/permissions.guard';
+import { CurrentTenant, TenantContext } from '$common/auth/tenant-context';
 import { AssignUserRolesDto } from '$modules/auth/rbac/dto/assign-user-roles.dto';
 import { CreateRoleDto } from '$modules/auth/rbac/dto/create-role.dto';
 import { SetRolePermissionsDto } from '$modules/auth/rbac/dto/set-role-permissions.dto';
@@ -18,13 +19,13 @@ export class RbacController {
   constructor(private readonly rbacService: RbacService) {}
 
   @Get()
-  overview(@Query('include_inactive') includeInactive?: string) {
-    return this.rbacService.getOverview(includeInactive === 'true');
+  overview(@CurrentTenant() tenant: TenantContext, @Query('include_inactive') includeInactive?: string) {
+    return this.rbacService.getOverview(includeInactive === 'true', tenant);
   }
 
   @Get('roles')
-  listRoles(@Query('include_inactive') includeInactive?: string) {
-    return this.rbacService.listRoles(includeInactive === 'true');
+  listRoles(@CurrentTenant() tenant: TenantContext, @Query('include_inactive') includeInactive?: string) {
+    return this.rbacService.listRoles(includeInactive === 'true', tenant);
   }
 
   @Post('roles')
@@ -39,15 +40,16 @@ export class RbacController {
 
   @Delete('roles/:id')
   deleteRole(
+    @CurrentTenant() tenant: TenantContext,
     @Param('id') id: string,
     @Query('replacement_role_id') replacementRoleId?: string
   ) {
-    return this.rbacService.deleteRole(id, replacementRoleId);
+    return this.rbacService.deleteRole(id, replacementRoleId, tenant);
   }
 
   @Get('roles/:id/delete-impact')
-  getRoleDeleteImpact(@Param('id') id: string) {
-    return this.rbacService.getRoleDeleteImpact(id);
+  getRoleDeleteImpact(@CurrentTenant() tenant: TenantContext, @Param('id') id: string) {
+    return this.rbacService.getRoleDeleteImpact(id, tenant);
   }
 
   @Post('roles/:id/permissions')
@@ -61,12 +63,16 @@ export class RbacController {
   }
 
   @Get('users/:profileId')
-  getUserRoles(@Param('profileId') profileId: string) {
-    return this.rbacService.getUserRoles(profileId);
+  getUserRoles(@CurrentTenant() tenant: TenantContext, @Param('profileId') profileId: string) {
+    return this.rbacService.getUserRoles(profileId, tenant);
   }
 
   @Post('users/:profileId/roles')
-  assignUserRoles(@Param('profileId') profileId: string, @Body() dto: AssignUserRolesDto) {
-    return this.rbacService.assignUserRoles(profileId, dto);
+  assignUserRoles(
+    @CurrentTenant() tenant: TenantContext,
+    @Param('profileId') profileId: string,
+    @Body() dto: AssignUserRolesDto
+  ) {
+    return this.rbacService.assignUserRoles(profileId, dto, tenant);
   }
 }

@@ -61,9 +61,15 @@ export class UsersService {
     });
   }
 
-  async updateMyProfile(profileId: string, dto: UpdateProfileDto) {
+  async updateMyProfile(profileId: string, dto: UpdateProfileDto, tenant?: TenantContext) {
+    const parsedProfileId = toBigInt(profileId);
+    if (tenant && !(await this.drizzle.tenantMembership.findFirst({
+      where: { tenantId: tenant.tenantId, profileId: parsedProfileId, status: 'active' },
+    }))) {
+      throw new NotFoundException('Profile not found');
+    }
     const existing = await this.drizzle.profile.findUnique({
-      where: { id: toBigInt(profileId) }
+      where: { id: parsedProfileId }
     });
     if (!existing) throw new NotFoundException('Profile not found');
 

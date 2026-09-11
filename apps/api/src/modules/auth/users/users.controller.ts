@@ -44,8 +44,8 @@ export class UsersController {
       }
     }
   })
-  updateMyProfile(@Req() req: any, @Body() dto: UpdateProfileDto) {
-    return this.usersService.updateMyProfile(req.user.id, dto);
+  updateMyProfile(@Req() req: any, @CurrentTenant() tenant: TenantContext, @Body() dto: UpdateProfileDto) {
+    return this.usersService.updateMyProfile(req.user.id, dto, tenant);
   }
 
   @Get('users')
