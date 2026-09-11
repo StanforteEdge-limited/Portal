@@ -396,6 +396,12 @@ export class AuthService {
       await this.drizzle.token.delete({ where: { id: tokenRow.id } });
       this.throwUnauthorized('Invite token expired', 'AUTH_INVITE_TOKEN_EXPIRED');
     }
+    if (tokenRow.tenantId) {
+      const membership = await this.drizzle.tenantMembership.findFirst({
+        where: { tenantId: tokenRow.tenantId, profileId: tokenRow.profileId, status: 'active' },
+      });
+      if (!membership) this.throwUnauthorized('Tenant invitation is no longer active', 'AUTH_INVITE_MEMBERSHIP_INVALID');
+    }
 
     const passwordHash = await bcrypt.hash(dto.new_password, 12);
     await this.drizzle.$transaction([

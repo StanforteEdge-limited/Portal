@@ -137,7 +137,7 @@ export class TenancyService {
 
     await this.usersService.inviteUser(profile.id.toString(), {
       message,
-    } as InviteUserDto);
+    } as InviteUserDto, context.tenantId);
 
     return { success: true, profileId: profile.id.toString() };
   }

@@ -501,7 +501,7 @@ export class UsersService {
     };
   }
 
-  async inviteUser(userId: string, dto: InviteUserDto) {
+  async inviteUser(userId: string, dto: InviteUserDto, tenantId?: bigint) {
     const profileId = toBigInt(userId);
     const user = await this.drizzle.profile.findUnique({
       where: { id: profileId },
@@ -509,7 +509,7 @@ export class UsersService {
     });
     if (!user) throw new NotFoundException('User not found');
 
-    const { inviteToken, expiresAt } = await this.issueInvite(user.id, 'invited');
+    const { inviteToken, expiresAt } = await this.issueInvite(user.id, 'invited', tenantId);
     await this.sendInviteEmail(user, inviteToken, expiresAt, dto.message);
 
     return {
@@ -522,7 +522,7 @@ export class UsersService {
     return (process.env.PWA_URL || process.env.APP_BASE_URL || 'http://localhost:3000').replace(/\/+$/, '');
   }
 
-  private async issueInvite(profileId: bigint, status: 'pending' | 'invited') {
+  private async issueInvite(profileId: bigint, status: 'pending' | 'invited', tenantId?: bigint) {
     const inviteToken = randomToken(32);
     const tokenHash = sha256(inviteToken);
     const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7);
@@ -535,6 +535,7 @@ export class UsersService {
         data: {
           id: randomToken(24),
           profileId,
+          tenantId,
           type: 'invite',
           tokenHash,
           expiresAt
