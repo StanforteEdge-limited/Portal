@@ -26,6 +26,7 @@ import { PayrollModule } from '$modules/hr/payroll/payroll.module';
 import { WorkModule } from '$modules/operations/work/work.module';
 import { VersionModule } from '$modules/platform/version/version.module';
 import { MailModule } from '$modules/platform/mail/mail.module';
+import { TenancyModule } from '$modules/tenancy/tenancy.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { MailModule } from '$modules/platform/mail/mail.module';
     WorkModule,
     VersionModule,
     MailModule,
+    TenancyModule,
   ],
   providers: [],
 })
