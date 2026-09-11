@@ -2,6 +2,8 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { sql } from 'drizzle-orm';
 import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { TenantContext } from '$common/auth/tenant-context';
+import { UsersService } from '$modules/auth/users/users.service';
+import { InviteUserDto } from '$modules/auth/users/dto/invite-user.dto';
 
 const TENANT_SCOPED_TABLES = [
   'sta_organizations',
@@ -31,7 +33,10 @@ const TENANT_SCOPED_TABLES = [
 
 @Injectable()
 export class TenancyService {
-  constructor(private readonly drizzle: DrizzleService) {}
+  constructor(
+    private readonly drizzle: DrizzleService,
+    private readonly usersService: UsersService,
+  ) {}
 
   async auditTenantCoverage() {
     const results = await Promise.all(
@@ -99,5 +104,41 @@ export class TenancyService {
       data: { status: 'inactive', removedAt: new Date() },
     });
     return { success: true };
+  }
+
+  async inviteMember(context: TenantContext, emailValue: string, message?: string) {
+    const email = emailValue.trim().toLowerCase();
+    const profile = await this.drizzle.profile.findUnique({
+      where: { email },
+      select: { id: true, status: true },
+    });
+    if (!profile) throw new NotFoundException('User account not found; create the user account before inviting it');
+
+    const existing = await this.drizzle.tenantMembership.findFirst({
+      where: { tenantId: context.tenantId, profileId: profile.id },
+    });
+    if (existing?.status === 'active') throw new BadRequestException('User is already a tenant member');
+
+    if (existing) {
+      await this.drizzle.tenantMembership.update({
+        where: { id: existing.id },
+        data: { status: 'active', removedAt: null },
+      });
+    } else {
+      await this.drizzle.tenantMembership.create({
+        data: {
+          tenantId: context.tenantId,
+          profileId: profile.id,
+          status: 'active',
+          isOwner: false,
+        },
+      });
+    }
+
+    await this.usersService.inviteUser(profile.id.toString(), {
+      message,
+    } as InviteUserDto);
+
+    return { success: true, profileId: profile.id.toString() };
   }
 }
