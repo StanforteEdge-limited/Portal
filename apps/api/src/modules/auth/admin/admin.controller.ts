@@ -28,13 +28,13 @@ export class AdminController {
   }
 
   @Post()
-  create(@Body() dto: CreateAdminUserDto) {
-    return this.adminService.createUser(dto);
+  create(@CurrentTenant() tenant: TenantContext, @Body() dto: CreateAdminUserDto) {
+    return this.adminService.createUser(dto, tenant);
   }
 
   @Post('bulk')
-  createBulk(@Body() dto: { users: CreateAdminUserDto[] }) {
-    return this.adminService.createBulkUsers(dto.users);
+  createBulk(@CurrentTenant() tenant: TenantContext, @Body() dto: { users: CreateAdminUserDto[] }) {
+    return this.adminService.createBulkUsers(dto.users, tenant);
   }
 
   @Post(':id')

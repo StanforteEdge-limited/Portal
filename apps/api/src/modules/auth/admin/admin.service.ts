@@ -123,7 +123,7 @@ export class AdminService {
     return this.serializeUser(user);
   }
 
-  async createUser(dto: CreateAdminUserDto) {
+  async createUser(dto: CreateAdminUserDto, tenant?: TenantContext) {
     const email = dto.email.trim().toLowerCase();
     const requestedUsername = dto.username?.trim();
     const username = requestedUsername
@@ -166,6 +166,12 @@ export class AdminService {
         select: { id: true }
       });
       if (!organization) throw new BadRequestException('Organization not found');
+      if (tenant) {
+        const mapping = await this.drizzle.tenantOrganization.findFirst({
+          where: { tenantId: tenant.tenantId, organizationId: primaryOrganizationId },
+        });
+        if (!mapping) throw new BadRequestException('Organization does not belong to the active tenant');
+      }
     }
 
     const user = await this.drizzle.$transaction(async (tx) => {
@@ -194,9 +200,15 @@ export class AdminService {
           create: {
             profileId: created.id,
             organizationId: primaryOrganizationId,
+            tenantId: tenant?.tenantId,
             isPrimary: true,
             createdAt: new Date()
           }
+        });
+      }
+      if (tenant) {
+        await tx.tenantMembership.create({
+          data: { tenantId: tenant.tenantId, profileId: created.id, status: 'active', isOwner: false },
         });
       }
 
@@ -221,6 +233,7 @@ export class AdminService {
               data: roles.map((role) => ({
                 profileId: created.id,
                 roleId: role.id,
+                tenantId: tenant?.tenantId,
                 isPrimaryRole: false
               }))
             });
@@ -440,7 +453,7 @@ export class AdminService {
     };
   }
 
-  async createBulkUsers(users: CreateAdminUserDto[]) {
+  async createBulkUsers(users: CreateAdminUserDto[], tenant?: TenantContext) {
     let successCount = 0;
     let failedCount = 0;
     const results: { identifier: string; status: "success" | "failed"; error?: string }[] = [];
@@ -448,7 +461,7 @@ export class AdminService {
     for (const userDto of users) {
       const identifier = userDto.email || `${userDto.first_name || ''} ${userDto.last_name || ''}`.trim() || 'Unknown';
       try {
-        await this.createUser(userDto);
+        await this.createUser(userDto, tenant);
         successCount++;
         results.push({ identifier, status: "success" });
       } catch (err: any) {
