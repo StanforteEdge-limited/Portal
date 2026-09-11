@@ -51,8 +51,8 @@ export class UsersController {
   @Get('users')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @Permissions('users.manage')
-  list(@Query() query: Record<string, any>) {
-    return this.usersService.listUsers(query);
+  list(@CurrentTenant() tenant: TenantContext, @Query() query: Record<string, any>) {
+    return this.usersService.listUsers(query, tenant);
   }
 
   @Post('users')
@@ -78,16 +78,16 @@ export class UsersController {
       }
     }
   })
-  create(@Body() dto: CreateUserDto) {
-    return this.usersService.createUser(dto);
+  create(@CurrentTenant() tenant: TenantContext, @Body() dto: CreateUserDto) {
+    return this.usersService.createUser(dto, tenant);
   }
 
   @Get('users/:id')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @Permissions('users.manage')
   @ApiOperation({ summary: 'Get a user by id' })
-  getById(@Param('id') id: string) {
-    return this.usersService.getUserById(id);
+  getById(@CurrentTenant() tenant: TenantContext, @Param('id') id: string) {
+    return this.usersService.getUserById(id, tenant);
   }
 
   @Patch('users/:id')
@@ -109,16 +109,16 @@ export class UsersController {
       }
     }
   })
-  update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
-    return this.usersService.updateUser(id, dto);
+  update(@CurrentTenant() tenant: TenantContext, @Param('id') id: string, @Body() dto: UpdateUserDto) {
+    return this.usersService.updateUser(id, dto, tenant);
   }
 
   @Get('users/:id/roles')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @Permissions('roles.manage')
   @ApiOperation({ summary: 'Get assigned roles for a user' })
-  getRoles(@Param('id') id: string) {
-    return this.usersService.getUserRoles(id);
+  getRoles(@CurrentTenant() tenant: TenantContext, @Param('id') id: string) {
+    return this.usersService.getUserRoles(id, tenant);
   }
 
   @Post('users/:id/roles')
@@ -133,8 +133,8 @@ export class UsersController {
       }
     }
   })
-  setRoles(@Param('id') id: string, @Body() dto: AssignUserRolesDto) {
-    return this.usersService.setUserRoles(id, dto);
+  setRoles(@CurrentTenant() tenant: TenantContext, @Param('id') id: string, @Body() dto: AssignUserRolesDto) {
+    return this.usersService.setUserRoles(id, dto, tenant);
   }
 
   @Post('users/:id/invite')
@@ -151,7 +151,7 @@ export class UsersController {
       }
     }
   })
-  inviteUser(@Param('id') id: string, @Body() dto: InviteUserDto) {
-    return this.usersService.inviteUser(id, dto);
+  inviteUser(@CurrentTenant() tenant: TenantContext, @Param('id') id: string, @Body() dto: InviteUserDto) {
+    return this.usersService.inviteUser(id, dto, tenant.tenantId);
   }
 }

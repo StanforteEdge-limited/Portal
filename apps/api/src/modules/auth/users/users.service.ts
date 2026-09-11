@@ -110,7 +110,7 @@ export class UsersService {
     return this.serializeProfile(updated);
   }
 
-  async listUsers(filters: Record<string, any>) {
+  async listUsers(filters: Record<string, any>, tenant?: TenantContext) {
     const page = Number(filters.page ?? 1);
     const perPage = Number(filters.per_page ?? 15);
     const skip = (page - 1) * perPage;
@@ -126,6 +126,13 @@ export class UsersService {
     }
     if (filters.type) where.type = filters.type;
     if (filters.status) where.status = filters.status;
+    if (tenant) {
+      const memberships = await this.drizzle.tenantMembership.findMany({
+        where: { tenantId: tenant.tenantId, status: 'active' },
+        select: { profileId: true },
+      });
+      where.id = { in: memberships.map((membership) => membership.profileId) };
+    }
 
     const [data, total] = await this.drizzle.$transaction([
       this.drizzle.profile.findMany({
@@ -140,7 +147,7 @@ export class UsersService {
     return paginatedResponse(data.map((row) => this.serializeUserSummary(row)), { page, per_page: perPage, total });
   }
 
-  async createUser(dto: CreateUserDto) {
+  async createUser(dto: CreateUserDto, tenant?: TenantContext) {
     const email = dto.email.trim().toLowerCase();
     const existing = await this.drizzle.profile.findUnique({ where: { email } });
     if (existing) throw new BadRequestException('Email already exists');
@@ -174,6 +181,12 @@ export class UsersService {
         select: { id: true }
       });
       if (!organization) throw new BadRequestException('Organization not found');
+      if (tenant) {
+        const mapping = await this.drizzle.tenantOrganization.findFirst({
+          where: { tenantId: tenant.tenantId, organizationId: primaryOrganizationId },
+        });
+        if (!mapping) throw new BadRequestException('Organization does not belong to the active tenant');
+      }
     }
     const requestedUsername = dto.username?.trim();
     const username = requestedUsername
@@ -212,9 +225,15 @@ export class UsersService {
           data: {
             profileId: user.id,
             organizationId: primaryOrganizationId,
+            tenantId: tenant?.tenantId,
             isPrimary: true,
             createdAt: new Date()
           }
+        });
+      }
+      if (tenant) {
+        await tx.tenantMembership.create({
+          data: { tenantId: tenant.tenantId, profileId: user.id, status: 'active', isOwner: false },
         });
       }
 
@@ -233,6 +252,7 @@ export class UsersService {
           data: roles.map((role, index) => ({
             profileId: user.id,
             roleId: role.id,
+            tenantId: tenant?.tenantId,
             organizationId: null,
             isPrimaryRole: index === 0
           })),
@@ -269,8 +289,11 @@ export class UsersService {
     return this.serializeUserSummary(user);
   }
 
-  async getUserById(userId: string) {
+  async getUserById(userId: string, tenant?: TenantContext) {
     const profileId = toBigInt(userId);
+    if (tenant && !(await this.drizzle.tenantMembership.findFirst({
+      where: { tenantId: tenant.tenantId, profileId, status: 'active' },
+    }))) throw new NotFoundException('User not found');
     const user = await this.drizzle.profile.findUnique({
       where: { id: profileId }
     });
@@ -278,8 +301,11 @@ export class UsersService {
     return this.serializeUserDetail(user);
   }
 
-  async updateUser(userId: string, dto: UpdateUserDto) {
+  async updateUser(userId: string, dto: UpdateUserDto, tenant?: TenantContext) {
     const profileId = toBigInt(userId);
+    if (tenant && !(await this.drizzle.tenantMembership.findFirst({
+      where: { tenantId: tenant.tenantId, profileId, status: 'active' },
+    }))) throw new NotFoundException('User not found');
     const existing = await this.drizzle.profile.findUnique({
       where: { id: profileId }
     });
@@ -432,16 +458,22 @@ export class UsersService {
     return this.serializeUserDetail(user);
   }
 
-  async getUserRoles(userId: string) {
+  async getUserRoles(userId: string, tenant?: TenantContext) {
     const profileId = toBigInt(userId);
     const user = await this.drizzle.profile.findUnique({
       where: { id: profileId },
       select: { id: true, email: true, username: true }
     });
     if (!user) throw new NotFoundException('User not found');
+    if (tenant) {
+      const membership = await this.drizzle.tenantMembership.findFirst({
+        where: { tenantId: tenant.tenantId, profileId, status: 'active' },
+      });
+      if (!membership) throw new NotFoundException('User not found');
+    }
 
     const userRoles = await this.drizzle.userRole.findMany({
-      where: { profileId },
+      where: tenant ? { profileId, tenantId: tenant.tenantId } : { profileId },
       include: { role: true },
       orderBy: [{ isPrimaryRole: 'desc' }, { assignedAt: 'asc' }]
     });
@@ -461,13 +493,19 @@ export class UsersService {
     };
   }
 
-  async setUserRoles(userId: string, dto: AssignUserRolesDto) {
+  async setUserRoles(userId: string, dto: AssignUserRolesDto, tenant?: TenantContext) {
     const profileId = toBigInt(userId);
     const user = await this.drizzle.profile.findUnique({
       where: { id: profileId },
       select: { id: true, email: true, username: true }
     });
     if (!user) throw new NotFoundException('User not found');
+    if (tenant) {
+      const membership = await this.drizzle.tenantMembership.findFirst({
+        where: { tenantId: tenant.tenantId, profileId, status: 'active' },
+      });
+      if (!membership) throw new NotFoundException('User not found');
+    }
 
     const roleSlugs = Array.from(new Set(dto.roles.map((r) => r.trim()).filter(Boolean)));
     if (roleSlugs.length === 0) {
@@ -486,11 +524,12 @@ export class UsersService {
     }
 
     await this.drizzle.$transaction([
-      this.drizzle.userRole.deleteMany({ where: { profileId } }),
+      this.drizzle.userRole.deleteMany({ where: tenant ? { profileId, tenantId: tenant.tenantId } : { profileId } }),
       this.drizzle.userRole.createMany({
         data: roles.map((role, index) => ({
           profileId,
           roleId: role.id,
+          tenantId: tenant?.tenantId,
           organizationId: null,
           isPrimaryRole: index === 0
         })),
