@@ -22,6 +22,7 @@ export type NewProcurementCase = typeof procurementCase.$inferInsert;
 
 export const procurementRequisition = pgTable("sta_procurement_requisitions", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }),
   requisitionNumber: varchar("requisition_number", { length: 30 }).notNull().unique(),
   organizationId: bigint("organization_id", { mode: 'bigint' }),
   teamId: bigint("team_id", { mode: 'bigint' }),
@@ -40,6 +41,7 @@ export const procurementRequisition = pgTable("sta_procurement_requisitions", {
 }, (table) => [
     index("procurementRequisition_index_requestedBy").on(table.requestedBy),
     index("procurementRequisition_index_status").on(table.status),
+    index("procurementRequisition_index_tenantId").on(table.tenantId),
     index("procurementRequisition_index_organizationId").on(table.organizationId),
 ]);
 
@@ -48,6 +50,7 @@ export type NewProcurementRequisition = typeof procurementRequisition.$inferInse
 
 export const procurementOrder = pgTable("sta_procurement_orders", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }),
   poNumber: varchar("po_number", { length: 30 }).notNull().unique(),
   requisitionId: uuid("requisition_id").notNull(),
   vendorId: uuid("vendor_id").notNull(),
@@ -70,6 +73,7 @@ export const procurementOrder = pgTable("sta_procurement_orders", {
 }, (table) => [
     index("procurementOrder_index_requisitionId").on(table.requisitionId),
     index("procurementOrder_index_vendorId").on(table.vendorId),
+    index("procurementOrder_index_tenantId").on(table.tenantId),
     index("procurementOrder_index_status").on(table.status),
 ]);
 

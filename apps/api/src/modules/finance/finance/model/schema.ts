@@ -15,6 +15,7 @@ export type NewFinanceSetting = typeof financeSetting.$inferInsert;
 
 export const financeAccount = pgTable("sta_finance_accounts", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }),
   organizationId: bigint("organization_id", { mode: 'bigint' }),
   name: varchar("name", { length: 150 }).notNull(),
   code: varchar("code", { length: 60 }),
@@ -32,6 +33,7 @@ export const financeAccount = pgTable("sta_finance_accounts", {
   updatedAt: timestamp("updated_at", { mode: 'date', precision: 6 }).notNull().$onUpdate(() => new Date()),
 }, (table) => [
     uniqueIndex("unique_finance_account_name_per_org").on(table.organizationId, table.name),
+    index("financeAccount_index_tenantId").on(table.tenantId),
     index("financeAccount_index_organizationId").on(table.organizationId),
     index("financeAccount_index_accountType").on(table.accountType),
     index("financeAccount_index_isActive").on(table.isActive),
@@ -64,6 +66,7 @@ export type NewFinanceDonor = typeof financeDonor.$inferInsert;
 
 export const financeFund = pgTable("sta_finance_funds", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }),
   organizationId: bigint("organization_id", { mode: 'bigint' }),
   projectId: bigint("project_id", { mode: 'bigint' }),
   donorId: uuid("donor_id"),
@@ -80,6 +83,7 @@ export const financeFund = pgTable("sta_finance_funds", {
   updatedAt: timestamp("updated_at", { mode: 'date', precision: 6 }).notNull().$onUpdate(() => new Date()),
 }, (table) => [
     uniqueIndex("unique_finance_fund_code_per_org").on(table.organizationId, table.code),
+    index("financeFund_index_tenantId").on(table.tenantId),
     index("financeFund_index_organizationId").on(table.organizationId),
     index("financeFund_index_projectId").on(table.projectId),
     index("financeFund_index_restrictionType").on(table.restrictionType),
@@ -651,6 +655,7 @@ export type NewFinanceReportNote = typeof financeReportNote.$inferInsert;
 
 export const financeBudget = pgTable("sta_finance_budgets", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }),
   organizationId: bigint("organization_id", { mode: 'bigint' }),
   teamId: bigint("team_id", { mode: 'bigint' }),
   projectId: bigint("project_id", { mode: 'bigint' }),
@@ -684,6 +689,7 @@ export const financeBudget = pgTable("sta_finance_budgets", {
   ownerId: bigint("owner_id", { mode: 'bigint' }),
   preparedBy: bigint("prepared_by", { mode: 'bigint' }),
 }, (table) => [
+    index("financeBudget_index_tenantId").on(table.tenantId),
     index("financeBudget_index_organizationId").on(table.organizationId),
     index("financeBudget_index_teamId").on(table.teamId),
     index("financeBudget_index_projectId").on(table.projectId),
@@ -975,6 +981,7 @@ export type NewFinanceItem = typeof financeItem.$inferInsert;
 
 export const financeExpense = pgTable("sta_finance_expenses", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }),
   expenseNumber: varchar("expense_number", { length: 60 }).notNull().unique(),
   contactId: uuid("contact_id"),
   accountId: uuid("account_id").notNull(),
@@ -1003,6 +1010,7 @@ export const financeExpense = pgTable("sta_finance_expenses", {
     index("financeExpense_index_expenseDate").on(table.expenseDate),
     index("financeExpense_index_contactId").on(table.contactId),
     index("financeExpense_index_accountId").on(table.accountId),
+    index("financeExpense_index_tenantId").on(table.tenantId),
     index("financeExpense_index_organizationId").on(table.organizationId),
 ]);
 

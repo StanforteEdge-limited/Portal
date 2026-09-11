@@ -3,6 +3,7 @@ import { tokenTypeEnum, organizationTypeEnum, groupUserRoleEnum, requestStatusEn
 
 export const payrollWorker = pgTable("sta_payroll_workers", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }),
   profileId: bigint("profile_id", { mode: 'bigint' }),
   organizationId: bigint("organization_id", { mode: 'bigint' }),
   teamId: bigint("team_id", { mode: 'bigint' }),
@@ -33,6 +34,7 @@ export const payrollWorker = pgTable("sta_payroll_workers", {
   updatedAt: timestamp("updated_at", { mode: 'date', precision: 6 }).notNull().$onUpdate(() => new Date()),
 }, (table) => [
     index("payrollWorker_index_profileId").on(table.profileId),
+    index("payrollWorker_index_tenantId").on(table.tenantId),
     index("payrollWorker_index_organizationId").on(table.organizationId),
     index("payrollWorker_index_teamId").on(table.teamId),
     index("payrollWorker_index_projectId").on(table.projectId),
@@ -136,6 +138,7 @@ export type NewPayrollWorkerAllocation = typeof payrollWorkerAllocation.$inferIn
 
 export const payrollRun = pgTable("sta_payroll_runs", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }),
   organizationId: bigint("organization_id", { mode: 'bigint' }),
   paidFromAccountId: uuid("paid_from_account_id"),
   workflowInstanceId: uuid("workflow_instance_id"),
@@ -161,6 +164,7 @@ export const payrollRun = pgTable("sta_payroll_runs", {
     index("payrollRun_index_status").on(table.status),
     index("payrollRun_index_workflowInstanceId").on(table.workflowInstanceId),
     index("payrollRun_index_paidFromAccountId").on(table.paidFromAccountId),
+    index("payrollRun_index_tenantId").on(table.tenantId),
     index("payrollRun_index_organizationId").on(table.organizationId),
 ]);
 
