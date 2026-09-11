@@ -163,8 +163,11 @@ function tenantScopedWhere(table: any, where: Record<string, any> | undefined, t
   return { AND: [{ tenantId }, ...(where ? [where] : [])] };
 }
 
-function tenantScopedData(table: any, data: Record<string, any>, tenantId?: bigint) {
+function tenantScopedData(table: any, data: Record<string, any>, tenantId?: bigint, systemContext = false) {
   if (!tableColumns(table).tenantId) return data;
+  if (systemContext && data.tenantId === undefined) {
+    throw new Error('System context requires an explicit tenantId for tenant-scoped writes');
+  }
   if (tenantId && data.tenantId !== undefined && BigInt(data.tenantId) !== tenantId) {
     throw new Error('Tenant mismatch: the record belongs to a different tenant');
   }
@@ -176,6 +179,11 @@ function valuesForRaw(strings: TemplateStringsArray, values: unknown[]) {
   return strings.reduce((query, chunk, index) => sql`${query}${sql.raw(chunk)}${index < values.length ? values[index] : sql.raw('')}`, sql``);
 }
 
+function contextTenantId(tenantContext?: TenantContextService) {
+  const context = tenantContext?.get();
+  return context && 'tenantId' in context ? context.tenantId : undefined;
+}
+
 class TableRepository {
   constructor(
     protected readonly db: DbLike,
@@ -185,7 +193,9 @@ class TableRepository {
   ) {}
 
   private async scopedWhere(where?: Record<string, any>) {
-    const tenantId = this.tenantContext?.get()?.tenantId;
+    const context = this.tenantContext?.get();
+    if (context?.scope === 'system') return where;
+    const tenantId = context?.tenantId;
     if (!tenantId) return where;
 
     if (this.tableName === 'profile') {
@@ -252,8 +262,10 @@ class TableRepository {
   }
 
   async create(args: QueryArgs = {}): Promise<any> {
+    const systemContext = this.tenantContext?.get()?.scope === 'system';
+    const tenantId = systemContext ? undefined : contextTenantId(this.tenantContext);
     const rows = await this.db.insert(this.table).values(
-      cleanData(tenantScopedData(this.table, args?.data ?? {}, this.tenantContext?.get()?.tenantId)),
+      cleanData(tenantScopedData(this.table, args?.data ?? {}, tenantId, systemContext)),
     ).returning();
     const result = rows[0] ?? null;
     return this.attachInclude(result, args?.include);
@@ -262,9 +274,11 @@ class TableRepository {
   async createMany(args: QueryArgs = {}): Promise<{ count: number }> {
     const data = Array.isArray(args?.data) ? args.data : [args?.data].filter(Boolean);
     if (data.length === 0) return { count: 0 };
+    const systemContext = this.tenantContext?.get()?.scope === 'system';
+    const tenantId = systemContext ? undefined : contextTenantId(this.tenantContext);
     await this.db.insert(this.table).values(
       data.map((entry: Record<string, any>) =>
-        cleanData(tenantScopedData(this.table, entry, this.tenantContext?.get()?.tenantId)),
+        cleanData(tenantScopedData(this.table, entry, tenantId, systemContext)),
       ),
     );
     return { count: data.length };
@@ -462,7 +476,9 @@ class TableRepository {
 
 function requireRawTenantContext(tenantContext?: TenantContextService) {
   if (!tenantContext) throw new Error('Tenant context is required for raw database operations');
-  return tenantContext.require();
+  const context = tenantContext.get();
+  if (!context) throw new Error('Tenant or system context is required for raw database operations');
+  return context;
 }
 
 class JoinTableRepository extends TableRepository {

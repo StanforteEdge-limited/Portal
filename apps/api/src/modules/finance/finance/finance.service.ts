@@ -6471,7 +6471,8 @@ export class FinanceService {
 
   private async nextSequenceValue(tx: Drizzle.TransactionClient, prefix: string, date: Date) {
     const year = date.getFullYear();
-    const tenantId = this.tenantContext.get()?.tenantId ?? null;
+    const context = this.tenantContext.get();
+    const tenantId = context?.scope === 'system' ? null : context?.tenantId ?? null;
     const sequenceId = `${tenantId ? `${tenantId}:` : ''}${prefix}:${year}`;
     const rows = await tx.$queryRaw(
       Drizzle.sql`

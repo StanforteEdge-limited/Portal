@@ -71,6 +71,20 @@ describe('tenant isolation', () => {
     expect(db.execute).toHaveBeenCalledTimes(1);
   });
 
+  it('allows only explicit system context to bypass tenant reads', async () => {
+    const db = repositoryDb();
+    const context = new TenantContextService();
+    const repository: any = new RepositoryService({ client: db } as any, context);
+
+    await expect(context.runSystem('nightly cross-tenant reconciliation', () =>
+      repository.profile.findMany({ where: { email: 'member@example.com' } }),
+    )).resolves.toEqual([]);
+    expect(db.select).toHaveBeenCalledTimes(1);
+
+    await expect(context.runSystem('', () => undefined)).rejects.toThrow('reason is required');
+    await expect(repository.$queryRaw(sql`select 1`)).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
   it('does not expose profiles or organizations from another tenant', async () => {
     const drizzle: any = {
       profile: { findUnique: jest.fn() },

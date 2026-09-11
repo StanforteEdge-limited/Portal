@@ -25,7 +25,7 @@ for (const file of envCandidates) {
 }
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });
   const expressApp = app.getHttpAdapter().getInstance();
 
   // Behind nginx/reverse proxy, trust X-Forwarded-* headers for correct client IP.

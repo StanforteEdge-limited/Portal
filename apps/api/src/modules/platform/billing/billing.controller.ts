@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, Post, Req, UseGuards } from '@nestjs/common';
+import { Request } from 'express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '$common/auth/jwt-auth.guard';
 import { CurrentTenant, TenantContext } from '$common/auth/tenant-context';
@@ -28,9 +29,20 @@ export class BillingController {
     return this.billing.changePlan(tenant, dto);
   }
 
+  @Post('checkout')
+  @UseGuards(JwtAuthGuard)
+  checkout(@CurrentTenant() tenant: TenantContext) {
+    return this.billing.createCheckout(tenant);
+  }
+
   @Delete('subscription')
   @UseGuards(JwtAuthGuard)
   cancel(@CurrentTenant() tenant: TenantContext) {
     return this.billing.cancel(tenant);
+  }
+
+  @Post('webhooks/paystack')
+  webhook(@Req() request: Request & { rawBody?: Buffer }, @Headers('x-paystack-signature') signature?: string) {
+    return this.billing.handlePaystackWebhook(request.rawBody ?? Buffer.from(JSON.stringify(request.body)), signature);
   }
 }
