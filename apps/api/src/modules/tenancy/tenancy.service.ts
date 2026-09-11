@@ -39,6 +39,10 @@ export class TenancyService {
     private readonly usersService: UsersService,
   ) {}
 
+  private requireOwner(context: TenantContext) {
+    if (!context.isOwner) throw new BadRequestException('Only tenant owners can change tenant settings');
+  }
+
   async auditTenantCoverage() {
     const results = await Promise.all(
       TENANT_SCOPED_TABLES.map(async (table) => {
@@ -111,6 +115,7 @@ export class TenancyService {
   }
 
   async updateTenant(context: TenantContext, dto: UpdateTenantDto) {
+    this.requireOwner(context);
     const data: Record<string, unknown> = {};
     if (dto.name !== undefined) data.name = dto.name.trim();
     if (dto.plan !== undefined) data.plan = dto.plan.trim();
@@ -133,6 +138,7 @@ export class TenancyService {
   }
 
   async setTenantStatus(context: TenantContext, status: 'active' | 'suspended') {
+    this.requireOwner(context);
     const tenant = await this.drizzle.tenant.update({
       where: { id: context.tenantId },
       data: { status },
