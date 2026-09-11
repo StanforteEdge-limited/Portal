@@ -141,4 +141,36 @@ export class TenancyService {
 
     return { success: true, profileId: profile.id.toString() };
   }
+
+  async assignRoles(context: TenantContext, profileId: bigint, roleSlugs: string[]) {
+    const membership = await this.drizzle.tenantMembership.findFirst({
+      where: { tenantId: context.tenantId, profileId, status: 'active' },
+    });
+    if (!membership) throw new NotFoundException('Tenant membership not found');
+
+    const normalized = Array.from(new Set(roleSlugs.map((role) => role.trim()).filter(Boolean)));
+    const roles = await this.drizzle.role.findMany({
+      where: { slug: { in: normalized }, isActive: true },
+      select: { id: true, slug: true },
+    });
+    if (roles.length !== normalized.length) {
+      const found = new Set(roles.map((role) => role.slug));
+      throw new BadRequestException(`Unknown role(s): ${normalized.filter((role) => !found.has(role)).join(', ')}`);
+    }
+
+    await this.drizzle.$transaction(async (tx) => {
+      await tx.userRole.deleteMany({ where: { profileId, tenantId: context.tenantId } });
+      await tx.userRole.createMany({
+        data: roles.map((role, index) => ({
+          profileId,
+          roleId: role.id,
+          tenantId: context.tenantId,
+          isPrimaryRole: index === 0,
+        })),
+        skipDuplicates: true,
+      });
+    });
+
+    return { success: true, profileId: profileId.toString(), roles: roles.map((role) => role.slug) };
+  }
 }

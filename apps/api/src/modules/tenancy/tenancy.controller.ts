@@ -7,6 +7,7 @@ import { TenancyService } from './tenancy.service';
 import { CurrentTenant, TenantContext } from '$common/auth/tenant-context';
 import { toBigInt } from '$common/utils/ids';
 import { InviteTenantMemberDto } from './dto/invite-tenant-member.dto';
+import { AssignTenantRolesDto } from './dto/assign-tenant-roles.dto';
 
 @Controller('tenancy')
 @ApiTags('Tenancy')
@@ -37,5 +38,15 @@ export class TenancyController {
   @Permissions('admin.users.manage')
   inviteMember(@CurrentTenant() tenant: TenantContext, @Body() dto: InviteTenantMemberDto) {
     return this.tenancyService.inviteMember(tenant, dto.email, dto.message);
+  }
+
+  @Post('members/:profileId/roles')
+  @Permissions('admin.users.manage')
+  assignRoles(
+    @CurrentTenant() tenant: TenantContext,
+    @Param('profileId') profileId: string,
+    @Body() dto: AssignTenantRolesDto,
+  ) {
+    return this.tenancyService.assignRoles(tenant, toBigInt(profileId), dto.roles);
   }
 }
