@@ -112,6 +112,7 @@ export type NewToken = typeof token.$inferInsert;
 
 export const notification = pgTable("sta_notifications", {
   id: bigserial("id", { mode: 'bigint' }).primaryKey(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }),
   userId: bigint("user_id", { mode: 'bigint' }).notNull(),
   type: varchar("type", { length: 50 }).default("info").notNull(),
   title: varchar("title", { length: 255 }).notNull(),
@@ -127,6 +128,7 @@ export const notification = pgTable("sta_notifications", {
   createdAt: timestamp("created_at", { mode: 'date', precision: 6 }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: 'date', precision: 6 }).notNull().$onUpdate(() => new Date()),
 }, (table) => [
+    index("notification_index_tenantId").on(table.tenantId),
     index("notification_index_userId").on(table.userId),
     index("notification_index_type").on(table.type),
     index("notification_index_status").on(table.status),
@@ -138,6 +140,7 @@ export type NewNotification = typeof notification.$inferInsert;
 
 export const emailLog = pgTable("sta_email_logs", {
   id: bigserial("id", { mode: 'bigint' }).primaryKey(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }),
   userId: bigint("user_id", { mode: 'bigint' }),
   toEmail: varchar("to_email", { length: 255 }).notNull(),
   subject: varchar("subject", { length: 255 }).notNull(),
@@ -153,6 +156,7 @@ export const emailLog = pgTable("sta_email_logs", {
   createdAt: timestamp("created_at", { mode: 'date', precision: 6 }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: 'date', precision: 6 }).notNull().$onUpdate(() => new Date()),
 }, (table) => [
+    index("emailLog_index_tenantId").on(table.tenantId),
     index("emailLog_index_userId").on(table.userId),
     index("emailLog_index_status").on(table.status),
     index("emailLog_index_notifiableType_notifiableId").on(table.notifiableType, table.notifiableId),
