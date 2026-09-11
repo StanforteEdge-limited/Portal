@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '$common/auth/jwt-auth.guard';
 import { PermissionsGuard } from '$common/auth/permissions.guard';
@@ -8,6 +8,7 @@ import { CurrentTenant, TenantContext } from '$common/auth/tenant-context';
 import { toBigInt } from '$common/utils/ids';
 import { InviteTenantMemberDto } from './dto/invite-tenant-member.dto';
 import { AssignTenantRolesDto } from './dto/assign-tenant-roles.dto';
+import { UpdateTenantDto } from './dto/update-tenant.dto';
 
 @Controller('tenancy')
 @ApiTags('Tenancy')
@@ -20,6 +21,30 @@ export class TenancyController {
   @Permissions('admin.users.manage')
   coverage() {
     return this.tenancyService.auditTenantCoverage();
+  }
+
+  @Get('current')
+  @Permissions('admin.users.manage')
+  current(@CurrentTenant() tenant: TenantContext) {
+    return this.tenancyService.getTenant(tenant);
+  }
+
+  @Patch('current')
+  @Permissions('admin.users.manage')
+  update(@CurrentTenant() tenant: TenantContext, @Body() dto: UpdateTenantDto) {
+    return this.tenancyService.updateTenant(tenant, dto);
+  }
+
+  @Post('current/suspend')
+  @Permissions('admin.users.manage')
+  suspend(@CurrentTenant() tenant: TenantContext) {
+    return this.tenancyService.setTenantStatus(tenant, 'suspended');
+  }
+
+  @Post('current/reactivate')
+  @Permissions('admin.users.manage')
+  reactivate(@CurrentTenant() tenant: TenantContext) {
+    return this.tenancyService.setTenantStatus(tenant, 'active');
   }
 
   @Get('members')

@@ -4,6 +4,7 @@ import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { TenantContext } from '$common/auth/tenant-context';
 import { UsersService } from '$modules/auth/users/users.service';
 import { InviteUserDto } from '$modules/auth/users/dto/invite-user.dto';
+import { UpdateTenantDto } from './dto/update-tenant.dto';
 
 const TENANT_SCOPED_TABLES = [
   'sta_organizations',
@@ -74,6 +75,10 @@ export class TenancyService {
           select: { id: true, email: true, firstName: true, lastName: true, status: true },
         });
         if (!profile) return null;
+        const roles = await this.drizzle.userRole.findMany({
+          where: { profileId: profile.id, tenantId: context.tenantId },
+          include: { role: true },
+        });
         return {
           membershipId: membership.id.toString(),
           profileId: profile.id.toString(),
@@ -83,10 +88,56 @@ export class TenancyService {
           profileStatus: profile.status,
           isOwner: membership.isOwner,
           joinedAt: membership.joinedAt,
+          roles: roles.map((assignment) => assignment.role.slug),
         };
       }),
     );
     return members.filter((member): member is NonNullable<typeof member> => member !== null);
+  }
+
+  async getTenant(context: TenantContext) {
+    const tenant = await this.drizzle.tenant.findUnique({ where: { id: context.tenantId } });
+    if (!tenant) throw new NotFoundException('Tenant not found');
+    return {
+      id: tenant.id.toString(),
+      name: tenant.name,
+      slug: tenant.slug,
+      status: tenant.status,
+      plan: tenant.plan,
+      metadata: tenant.metadata,
+      createdAt: tenant.createdAt,
+      updatedAt: tenant.updatedAt,
+    };
+  }
+
+  async updateTenant(context: TenantContext, dto: UpdateTenantDto) {
+    const data: Record<string, unknown> = {};
+    if (dto.name !== undefined) data.name = dto.name.trim();
+    if (dto.plan !== undefined) data.plan = dto.plan.trim();
+    if (dto.metadata !== undefined) data.metadata = dto.metadata;
+    if (Object.keys(data).length === 0) throw new BadRequestException('At least one tenant field is required');
+
+    const tenant = await this.drizzle.tenant.update({
+      where: { id: context.tenantId },
+      data,
+    });
+    return {
+      id: tenant.id.toString(),
+      name: tenant.name,
+      slug: tenant.slug,
+      status: tenant.status,
+      plan: tenant.plan,
+      metadata: tenant.metadata,
+      updatedAt: tenant.updatedAt,
+    };
+  }
+
+  async setTenantStatus(context: TenantContext, status: 'active' | 'suspended') {
+    const tenant = await this.drizzle.tenant.update({
+      where: { id: context.tenantId },
+      data: { status },
+    });
+    return { id: tenant.id.toString(), status: tenant.status };
   }
 
   async deactivateMember(context: TenantContext, profileId: bigint) {
