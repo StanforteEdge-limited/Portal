@@ -2,8 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { toBigInt } from '$common/utils/ids';
 import { Drizzle } from '$common/db/drizzle-compat';
-import { MailService } from '$common/mail/mail.service';
 import { TenantContextService } from '$common/auth/tenant-context.service';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 
 type NotificationInput = {
   userId: string | bigint;
@@ -27,8 +28,8 @@ type NotificationInput = {
 export class NotificationsService {
   constructor(
     private readonly drizzle: DrizzleService,
-    private readonly mailService: MailService,
     private readonly tenantContext: TenantContextService,
+    @InjectQueue('notifications') private readonly queue: Queue,
   ) {}
 
   private resolveEmailPortalUrl(input: NotificationInput): string | undefined {
@@ -81,7 +82,7 @@ export class NotificationsService {
 
       if (recipientEmail) {
         const context = this.tenantContext.require();
-        await this.drizzle.notificationJob.create({
+        const job = await this.drizzle.notificationJob.create({
           data: {
             tenantId: context.tenantId,
             notificationId: created.id,
@@ -102,6 +103,13 @@ export class NotificationsService {
               notifiableId: input.notifiableId?.toString(),
             } as Drizzle.InputJsonValue,
           },
+        });
+        await this.queue.add('deliver-notification', { notificationJobId: job.id.toString() }, {
+          jobId: job.id.toString(),
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 5000 },
+          removeOnComplete: 1000,
+          removeOnFail: 5000,
         });
       }
     }

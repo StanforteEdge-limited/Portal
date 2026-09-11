@@ -29,6 +29,8 @@ import { VersionModule } from '$modules/platform/version/version.module';
 import { MailModule } from '$modules/platform/mail/mail.module';
 import { TenancyModule } from '$modules/tenancy/tenancy.module';
 import { BillingModule } from '$modules/platform/billing/billing.module';
+import { QueuesModule } from '$common/queues/queues.module';
+import { AppCacheModule } from '$common/cache/cache.module';
 
 @Module({
   imports: [
@@ -62,6 +64,8 @@ import { BillingModule } from '$modules/platform/billing/billing.module';
     MailModule,
     TenancyModule,
     BillingModule,
+    QueuesModule,
+    AppCacheModule,
   ],
   providers: [],
 })

@@ -1,4 +1,6 @@
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Cache } from 'cache-manager';
 import { randomBytes } from 'node:crypto';
 import { TenantContext } from '$common/auth/tenant-context';
 import { DrizzleService } from '$common/drizzle/drizzle.service';
@@ -12,17 +14,22 @@ export class BillingService {
   constructor(
     private readonly drizzle: DrizzleService,
     @Inject(PAYMENT_GATEWAY_ADAPTER) private readonly gateway: PaymentGatewayAdapter,
+    @Inject(CACHE_MANAGER) private readonly cache: Cache,
   ) {}
 
   async listPlans() {
+    const cached = await this.cache.get<any[]>('billing:plans');
+    if (cached) return cached;
     const plans = await this.drizzle.subscriptionPlan.findMany({ where: { isActive: true }, orderBy: { name: 'asc' } });
-    return Promise.all(plans.map(async (plan: any) => ({
+    const result = await Promise.all(plans.map(async (plan: any) => ({
       ...plan,
       prices: await this.drizzle.subscriptionPlanPrice.findMany({
         where: { planId: plan.id, isActive: true },
         orderBy: { amountMinor: 'asc' },
       }),
     })));
+    await this.cache.set('billing:plans', result, 300);
+    return result;
   }
 
   async getCurrent(context: TenantContext) {
