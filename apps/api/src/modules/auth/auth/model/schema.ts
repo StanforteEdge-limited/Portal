@@ -90,6 +90,7 @@ export type NewUserRole = typeof userRole.$inferInsert;
 export const token = pgTable("sta_tokens", {
   id: varchar("id", { length: 255 }).primaryKey().notNull(),
   profileId: bigint("profile_id", { mode: 'bigint' }).notNull(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }),
   type: tokenTypeEnum("type").notNull(),
   tokenHash: varchar("token_hash", { length: 255 }).notNull(),
   expiresAt: timestamp("expires_at", { mode: 'date', precision: 6 }).notNull(),

@@ -304,7 +304,7 @@ export class AuthService {
       this.throwUnauthorized('Refresh token expired', 'AUTH_REFRESH_EXPIRED');
     }
 
-    const tenantContext = await this.resolveTenantContext(tokenRow.profileId);
+    const tenantContext = await this.resolveTenantContext(tokenRow.profileId, undefined, tokenRow.tenantId);
     if (!tenantContext) this.throwUnauthorized('Tenant membership is required', 'AUTH_TENANT_REQUIRED');
     const authContext = await this.buildAuthContext(tokenRow.profileId, tenantContext.tenantId);
 
@@ -527,6 +527,7 @@ export class AuthService {
       data: {
         id: randomToken(24),
         profileId,
+        tenantId,
         type: 'refresh',
         tokenHash,
         expiresAt
