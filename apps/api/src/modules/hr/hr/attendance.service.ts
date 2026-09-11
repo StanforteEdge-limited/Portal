@@ -1,8 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Drizzle } from '$common/db/drizzle-compat';
 import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { paginatedResponse } from '$common/helpers/paginated-response';
 import { toBigInt } from '$common/utils/ids';
+import { NotificationsService } from '$modules/notifications/notifications.service';
 import { CreateAttendanceCorrectionDto } from '$modules/hr/hr/dto/create-attendance-correction.dto';
 import { CreateAttendanceExceptionDto } from '$modules/hr/hr/dto/create-attendance-exception.dto';
 import { ReviewAttendanceCorrectionDto } from '$modules/hr/hr/dto/review-attendance-correction.dto';
@@ -44,7 +45,12 @@ type ProfileContext = {
 
 @Injectable()
 export class AttendanceService {
-  constructor(private readonly drizzle: DrizzleService) {}
+  private readonly logger = new Logger(AttendanceService.name);
+
+  constructor(
+    private readonly drizzle: DrizzleService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   async clockIn(
     userId: string,
@@ -121,6 +127,11 @@ export class AttendanceService {
     });
 
     const daily = await this.recomputeDay(actorId, workDate, profile, policy);
+
+    this.sendAttendanceNotification(actorId, 'clock-in', at, effectiveMode).catch((err) =>
+      this.logger.warn(`Failed to send clock-in notification: ${err.message}`)
+    );
+
     return { success: true, daily };
   }
 
@@ -155,19 +166,44 @@ export class AttendanceService {
           lte: workDate
         }
       },
-      orderBy: [{ workDate: 'asc' }, { entryAt: 'asc' }]
+      orderBy: [{ workDate: 'desc' }, { entryAt: 'asc' }]
     });
-    const openClockIn = this.getOpenClockIn(entries);
+
+    const todayEntries = entries.filter(
+      (e) => this.workDateKey(e.workDate) === this.workDateKey(workDate)
+    );
+    const openClockIn = this.getOpenClockIn(todayEntries)
+      ?? (todayEntries.length === 0 ? this.getOpenClockIn(entries) : null);
     if (!openClockIn) {
       throw new BadRequestException('No open clock-in found for this day');
     }
 
-    const effectiveMode =
-      openClockIn.attendanceMode === 'onsite' ||
-      openClockIn.attendanceMode === 'remote' ||
-      openClockIn.attendanceMode === 'field'
+    const effectiveMode = payload?.attendance_mode
+      ? this.resolveSubmittedMode(payload.attendance_mode, profile, workDate, policy)
+      : openClockIn.attendanceMode === 'onsite' ||
+          openClockIn.attendanceMode === 'remote' ||
+          openClockIn.attendanceMode === 'field'
         ? (openClockIn.attendanceMode as AttendanceMode)
         : this.resolveExpectedMode(profile, workDate, policy);
+
+    let officeLocation: { id: bigint; latitude: Drizzle.Decimal | number; longitude: Drizzle.Decimal | number; radiusMeters: number } | null = null;
+    if (payload?.office_location_id && effectiveMode === 'onsite') {
+      officeLocation = await this.resolveOfficeLocationForAttendance({
+        profile,
+        requestedOfficeLocationId: payload.office_location_id,
+        attendanceMode: effectiveMode
+      });
+    } else if (openClockIn.officeLocationId && effectiveMode === 'onsite') {
+      officeLocation = await this.drizzle.officeLocation.findUnique({
+        where: { id: openClockIn.officeLocationId }
+      });
+    }
+    const geofenceStatus = this.evaluateGeofence({
+      attendanceMode: effectiveMode,
+      officeLocation,
+      latitude: payload?.latitude,
+      longitude: payload?.longitude
+    });
 
     await this.drizzle.attendanceEntry.create({
       data: {
@@ -176,10 +212,10 @@ export class AttendanceService {
         entryAt: at,
         workDate: openClockIn.workDate ?? workDate,
         attendanceMode: effectiveMode,
-        officeLocationId: openClockIn.officeLocationId ?? null,
-        latitude: null,
-        longitude: null,
-        geofenceStatus: null,
+        officeLocationId: officeLocation?.id ?? openClockIn.officeLocationId ?? null,
+        latitude: payload?.latitude ?? null,
+        longitude: payload?.longitude ?? null,
+        geofenceStatus,
         source: payload?.source ?? 'web',
         createdBy: actorId,
         metadata: {
@@ -190,6 +226,11 @@ export class AttendanceService {
     });
 
     const daily = await this.recomputeDay(actorId, openClockIn.workDate ?? workDate, profile, policy);
+
+    this.sendAttendanceNotification(actorId, 'clock-out', at, effectiveMode).catch((err) =>
+      this.logger.warn(`Failed to send clock-out notification: ${err.message}`)
+    );
+
     return { success: true, daily };
   }
 
@@ -376,7 +417,11 @@ export class AttendanceService {
         );
       });
 
-    return paginatedResponse(rows, { page, per_page: limit, total });
+    const filteredTotal = search
+      ? rows.length
+      : total;
+
+    return paginatedResponse(rows, { page, per_page: limit, total: filteredTotal });
   }
 
   async getDailyRecord(userId: string, workDate: string) {
@@ -485,12 +530,18 @@ export class AttendanceService {
     const openClockIn = entries.find(e => e.entryType === 'clock_in' && !entries.some(out => out.entryType === 'clock_out' && out.entryAt > e.entryAt));
     const lastEntry = entries[0] ?? null;
 
+    const now = new Date();
+    const todayStartTime = this.atTime(today, policy.start_time);
+    const todayEndTime = this.atTime(today, policy.end_time);
+    const earliestClockIn = new Date(todayStartTime.getTime() - policy.earliest_clock_in_minutes_before_start * 60000);
+    const latestClockOut = new Date(todayEndTime.getTime() + policy.latest_clock_out_minutes_after_end * 60000);
+
     const response = {
       current_state: {
         is_clocked_in: !!openClockIn,
         last_clock_in_at: openClockIn?.entryAt?.toISOString() ?? null,
         last_clock_in_work_date: openClockIn?.workDate?.toISOString().slice(0, 10) ?? null,
-        can_clock_in: !openClockIn && new Date() >= new Date(today.setHours(9, 0, 0, 0)),
+        can_clock_in: !openClockIn && now >= earliestClockIn && now <= latestClockOut,
         can_clock_out: !!openClockIn,
         reason: null as string | null,
       },
@@ -753,6 +804,18 @@ export class AttendanceService {
     });
 
     const daily = await this.recomputeDay(correction.userId, correction.workDate, profile, policy);
+
+    this.notifications.create({
+      userId: correction.userId,
+      type: 'success',
+      title: 'Attendance Correction Approved',
+      message: `Your ${correction.requestType.replace('_', ' ')} correction for ${this.workDateKey(correction.workDate)} has been approved.`,
+      link: '/attendance',
+      sentVia: ['in-app', 'email'],
+      notifiableType: 'attendance_correction',
+      notifiableId: correction.id,
+    }).catch((err) => this.logger.warn(`Failed to send correction approval notification: ${err.message}`));
+
     return { success: true, daily };
   }
 
@@ -771,6 +834,17 @@ export class AttendanceService {
         reviewNotes: dto.review_notes?.trim() || null
       }
     });
+
+    this.notifications.create({
+      userId: correction.userId,
+      type: 'info',
+      title: 'Attendance Correction Rejected',
+      message: `Your ${correction.requestType.replace('_', ' ')} correction for ${this.workDateKey(correction.workDate)} was not approved.${dto.review_notes ? ` Reason: ${dto.review_notes.trim()}` : ''}`,
+      link: '/attendance',
+      sentVia: ['in-app', 'email'],
+      notifiableType: 'attendance_correction',
+      notifiableId: correction.id,
+    }).catch((err) => this.logger.warn(`Failed to send correction rejection notification: ${err.message}`));
 
     return { success: true };
   }
@@ -905,15 +979,26 @@ export class AttendanceService {
     const firstClockIn = entries.find((entry) => entry.entryType === 'clock_in') ?? null;
     const activeException = exceptions[0] ?? null;
     const approvedCorrection = corrections[0] ?? null;
-    const effectiveMode =
+
+    let effectiveMode =
       (activeException?.attendanceMode as AttendanceMode | null) ??
       (latestEntry?.attendanceMode as AttendanceMode | null) ??
       this.resolveExpectedMode(profile, workDate, policy);
+    if (approvedCorrection?.proposedMode) {
+      effectiveMode = approvedCorrection.proposedMode as AttendanceMode;
+    }
 
-    const officeLocationId = activeException?.officeLocationId ?? latestEntry?.officeLocationId ?? null;
+    const officeLocationId = activeException?.officeLocationId
+      ?? approvedCorrection?.proposedOfficeLocationId
+      ?? latestEntry?.officeLocationId
+      ?? null;
     const geofenceStatus = activeException
       ? 'not_applicable'
       : (firstClockIn?.geofenceStatus as GeofenceStatus | null) ?? null;
+
+    if (approvedCorrection?.proposedAt && !firstInAt) {
+      firstInAt = approvedCorrection.proposedAt;
+    }
 
     const holiday = await this.findHoliday(profile, workDate, officeLocationId);
     const onLeave = await this.isOnApprovedLeave(userId, workDate);
@@ -1282,7 +1367,7 @@ export class AttendanceService {
         requestType: { select: { taxonomyKeys: true, name: true } }
       },
       orderBy: { createdAt: 'desc' },
-      take: 250
+      take: 50
     });
 
     for (const row of requests) {
@@ -1547,5 +1632,31 @@ export class AttendanceService {
 
   private getUserAgent(req: any): string | null {
     return (req?.headers?.['user-agent'] as string) ?? null;
+  }
+
+  private sendAttendanceNotification(
+    userId: bigint,
+    eventType: 'clock-in' | 'clock-out',
+    at: Date,
+    mode?: AttendanceMode | null
+  ): Promise<void> {
+    const label = eventType === 'clock-in' ? 'Clock In' : 'Clock Out';
+    const timeLabel = at.toLocaleString('en-NG', {
+      day: 'numeric',
+      month: 'short',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+    return this.notifications
+      .create({
+        userId,
+        type: 'info',
+        title: `${label} Recorded`,
+        message: `Your ${label} was recorded at ${timeLabel}.${mode ? ` Mode: ${mode}.` : ''}`,
+        link: '/attendance',
+        sentVia: ['in-app', 'email'],
+        notifiableType: 'attendance_entry',
+      })
+      .then(() => undefined);
   }
 }

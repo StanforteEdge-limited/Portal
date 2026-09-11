@@ -12,6 +12,7 @@ import { RequestsModule } from '$modules/requests/requests/requests.module';
 import { WorkflowModule } from '$modules/requests/workflow/workflow.module';
 import { FinanceModule } from '$modules/finance/finance/finance.module';
 import { HrModule } from '$modules/hr/hr/hr.module';
+import { LeaveModule } from '$modules/hr/leave/leave.module';
 import { NotificationsModule } from '$modules/notifications/notifications.module';
 import { AnalyticsModule } from '$modules/analytics/analytics.module';
 import { DocumentsModule } from '$modules/requests/documents/documents.module';
@@ -48,6 +49,7 @@ import { SchedulingModule } from '$modules/scheduling/scheduling.module';
     WorkflowModule,
     FinanceModule,
     HrModule,
+    LeaveModule,
     NotificationsModule,
     AnalyticsModule,
     DocumentsModule,

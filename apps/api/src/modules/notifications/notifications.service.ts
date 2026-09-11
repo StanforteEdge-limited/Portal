@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { toBigInt } from '$common/utils/ids';
 import { Drizzle } from '$common/db/drizzle-compat';
@@ -27,6 +27,8 @@ type NotificationInput = {
 
 @Injectable()
 export class NotificationsService {
+  private readonly logger = new Logger(NotificationsService.name);
+
   constructor(
     private readonly drizzle: DrizzleService,
     private readonly tenantContext: TenantContextService,
@@ -82,10 +84,25 @@ export class NotificationsService {
         )?.email;
 
       if (recipientEmail) {
-        const context = this.tenantContext.require();
+        const context = this.tenantContext.get();
+        const tenantId =
+          context && context.scope !== 'system'
+            ? context.tenantId
+            : (
+                await this.drizzle.profile.findUnique({
+                  where: { id: toBigInt(input.userId) },
+                  select: { tenantId: true }
+                })
+              )?.tenantId;
+        if (!tenantId) {
+          this.logger.warn(
+            `Cannot schedule email for user ${input.userId}: no tenant context available`
+          );
+          return created;
+        }
         const job = await this.drizzle.notificationJob.create({
           data: {
-            tenantId: context.tenantId,
+            tenantId,
             notificationId: created.id,
             channel: 'email',
             runAt: input.scheduledFor ? new Date(input.scheduledFor) : new Date(),

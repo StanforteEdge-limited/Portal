@@ -17,12 +17,13 @@ import {
   TableRow,
   useToast,
 } from "@/shared";
-import { formatRelativeTime, humanize, hasNextDay } from "@stanforte/shared";
+import { formatRelativeTime, humanize, hasNextDay, userFirstName } from "@stanforte/shared";
 import { deriveAttendanceStatus, toneFromStatus } from "./attendance-data";
 import { TimeWithNextDay } from "@/shared/components/ui/TimeWithNextDay";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/shared/components/layout/AppShell";
 import { useCachedQuery } from "@/shared/lib/core";
+import { useAuth } from "@/shared/context/AuthProvider";
 import {
   buildAppMobileNav,
   buildRequestsNavigation,
@@ -187,6 +188,7 @@ function SummaryTile({
 
 export function AttendancePage() {
   const { showToast } = useToast();
+  const { user: authUser } = useAuth();
   const [selectedMode, setSelectedMode] = useState<AttendanceMode>("onsite");
   const [selectedOfficeLocationId, setSelectedOfficeLocationId] = useState("");
   const [acting, setActing] = useState<"in" | "out" | null>(null);
@@ -256,7 +258,8 @@ export function AttendancePage() {
     for (const row of daily) {
       const status = deriveAttendanceStatus(row);
       if (status === "present") present++;
-      if (status === "late") { late++; present++; }
+      if (status === "late") { late++; }
+      if (status === "present") { present++; }
       if (status === "absent") absent++;
       if (String(row.attendance_mode || row.expected_mode || "").toLowerCase() === "remote" && row.first_in_at) remote++;
     }
@@ -504,7 +507,10 @@ export function AttendancePage() {
     <AppShell
       navigation={buildRequestsNavigation()}
       activeLabel="Attendance"
-      user={{ name: "Alex Sterling", role: "Fleet Operations" }}
+      user={{
+        name: userFirstName(authUser),
+        role: authUser?.roles?.[0] || "Staff",
+      }}
       mobileNav={buildAppMobileNav("Attendance")}
     >
       <div className="hidden lg:block">
@@ -744,7 +750,7 @@ export function AttendancePage() {
               action={<Chip variant="neutral">{recentDaily.length} days</Chip>}
             >
               <div className="overflow-x-auto rounded-[22px] border border-slate-200 bg-white">
-                <Table caption="Attendance historyss">
+                <Table caption="Attendance history">
                   <TableHead>
                     <TableHeaderRow>
                       <TableHeaderCell>Date</TableHeaderCell>
@@ -853,7 +859,7 @@ export function AttendancePage() {
                   onClick={() => setShowCorrectionForm((value) => !value)}
                 >
                   <Icon name="add" className="text-[18px]" />
-                  {showCorrectionForm ? "Close" : " New"}
+                  {showCorrectionForm ? "Close" : "New"}
                 </Button>
               }
             >
@@ -1231,6 +1237,49 @@ export function AttendancePage() {
                 <option value="clock_out">Missed Clock Out</option>
                 <option value="mode_change">Mode Change</option>
                 <option value="location_change">Location Change</option>
+              </SelectField>
+              <TextField
+                label="Proposed Time"
+                type="time"
+                value={correctionForm.proposed_at}
+                onChange={(event) =>
+                  setCorrectionForm((prev) => ({
+                    ...prev,
+                    proposed_at: event.target.value,
+                  }))
+                }
+              />
+              <SelectField
+                label="Proposed Mode"
+                value={correctionForm.proposed_mode}
+                onChange={(event) =>
+                  setCorrectionForm((prev) => ({
+                    ...prev,
+                    proposed_mode: event.target.value,
+                  }))
+                }
+              >
+                <option value="">Keep current</option>
+                <option value="onsite">Onsite</option>
+                <option value="remote">Remote</option>
+                <option value="field">Field</option>
+              </SelectField>
+              <SelectField
+                label="Proposed Office Location"
+                value={correctionForm.proposed_office_location_id}
+                onChange={(event) =>
+                  setCorrectionForm((prev) => ({
+                    ...prev,
+                    proposed_office_location_id: event.target.value,
+                  }))
+                }
+              >
+                <option value="">Not applicable</option>
+                {officeLocations.map((location) => (
+                  <option key={location.id} value={location.id}>
+                    {location.name}
+                  </option>
+                ))}
               </SelectField>
               <TextAreaField
                 label="Reason"

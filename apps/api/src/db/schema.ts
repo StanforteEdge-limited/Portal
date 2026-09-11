@@ -5,6 +5,7 @@ export * from '../modules/operations/work/model/schema';
 export * from '../modules/requests/requests/model/schema';
 export * from '../modules/finance/finance/model/schema';
 export * from '../modules/hr/payroll/model/schema';
+export * from '../modules/hr/leave/model/schema';
 export * from '../modules/requests/documents/model/schema';
 export * from '../modules/requests/taxonomy/model/schema';
 export * from '../modules/requests/forms/model/schema';

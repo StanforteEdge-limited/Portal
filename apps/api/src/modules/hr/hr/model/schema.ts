@@ -46,6 +46,7 @@ export type NewEmployeeMeta = typeof employeeMeta.$inferInsert;
 
 export const attendanceEntry = pgTable("sta_attendance_entries", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }),
   userId: bigint("user_id", { mode: 'bigint' }).notNull(),
   entryType: varchar("entry_type", { length: 30 }).notNull(),
   entryAt: timestamp("entry_at", { mode: 'date', precision: 6 }).notNull(),
@@ -70,6 +71,7 @@ export type NewAttendanceEntry = typeof attendanceEntry.$inferInsert;
 
 export const attendanceDaily = pgTable("sta_attendance_daily", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }),
   userId: bigint("user_id", { mode: 'bigint' }).notNull(),
   workDate: date("work_date", { mode: 'date' }).notNull(),
   status: varchar("status", { length: 20 }).default("absent").notNull(),
@@ -119,6 +121,7 @@ export type NewAttendanceHoliday = typeof attendanceHoliday.$inferInsert;
 
 export const attendanceCorrection = pgTable("sta_attendance_corrections", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }),
   userId: bigint("user_id", { mode: 'bigint' }).notNull(),
   attendanceDailyId: uuid("attendance_daily_id"),
   attendanceEntryId: uuid("attendance_entry_id"),
@@ -151,6 +154,7 @@ export type NewAttendanceCorrection = typeof attendanceCorrection.$inferInsert;
 
 export const attendanceException = pgTable("sta_attendance_exceptions", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }),
   userId: bigint("user_id", { mode: 'bigint' }).notNull(),
   attendanceDailyId: uuid("attendance_daily_id"),
   attendanceEntryId: uuid("attendance_entry_id"),
@@ -176,6 +180,7 @@ export type NewAttendanceException = typeof attendanceException.$inferInsert;
 
 export const leaveBalanceLedger = pgTable("sta_leave_balance_ledger", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }),
   userId: bigint("user_id", { mode: 'bigint' }).notNull(),
   leaveTypeKey: varchar("leave_type_key", { length: 100 }).notNull(),
   periodYear: integer("period_year").notNull(),
