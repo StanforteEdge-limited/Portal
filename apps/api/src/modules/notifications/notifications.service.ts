@@ -22,6 +22,7 @@ type NotificationInput = {
   emailCtaLabel?: string;
   emailTo?: string;
   emailThreadKey?: string;
+  scheduledFor?: Date | string;
 };
 
 @Injectable()
@@ -87,6 +88,7 @@ export class NotificationsService {
             tenantId: context.tenantId,
             notificationId: created.id,
             channel: 'email',
+            runAt: input.scheduledFor ? new Date(input.scheduledFor) : new Date(),
             payload: {
               to: recipientEmail,
               subject: input.emailSubject ?? input.title,
@@ -106,6 +108,7 @@ export class NotificationsService {
         });
         await this.queue.add('deliver-notification', { notificationJobId: job.id.toString() }, {
           jobId: job.id.toString(),
+          delay: input.scheduledFor ? Math.max(0, new Date(input.scheduledFor).getTime() - Date.now()) : 0,
           attempts: 3,
           backoff: { type: 'exponential', delay: 5000 },
           removeOnComplete: 1000,
