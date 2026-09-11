@@ -9,6 +9,7 @@ import { CreateUserDto } from '$modules/auth/users/dto/create-user.dto';
 import { AssignUserRolesDto } from '$modules/auth/users/dto/assign-user-roles.dto';
 import { InviteUserDto } from '$modules/auth/users/dto/invite-user.dto';
 import { UpdateUserDto } from '$modules/auth/users/dto/update-user.dto';
+import { CurrentTenant, TenantContext } from '$common/auth/tenant-context';
 
 @Controller()
 @ApiTags('Users')
@@ -18,14 +19,14 @@ export class UsersController {
 
   @Get('profile')
   @UseGuards(JwtAuthGuard)
-  getMyProfile(@Req() req: any) {
-    return this.usersService.getMyProfile(req.user.id);
+  getMyProfile(@Req() req: any, @CurrentTenant() tenant: TenantContext) {
+    return this.usersService.getMyProfile(req.user.id, tenant);
   }
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
-  getMe(@Req() req: any) {
-    return this.usersService.getMyProfile(req.user.id);
+  getMe(@Req() req: any, @CurrentTenant() tenant: TenantContext) {
+    return this.usersService.getMyProfile(req.user.id, tenant);
   }
 
   @Patch('profile')

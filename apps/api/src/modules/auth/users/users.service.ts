@@ -13,6 +13,7 @@ import { MailService } from '$common/mail/mail.service';
 import { generateUniqueUsername, makeUsernameSeed } from '$common/utils/username';
 import { paginatedResponse } from '$common/helpers/paginated-response';
 import { Drizzle } from '$common/db/drizzle-compat';
+import { TenantContext } from '$common/auth/tenant-context';
 
 @Injectable()
 export class UsersService {
@@ -21,7 +22,7 @@ export class UsersService {
     private readonly mailService: MailService
   ) {}
 
-  async getMyProfile(profileId: string) {
+  async getMyProfile(profileId: string, tenant?: TenantContext) {
     const user = await this.drizzle.profile.findUnique({
       where: { id: toBigInt(profileId) },
       include: {
@@ -46,7 +47,18 @@ export class UsersService {
     });
 
     if (!user) throw new NotFoundException('Profile not found');
-    return this.serializeProfile(user);
+    if (!tenant) return this.serializeProfile(user);
+
+    return this.serializeProfile({
+      ...user,
+      organizations: (user.organizations ?? []).filter((item: any) => item.tenantId === tenant.tenantId),
+      groups: (user.groups ?? []).filter((item: any) => item.group?.tenantId === tenant.tenantId),
+      projectMemberships: (user.projectMemberships ?? []).filter(
+        (item: any) => item.project?.tenantId === tenant.tenantId,
+      ),
+      employeeProfile:
+        user.employeeProfile?.tenantId === tenant.tenantId ? user.employeeProfile : null,
+    });
   }
 
   async updateMyProfile(profileId: string, dto: UpdateProfileDto) {
