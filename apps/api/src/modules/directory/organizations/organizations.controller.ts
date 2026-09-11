@@ -17,8 +17,8 @@ export class OrganizationsController {
   @Get()
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @Permissions('organizations.view', 'settings.manage')
-  list(@Query() query: Record<string, any>) {
-    return this.organizationsService.listOrganizations(query);
+  list(@CurrentTenant() tenant: TenantContext, @Query() query: Record<string, any>) {
+    return this.organizationsService.listOrganizations(query, tenant.tenantId);
   }
 
   @Post()
@@ -30,27 +30,27 @@ export class OrganizationsController {
 
   @Get('my')
   @UseGuards(JwtAuthGuard)
-  getMyOrganizations(@Req() req: any) {
-    return this.organizationsService.getMyOrganizations(req.user.id);
+  getMyOrganizations(@Req() req: any, @CurrentTenant() tenant: TenantContext) {
+    return this.organizationsService.getMyOrganizations(req.user.id, tenant.tenantId);
   }
 
   @Get(':id')
   @UseGuards(JwtAuthGuard)
-  getOne(@Param('id') id: string) {
-    return this.organizationsService.getOrganization(id);
+  getOne(@Param('id') id: string, @CurrentTenant() tenant: TenantContext) {
+    return this.organizationsService.getOrganization(id, tenant.tenantId);
   }
 
   @Put(':id')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @Permissions('settings.manage')
-  update(@Param('id') id: string, @Body() dto: UpdateOrganizationDto) {
-    return this.organizationsService.updateOrganization(id, dto);
+  update(@Param('id') id: string, @CurrentTenant() tenant: TenantContext, @Body() dto: UpdateOrganizationDto) {
+    return this.organizationsService.updateOrganization(id, dto, tenant.tenantId);
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @Permissions('settings.manage')
-  remove(@Param('id') id: string) {
-    return this.organizationsService.deleteOrganization(id);
+  remove(@Param('id') id: string, @CurrentTenant() tenant: TenantContext) {
+    return this.organizationsService.deleteOrganization(id, tenant.tenantId);
   }
 }

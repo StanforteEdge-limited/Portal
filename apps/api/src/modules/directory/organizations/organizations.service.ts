@@ -10,8 +10,8 @@ import { UpdateOrganizationDto } from '$modules/directory/organizations/dto/upda
 export class OrganizationsService {
   constructor(private readonly drizzle: DrizzleService) {}
 
-  async listOrganizations(params: Record<string, any>) {
-    const where: Drizzle.OrganizationWhereInput = {};
+  async listOrganizations(params: Record<string, any>, tenantId?: bigint) {
+    const where: Drizzle.OrganizationWhereInput = tenantId ? { tenantId } : {};
     if (params.is_active !== undefined) where.isActive = params.is_active === 'true';
     if (params.organization_type) where.organizationType = params.organization_type;
     if (params.search) {
@@ -29,9 +29,9 @@ export class OrganizationsService {
     return paginatedResponse(items, { page: 1, per_page: items.length, total: items.length });
   }
 
-  async getMyOrganizations(profileId: string) {
+  async getMyOrganizations(profileId: string, tenantId?: bigint) {
     const rows = await this.drizzle.profileOrganization.findMany({
-      where: { profileId: toBigInt(profileId) },
+      where: { profileId: toBigInt(profileId), ...(tenantId ? { tenantId } : {}) },
       include: { organization: true }
     });
 
@@ -71,8 +71,10 @@ export class OrganizationsService {
     });
   }
 
-  async updateOrganization(id: string, dto: UpdateOrganizationDto) {
-    const org = await this.drizzle.organization.findUnique({ where: { id: toBigInt(id) } });
+  async updateOrganization(id: string, dto: UpdateOrganizationDto, tenantId?: bigint) {
+    const org = await this.drizzle.organization.findFirst({
+      where: { id: toBigInt(id), ...(tenantId ? { tenantId } : {}) },
+    });
     if (!org) throw new NotFoundException('Organization not found');
 
     if (dto.code && dto.code !== org.code) {
@@ -102,9 +104,9 @@ export class OrganizationsService {
     });
   }
 
-  async deleteOrganization(id: string) {
+  async deleteOrganization(id: string, tenantId?: bigint) {
     const org = await this.drizzle.organization.findUnique({
-      where: { id: toBigInt(id) },
+      where: { id: toBigInt(id), ...(tenantId ? { tenantId } : {}) },
       include: { childOrganizations: { select: { id: true } } }
     });
     if (!org) throw new NotFoundException('Organization not found');
@@ -116,9 +118,9 @@ export class OrganizationsService {
     return { success: true };
   }
 
-  async getOrganization(id: string) {
+  async getOrganization(id: string, tenantId?: bigint) {
     const org = await this.drizzle.organization.findUnique({
-      where: { id: toBigInt(id) },
+      where: { id: toBigInt(id), ...(tenantId ? { tenantId } : {}) },
     });
     if (!org) throw new NotFoundException('Organization not found');
     return org;
