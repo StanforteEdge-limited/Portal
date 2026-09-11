@@ -359,8 +359,44 @@ class TableRepository {
   }
 
   async aggregate(args: QueryArgs = {}): Promise<any> {
-    const total = await this.count({ where: args?.where });
-    return { _count: { _all: total } };
+    const columns = tableColumns(this.table);
+    const sums = Object.keys(args?._sum ?? {}).filter((key) => columns[key]);
+    const avgs = Object.keys(args?._avg ?? {}).filter((key) => columns[key]);
+    const mins = Object.keys(args?._min ?? {}).filter((key) => columns[key]);
+    const maxs = Object.keys(args?._max ?? {}).filter((key) => columns[key]);
+    if (!sums.length && !avgs.length && !mins.length && !maxs.length) {
+      const total = await this.count({ where: args?.where });
+      return { _count: { _all: total } };
+    }
+    const selection: Record<string, any> = {};
+    for (const key of sums) selection[`_sum_${key}`] = sql`sum(${columns[key]})`;
+    for (const key of avgs) selection[`_avg_${key}`] = sql`avg(${columns[key]})`;
+    for (const key of mins) selection[`_min_${key}`] = sql`min(${columns[key]})`;
+    for (const key of maxs) selection[`_max_${key}`] = sql`max(${columns[key]})`;
+    if (args?._count) selection._count = drizzleCount();
+    const where = buildWhere(this.table, await this.scopedWhere(args?.where));
+    let query = this.db.select(selection).from(this.table).$dynamic();
+    if (where) query = query.where(where);
+    const row = (await query)[0] ?? {};
+    const mapped: Record<string, any> = {};
+    if (sums.length) {
+      mapped._sum = {};
+      for (const key of sums) mapped._sum[key] = row[`_sum_${key}`] ?? null;
+    }
+    if (avgs.length) {
+      mapped._avg = {};
+      for (const key of avgs) mapped._avg[key] = row[`_avg_${key}`] ?? null;
+    }
+    if (mins.length) {
+      mapped._min = {};
+      for (const key of mins) mapped._min[key] = row[`_min_${key}`] ?? null;
+    }
+    if (maxs.length) {
+      mapped._max = {};
+      for (const key of maxs) mapped._max[key] = row[`_max_${key}`] ?? null;
+    }
+    if (args?._count) mapped._count = { _all: Number(row._count ?? 0) };
+    return mapped;
   }
 
   async groupBy(args: QueryArgs = {}): Promise<any[]> {
