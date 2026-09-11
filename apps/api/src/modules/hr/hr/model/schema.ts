@@ -3,6 +3,7 @@ import { tokenTypeEnum, organizationTypeEnum, groupUserRoleEnum, requestStatusEn
 
 export const employeeProfile = pgTable("sta_employee_profiles", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }),
   userId: bigint("user_id", { mode: 'bigint' }).notNull().unique(),
   employeeCode: varchar("employee_code", { length: 60 }).unique(),
   jobTitle: varchar("job_title", { length: 120 }),
@@ -20,6 +21,7 @@ export const employeeProfile = pgTable("sta_employee_profiles", {
   updatedAt: timestamp("updated_at", { mode: 'date', precision: 6 }).notNull().$onUpdate(() => new Date()),
   designationId: bigint("designation_id", { mode: 'bigint' }),
 }, (table) => [
+    index("employeeProfile_index_tenantId").on(table.tenantId),
     index("employeeProfile_index_managerUserId").on(table.managerUserId),
     index("employeeProfile_index_employmentStatus").on(table.employmentStatus),
 ]);
@@ -96,6 +98,7 @@ export type NewAttendanceDaily = typeof attendanceDaily.$inferInsert;
 
 export const attendanceHoliday = pgTable("sta_attendance_holidays", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }),
   organizationId: bigint("organization_id", { mode: 'bigint' }),
   officeLocationId: bigint("office_location_id", { mode: 'bigint' }),
   holidayDate: date("holiday_date", { mode: 'date' }).notNull(),
@@ -106,6 +109,7 @@ export const attendanceHoliday = pgTable("sta_attendance_holidays", {
   createdAt: timestamp("created_at", { mode: 'date', precision: 6 }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: 'date', precision: 6 }).notNull().$onUpdate(() => new Date()),
 }, (table) => [
+    index("attendanceHoliday_index_tenantId").on(table.tenantId),
     index("attendanceHoliday_index_organizationId_holidayDate").on(table.organizationId, table.holidayDate),
     index("attendanceHoliday_index_officeLocationId_holidayDate").on(table.officeLocationId, table.holidayDate),
 ]);

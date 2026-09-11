@@ -35,6 +35,7 @@ export type NewOrganizationOfficeLocation = typeof organizationOfficeLocation.$i
 
 export const organization = pgTable("sta_organizations", {
   id: bigserial("id", { mode: 'bigint' }).primaryKey(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }),
   name: varchar("name", { length: 255 }).notNull(),
   code: varchar("code", { length: 50 }).notNull().unique(),
   parentOrganizationId: bigint("parent_organization_id", { mode: 'bigint' }),
@@ -43,7 +44,9 @@ export const organization = pgTable("sta_organizations", {
   metadata: jsonb("metadata"),
   createdAt: timestamp("created_at", { mode: 'date', precision: 6 }).notNull(),
   updatedAt: timestamp("updated_at", { mode: 'date', precision: 6 }).notNull(),
-});
+}, (table) => [
+    index("organization_index_tenantId").on(table.tenantId),
+]);
 
 export type Organization = typeof organization.$inferSelect;
 export type NewOrganization = typeof organization.$inferInsert;
@@ -65,6 +68,7 @@ export type NewProfileOrganization = typeof profileOrganization.$inferInsert;
 
 export const group = pgTable("sta_groups", {
   id: bigserial("id", { mode: 'bigint' }).primaryKey(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
   type: varchar("type", { length: 50 }).default("general").notNull(),
