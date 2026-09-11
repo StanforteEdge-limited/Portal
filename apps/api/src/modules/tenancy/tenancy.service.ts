@@ -43,13 +43,13 @@ export class TenancyService {
     if (!context.isOwner) throw new BadRequestException('Only tenant owners can change tenant settings');
   }
 
-  async auditTenantCoverage() {
+  async auditTenantCoverage(context: TenantContext) {
     const results = await Promise.all(
       TENANT_SCOPED_TABLES.map(async (table) => {
         const rows = await this.drizzle.$queryRaw<{ total: number; unscoped: number }>(
-          sql.raw(
-            `SELECT COUNT(*)::int AS total, COUNT(*) FILTER (WHERE tenant_id IS NULL)::int AS unscoped FROM "${table}"`,
-          ),
+          sql`SELECT COUNT(*) FILTER (WHERE tenant_id = ${context.tenantId})::int AS total,
+                     COUNT(*) FILTER (WHERE tenant_id IS NULL)::int AS unscoped
+              FROM ${sql.raw(`"${table}"`)}`,
         );
         const row = rows[0] ?? { total: 0, unscoped: 0 };
         return {

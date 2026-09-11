@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, ForbiddenException, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '$common/auth/jwt-auth.guard';
 import { PermissionsGuard } from '$common/auth/permissions.guard';
@@ -19,8 +19,11 @@ export class TenancyController {
 
   @Get('coverage')
   @Permissions('admin.users.manage')
-  coverage() {
-    return this.tenancyService.auditTenantCoverage();
+  coverage(@CurrentTenant() tenant: TenantContext) {
+    if (!tenant.isOwner) {
+      throw new ForbiddenException('Only tenant owners can audit tenant coverage');
+    }
+    return this.tenancyService.auditTenantCoverage(tenant);
   }
 
   @Get('current')
