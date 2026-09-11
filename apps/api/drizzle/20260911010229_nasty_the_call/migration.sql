@@ -1,0 +1,1 @@
+ALTER TABLE "sta_tenants" ALTER COLUMN "updated_at" SET DEFAULT now();

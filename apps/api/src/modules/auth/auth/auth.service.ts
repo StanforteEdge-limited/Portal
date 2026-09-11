@@ -94,8 +94,10 @@ export class AuthService {
       this.throwUnauthorized('Invalid credentials', 'AUTH_INVALID_CREDENTIALS');
     }
 
+    const tenantContext = await this.resolveTenantContext(profile.id, organization.id);
+    if (!tenantContext) this.throwUnauthorized('Tenant membership is required', 'AUTH_TENANT_REQUIRED');
     const authContext = await this.buildAuthContext(profile.id);
-    const tokens = await this.issueTokens(profile.id, authContext.permissions, authContext.roles);
+    const tokens = await this.issueTokens(profile.id, tenantContext.tenantId, authContext.permissions, authContext.roles);
     this.setAuthCookies(res, tokens.accessToken, tokens.refreshToken, tokens.expiresIn);
 
     await this.drizzle.profile.update({
@@ -119,7 +121,12 @@ export class AuthService {
           code: organization.code
         },
         roles: authContext.roles,
-        permissions: authContext.permissions
+        permissions: authContext.permissions,
+        tenant: {
+          id: tenantContext.tenantId.toString(),
+          name: tenantContext.name,
+          slug: tenantContext.slug
+        }
       }
       // SECURITY: Tokens are now ONLY in httpOnly cookies.
       // We no longer return them in the JSON body.
@@ -191,6 +198,7 @@ export class AuthService {
       include: { onboardingProgress: true }
     });
     if (!profile) throw new NotFoundException('User not found');
+    const tenantContext = await this.resolveTenantContext(profile.id, profile.primaryOrganizationId);
     const authContext = await this.buildAuthContext(profile.id);
     return {
       id: profile.id.toString(),
@@ -200,7 +208,10 @@ export class AuthService {
       status: profile.status,
       roles: authContext.roles,
       permissions: authContext.permissions,
-      onboarding_status: profile.onboardingProgress?.status
+      onboarding_status: profile.onboardingProgress?.status,
+      tenant: tenantContext
+        ? { id: tenantContext.tenantId.toString(), name: tenantContext.name, slug: tenantContext.slug }
+        : undefined
     };
   }
 
@@ -251,11 +262,13 @@ export class AuthService {
       this.throwUnauthorized('Refresh token expired', 'AUTH_REFRESH_EXPIRED');
     }
 
+    const tenantContext = await this.resolveTenantContext(tokenRow.profileId);
+    if (!tenantContext) this.throwUnauthorized('Tenant membership is required', 'AUTH_TENANT_REQUIRED');
     const authContext = await this.buildAuthContext(tokenRow.profileId);
 
     // Rotate refresh token
     await this.drizzle.token.delete({ where: { id: tokenRow.id } });
-    const tokens = await this.issueTokens(tokenRow.profileId, authContext.permissions, authContext.roles);
+    const tokens = await this.issueTokens(tokenRow.profileId, tenantContext.tenantId, authContext.permissions, authContext.roles);
     this.setAuthCookies(res, tokens.accessToken, tokens.refreshToken, tokens.expiresIn);
 
     return {
@@ -406,8 +419,10 @@ export class AuthService {
       }
       if (profile.status !== 'active') return `${appUrl}/login?error=account_inactive`;
 
+      const tenantContext = await this.resolveTenantContext(profile.id, profile.primaryOrganizationId);
+      if (!tenantContext) return `${appUrl}/login?error=tenant_context_missing`;
       const authContext = await this.buildAuthContext(profile.id);
-      const issued = await this.issueTokens(profile.id, authContext.permissions, authContext.roles);
+      const issued = await this.issueTokens(profile.id, tenantContext.tenantId, authContext.permissions, authContext.roles);
       this.setAuthCookies(res, issued.accessToken, issued.refreshToken, issued.expiresIn);
 
       await this.drizzle.profile.update({
@@ -430,6 +445,9 @@ export class AuthService {
 
     // Always resolve fresh roles/permissions from DB so RBAC changes apply immediately
     // without forcing users to re-login and re-issue tokens.
+    const tenantId = payload?.tenantId ? toBigInt(payload.tenantId) : null;
+    const tenantContext = await this.resolveTenantContext(profileId, undefined, tenantId);
+    if (!tenantContext) return null;
     const roles = await this.getUserRoles(profileId);
     const permissions = await this.getUserPermissions(profileId, roles);
 
@@ -439,13 +457,17 @@ export class AuthService {
       first_name: profile.firstName ?? undefined,
       last_name: profile.lastName ?? undefined,
       permissions,
-      roles
+      roles,
+      tenantId: tenantContext.tenantId.toString(),
+      tenantMembershipId: tenantContext.membershipId.toString(),
+      isTenantOwner: tenantContext.isOwner
     };
   }
 
-  private async issueTokens(profileId: bigint, permissions: string[], roles: string[]) {
+  private async issueTokens(profileId: bigint, tenantId: bigint, permissions: string[], roles: string[]) {
     const accessPayload = {
       sub: profileId.toString(),
+      tenantId: tenantId.toString(),
       permissions,
       roles
     };
@@ -503,6 +525,38 @@ export class AuthService {
     const roles = await this.getUserRoles(profileId);
     const permissions = await this.getUserPermissions(profileId, roles);
     return { roles, permissions };
+  }
+
+  private async resolveTenantContext(
+    profileId: bigint,
+    organizationId?: bigint | null,
+    requestedTenantId?: bigint | null,
+  ) {
+    const tenantOrganizationWhere = organizationId
+      ? { organizationId }
+      : requestedTenantId
+        ? { tenantId: requestedTenantId }
+        : undefined;
+    const tenantOrganization = tenantOrganizationWhere
+      ? await this.drizzle.tenantOrganization.findFirst({ where: tenantOrganizationWhere })
+      : null;
+    const tenantId = tenantOrganization?.tenantId ?? requestedTenantId;
+    if (!tenantId) return null;
+
+    const membership = await this.drizzle.tenantMembership.findFirst({
+      where: { tenantId, profileId, status: 'active' },
+    });
+    if (!membership) return null;
+
+    const tenant = await this.drizzle.tenant.findUnique({ where: { id: tenantId } });
+    if (!tenant || tenant.status !== 'active') return null;
+    return {
+      tenantId: tenant.id,
+      membershipId: membership.id,
+      isOwner: membership.isOwner,
+      name: tenant.name,
+      slug: tenant.slug,
+    };
   }
 
   private parseExpiresInSeconds(expires: string): number {

@@ -19,6 +19,11 @@ export class AuthUserDto {
     name: string;
     code: string;
   };
+  tenant?: {
+    id: string;
+    name: string;
+    slug: string;
+  };
 }
 
 export class AuthTokensDto {
@@ -52,4 +57,9 @@ export class AuthStatusResponseDto {
   permissions!: string[];
   @ApiProperty({ required: false, example: 'profile_pending' })
   onboarding_status?: string;
+  tenant?: {
+    id: string;
+    name: string;
+    slug: string;
+  };
 }
