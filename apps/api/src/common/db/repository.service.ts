@@ -428,6 +428,11 @@ class TableRepository {
   }
 }
 
+function requireRawTenantContext(tenantContext?: TenantContextService) {
+  if (!tenantContext) throw new Error('Tenant context is required for raw database operations');
+  return tenantContext.require();
+}
+
 class JoinTableRepository extends TableRepository {
   constructor(
     db: DbLike,
@@ -504,6 +509,7 @@ export class RepositoryService {
   async $queryRaw<T = any>(query: SQL): Promise<T>;
   async $queryRaw<T = any>(strings: TemplateStringsArray, ...values: unknown[]): Promise<T>;
   async $queryRaw<T = any>(query: SQL | TemplateStringsArray, ...values: unknown[]): Promise<T> {
+    requireRawTenantContext(this.tenantContext);
     const statement = Array.isArray(query) && 'raw' in query ? valuesForRaw(query, values) : (query as SQL);
     return this.dbService.client.execute(statement) as unknown as Promise<T>;
   }
@@ -511,11 +517,13 @@ export class RepositoryService {
   async $executeRaw<T = any>(query: SQL): Promise<T>;
   async $executeRaw<T = any>(strings: TemplateStringsArray, ...values: unknown[]): Promise<T>;
   async $executeRaw<T = any>(query: SQL | TemplateStringsArray, ...values: unknown[]): Promise<T> {
+    requireRawTenantContext(this.tenantContext);
     const statement = Array.isArray(query) && 'raw' in query ? valuesForRaw(query, values) : (query as SQL);
     return this.dbService.client.execute(statement) as unknown as Promise<T>;
   }
 
   async $executeRawUnsafe<T = unknown>(query: SQL | TemplateStringsArray | string, ...values: unknown[]): Promise<T> {
+    requireRawTenantContext(this.tenantContext);
     if (typeof query === 'string') {
       return this.dbService.client.execute(sql.raw(query)) as unknown as Promise<T>;
     }

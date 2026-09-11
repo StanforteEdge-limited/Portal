@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { TenantContext } from './tenant-context';
 
@@ -8,6 +8,12 @@ export class TenantContextService {
 
   get(): TenantContext | undefined {
     return this.storage.getStore();
+  }
+
+  require(): TenantContext {
+    const context = this.get();
+    if (!context) throw new UnauthorizedException('Tenant context is required for this operation');
+    return context;
   }
 
   enter(context: TenantContext): void {
