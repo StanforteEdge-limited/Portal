@@ -164,7 +164,11 @@ function tenantScopedWhere(table: any, where: Record<string, any> | undefined, t
 }
 
 function tenantScopedData(table: any, data: Record<string, any>, tenantId?: bigint) {
-  if (!tenantId || !tableColumns(table).tenantId || data.tenantId !== undefined) return data;
+  if (!tableColumns(table).tenantId) return data;
+  if (tenantId && data.tenantId !== undefined && BigInt(data.tenantId) !== tenantId) {
+    throw new Error('Tenant mismatch: the record belongs to a different tenant');
+  }
+  if (!tenantId || data.tenantId !== undefined) return data;
   return { ...data, tenantId };
 }
 
