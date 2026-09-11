@@ -215,6 +215,48 @@ export class AuthService {
     };
   }
 
+  async listTenants(userId: string) {
+    const memberships = await this.drizzle.tenantMembership.findMany({
+      where: { profileId: toBigInt(userId), status: 'active' },
+      orderBy: { joinedAt: 'asc' },
+    });
+    const tenants = await Promise.all(
+      memberships.map(async (membership) => {
+        const tenant = await this.drizzle.tenant.findUnique({ where: { id: membership.tenantId } });
+        if (!tenant || tenant.status !== 'active') return null;
+        return {
+          id: tenant.id.toString(),
+          name: tenant.name,
+          slug: tenant.slug,
+          plan: tenant.plan,
+          isOwner: membership.isOwner,
+          joinedAt: membership.joinedAt,
+        };
+      }),
+    );
+    return tenants.filter((tenant): tenant is NonNullable<typeof tenant> => tenant !== null);
+  }
+
+  async switchTenant(userId: string, tenantIdValue: string, res?: Response) {
+    const profileId = toBigInt(userId);
+    const tenantId = toBigInt(tenantIdValue);
+    const tenantContext = await this.resolveTenantContext(profileId, undefined, tenantId);
+    if (!tenantContext) this.throwUnauthorized('Tenant membership is required', 'AUTH_TENANT_REQUIRED');
+
+    const authContext = await this.buildAuthContext(profileId);
+    const tokens = await this.issueTokens(profileId, tenantContext.tenantId, authContext.permissions, authContext.roles);
+    this.setAuthCookies(res, tokens.accessToken, tokens.refreshToken, tokens.expiresIn);
+
+    return {
+      tenant: {
+        id: tenantContext.tenantId.toString(),
+        name: tenantContext.name,
+        slug: tenantContext.slug,
+        isOwner: tenantContext.isOwner,
+      },
+    };
+  }
+
   async logout(userId: string, res?: Response) {
     await this.drizzle.token.deleteMany({ where: { profileId: toBigInt(userId), type: 'refresh' } });
     this.clearAuthCookies(res);

@@ -9,6 +9,7 @@ import { ResetPasswordDto } from '$modules/auth/auth/dto/reset-password.dto';
 import { JwtAuthGuard } from '$common/auth/jwt-auth.guard';
 import { AuthStatusResponseDto, LoginResponseDto } from '$modules/auth/auth/dto/auth-response.dto';
 import { AcceptInviteDto } from '$modules/auth/auth/dto/accept-invite.dto';
+import { SwitchTenantDto } from '$modules/auth/auth/dto/switch-tenant.dto';
 import type { Response } from 'express';
 
 @Controller('auth')
@@ -36,6 +37,24 @@ export class AuthController {
   @ApiOkResponse({ type: AuthStatusResponseDto })
   status(@Req() req: any) {
     return this.authService.status(req.user?.id);
+  }
+
+  @Get('tenants')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('bearer')
+  listTenants(@Req() req: any) {
+    return this.authService.listTenants(req.user?.id);
+  }
+
+  @Post('tenants/switch')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('bearer')
+  switchTenant(
+    @Req() req: any,
+    @Body() dto: SwitchTenantDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    return this.authService.switchTenant(req.user?.id, dto.tenant_id, res);
   }
 
   @Post('logout')

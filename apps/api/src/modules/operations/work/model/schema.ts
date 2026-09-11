@@ -3,6 +3,7 @@ import { tokenTypeEnum, organizationTypeEnum, groupUserRoleEnum, requestStatusEn
 
 export const project = pgTable("sta_projects", {
   id: bigserial("id", { mode: 'bigint' }).primaryKey(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }),
   organizationId: bigint("organization_id", { mode: 'bigint' }),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
@@ -12,6 +13,7 @@ export const project = pgTable("sta_projects", {
   createdAt: timestamp("created_at", { mode: 'date', precision: 6 }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: 'date', precision: 6 }).notNull().$onUpdate(() => new Date()),
 }, (table) => [
+    index("project_index_tenantId").on(table.tenantId),
     index("project_index_organizationId").on(table.organizationId),
     index("project_index_isActive").on(table.isActive),
 ]);

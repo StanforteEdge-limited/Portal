@@ -3,6 +3,7 @@ import { tokenTypeEnum, organizationTypeEnum, groupUserRoleEnum, requestStatusEn
 
 export const requestGroup = pgTable("sta_request_groups", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }),
   organizationId: bigint("organization_id", { mode: 'bigint' }),
   name: varchar("name", { length: 100 }).notNull(),
   code: varchar("code", { length: 20 }).notNull().unique(),
@@ -58,6 +59,7 @@ export type NewRequestType = typeof requestType.$inferInsert;
 
 export const requestInstance = pgTable("sta_request_instances", {
   id: bigserial("id", { mode: 'bigint' }).primaryKey(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }),
   requestTypeId: uuid("request_type_id").notNull(),
   groupId: uuid("group_id").notNull(),
   organizationId: bigint("organization_id", { mode: 'bigint' }),

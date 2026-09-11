@@ -26,6 +26,7 @@ import { NodePgTransaction } from 'drizzle-orm/node-postgres';
 import * as schema from '$app/db/schema';
 import { AppDb, DbService } from './db.service';
 import { relations } from '$app/db/relations';
+import { TenantContextService } from '$common/auth/tenant-context.service';
 
 type DbLike = AppDb | NodePgTransaction<typeof relations>;
 type QueryArgs = Record<string, any> | undefined;
@@ -157,6 +158,16 @@ function cleanData(data: Record<string, any>) {
   return Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined));
 }
 
+function tenantScopedWhere(table: any, where: Record<string, any> | undefined, tenantId?: bigint) {
+  if (!tenantId || !tableColumns(table).tenantId) return where;
+  return { AND: [{ tenantId }, ...(where ? [where] : [])] };
+}
+
+function tenantScopedData(table: any, data: Record<string, any>, tenantId?: bigint) {
+  if (!tenantId || !tableColumns(table).tenantId || data.tenantId !== undefined) return data;
+  return { ...data, tenantId };
+}
+
 function valuesForRaw(strings: TemplateStringsArray, values: unknown[]) {
   return strings.reduce((query, chunk, index) => sql`${query}${sql.raw(chunk)}${index < values.length ? values[index] : sql.raw('')}`, sql``);
 }
@@ -166,11 +177,12 @@ class TableRepository {
     protected readonly db: DbLike,
     protected readonly tableName: string,
     protected readonly table: any,
+    protected readonly tenantContext?: TenantContextService,
   ) {}
 
   async findMany(args: QueryArgs = {}): Promise<any[]> {
     let query = this.db.select(buildColumns(this.table, args?.select)).from(this.table).$dynamic();
-    const where = buildWhere(this.table, args?.where);
+    const where = buildWhere(this.table, tenantScopedWhere(this.table, args?.where, this.tenantContext?.get()?.tenantId));
     const orderBy = buildOrderBy(this.table, args?.orderBy);
     if (where) query = query.where(where);
     if (orderBy?.length) query = query.orderBy(...orderBy);
@@ -197,14 +209,16 @@ class TableRepository {
 
   async count(args: QueryArgs = {}): Promise<number> {
     let query = this.db.select({ value: drizzleCount() }).from(this.table).$dynamic();
-    const where = buildWhere(this.table, args?.where);
+    const where = buildWhere(this.table, tenantScopedWhere(this.table, args?.where, this.tenantContext?.get()?.tenantId));
     if (where) query = query.where(where);
     const rows = await query;
     return Number(rows[0]?.value ?? 0);
   }
 
   async create(args: QueryArgs = {}): Promise<any> {
-    const rows = await this.db.insert(this.table).values(cleanData(args?.data ?? {})).returning();
+    const rows = await this.db.insert(this.table).values(
+      cleanData(tenantScopedData(this.table, args?.data ?? {}, this.tenantContext?.get()?.tenantId)),
+    ).returning();
     const result = rows[0] ?? null;
     return this.attachInclude(result, args?.include);
   }
@@ -212,13 +226,17 @@ class TableRepository {
   async createMany(args: QueryArgs = {}): Promise<{ count: number }> {
     const data = Array.isArray(args?.data) ? args.data : [args?.data].filter(Boolean);
     if (data.length === 0) return { count: 0 };
-    await this.db.insert(this.table).values(data.map(cleanData));
+    await this.db.insert(this.table).values(
+      data.map((entry: Record<string, any>) =>
+        cleanData(tenantScopedData(this.table, entry, this.tenantContext?.get()?.tenantId)),
+      ),
+    );
     return { count: data.length };
   }
 
   async update(args: QueryArgs = {}): Promise<any> {
     let query = this.db.update(this.table).set(cleanData(args?.data ?? {})).returning().$dynamic();
-    const where = buildWhere(this.table, args?.where);
+    const where = buildWhere(this.table, tenantScopedWhere(this.table, args?.where, this.tenantContext?.get()?.tenantId));
     if (where) query = query.where(where);
     const rows = await query;
     return this.attachInclude(rows[0] ?? null, args?.include);
@@ -226,7 +244,7 @@ class TableRepository {
 
   async updateMany(args: QueryArgs = {}): Promise<{ count: number }> {
     let query = this.db.update(this.table).set(cleanData(args?.data ?? {})).$dynamic();
-    const where = buildWhere(this.table, args?.where);
+    const where = buildWhere(this.table, tenantScopedWhere(this.table, args?.where, this.tenantContext?.get()?.tenantId));
     if (where) query = query.where(where);
     const result = await query;
     return { count: Number(result?.rowCount ?? 0) };
@@ -234,7 +252,7 @@ class TableRepository {
 
   async delete(args: QueryArgs = {}): Promise<any> {
     let query = this.db.delete(this.table).returning().$dynamic();
-    const where = buildWhere(this.table, args?.where);
+    const where = buildWhere(this.table, tenantScopedWhere(this.table, args?.where, this.tenantContext?.get()?.tenantId));
     if (where) query = query.where(where);
     const rows = await query;
     return rows[0] ?? null;
@@ -242,7 +260,7 @@ class TableRepository {
 
   async deleteMany(args: QueryArgs = {}): Promise<{ count: number }> {
     let query = this.db.delete(this.table).$dynamic();
-    const where = buildWhere(this.table, args?.where);
+    const where = buildWhere(this.table, tenantScopedWhere(this.table, args?.where, this.tenantContext?.get()?.tenantId));
     if (where) query = query.where(where);
     const result = await query;
     return { count: Number(result?.rowCount ?? 0) };
@@ -273,7 +291,7 @@ class TableRepository {
     }
     if (args?._count) selection._count = drizzleCount();
     let query = this.db.select(selection).from(this.table).$dynamic();
-    const where = buildWhere(this.table, args?.where);
+    const where = buildWhere(this.table, tenantScopedWhere(this.table, args?.where, this.tenantContext?.get()?.tenantId));
     if (where) query = query.where(where);
     if (by.length) query = query.groupBy(...compact(by.map((key) => columns[key])));
     const rows = await query;
@@ -330,7 +348,7 @@ class TableRepository {
       const directKey = [...names].map((name) => `${name}Id`).find((key) => sourceColumns[key]);
       if (directKey) {
         return {
-          repository: new TableRepository(this.db, candidateName, target),
+          repository: new TableRepository(this.db, candidateName, target, this.tenantContext),
           foreignKey: 'id',
           foreignValue: (value: Record<string, any>) => value[directKey],
           many: false,
@@ -340,7 +358,7 @@ class TableRepository {
         .find((key) => targetColumns[key]);
       if (reverseKey) {
         return {
-          repository: new TableRepository(this.db, candidateName, target),
+          repository: new TableRepository(this.db, candidateName, target, this.tenantContext),
           foreignKey: reverseKey,
           foreignValue: () => sourceId,
           many: true,
@@ -380,6 +398,7 @@ class TableRepository {
           sourceForeignKey,
           targetForeignKey,
           sourceId,
+          this.tenantContext,
         ),
         foreignKey: 'id',
         foreignValue: (value: Record<string, any>) => value.id,
@@ -413,8 +432,9 @@ class JoinTableRepository extends TableRepository {
     private readonly sourceForeignKey: string,
     private readonly targetForeignKey: string,
     private readonly sourceId: any,
+    tenantContext?: TenantContextService,
   ) {
-    super(db, 'join', target);
+    super(db, 'join', target, tenantContext);
   }
 
   async findMany(args: QueryArgs = {}): Promise<any[]> {
@@ -432,7 +452,7 @@ class JoinTableRepository extends TableRepository {
 export class RepositoryService {
   private readonly delegates = new Map<string, TableRepository>();
 
-  constructor(private readonly dbService: DbService) {
+  constructor(private readonly dbService: DbService, private readonly tenantContext?: TenantContextService) {
     return new Proxy(this, {
       get: (target, property, receiver) => {
         if (typeof property !== 'string') return Reflect.get(target, property, receiver);
@@ -440,7 +460,7 @@ export class RepositoryService {
         const table = tableMap[property] ?? tableMap[lowerFirst(property)];
         if (!table) return undefined;
         if (!target.delegates.has(property)) {
-          target.delegates.set(property, new TableRepository(target.dbService.client, property, table));
+          target.delegates.set(property, new TableRepository(target.dbService.client, property, table, target.tenantContext));
         }
 
         return target.delegates.get(property);
@@ -459,6 +479,7 @@ export class RepositoryService {
     return this.dbService.client.transaction(async (tx) => {
       const scoped = Object.create(RepositoryService.prototype) as RepositoryService;
       (scoped as any).dbService = { client: tx };
+      (scoped as any).tenantContext = this.tenantContext;
       (scoped as any).delegates = new Map<string, TableRepository>();
       const proxy = new Proxy(scoped, {
         get: (target, property, receiver) => {
@@ -467,7 +488,7 @@ export class RepositoryService {
           const table = tableMap[property] ?? tableMap[lowerFirst(property)];
           if (!table) return undefined;
           if (!(target as any).delegates.has(property)) {
-            (target as any).delegates.set(property, new TableRepository(tx, property, table));
+            (target as any).delegates.set(property, new TableRepository(tx, property, table, (target as any).tenantContext));
           }
           return (target as any).delegates.get(property);
         },

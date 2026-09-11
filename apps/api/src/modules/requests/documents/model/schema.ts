@@ -3,6 +3,7 @@ import { tokenTypeEnum, organizationTypeEnum, groupUserRoleEnum, requestStatusEn
 
 export const fileAsset = pgTable("sta_file_assets", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }),
   organizationId: bigint("organization_id", { mode: 'bigint' }),
   uploadedBy: bigint("uploaded_by", { mode: 'bigint' }),
   storageDisk: varchar("storage_disk", { length: 30 }).default("local").notNull(),
@@ -15,6 +16,7 @@ export const fileAsset = pgTable("sta_file_assets", {
   createdAt: timestamp("created_at", { mode: 'date', precision: 6 }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: 'date', precision: 6 }).notNull().$onUpdate(() => new Date()),
 }, (table) => [
+    index("fileAsset_index_tenantId").on(table.tenantId),
     index("fileAsset_index_organizationId").on(table.organizationId),
     index("fileAsset_index_uploadedBy").on(table.uploadedBy),
 ]);
@@ -24,6 +26,7 @@ export type NewFileAsset = typeof fileAsset.$inferInsert;
 
 export const document = pgTable("sta_documents", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }),
   organizationId: bigint("organization_id", { mode: 'bigint' }),
   title: varchar("title", { length: 255 }).notNull(),
   slug: varchar("slug", { length: 180 }).notNull().unique(),
@@ -40,6 +43,7 @@ export const document = pgTable("sta_documents", {
   createdAt: timestamp("created_at", { mode: 'date', precision: 6 }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: 'date', precision: 6 }).notNull().$onUpdate(() => new Date()),
 }, (table) => [
+    index("document_index_tenantId").on(table.tenantId),
     index("document_index_organizationId").on(table.organizationId),
     index("document_index_status").on(table.status),
     index("document_index_category").on(table.category),
