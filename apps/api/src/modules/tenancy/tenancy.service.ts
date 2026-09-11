@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
 import { DrizzleService } from '$common/drizzle/drizzle.service';
+import { TenantContext } from '$common/auth/tenant-context';
 
 const TENANT_SCOPED_TABLES = [
   'sta_organizations',
@@ -53,5 +54,50 @@ export class TenancyService {
       complete: results.every((result) => result.complete),
       tables: results,
     };
+  }
+
+  async listMembers(context: TenantContext) {
+    const memberships = await this.drizzle.tenantMembership.findMany({
+      where: { tenantId: context.tenantId, status: 'active' },
+      orderBy: { joinedAt: 'asc' },
+    });
+
+    const members = await Promise.all(
+      memberships.map(async (membership) => {
+        const profile = await this.drizzle.profile.findUnique({
+          where: { id: membership.profileId },
+          select: { id: true, email: true, firstName: true, lastName: true, status: true },
+        });
+        if (!profile) return null;
+        return {
+          membershipId: membership.id.toString(),
+          profileId: profile.id.toString(),
+          email: profile.email,
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+          profileStatus: profile.status,
+          isOwner: membership.isOwner,
+          joinedAt: membership.joinedAt,
+        };
+      }),
+    );
+    return members.filter((member): member is NonNullable<typeof member> => member !== null);
+  }
+
+  async deactivateMember(context: TenantContext, profileId: bigint) {
+    const membership = await this.drizzle.tenantMembership.findFirst({
+      where: { tenantId: context.tenantId, profileId, status: 'active' },
+    });
+    if (!membership) throw new NotFoundException('Tenant membership not found');
+    if (membership.isOwner) throw new BadRequestException('Tenant owners cannot be deactivated');
+    if (membership.profileId === context.profileId) {
+      throw new BadRequestException('You cannot deactivate your own tenant membership');
+    }
+
+    await this.drizzle.tenantMembership.update({
+      where: { id: membership.id },
+      data: { status: 'inactive', removedAt: new Date() },
+    });
+    return { success: true };
   }
 }
