@@ -5,9 +5,6 @@ export const subscriptionPlan = pgTable('sta_subscription_plans', {
   code: varchar('code', { length: 50 }).notNull(),
   name: varchar('name', { length: 120 }).notNull(),
   description: varchar('description', { length: 500 }),
-  amountMinor: integer('amount_minor').default(0).notNull(),
-  currency: varchar('currency', { length: 3 }).default('NGN').notNull(),
-  interval: varchar('interval', { length: 20 }).default('monthly').notNull(),
   features: jsonb('features').default({}).notNull(),
   limits: jsonb('limits').default({}).notNull(),
   isActive: boolean('is_active').default(true).notNull(),
@@ -15,6 +12,21 @@ export const subscriptionPlan = pgTable('sta_subscription_plans', {
   updatedAt: timestamp('updated_at', { mode: 'date', precision: 6 }).defaultNow().notNull().$onUpdate(() => new Date()),
 }, (table) => [
   uniqueIndex('subscription_plan_unique_code').on(table.code),
+]);
+
+export const subscriptionPlanPrice = pgTable('sta_subscription_plan_prices', {
+  id: uuid('id').defaultRandom().primaryKey().notNull(),
+  planId: uuid('plan_id').notNull(),
+  provider: varchar('provider', { length: 30 }).notNull(),
+  amountMinor: integer('amount_minor').default(0).notNull(),
+  currency: varchar('currency', { length: 3 }).default('NGN').notNull(),
+  interval: varchar('interval', { length: 20 }).default('monthly').notNull(),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at', { mode: 'date', precision: 6 }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { mode: 'date', precision: 6 }).defaultNow().notNull().$onUpdate(() => new Date()),
+}, (table) => [
+  uniqueIndex('subscription_plan_price_unique').on(table.planId, table.provider, table.currency, table.interval),
+  index('subscription_plan_price_plan_idx').on(table.planId),
 ]);
 
 export const tenantSubscription = pgTable('sta_tenant_subscriptions', {
@@ -40,6 +52,8 @@ export const tenantSubscription = pgTable('sta_tenant_subscriptions', {
 
 export type SubscriptionPlan = typeof subscriptionPlan.$inferSelect;
 export type NewSubscriptionPlan = typeof subscriptionPlan.$inferInsert;
+export type SubscriptionPlanPrice = typeof subscriptionPlanPrice.$inferSelect;
+export type NewSubscriptionPlanPrice = typeof subscriptionPlanPrice.$inferInsert;
 export type TenantSubscription = typeof tenantSubscription.$inferSelect;
 export type NewTenantSubscription = typeof tenantSubscription.$inferInsert;
 

@@ -1,9 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
 import { TenantContext } from '$common/auth/tenant-context';
 import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { ChangeSubscriptionDto } from './dto/change-subscription.dto';
-import { PaystackService } from './paystack.service';
+import { PAYMENT_GATEWAY_ADAPTER, PaymentGatewayAdapter } from './payment-gateway.adapter';
 
 const ACTIVE_STATUSES = ['active', 'trialing', 'past_due'];
 
@@ -11,11 +11,18 @@ const ACTIVE_STATUSES = ['active', 'trialing', 'past_due'];
 export class BillingService {
   constructor(
     private readonly drizzle: DrizzleService,
-    private readonly paystack: PaystackService,
+    @Inject(PAYMENT_GATEWAY_ADAPTER) private readonly gateway: PaymentGatewayAdapter,
   ) {}
 
   async listPlans() {
-    return this.drizzle.subscriptionPlan.findMany({ where: { isActive: true }, orderBy: { amountMinor: 'asc' } });
+    const plans = await this.drizzle.subscriptionPlan.findMany({ where: { isActive: true }, orderBy: { name: 'asc' } });
+    return Promise.all(plans.map(async (plan: any) => ({
+      ...plan,
+      prices: await this.drizzle.subscriptionPlanPrice.findMany({
+        where: { planId: plan.id, isActive: true },
+        orderBy: { amountMinor: 'asc' },
+      }),
+    })));
   }
 
   async getCurrent(context: TenantContext) {
@@ -41,7 +48,11 @@ export class BillingService {
       where: { code: (requestedPlan ?? tenant.plan).trim().toLowerCase(), isActive: true },
     });
     if (!plan) throw new NotFoundException('Subscription plan not found');
-    if (plan.amountMinor <= 0) throw new BadRequestException('This plan does not require payment');
+    const price = await this.drizzle.subscriptionPlanPrice.findFirst({
+      where: { planId: plan.id, provider: this.gateway.name, isActive: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!price) throw new BadRequestException('No payment price is configured for this plan');
 
     const reference = `sub_${context.tenantId}_${Date.now()}_${randomBytes(6).toString('hex')}`;
     const invoice = await this.drizzle.billingInvoice.create({
@@ -49,19 +60,19 @@ export class BillingService {
         tenantId: context.tenantId,
         planId: plan.id,
         number: `INV-${Date.now()}-${randomBytes(3).toString('hex').toUpperCase()}`,
-        amountMinor: plan.amountMinor,
-        currency: plan.currency,
+        amountMinor: price.amountMinor,
+        currency: price.currency,
         status: 'pending',
         dueAt: new Date(),
-        provider: 'paystack',
+        provider: this.gateway.name,
         providerReference: reference,
       },
     });
     try {
-      const payment = await this.paystack.initialize({
+      const payment = await this.gateway.initializeCheckout({
         email: profile.email,
-        amountMinor: plan.amountMinor,
-        currency: plan.currency,
+        amountMinor: price.amountMinor,
+        currency: price.currency,
         reference,
         callbackUrl: `${process.env.APP_BASE_URL ?? ''}/billing/payment-complete`,
         metadata: { tenantId: context.tenantId.toString(), invoiceId: invoice.id, planId: plan.id },
@@ -70,13 +81,13 @@ export class BillingService {
         data: {
           tenantId: context.tenantId,
           invoiceId: invoice.id,
-          provider: 'paystack',
+          provider: this.gateway.name,
           reference,
           status: 'initialized',
-          authorizationUrl: payment.authorization_url,
+          authorizationUrl: payment.authorizationUrl,
         },
       });
-      return { invoiceId: invoice.id, reference, authorizationUrl: payment.authorization_url, accessCode: payment.access_code };
+      return { invoiceId: invoice.id, reference, authorizationUrl: payment.authorizationUrl, accessCode: payment.accessCode };
     } catch (error) {
       await this.drizzle.billingInvoice.update({ where: { id: invoice.id }, data: { status: 'failed' } });
       throw error;
@@ -84,29 +95,26 @@ export class BillingService {
   }
 
   async handlePaystackWebhook(rawBody: Buffer, signature?: string) {
-    this.paystack.verifySignature(rawBody, signature);
-    const event = JSON.parse(rawBody.toString('utf8')) as {
-      event?: string;
-      data?: { reference?: string; amount?: number; currency?: string };
-    };
-    if (!event.event || !event.data?.reference) return { received: true };
-    const eventId = `${event.event}:${event.data.reference}`;
+    this.gateway.verifyWebhook(rawBody, signature);
+    const event = this.gateway.parseWebhook(rawBody);
+    if (!event.reference) return { received: true };
+    const eventId = event.eventId;
     const existing = await this.drizzle.billingWebhookEvent.findFirst({
-      where: { provider: 'paystack', eventId },
+      where: { provider: this.gateway.name, eventId },
     });
     if (existing?.processedAt) return { received: true, duplicate: true };
     const webhook = existing ?? await this.drizzle.billingWebhookEvent.create({
-      data: { provider: 'paystack', eventId, eventType: event.event, payload: event },
+      data: { provider: this.gateway.name, eventId, eventType: event.type, payload: event.payload },
     });
-    if (event.event !== 'charge.success') {
+    if (event.type !== 'charge.success') {
       await this.drizzle.billingWebhookEvent.update({ where: { id: webhook.id }, data: { processedAt: new Date() } });
       return { received: true };
     }
 
     const invoice = await this.drizzle.billingInvoice.findFirst({
-      where: { provider: 'paystack', providerReference: event.data.reference, status: 'pending' },
+      where: { provider: this.gateway.name, providerReference: event.reference, status: 'pending' },
     });
-    if (!invoice || event.data.amount !== invoice.amountMinor || event.data.currency !== invoice.currency) {
+    if (!invoice || event.amountMinor !== invoice.amountMinor || event.currency !== invoice.currency) {
       throw new BadRequestException('Payment does not match invoice');
     }
     const now = new Date();
@@ -115,7 +123,7 @@ export class BillingService {
     await this.drizzle.$transaction(async (tx) => {
       await tx.billingInvoice.update({ where: { id: invoice.id }, data: { status: 'paid', paidAt: now } });
       await tx.billingPaymentAttempt.updateMany({
-        where: { invoiceId: invoice.id, reference: event.data!.reference },
+        where: { invoiceId: invoice.id, reference: event.reference },
         data: { status: 'succeeded', paidAt: now },
       });
       const active = await tx.tenantSubscription.findFirst({
@@ -133,8 +141,8 @@ export class BillingService {
           startsAt: now,
           currentPeriodStart: now,
           currentPeriodEnd: periodEnd,
-          provider: 'paystack',
-          providerSubscriptionId: event.data!.reference,
+          provider: this.gateway.name,
+          providerSubscriptionId: event.reference,
         },
       });
     });
