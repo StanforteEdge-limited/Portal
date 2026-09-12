@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import nodemailer from 'nodemailer';
 import { DrizzleService } from '$common/drizzle/drizzle.service';
+import { MailTemplatesService } from './mail-templates.service';
 import { toBigInt } from '$common/utils/ids';
 
 type SendMailInput = {
@@ -8,6 +9,8 @@ type SendMailInput = {
   subject: string;
   text: string;
   html?: string;
+  template?: string;
+  templateContext?: Record<string, unknown>;
   portalUrl?: string;
   ctaLabel?: string;
   threadKey?: string;
@@ -32,7 +35,10 @@ function escapeHtml(input: string): string {
 
 @Injectable()
 export class MailService {
-  constructor(private readonly drizzle: DrizzleService) {}
+  constructor(
+    private readonly drizzle: DrizzleService,
+    private readonly templates: MailTemplatesService,
+  ) {}
 
   private transporter = this.buildTransporter();
 
@@ -60,6 +66,10 @@ export class MailService {
   }
 
   private renderEmailHtml(input: SendMailInput): string {
+    if (input.template) {
+      const rendered = this.templates.render(input.template, input.templateContext ?? {});
+      if (rendered) return rendered;
+    }
     const appUrl = process.env.APP_BASE_URL || 'http://localhost:3000';
     const defaultPortalUrl = appUrl.replace(/\/$/, '');
     const portalUrl = String(input.portalUrl ?? defaultPortalUrl).trim() || defaultPortalUrl;
