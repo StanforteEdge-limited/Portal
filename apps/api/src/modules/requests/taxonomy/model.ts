@@ -1,6 +1,5 @@
 import { defineRelationsPart } from 'drizzle-orm';
-import { bigint, bigserial, boolean, date, doublePrecision, index, integer, jsonb, numeric, pgTable, serial, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
-import { tokenTypeEnum, organizationTypeEnum, groupUserRoleEnum, requestStatusEnum, employmentTypeEnum, employmentStatusEnum, workModeEnum, onboardingStatusEnum, workItemTypeEnum, workItemStatusEnum, workPriorityEnum, workLogApprovalStatusEnum, procurementCategoryEnum, paymentPatternEnum, procurementStatusEnum, poStatusEnum, grnStatusEnum, mailProviderEnum } from '$app/db/enums';
+import { bigint, bigserial, boolean, date, doublePrecision, index, integer, jsonb,  pgTable,  text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
 import { tenant } from '$modules/tenancy/model';
 
 export const taxonomy = pgTable("sta_taxonomies", {
