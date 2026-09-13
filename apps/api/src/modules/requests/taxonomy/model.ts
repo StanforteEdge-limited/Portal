@@ -1,5 +1,5 @@
 import { defineRelationsPart } from 'drizzle-orm';
-import { bigint, bigserial, boolean, date, doublePrecision, index, integer, jsonb,  pgTable,  text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
+import { bigint, boolean,  index, integer, jsonb,  pgTable,  text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
 import { tenant } from '$modules/tenancy/model';
 
 export const taxonomy = pgTable("sta_taxonomies", {
