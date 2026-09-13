@@ -69,6 +69,8 @@ export namespace Drizzle {
   export type DecimalJsLike = DecimalValue;
 
   export type AcknowledgementUncheckedCreateInput = JsonObject;
+  export type AuditEventWhereInput = JsonObject;
+  export type ContactWhereInput = JsonObject;
   export type ProfileWhereInput = JsonObject;
   export type DocumentAcknowledgementWhereInput = JsonObject;
   export type DocumentWhereInput = JsonObject;
@@ -128,6 +130,10 @@ export namespace Drizzle {
   export type PolicyWhereInput = JsonObject;
   export type ProjectUpdateInput = JsonObject;
   export type ProjectWhereInput = JsonObject;
+  export type SprintWhereInput = JsonObject;
+  export type SprintInclude = JsonObject;
+  export type SprintUncheckedCreateInput = JsonObject;
+  export type SprintUncheckedUpdateInput = JsonObject;
   export type RequestInstanceWhereInput = JsonObject;
   export type WorkflowHistoryWhereInput = JsonObject;
   export type WorkflowInstanceWhereInput = JsonObject;

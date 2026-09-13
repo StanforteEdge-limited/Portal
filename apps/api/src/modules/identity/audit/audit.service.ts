@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { Drizzle } from '$common/db/drizzle-compat';
 import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { toBigInt } from '$common/utils/ids';
@@ -13,17 +13,11 @@ export class AuditService {
     const page = Math.max(1, Number(query.page ?? 1));
     const perPage = Math.min(100, Math.max(1, Number(query.per_page ?? 25)));
 
-    const where: Drizzle.WorkflowHistoryWhereInput = {};
+    const where: Drizzle.AuditEventWhereInput = {};
     if (query.action) where.action = String(query.action);
-    if (query.instance_id) where.instanceId = String(query.instance_id);
-    if (query.actor_id) where.performedBy = this.parseId(String(query.actor_id), 'actor id');
-
-    const instanceWhere: Drizzle.WorkflowInstanceWhereInput = {};
-    if (query.entity_type) instanceWhere.entityType = String(query.entity_type);
-    if (query.entity_id) instanceWhere.entityId = String(query.entity_id);
-    if (Object.keys(instanceWhere).length > 0) {
-      where.instance = { is: instanceWhere };
-    }
+    if (query.entity_type) where.entityType = String(query.entity_type);
+    if (query.entity_id) where.entityId = String(query.entity_id);
+    if (query.actor_id) where.userId = this.parseId(String(query.actor_id), 'actor id');
 
     if (query.from || query.to) {
       where.createdAt = {};
@@ -39,107 +33,65 @@ export class AuditService {
       }
     }
 
-    const events = await this.drizzle.workflowHistory.findMany({
-      where,
-      include: {
-        instance: {
-          select: {
-            id: true,
-            entityType: true,
-            entityId: true,
-            workflow: { select: { id: true, name: true } }
+    const [events, total] = await this.drizzle.$transaction([
+      this.drizzle.auditEvent.findMany({
+        where,
+        include: {
+          user: {
+            select: { id: true, email: true, username: true }
           }
-        }
-      },
-      orderBy: { createdAt: 'desc' },
-      skip: (page - 1) * perPage,
-      take: perPage
-    });
-    const total = await this.drizzle.workflowHistory.count({ where });
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * perPage,
+        take: perPage
+      }),
+      this.drizzle.auditEvent.count({ where })
+    ]);
 
-    return paginatedResponse(events.map((event) => ({
-      id: event.id,
-      instance_id: event.instanceId,
-      action: event.action,
-      comment: event.comment,
-      data: event.data,
-      performed_by: event.performedBy ? event.performedBy.toString() : null,
-      created_at: event.createdAt,
-      entity: {
-        type: event.instance.entityType,
-        id: event.instance.entityId
-      },
-      workflow: {
-        id: event.instance.workflow.id,
-        name: event.instance.workflow.name
-      }
-    })), { page, per_page: perPage, total });
+    return paginatedResponse(events.map((event) => this.serializeEvent(event)), { page, per_page: perPage, total });
   }
 
   async createEvent(dto: CreateAuditEventDto, performedBy?: string) {
-    const instance = await this.drizzle.workflowInstance.findUnique({ where: { id: dto.instance_id } });
-    if (!instance) throw new NotFoundException('Workflow instance not found');
-
-    const event = await this.drizzle.workflowHistory.create({
+    const event = await this.drizzle.auditEvent.create({
       data: {
-        instanceId: dto.instance_id,
+        userId: performedBy ? this.parseId(performedBy, 'actor id') : null,
+        entityType: dto.entity_type,
+        entityId: dto.entity_id,
         action: dto.action,
         comment: dto.comment,
-        data: dto.data ? (dto.data as Drizzle.InputJsonValue) : undefined,
-        performedBy: performedBy ? this.parseId(performedBy, 'performed_by') : null
+        data: dto.data ? (dto.data as Drizzle.InputJsonValue) : undefined
       }
     });
 
     return {
       id: event.id,
-      instance_id: event.instanceId,
+      entity_type: event.entityType,
+      entity_id: event.entityId,
       action: event.action,
       comment: event.comment,
       data: event.data,
-      performed_by: event.performedBy ? event.performedBy.toString() : null,
+      performed_by: event.userId ? event.userId.toString() : null,
       created_at: event.createdAt
     };
   }
 
   async getRequestAudit(requestId: string) {
-    const instances = await this.drizzle.workflowInstance.findMany({
+    const events = await this.drizzle.auditEvent.findMany({
       where: {
         entityType: 'request',
         entityId: requestId
       },
       include: {
-        history: {
-          orderBy: { createdAt: 'asc' }
-        },
-        workflow: {
-          select: { id: true, name: true }
+        user: {
+          select: { id: true, email: true, username: true }
         }
-      }
+      },
+      orderBy: { createdAt: 'asc' }
     });
-
-    if (instances.length === 0) {
-      return { request_id: requestId, history: [] };
-    }
-
-    const history = instances.flatMap((instance) =>
-      instance.history.map((event) => ({
-        id: event.id,
-        instance_id: instance.id,
-        action: event.action,
-        comment: event.comment,
-        data: event.data,
-        performed_by: event.performedBy ? event.performedBy.toString() : null,
-        created_at: event.createdAt,
-        workflow: {
-          id: instance.workflow.id,
-          name: instance.workflow.name
-        }
-      }))
-    );
 
     return {
       request_id: requestId,
-      history: history.sort((a, b) => a.created_at.getTime() - b.created_at.getTime())
+      history: events.map((event) => this.serializeEvent(event))
     };
   }
 
@@ -200,6 +152,22 @@ export class AuditService {
       notifiable_id: item.notifiableId ? item.notifiableId.toString() : null,
       created_at: item.createdAt
     })), { page, per_page: perPage, total });
+  }
+
+  private serializeEvent(event: any) {
+    return {
+      id: event.id,
+      entity_type: event.entityType,
+      entity_id: event.entityId,
+      action: event.action,
+      comment: event.comment,
+      data: event.data,
+      performed_by: event.userId ? event.userId.toString() : null,
+      user: event.user
+        ? { id: event.user.id.toString(), email: event.user.email, username: event.user.username }
+        : null,
+      created_at: event.createdAt
+    };
   }
 
   private parseId(value: string, label: string): bigint {

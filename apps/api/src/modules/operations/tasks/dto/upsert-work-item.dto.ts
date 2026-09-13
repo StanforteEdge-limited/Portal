@@ -51,6 +51,29 @@ export class UpsertWorkItemDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  sprint_id?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  parent_id?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  estimate_points?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  sort_order?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
   fund_id?: string;
 
   @ApiPropertyOptional()

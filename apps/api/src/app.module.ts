@@ -27,7 +27,7 @@ import { OnboardingModule } from '$modules/hr/onboarding/onboarding.module';
 import { AcknowledgementsModule } from '$modules/requests/acknowledgements/acknowledgements.module';
 import { PoliciesModule } from '$modules/requests/policies/policies.module';
 import { PayrollModule } from '$modules/hr/payroll/payroll.module';
-import { WorkModule } from '$modules/operations/work/work.module';
+import { TasksModule } from '$modules/operations/tasks/tasks.module';
 import { VersionModule } from '$modules/platform/version/version.module';
 import { MailModule } from '$modules/platform/mail/mail.module';
 import { TenancyModule } from '$modules/tenancy/tenancy.module';
@@ -64,7 +64,7 @@ import { SchedulingModule } from '$modules/scheduling/scheduling.module';
     AcknowledgementsModule,
     PoliciesModule,
     PayrollModule,
-    WorkModule,
+    TasksModule,
     VersionModule,
     MailModule,
     TenancyModule,

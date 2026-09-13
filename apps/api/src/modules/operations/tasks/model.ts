@@ -1,6 +1,9 @@
 import { defineRelationsPart } from 'drizzle-orm';
 import { bigint, bigserial, boolean, date, doublePrecision, index, integer, jsonb, numeric, pgTable, serial, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
 import { tokenTypeEnum, organizationTypeEnum, groupUserRoleEnum, requestStatusEnum, employmentTypeEnum, employmentStatusEnum, workModeEnum, onboardingStatusEnum, workItemTypeEnum, workItemStatusEnum, workPriorityEnum, workLogApprovalStatusEnum, procurementCategoryEnum, paymentPatternEnum, procurementStatusEnum, poStatusEnum, grnStatusEnum, mailProviderEnum } from '$app/db/enums';
+import { profile } from '$modules/identity/users/model';
+import { project } from '$modules/operations/projects/model';
+import { tenant } from '$modules/tenancy/model';
 
 export const projectTimesheetEntry = pgTable("sta_project_timesheet_entries", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
@@ -113,6 +116,28 @@ export const teamKpi = pgTable("sta_team_kpis", {
 export type TeamKpi = typeof teamKpi.$inferSelect;
 export type NewTeamKpi = typeof teamKpi.$inferInsert;
 
+export const sprint = pgTable("sta_sprints", {
+  id: bigserial("id", { mode: 'bigint' }).primaryKey(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).notNull().references(() => tenant.id, { onDelete: 'cascade' }),
+  projectId: bigint("project_id", { mode: 'bigint' }).notNull().references(() => project.id, { onDelete: 'cascade' }),
+  name: varchar("name", { length: 255 }).notNull(),
+  goal: text("goal"),
+  startDate: date("start_date", { mode: 'date' }),
+  endDate: date("end_date", { mode: 'date' }),
+  status: varchar("status", { length: 20 }).default("planned").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdBy: bigint("created_by", { mode: 'bigint' }).references(() => profile.id, { onDelete: 'set null' }),
+  createdAt: timestamp("created_at", { mode: 'date', precision: 6 }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'date', precision: 6 }).notNull().$onUpdate(() => new Date()),
+}, (table) => [
+    index("sprint_index_tenantId").on(table.tenantId),
+    index("sprint_index_projectId").on(table.projectId),
+    index("sprint_index_status").on(table.status),
+]);
+
+export type Sprint = typeof sprint.$inferSelect;
+export type NewSprint = typeof sprint.$inferInsert;
+
 export const workItem = pgTable("sta_work_items", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
   title: varchar("title", { length: 255 }).notNull(),
@@ -124,6 +149,10 @@ export const workItem = pgTable("sta_work_items", {
   ownerTeamId: bigint("owner_team_id", { mode: 'bigint' }),
   secondaryTeamId: bigint("secondary_team_id", { mode: 'bigint' }),
   projectId: bigint("project_id", { mode: 'bigint' }),
+  sprintId: bigint("sprint_id", { mode: 'bigint' }).references(() => sprint.id, { onDelete: 'set null' }),
+  parentId: uuid("parent_id").references(() => workItem.id, { onDelete: 'cascade' }),
+  estimatePoints: integer("estimate_points"),
+  sortOrder: integer("sort_order").default(0).notNull(),
   fundId: uuid("fund_id"),
   grantId: uuid("grant_id"),
   goalId: uuid("goal_id"),
@@ -150,6 +179,8 @@ export const workItem = pgTable("sta_work_items", {
     index("workItem_index_goalId").on(table.goalId),
     index("workItem_index_objectiveId").on(table.objectiveId),
     index("workItem_index_kpiId").on(table.kpiId),
+    index("workItem_index_sprintId").on(table.sprintId),
+    index("workItem_index_parentId").on(table.parentId),
 ]);
 
 export type WorkItem = typeof workItem.$inferSelect;
@@ -189,4 +220,4 @@ export const workLog = pgTable("sta_work_logs", {
 export type WorkLog = typeof workLog.$inferSelect;
 export type NewWorkLog = typeof workLog.$inferInsert;
 
-export const modules_operations_workRelations = defineRelationsPart({ projectTimesheetEntry, teamGoal, teamObjective, teamKpi, workItem, workLog });
+export const modules_operations_tasksRelations = defineRelationsPart({ projectTimesheetEntry, teamGoal, teamObjective, teamKpi, workItem, workLog, sprint });

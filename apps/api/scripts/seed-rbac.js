@@ -26,13 +26,16 @@ const PERMISSIONS = [
   { slug: 'requests.approve', name: 'Approve Requests', module: 'requests' },
   { slug: 'users.view', name: 'View Users', module: 'users' },
   { slug: 'users.manage', name: 'Manage Users', module: 'users' },
+  { slug: 'tasks.view', name: 'View Tasks', module: 'tasks' },
+  { slug: 'tasks.manage', name: 'Manage Tasks', module: 'tasks' },
+  { slug: 'tasks.approve', name: 'Approve Task Logs', module: 'tasks' },
 ];
 
 const ROLE_PERMS = {
   administrator: '*',
-  hr_manager: ['attendance.*', 'hr.*', 'requests.view', 'requests.approve', 'users.view'],
-  manager: ['attendance.view_team', 'attendance.approve', 'attendance.correct', 'requests.view', 'requests.approve'],
-  staff: ['attendance.clock', 'attendance.view_self'],
+  hr_manager: ['attendance.*', 'hr.*', 'requests.view', 'requests.approve', 'users.view', 'tasks.view', 'tasks.manage', 'tasks.approve'],
+  manager: ['attendance.view_team', 'attendance.approve', 'attendance.correct', 'requests.view', 'requests.approve', 'tasks.view', 'tasks.manage', 'tasks.approve'],
+  staff: ['attendance.clock', 'attendance.view_self', 'tasks.view'],
 };
 
 async function main() {

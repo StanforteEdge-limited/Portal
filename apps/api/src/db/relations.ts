@@ -1,5 +1,7 @@
 import { defineRelations } from 'drizzle-orm';
 import * as schema from './schema';
+import { modules_directory_contactsRelations } from '$modules/directory/contacts/model';
+import { modules_identity_auditRelations } from '$modules/identity/audit/model';
 import { modules_identity_authRelations } from '$modules/identity/auth/model';
 import { modules_identity_rbacRelations } from '$modules/identity/rbac/model';
 import { modules_platform_filesRelations } from '$modules/platform/files/model';
@@ -10,6 +12,8 @@ import { modules_tenancyRelations } from '$modules/tenancy/model';
 
 export const relations = {
   ...defineRelations(schema),
+  ...modules_directory_contactsRelations,
+  ...modules_identity_auditRelations,
   ...modules_identity_authRelations,
   ...modules_identity_rbacRelations,
   ...modules_platform_filesRelations,

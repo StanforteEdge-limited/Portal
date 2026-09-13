@@ -19,6 +19,10 @@ export type WorkItem = {
   organization_id?: string | null;
   owner_team_id?: string | null;
   project_id?: string | null;
+  sprint_id?: string | null;
+  parent_id?: string | null;
+  estimate_points?: number | null;
+  sort_order?: number | null;
   goal_id?: string | null;
   objective_id?: string | null;
   kpi_id?: string | null;
@@ -28,6 +32,9 @@ export type WorkItem = {
   goal?: { id: string; title: string } | null;
   objective?: { id: string; title: string } | null;
   owner_team?: { id: string; name: string } | null;
+  parent?: { id: string; title: string; status?: WorkItemStatus } | null;
+  subtasks?: { id: string; title: string; status?: WorkItemStatus }[];
+  sprint?: { id: string; name: string; status?: string } | null;
 };
 
 export type WorkLog = {
@@ -93,6 +100,10 @@ export type CreateWorkItemDto = {
   organization_id?: string;
   owner_team_id?: string;
   project_id?: string;
+  sprint_id?: string;
+  parent_id?: string;
+  estimate_points?: number;
+  sort_order?: number;
   goal_id?: string;
   objective_id?: string;
   kpi_id?: string;
@@ -140,6 +151,38 @@ export type CreateWorkKpiDto = {
   quarter?: number;
 };
 
+export type Sprint = {
+  id: string;
+  name: string;
+  goal?: string | null;
+  project_id?: string | null;
+  project?: { id: string; name: string } | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  status?: string | null;
+  is_active?: boolean;
+  total_items?: number;
+  completed_items?: number;
+  items?: WorkItem[];
+  created_at?: string;
+};
+
+export type CreateSprintDto = {
+  name: string;
+  goal?: string;
+  project_id: string;
+  start_date?: string;
+  end_date?: string;
+  status?: "planned" | "active" | "completed";
+  is_active?: boolean;
+};
+
+export type BoardColumn = {
+  status: WorkItemStatus;
+  total: number;
+  items: WorkItem[];
+};
+
 export function createWorkApi(httpRequest: HttpRequest) {
   function toQuery(params?: Record<string, unknown>) {
     const q = new URLSearchParams();
@@ -149,86 +192,121 @@ export function createWorkApi(httpRequest: HttpRequest) {
 
   return {
     async listTeamGoals(params?: Record<string, unknown>) {
-      const res = await httpRequest<any>(`/work/goals${toQuery(params)}`);
+      const res = await httpRequest<any>(`/tasks/goals${toQuery(params)}`);
       return ((res as any)?.data?.items ?? []) as WorkGoal[];
     },
 
     async createTeamGoal(dto: CreateWorkGoalDto) {
-      const res = await httpRequest<any>("/work/goals", { method: "POST", body: dto });
+      const res = await httpRequest<any>("/tasks/goals", { method: "POST", body: dto });
       return (res?.data ?? res) as WorkGoal;
     },
 
     async listTeamObjectives(params?: Record<string, unknown>) {
-      const res = await httpRequest<any>(`/work/objectives${toQuery(params)}`);
+      const res = await httpRequest<any>(`/tasks/objectives${toQuery(params)}`);
       return ((res as any)?.data?.items ?? []) as WorkObjective[];
     },
 
     async createTeamObjective(dto: CreateWorkObjectiveDto) {
-      const res = await httpRequest<any>("/work/objectives", { method: "POST", body: dto });
+      const res = await httpRequest<any>("/tasks/objectives", { method: "POST", body: dto });
       return (res?.data ?? res) as WorkObjective;
     },
 
     async listTeamKpis(params?: Record<string, unknown>) {
-      const res = await httpRequest<any>(`/work/kpis${toQuery(params)}`);
+      const res = await httpRequest<any>(`/tasks/kpis${toQuery(params)}`);
       return ((res as any)?.data?.items ?? []) as WorkKpi[];
     },
 
     async createTeamKpi(dto: CreateWorkKpiDto) {
-      const res = await httpRequest<any>("/work/kpis", { method: "POST", body: dto });
+      const res = await httpRequest<any>("/tasks/kpis", { method: "POST", body: dto });
       return (res?.data ?? res) as WorkKpi;
     },
 
     async listTeamWorkItems(params?: Record<string, unknown>) {
-      const res = await httpRequest<any>(`/work/team/items${toQuery(params)}`);
+      const res = await httpRequest<any>(`/tasks/team/items${toQuery(params)}`);
       return ((res as any)?.data?.items ?? []) as WorkItem[];
     },
 
     async createWorkItem(dto: CreateWorkItemDto) {
-      const res = await httpRequest<any>("/work/items", { method: "POST", body: dto });
+      const res = await httpRequest<any>("/tasks/items", { method: "POST", body: dto });
       return (res?.data ?? res) as WorkItem;
     },
 
     async updateWorkItem(id: string, dto: Partial<CreateWorkItemDto>) {
-      const res = await httpRequest<any>(`/work/items/${id}`, { method: "POST", body: dto });
+      const res = await httpRequest<any>(`/tasks/items/${id}`, { method: "POST", body: dto });
       return (res?.data ?? res) as WorkItem;
     },
 
     async listTeamWorkLogs(params?: Record<string, unknown>) {
-      const res = await httpRequest<any>(`/work/team/logs${toQuery(params)}`);
+      const res = await httpRequest<any>(`/tasks/team/logs${toQuery(params)}`);
       return ((res as any)?.data?.items ?? []) as WorkLog[];
     },
 
     async approveWorkLog(id: string) {
-      return httpRequest<void>(`/work/logs/${id}/approve`, { method: "POST" });
+      return httpRequest<void>(`/tasks/logs/${id}/approve`, { method: "POST" });
     },
 
     async rejectWorkLog(id: string) {
-      return httpRequest<void>(`/work/logs/${id}/reject`, { method: "POST" });
+      return httpRequest<void>(`/tasks/logs/${id}/reject`, { method: "POST" });
     },
 
     async listMyWorkItems(params?: Record<string, unknown>) {
-      const res = await httpRequest<any>(`/work/my/items${toQuery(params)}`);
+      const res = await httpRequest<any>(`/tasks/my/items${toQuery(params)}`);
       return ((res as any)?.data?.items ?? []) as WorkItem[];
     },
 
     async listMyWorkLogs(params?: Record<string, unknown>) {
-      const res = await httpRequest<any>(`/work/my/logs${toQuery(params)}`);
+      const res = await httpRequest<any>(`/tasks/my/logs${toQuery(params)}`);
       return ((res as any)?.data?.items ?? []) as WorkLog[];
     },
 
     async createWorkLog(dto: CreateWorkLogDto) {
-      const res = await httpRequest<any>("/work/logs", { method: "POST", body: dto });
+      const res = await httpRequest<any>("/tasks/logs", { method: "POST", body: dto });
       return (res?.data ?? res) as WorkLog;
     },
 
     async updateWorkLog(id: string, dto: Partial<CreateWorkLogDto>) {
-      const res = await httpRequest<any>(`/work/logs/${id}`, { method: "POST", body: dto });
+      const res = await httpRequest<any>(`/tasks/logs/${id}`, { method: "POST", body: dto });
       return (res?.data ?? res) as WorkLog;
     },
 
     async submitWorkLog(id: string) {
-      const res = await httpRequest<any>(`/work/logs/${id}/submit`, { method: "POST" });
+      const res = await httpRequest<any>(`/tasks/logs/${id}/submit`, { method: "POST" });
       return (res?.data ?? res) as WorkLog;
+    },
+
+    async board(params?: Record<string, unknown>) {
+      const res = await httpRequest<any>(`/tasks/board${toQuery(params)}`);
+      return ((res as any)?.data ?? res) as BoardColumn[];
+    },
+
+    async listSprints(params?: Record<string, unknown>) {
+      const res = await httpRequest<any>(`/tasks/sprints${toQuery(params)}`);
+      return ((res as any)?.data?.items ?? []) as Sprint[];
+    },
+
+    async getSprint(id: string) {
+      const res = await httpRequest<any>(`/tasks/sprints/${id}`);
+      return (res?.data ?? res) as Sprint;
+    },
+
+    async createSprint(dto: CreateSprintDto) {
+      const res = await httpRequest<any>("/tasks/sprints", { method: "POST", body: dto });
+      return (res?.data ?? res) as Sprint;
+    },
+
+    async updateSprint(id: string, dto: Partial<CreateSprintDto>) {
+      const res = await httpRequest<any>(`/tasks/sprints/${id}`, { method: "POST", body: dto });
+      return (res?.data ?? res) as Sprint;
+    },
+
+    async startSprint(id: string) {
+      const res = await httpRequest<any>(`/tasks/sprints/${id}/start`, { method: "POST" });
+      return (res?.data ?? res) as Sprint;
+    },
+
+    async completeSprint(id: string) {
+      const res = await httpRequest<any>(`/tasks/sprints/${id}/complete`, { method: "POST" });
+      return (res?.data ?? res) as Sprint;
     },
   };
 }

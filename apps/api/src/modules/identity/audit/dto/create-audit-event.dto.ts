@@ -2,7 +2,10 @@ import { IsObject, IsOptional, IsString } from 'class-validator';
 
 export class CreateAuditEventDto {
   @IsString()
-  instance_id!: string;
+  entity_type!: string;
+
+  @IsString()
+  entity_id!: string;
 
   @IsString()
   action!: string;

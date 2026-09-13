@@ -3,12 +3,13 @@ import { Drizzle, WorkLogApprovalStatus, WorkItemStatus } from '$common/db/drizz
 import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { paginatedResponse } from '$common/helpers/paginated-response';
 import { toBigInt } from '$common/utils/ids';
-import { UpsertTeamGoalDto, UpsertTeamKpiDto, UpsertTeamObjectiveDto } from '$modules/operations/work/dto/upsert-team-goal.dto';
-import { UpsertWorkItemDto } from '$modules/operations/work/dto/upsert-work-item.dto';
-import { UpsertWorkLogDto } from '$modules/operations/work/dto/upsert-work-log.dto';
+import { UpsertTeamGoalDto, UpsertTeamKpiDto, UpsertTeamObjectiveDto } from '$modules/operations/tasks/dto/upsert-team-goal.dto';
+import { UpsertSprintDto } from '$modules/operations/tasks/dto/upsert-sprint.dto';
+import { UpsertWorkItemDto } from '$modules/operations/tasks/dto/upsert-work-item.dto';
+import { UpsertWorkLogDto } from '$modules/operations/tasks/dto/upsert-work-log.dto';
 
 @Injectable()
-export class WorkService {
+export class TasksService {
   constructor(private readonly drizzle: DrizzleService) {}
 
   async listGoals(query: Record<string, any>) {
@@ -160,6 +161,9 @@ export class WorkService {
       OR: [{ assignedToId: userId }, { createdById: userId }, { assignedById: userId }]
     };
     if (query.status) where.status = query.status;
+    if (query.project_id) where.projectId = this.parseBigInt(String(query.project_id), 'project id');
+    if (query.sprint_id) where.sprintId = this.parseBigInt(String(query.sprint_id), 'sprint id');
+    if (query.parent_id) where.parentId = String(query.parent_id);
     if (query.search) {
       where.AND = [{
         OR: [
@@ -173,7 +177,8 @@ export class WorkService {
       include: this.workItemInclude(),
       orderBy: [{ dueDate: 'asc' }, { createdAt: 'desc' }]
     });
-    const items = rows.map((row) => this.serializeWorkItem(row));
+    const enriched = await this.enrichItems(rows);
+    const items = enriched.map((row) => this.serializeWorkItem(row));
     return paginatedResponse(items, { page: 1, per_page: items.length, total: items.length });
   }
 
@@ -202,23 +207,33 @@ export class WorkService {
     if (query.team_id) where.ownerTeamId = this.parseBigInt(String(query.team_id), 'team id');
     if (query.assigned_to_id) where.assignedToId = this.parseBigInt(String(query.assigned_to_id), 'assigned to id');
     if (query.status) where.status = query.status;
+    if (query.project_id) where.projectId = this.parseBigInt(String(query.project_id), 'project id');
+    if (query.sprint_id) where.sprintId = this.parseBigInt(String(query.sprint_id), 'sprint id');
+    if (query.parent_id) where.parentId = String(query.parent_id);
     const rows = await this.drizzle.workItem.findMany({
       where,
       include: this.workItemInclude(),
       orderBy: [{ weekStartDate: 'desc' }, { dueDate: 'asc' }, { createdAt: 'desc' }]
     });
-    const items = rows.map((row) => this.serializeWorkItem(row));
+    const enriched = await this.enrichItems(rows);
+    const items = enriched.map((row) => this.serializeWorkItem(row));
     return paginatedResponse(items, { page: 1, per_page: items.length, total: items.length });
   }
 
   async upsertItem(actorId: string, dto: UpsertWorkItemDto, id?: string) {
     const userId = this.parseBigInt(actorId, 'user id');
+    const targetProjectId = dto.project_id ? this.parseBigInt(dto.project_id, 'project id') : null;
+    let parentId: string | null = this.optionalString(dto.parent_id);
+    let sprintId: bigint | null = dto.sprint_id ? this.parseBigInt(dto.sprint_id, 'sprint id') : null;
     if (id) {
       const existing = await this.drizzle.workItem.findUnique({ where: { id } });
       if (!existing) throw new NotFoundException('Work item not found');
       if (![existing.createdById?.toString(), existing.assignedById?.toString(), existing.assignedToId?.toString()].includes(userId.toString())) {
         throw new BadRequestException('You cannot update this work item');
       }
+      if (parentId === id) throw new BadRequestException('A work item cannot be its own parent');
+      const projectId = targetProjectId ?? existing.projectId ?? null;
+      await this.validateItemLinks(parentId, sprintId, projectId);
       await this.drizzle.workItem.update({
         where: { id },
         data: this.mapItemDto(dto, userId, existing) as Drizzle.WorkItemUncheckedUpdateInput
@@ -226,10 +241,32 @@ export class WorkService {
       return this.getItem(id);
     }
 
+    const projectId = targetProjectId ?? null;
+    await this.validateItemLinks(parentId, sprintId, projectId);
     const created = await this.drizzle.workItem.create({
       data: this.mapItemDto(dto, userId) as Drizzle.WorkItemUncheckedCreateInput
     });
     return this.getItem(created.id);
+  }
+
+  private async validateItemLinks(parentId: string | null, sprintId: bigint | null, projectId: bigint | null) {
+    if (parentId) {
+      const parent = await this.drizzle.workItem.findUnique({
+        where: { id: parentId },
+        select: { id: true, projectId: true }
+      });
+      if (!parent) throw new BadRequestException('Parent work item not found');
+      if (projectId != null && parent.projectId != null && projectId !== parent.projectId) {
+        throw new BadRequestException('Parent work item belongs to a different project');
+      }
+    }
+    if (sprintId != null) {
+      const sprint = await this.drizzle.sprint.findUnique({ where: { id: sprintId } });
+      if (!sprint) throw new BadRequestException('Sprint not found');
+      if (projectId != null && sprint.projectId !== projectId) {
+        throw new BadRequestException('Sprint belongs to a different project');
+      }
+    }
   }
 
   async getItem(id: string) {
@@ -238,7 +275,140 @@ export class WorkService {
       include: this.workItemInclude()
     });
     if (!row) throw new NotFoundException('Work item not found');
-    return this.serializeWorkItem(row);
+    const enriched = await this.enrichItems([row]);
+    return this.serializeWorkItem(enriched[0]);
+  }
+
+  async board(actorId: string, query: Record<string, any>) {
+    const where: Drizzle.WorkItemWhereInput = {};
+    if (query.project_id) where.projectId = this.parseBigInt(String(query.project_id), 'project id');
+    if (query.sprint_id) where.sprintId = this.parseBigInt(String(query.sprint_id), 'sprint id');
+    if (query.assigned_to_id) where.assignedToId = this.parseBigInt(String(query.assigned_to_id), 'assigned to id');
+    if (query.status) where.status = query.status;
+    const rows = await this.drizzle.workItem.findMany({
+      where,
+      include: this.workItemInclude(),
+      orderBy: [{ sortOrder: 'asc' }, { dueDate: 'asc' }, { createdAt: 'asc' }]
+    });
+    const enriched = await this.enrichItems(rows);
+    const items = enriched.map((row) => this.serializeWorkItem(row));
+    const order = ['planned', 'in_progress', 'blocked', 'completed', 'carried_over', 'cancelled'];
+    const columns = new Map<string, any[]>();
+    for (const status of order) columns.set(status, []);
+    for (const item of items) {
+      const list = columns.get(item.status) ?? [];
+      list.push(item);
+      columns.set(item.status, list);
+    }
+    return order.map((status) => ({
+      status,
+      total: columns.get(status)?.length ?? 0,
+      items: columns.get(status) ?? []
+    }));
+  }
+
+  async listSprints(query: Record<string, any>) {
+    const where: Drizzle.SprintWhereInput = {};
+    if (query.project_id) where.projectId = this.parseBigInt(String(query.project_id), 'project id');
+    if (query.status) where.status = String(query.status);
+    if (query.is_active != null) where.isActive = query.is_active === 'true' || query.is_active === true;
+    const rows = await this.drizzle.sprint.findMany({
+      where,
+      include: this.sprintInclude(),
+      orderBy: [{ createdAt: 'desc' }]
+    });
+    const enriched = await this.enrichSprints(rows);
+    const items = enriched.map((row) => this.serializeSprint(row));
+    return paginatedResponse(items, { page: 1, per_page: items.length, total: items.length });
+  }
+
+  async getSprint(id: string) {
+    const row = await this.drizzle.sprint.findUnique({
+      where: { id },
+      include: this.sprintInclude()
+    });
+    if (!row) throw new NotFoundException('Sprint not found');
+    const enriched = await this.enrichSprints([row]);
+    const items = await this.drizzle.workItem.findMany({
+      where: { sprintId: row.id },
+      include: this.workItemInclude(),
+      orderBy: [{ sortOrder: 'asc' }, { dueDate: 'asc' }, { createdAt: 'asc' }]
+    });
+    const enrichedItems = await this.enrichItems(items);
+    enriched[0].items = enrichedItems.map((item) => this.serializeWorkItem(item));
+    return this.serializeSprint(enriched[0]);
+  }
+
+  async upsertSprint(actorId: string, dto: UpsertSprintDto, id?: string) {
+    const userId = this.parseBigInt(actorId, 'user id');
+    let projectId: bigint | null = null;
+    if (dto.project_id) {
+      projectId = this.parseBigInt(dto.project_id, 'project id');
+      const projectRow = await this.drizzle.project.findUnique({
+        where: { id: projectId },
+        select: { id: true }
+      });
+      if (!projectRow) throw new BadRequestException('Project not found');
+    }
+    if (id) {
+      const existing = await this.drizzle.sprint.findUnique({ where: { id } });
+      if (!existing) throw new NotFoundException('Sprint not found');
+      if (projectId == null) projectId = existing.projectId;
+      const data: Drizzle.SprintUncheckedUpdateInput = {
+        projectId,
+        name: dto.name ?? existing.name,
+        goal: dto.goal != null ? dto.goal : existing.goal,
+        startDate: dto.start_date ? new Date(dto.start_date) : existing.startDate,
+        endDate: dto.end_date ? new Date(dto.end_date) : existing.endDate,
+        isActive: dto.is_active ?? existing.isActive
+      };
+      await this.drizzle.sprint.update({ where: { id }, data });
+      return this.getSprint(id);
+    }
+    if (projectId == null) throw new BadRequestException('project_id is required');
+    const data: Drizzle.SprintUncheckedCreateInput = {
+      projectId,
+      name: dto.name,
+      goal: dto.goal ?? null,
+      startDate: dto.start_date ? new Date(dto.start_date) : null,
+      endDate: dto.end_date ? new Date(dto.end_date) : null,
+      status: dto.status ?? 'planned',
+      isActive: dto.is_active ?? true,
+      createdBy: userId
+    };
+    const row = await this.drizzle.sprint.create({ data });
+    return this.getSprint(row.id.toString());
+  }
+
+  async startSprint(actorId: string, id: string) {
+    const existing = await this.drizzle.sprint.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Sprint not found');
+    await this.drizzle.sprint.updateMany({
+      where: { projectId: existing.projectId, isActive: true },
+      data: { isActive: false }
+    });
+    await this.drizzle.sprint.update({
+      where: { id },
+      data: { status: 'active', isActive: true }
+    });
+    return this.getSprint(id);
+  }
+
+  async completeSprint(actorId: string, id: string) {
+    const existing = await this.drizzle.sprint.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Sprint not found');
+    await this.drizzle.sprint.update({
+      where: { id },
+      data: { status: 'completed', isActive: false }
+    });
+    await this.drizzle.workItem.updateMany({
+      where: {
+        sprintId: existing.id,
+        status: { notIn: ['completed', 'cancelled'] } as any
+      },
+      data: { sprintId: null }
+    });
+    return this.getSprint(id);
   }
 
   async listMyLogs(actorId: string, query: Record<string, any>) {
@@ -373,8 +543,9 @@ export class WorkService {
       include: {
         organization: true,
         team: true,
-        project: true,
-        fund: true,
+project: true,
+      sprint: true,
+      fund: true,
         grant: true,
         workItem: true
       },
@@ -421,6 +592,10 @@ export class WorkService {
       ownerTeamId: this.optionalBigInt(dto.owner_team_id, 'owner team id') ?? existing?.ownerTeamId ?? null,
       secondaryTeamId: this.optionalBigInt(dto.secondary_team_id, 'secondary team id') ?? existing?.secondaryTeamId ?? null,
       projectId: this.optionalBigInt(dto.project_id, 'project id') ?? existing?.projectId ?? null,
+      sprintId: this.optionalBigInt(dto.sprint_id, 'sprint id') ?? existing?.sprintId ?? null,
+      parentId: this.optionalString(dto.parent_id) ?? existing?.parentId ?? null,
+      estimatePoints: dto.estimate_points != null ? Number(dto.estimate_points) : existing?.estimatePoints ?? null,
+      sortOrder: dto.sort_order != null ? Number(dto.sort_order) : existing?.sortOrder ?? 0,
       fundId: this.optionalString(dto.fund_id) ?? existing?.fundId ?? null,
       grantId: this.optionalString(dto.grant_id) ?? existing?.grantId ?? null,
       goalId: this.optionalString(dto.goal_id) ?? existing?.goalId ?? null,
@@ -504,6 +679,10 @@ export class WorkService {
       owner_team_id: row.ownerTeamId?.toString() || '',
       secondary_team_id: row.secondaryTeamId?.toString() || '',
       project_id: row.projectId?.toString() || '',
+      sprint_id: row.sprintId?.toString() || '',
+      parent_id: row.parentId || '',
+      estimate_points: row.estimatePoints ?? null,
+      sort_order: row.sortOrder ?? 0,
       fund_id: row.fundId || '',
       grant_id: row.grantId || '',
       goal_id: row.goalId || '',
@@ -530,6 +709,9 @@ export class WorkService {
       assigned_to: row.assignedTo ? this.serializeProfile(row.assignedTo) : null,
       assigned_by: row.assignedBy ? this.serializeProfile(row.assignedBy) : null,
       created_by: row.createdBy ? this.serializeProfile(row.createdBy) : null,
+      parent: row.parent ? this.serializeWorkItemRef(row.parent) : null,
+      subtasks: (row.subtasks || []).map((child: any) => this.serializeWorkItemRef(child)),
+      sprint: row.sprint ? this.serializeSprintRef(row.sprint) : null,
       recent_logs: (row.logs || []).map((log: any) => ({
         id: log.id,
         log_date: log.logDate,
@@ -581,6 +763,101 @@ export class WorkService {
       id: row.id.toString(),
       full_name: [row.firstName, row.lastName].filter(Boolean).join(' ') || row.email,
       email: row.email
+    };
+  }
+
+  private async enrichItems(rows: any[]) {
+    if (!rows.length) return rows;
+    const ids = rows.map((row) => row.id);
+    const parentIds = [...new Set(rows.map((row) => row.parentId).filter(Boolean))] as string[];
+    const [parents, subtasks] = await Promise.all([
+      parentIds.length
+        ? this.drizzle.workItem.findMany({ where: { id: { in: parentIds } } })
+        : Promise.resolve([]),
+      this.drizzle.workItem.findMany({ where: { parentId: { in: ids } } })
+    ]);
+    const parentMap = new Map(parents.map((parent) => [parent.id, parent]));
+    const subtaskMap = new Map<string, any[]>();
+    for (const child of subtasks) {
+      const list = subtaskMap.get(child.parentId) ?? [];
+      list.push(child);
+      subtaskMap.set(child.parentId, list);
+    }
+    return rows.map((row) => ({
+      ...row,
+      parent: row.parentId ? (parentMap.get(row.parentId) ?? null) : null,
+      subtasks: subtaskMap.get(row.id) ?? []
+    }));
+  }
+
+  private async enrichSprints(rows: any[]) {
+    if (!rows.length) return rows;
+    const createdByIds = [...new Set(rows.map((row) => row.createdBy).filter(Boolean))] as bigint[];
+    const creators = createdByIds.length
+      ? await this.drizzle.profile.findMany({
+          where: { id: { in: createdByIds } },
+          select: { id: true, firstName: true, lastName: true, email: true }
+        })
+      : [];
+    const creatorMap = new Map(creators.map((creator) => [creator.id, creator]));
+    return rows.map((row) => ({ ...row, creator: row.createdBy ? (creatorMap.get(row.createdBy) ?? null) : null }));
+  }
+
+  private sprintInclude() {
+    return {
+      project: { select: { id: true, name: true } }
+    } satisfies Drizzle.SprintInclude;
+  }
+
+  private serializeSprintRef(row: any) {
+    return {
+      id: row.id?.toString() ?? row.id,
+      name: row.name,
+      status: row.status,
+      project_id: row.projectId?.toString() || '',
+      start_date: row.startDate,
+      end_date: row.endDate,
+      is_active: row.isActive
+    };
+  }
+
+  private serializeSprint(row: any) {
+    const itemCounts = new Map<string, number>();
+    for (const item of row.items || []) {
+      itemCounts.set(item.status, (itemCounts.get(item.status) ?? 0) + 1);
+    }
+    return {
+      id: row.id?.toString() ?? row.id,
+      name: row.name,
+      goal: row.goal || '',
+      project_id: row.projectId?.toString() || '',
+      project: row.project ? { id: row.project.id.toString(), name: row.project.name } : null,
+      start_date: row.startDate,
+      end_date: row.endDate,
+      status: row.status,
+      is_active: row.isActive,
+      created_by_id: row.createdBy?.toString() || '',
+      created_by: row.creator ? this.serializeProfile(row.creator) : null,
+      total_items: (row.items || []).length,
+      completed_items: itemCounts.get('completed') ?? 0,
+      items: row.items || [],
+      created_at: row.createdAt,
+      updated_at: row.updatedAt
+    };
+  }
+
+  private serializeWorkItemRef(row: any) {
+    return {
+      id: row.id,
+      title: row.title,
+      status: row.status,
+      priority: row.priority,
+      project_id: row.projectId?.toString() || '',
+      sprint_id: row.sprintId?.toString() || '',
+      assigned_to_id: row.assignedToId?.toString() || '',
+      due_date: row.dueDate,
+      estimate_points: row.estimatePoints ?? null,
+      sort_order: row.sortOrder ?? 0
     };
   }
 

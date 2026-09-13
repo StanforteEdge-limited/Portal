@@ -29,6 +29,9 @@ export type {
   CreateWorkObjectiveDto,
   CreateWorkKpiDto,
   CreateWorkLogDto,
+  Sprint,
+  CreateSprintDto,
+  BoardColumn,
 } from "./api/work-api";
 export type { RequestType, ResourceRequest } from "./api/request-api";
 export type {
