@@ -1,4 +1,4 @@
-import { defineRelationsPart } from 'drizzle-orm';
+import { defineRelationsPart, isNull } from 'drizzle-orm';
 import { bigint, bigserial, boolean, date, doublePrecision, index, integer, jsonb, numeric, pgTable, primaryKey, serial, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
 import { tokenTypeEnum, organizationTypeEnum, groupUserRoleEnum, requestStatusEnum, employmentTypeEnum, employmentStatusEnum, workModeEnum, onboardingStatusEnum, workItemTypeEnum, workItemStatusEnum, workPriorityEnum, workLogApprovalStatusEnum, procurementCategoryEnum, paymentPatternEnum, procurementStatusEnum, poStatusEnum, grnStatusEnum, mailProviderEnum } from '$app/db/enums';
 import { profile } from '$modules/identity/users/model';
@@ -7,36 +7,50 @@ import { tenant } from '$modules/tenancy/model';
 
 export const role = pgTable("sta_roles", {
   id: bigserial("id", { mode: 'bigint' }).primaryKey(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).references(() => tenant.id, { onDelete: 'cascade' }),
   name: varchar("name", { length: 50 }).notNull(),
   description: text("description"),
-  slug: varchar("slug", { length: 50 }).notNull().unique(),
+  slug: varchar("slug", { length: 50 }).notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at", { mode: 'date', precision: 6 }).notNull(),
   updatedAt: timestamp("updated_at", { mode: 'date', precision: 6 }).notNull(),
-});
+}, (table) => [
+    uniqueIndex("role_global_slug_unique").on(table.slug).where(isNull(table.tenantId)),
+    uniqueIndex("role_tenant_slug_unique").on(table.slug, table.tenantId),
+    index("role_index_tenantId").on(table.tenantId),
+]);
 
 export type Role = typeof role.$inferSelect;
 export type NewRole = typeof role.$inferInsert;
 
 export const permission = pgTable("sta_permissions", {
   id: bigserial("id", { mode: 'bigint' }).primaryKey(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).references(() => tenant.id, { onDelete: 'cascade' }),
   name: varchar("name", { length: 50 }).notNull(),
   description: text("description"),
-  slug: varchar("slug", { length: 50 }).notNull().unique(),
+  slug: varchar("slug", { length: 50 }).notNull(),
   module: varchar("module", { length: 50 }),
   createdAt: timestamp("created_at", { mode: 'date', precision: 6 }).notNull(),
   updatedAt: timestamp("updated_at", { mode: 'date', precision: 6 }).notNull(),
-});
+}, (table) => [
+    uniqueIndex("permission_global_slug_unique").on(table.slug).where(isNull(table.tenantId)),
+    uniqueIndex("permission_tenant_slug_unique").on(table.slug, table.tenantId),
+    index("permission_index_tenantId").on(table.tenantId),
+]);
 
 export type Permission = typeof permission.$inferSelect;
 export type NewPermission = typeof permission.$inferInsert;
 
 export const rolePermission = pgTable("sta_role_permissions", {
+  id: bigserial("id", { mode: 'bigint' }).primaryKey(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).references(() => tenant.id, { onDelete: 'cascade' }),
   roleId: bigint("role_id", { mode: 'bigint' }).notNull().references(() => role.id, { onDelete: 'cascade' }),
   permissionId: bigint("permission_id", { mode: 'bigint' }).notNull().references(() => permission.id, { onDelete: 'cascade' }),
   assignedAt: timestamp("assigned_at", { mode: 'date', precision: 6 }).defaultNow().notNull(),
 }, (table) => [
-  primaryKey({ columns: [table.roleId, table.permissionId] }),
+    uniqueIndex("role_permission_global_unique").on(table.roleId, table.permissionId).where(isNull(table.tenantId)),
+    uniqueIndex("role_permission_tenant_unique").on(table.roleId, table.permissionId, table.tenantId),
+    index("rolePermission_index_tenantId").on(table.tenantId),
 ]);
 
 export type RolePermission = typeof rolePermission.$inferSelect;

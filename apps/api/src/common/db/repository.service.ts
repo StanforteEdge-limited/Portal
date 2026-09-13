@@ -36,6 +36,7 @@ const tableMap = schema as Record<string, any>;
 const TEMPLATE_TABLE_KEYS = new Set([
   'workflow', 'workflowStep', 'workflowStepApprover', 'workflowTransition',
   'form', 'formField', 'policy', 'taxonomy', 'taxonomyTerm',
+  'role', 'permission', 'rolePermission',
 ]);
 
 function lowerFirst(value: string) {
@@ -232,7 +233,7 @@ class TableRepository {
     protected readonly tenantContext?: TenantContextService,
   ) {}
 
-  public async scopedWhere(where?: Record<string, any>) {
+  public async scopedWhere(where?: Record<string, any>, write = false) {
     const context = this.tenantContext?.get();
     if (context?.scope === 'system') return where;
     const tenantId = context?.tenantId;
@@ -264,6 +265,7 @@ class TableRepository {
     }
 
     if (TEMPLATE_TABLE_KEYS.has(this.tableName) && tableColumns(this.table)?.tenantId) {
+      if (write) return tenantScopedWhere(this.table, where, tenantId);
       return {
         AND: [
           { OR: [{ tenantId }, { tenantId: null }] },
@@ -336,7 +338,7 @@ class TableRepository {
 
   async update(args: QueryArgs = {}): Promise<any> {
     let query = this.db.update(this.table).set(cleanData(args?.data ?? {})).returning().$dynamic();
-    const where = buildWhere(this.table, await this.scopedWhere(args?.where));
+    const where = buildWhere(this.table, await this.scopedWhere(args?.where, true));
     if (where) query = query.where(where);
     const rows = await query;
     return this.attachInclude(rows[0] ?? null, args?.include);
@@ -344,7 +346,7 @@ class TableRepository {
 
   async updateMany(args: QueryArgs = {}): Promise<{ count: number }> {
     let query = this.db.update(this.table).set(cleanData(args?.data ?? {})).$dynamic();
-    const where = buildWhere(this.table, await this.scopedWhere(args?.where));
+    const where = buildWhere(this.table, await this.scopedWhere(args?.where, true));
     if (where) query = query.where(where);
     const result = await query;
     return { count: Number(result?.rowCount ?? 0) };
@@ -352,7 +354,7 @@ class TableRepository {
 
   async delete(args: QueryArgs = {}): Promise<any> {
     let query = this.db.delete(this.table).returning().$dynamic();
-    const where = buildWhere(this.table, await this.scopedWhere(args?.where));
+    const where = buildWhere(this.table, await this.scopedWhere(args?.where, true));
     if (where) query = query.where(where);
     const rows = await query;
     return rows[0] ?? null;
@@ -360,7 +362,7 @@ class TableRepository {
 
   async deleteMany(args: QueryArgs = {}): Promise<{ count: number }> {
     let query = this.db.delete(this.table).$dynamic();
-    const where = buildWhere(this.table, await this.scopedWhere(args?.where));
+    const where = buildWhere(this.table, await this.scopedWhere(args?.where, true));
     if (where) query = query.where(where);
     const result = await query;
     return { count: Number(result?.rowCount ?? 0) };
@@ -810,10 +812,21 @@ class JoinTableRepository extends TableRepository {
     super(db, 'join', target, tenantContext);
   }
 
+  private async joinScopedWhere(joinName: string | undefined, where: Record<string, any> | undefined) {
+    const context = this.tenantContext?.get();
+    if (context?.scope === 'system' || !context?.tenantId) return where;
+    const tenantId = context.tenantId;
+    if (!joinName || !tableColumns(this.joinTable)?.tenantId) return where;
+    return TEMPLATE_TABLE_KEYS.has(joinName)
+      ? { AND: [{ OR: [{ tenantId }, { tenantId: null }] }, ...(where ? [where] : [])] }
+      : { AND: [{ tenantId }, ...(where ? [where] : [])] };
+  }
+
   async findMany(args: QueryArgs = {}): Promise<any[]> {
     const columns = tableColumns(this.joinTable);
     let query = this.db.select().from(this.joinTable).$dynamic();
-    const scoped = await this.scopedWhere(args?.where);
+    const joinName = Object.entries(tableMap).find(([, entry]) => entry === this.joinTable)?.[0];
+    const scoped = await this.joinScopedWhere(joinName, args?.where);
     const where = buildWhere(this.joinTable, scoped);
     if (where) query = query.where(where);
     const orderBy = buildOrderBy(this.joinTable, args?.orderBy);
@@ -822,7 +835,6 @@ class JoinTableRepository extends TableRepository {
     if (args?.take != null) query = query.limit(Math.abs(Number(args.take)));
     const rows = await query;
 
-    const joinName = Object.entries(tableMap).find(([, entry]) => entry === this.joinTable)?.[0];
     if (!joinName) return rows;
     const joinRepository = new TableRepository(this.db, joinName, this.joinTable, this.tenantContext);
     return joinRepository.attachIncludes(rows, args?.include);
@@ -831,7 +843,8 @@ class JoinTableRepository extends TableRepository {
   async count(args: QueryArgs = {}): Promise<number> {
     const columns = tableColumns(this.joinTable);
     let query = this.db.select({ value: drizzleCount() }).from(this.joinTable).$dynamic();
-    const scoped = await this.scopedWhere(args?.where);
+    const joinName = Object.entries(tableMap).find(([, entry]) => entry === this.joinTable)?.[0];
+    const scoped = await this.joinScopedWhere(joinName, args?.where);
     const where = buildWhere(this.joinTable, scoped);
     if (where) query = query.where(where);
     const rows = await query;

@@ -45,6 +45,14 @@ const TENANT_SCOPED_TABLES = [
   'sta_organization_office_locations',
   'sta_group_organizations',
   'sta_group_user_organization_scopes',
+  'sta_workflow_instances',
+  'sta_workflow_history',
+  'sta_form_assignments',
+  'sta_form_submissions',
+  'sta_form_submission_data',
+  'sta_form_submission_history',
+  'sta_acknowledgements',
+  'sta_taxonomy_tag_assignments',
 ] as const;
 
 @Injectable()

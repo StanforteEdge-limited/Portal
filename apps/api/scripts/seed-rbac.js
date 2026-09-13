@@ -49,7 +49,8 @@ async function main() {
       await client.query(
         `INSERT INTO sta_roles (name, description, slug, is_active, created_at, updated_at)
          VALUES ($1, $2, $3, true, $4, $4)
-         ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description`,
+         ON CONFLICT (slug) WHERE tenant_id IS NULL
+         DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description`,
         [role.name, role.description, role.slug, now]
       );
     }
@@ -58,7 +59,8 @@ async function main() {
       await client.query(
         `INSERT INTO sta_permissions (name, description, slug, module, created_at, updated_at)
          VALUES ($1, $2, $3, $4, $5, $5)
-         ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name, module = EXCLUDED.module`,
+         ON CONFLICT (slug) WHERE tenant_id IS NULL
+         DO UPDATE SET name = EXCLUDED.name, module = EXCLUDED.module`,
         [perm.name, null, perm.slug, perm.module, now]
       );
     }
