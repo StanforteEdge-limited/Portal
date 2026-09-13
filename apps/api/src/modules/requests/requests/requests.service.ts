@@ -1,4 +1,5 @@
 import { Injectable, BadRequestException, NotFoundException, ConflictException } from '@nestjs/common';
+import { sql } from 'drizzle-orm';
 import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { DocumentGeneratorService } from '$common/documents/document-generator.service';
 import { DocumentIds } from '$common/documents/document.types';
@@ -3519,8 +3520,6 @@ export class RequestsService {
 
   private async ensureStaffRequestSequenceFloor(db: Drizzle.TransactionClient | DrizzleService) {
     const floor = (STAFF_REQUEST_SEQUENCE_START - BigInt(1)).toString();
-    await db.$executeRawUnsafe(
-      `SELECT setval(pg_get_serial_sequence('sta_request_instances','id'), GREATEST((SELECT COALESCE(MAX(id), 1) FROM sta_request_instances), ${floor}), true)`
-    );
+    await db.$executeRaw(sql`SELECT setval(pg_get_serial_sequence('sta_request_instances','id'), GREATEST((SELECT COALESCE(MAX(id), 1) FROM sta_request_instances), CAST(${floor} AS bigint)), true)`);
   }
 }

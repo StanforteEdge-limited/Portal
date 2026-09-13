@@ -891,16 +891,6 @@ export class RepositoryService {
     const statement = Array.isArray(query) && 'raw' in query ? valuesForRaw(query, values) : (query as SQL);
     return this.dbService.client.execute(statement) as unknown as Promise<T>;
   }
-
-  async $executeRawUnsafe<T = unknown>(query: SQL | TemplateStringsArray | string, ...values: unknown[]): Promise<T> {
-    requireRawTenantContext(this.tenantContext);
-    if (typeof query === 'string') {
-      return this.dbService.client.execute(sql.raw(query)) as unknown as Promise<T>;
-    }
-    return Array.isArray(query)
-      ? this.$executeRaw<T>(query as TemplateStringsArray, ...values)
-      : this.$executeRaw<T>(query as SQL);
-  }
 }
 
 type RepositoryDelegates = {
