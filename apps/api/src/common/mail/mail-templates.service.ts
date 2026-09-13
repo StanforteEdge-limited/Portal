@@ -1,15 +1,29 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { existsSync, readFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import Handlebars from 'handlebars';
 
+const SUPPORTED_TEMPLATE_FILES: Record<string, string> = {
+  layout: 'layout.hbs',
+  invitation: 'invitation.hbs',
+  welcome: 'welcome.hbs',
+  reset_password: 'reset-password.hbs',
+};
+
 /**
- * In-memory Handlebar email templates (bulk/leaf rendering engine supplier).
+ * Handlebars email templates loaded from `.hbs` files on disk.
  *
- * - Templates are TS constant strings compiled once at construction — zero
- *   `.hbs`/disk coupling, survives `tsc` → `dist` and container copies.
- * - `render(name, ctx)` returns `null` when the named template is not
- *   registered so callers fail-open to their existing inline HTML (a renamed
- *   template can never drop an email).
- * - Every data interpolation is escaped by default (`{{x}}`) and helpers
+ * - Template files live in `src/common/mail/templates/` during development and
+ *   are copied into `dist/common/mail/templates/` on build so they survive
+ *   `tsc` -> `dist` and container copies (see `scripts/copy-email-templates.js`).
+ * - The directory is resolved, in order: `EMAIL_TEMPLATES_DIR`, the folder
+ *   next to this file, `src/common/mail/templates` relative to CWD,
+ *   `<CWD>/email-templates`, `<CWD>/templates`. The first directory that
+ *   actually contains `layout.hbs` wins.
+ * - `render(name, ctx)` returns `null` when the named template could not be
+ *   loaded so callers fail-open to their existing inline HTML (a renamed or
+ *   missing template can never drop an email).
+ * - Every data interpolation is escaped by default (`{{x}}`) and helpers are
  *   exposed for safe URLs / attributes.
  */
 @Injectable()
@@ -18,58 +32,6 @@ export class MailTemplatesService {
   private readonly engine = Handlebars.create();
   private readonly registry = new Map<string, Handlebars.TemplateDelegate>();
 
-  private static readonly REGISTRY: Record<string, string> = {
-    layout: `<!doctype html>
-<html lang="en">
-<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /></head>
-<body style="margin:0; padding:0; background:#f3f6fb; font-family:Segoe UI, Arial, Helvetica, sans-serif;">
-  <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
-    <tr><td align="center" style="padding:32px 12px;">
-      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:620px;">
-        <tr><td style="background:#ffffff; border-radius:12px; overflow:hidden; border:1px solid #e5e7eb;">
-          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#034785;">
-            <tr><td style="padding:24px 26px;">
-              <div style="color:#ffffff; font-size:20px; font-weight:700;">{{siteName}}</div>
-              <div style="margin-top:4px; color:#dbeafe; font-size:13px;">Creating Shared Prosperity</div>
-            </td></tr>
-          </table>
-          <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
-            <tr><td style="padding:26px 26px;">{{{body}}}</td></tr>
-          </table>
-          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#f8fafc; border-top:1px solid #e5e7eb;">
-            <tr><td style="padding:18px 26px;">
-              <div style="font-size:12px; color:#64748b;">Sent by Stanforte Edge Portal · Contact <a href="mailto:{{supportEmail}}" style="color:#034785;">{{supportEmail}}</a></div>
-              <div style="margin-top:6px; font-size:12px; color:#94a3b8;">&copy; {{year}} Stanforte Edge. All rights reserved.</div>
-            </td></tr>
-          </table>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`,
-
-    reset_password: `<p style="margin:0 0 18px; font-size:15px; color:#111827; line-height:1.7;">Hello {{displayName}},</p>
-<p style="margin:0 0 22px; font-size:15px; color:#111827; line-height:1.7;">We received a request to reset your Stanforte Edge Portal password. Tap the button below to choose a new one. This link is valid for 15 minutes.</p>
-<p style="margin:0 0 22px;"><a href="{{resetUrl}}" style="display:inline-block; background:#FC2621; color:#ffffff; text-decoration:none; font-weight:600; font-size:15px; padding:12px 28px; border-radius:8px;">Reset password</a></p>
-<p style="margin:0 0 22px; font-size:13px; color:#64748b;">If the button doesn't work, paste this link into your browser:</p>
-<p style="margin:0 0 6px; font-size:13px; color:#0f172a; word-break:break-all;"><a href="{{resetUrl}}">{{resetUrl}}</a></p>
-<p style="margin:0; font-size:13px; color:#64748b;">If you didn't request a password reset, you can safely ignore this email.</p>`,
-
-    invitation: `<p style="margin:0 0 18px; font-size:15px; color:#111827; line-height:1.7;">Hello {{displayName}},</p>
-<p style="margin:0 0 22px; font-size:15px; color:#111827; line-height:1.7;">You have been invited to Stanforte Edge Portal. Tap the button below to set up your password and get started.</p>
-<p style="margin:0 0 18px;"><a href="{{inviteUrl}}" style="display:inline-block; background:#FC2621; color:#ffffff; text-decoration:none; font-weight:600; font-size:15px; padding:12px 28px; border-radius:8px;">Accept invitation</a></p>
-<p style="margin:0 0 6px; font-size:13px; color:#64748b;">If the button doesn't work, paste this link into your browser:</p>
-<p style="margin:0 0 18px; font-size:13px; color:#0f172a; word-break:break-all;"><a href="{{inviteUrl}}">{{inviteUrl}}</a></p>
-<p style="margin:0; font-size:13px; color:#64748b;">This invitation expires on {{expiresOn}}.</p>`,
-
-    welcome: `<p style="margin:0 0 18px; font-size:15px; color:#111827; line-height:1.7;">Hello {{displayName}},</p>
-<p style="margin:0 0 22px; font-size:15px; color:#111827; line-height:1.7;">Your account has been created on Stanforte Edge Portal. Tap the button below to sign in.</p>
-<p style="margin:0 0 18px;"><a href="{{portalUrl}}" style="display:inline-block; background:#FC2621; color:#ffffff; text-decoration:none; font-weight:600; font-size:15px; padding:12px 28px; border-radius:8px;">Sign in</a></p>
-<p style="margin:0; font-size:13px; color:#64748b;">If the button doesn't work, paste this link into your browser:</p>
-<p style="margin:0; font-size:13px; color:#0f172a; word-break:break-all;"><a href="{{portalUrl}}">{{portalUrl}}</a></p>`
-  };
-
   private static readonly DEFAULTS = {
     year: () => String(new Date().getFullYear()),
     siteName: () => process.env.MAIL_FROM_NAME?.trim() || 'Stanforte Edge Portal',
@@ -77,6 +39,7 @@ export class MailTemplatesService {
   };
 
   constructor() {
+    const dir = this.resolveTemplatesDir();
     this.engine.registerHelper('escape', (value: unknown) =>
       this.escapeHTML(value),
     );
@@ -85,9 +48,47 @@ export class MailTemplatesService {
         `<a href="${this.escapeAttr(href)}">${this.escapeHTML(label)}</a>`,
       ),
     );
-    for (const [name, source] of Object.entries(MailTemplatesService.REGISTRY)) {
-      this.registry.set(name, this.engine.compile(source));
+
+    for (const [name, file] of Object.entries(SUPPORTED_TEMPLATE_FILES)) {
+      const abs = join(dir, file);
+      if (!existsSync(abs)) {
+        this.logger.warn(`Mail template "${file}" not found in ${dir} — ${name} will fall back to inline`);
+        continue;
+      }
+      try {
+        const source = readFileSync(abs, 'utf8');
+        this.registry.set(name, this.engine.compile(source));
+      } catch (error) {
+        this.logger.error(`Failed to compile mail template "${name}" from ${abs}`, error instanceof Error ? error.stack : String(error));
+      }
     }
+
+    if (!this.registry.size) {
+      this.logger.warn('No mail templates loaded — all sends will fall back to inline HTML');
+    }
+  }
+
+  private resolveTemplatesDir(): string {
+    const candidates = [
+      process.env.EMAIL_TEMPLATES_DIR,
+      join(__dirname, 'templates'),
+      resolve(process.cwd(), 'src/common/mail/templates'),
+      resolve(process.cwd(), 'email-templates'),
+      resolve(process.cwd(), 'templates'),
+    ].filter((path): path is string => Boolean(path));
+
+    for (const candidate of candidates) {
+      try {
+        if (existsSync(candidate) && existsSync(join(candidate, SUPPORTED_TEMPLATE_FILES.layout))) {
+          return candidate;
+        }
+      } catch {
+        // ignore unresolvable candidates and continue
+      }
+    }
+
+    this.logger.warn(`No mail template directory found — tried: ${candidates.join(', ')}`);
+    return candidates[0] ?? resolve(process.cwd(), 'email-templates');
   }
 
   /**

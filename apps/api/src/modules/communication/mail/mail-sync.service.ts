@@ -4,7 +4,7 @@ import { MailAccountService } from './mail-account.service';
 import { MailImapService } from './mail-imap.service';
 import { NotificationsService } from '$modules/notifications/notifications.service';
 import type { MailAccount } from '$common/db/drizzle-compat';
-import type { SyncResultDto } from '$modules/platform/mail/dto/sync-result.dto';
+import type { SyncResultDto } from './dto/sync-result.dto';
 
 const DEFAULT_FOLDERS: Record<string, string[]> = {
   GOOGLE: ['INBOX', '[Gmail]/Sent Mail', '[Gmail]/Drafts', '[Gmail]/Spam', '[Gmail]/Trash'],

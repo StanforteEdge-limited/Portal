@@ -9,7 +9,7 @@ import { MailAccountService } from './mail-account.service';
 import { MailSyncService } from './mail-sync.service';
 import { MailImapService } from './mail-imap.service';
 import { MailSmtpService } from './mail-smtp.service';
-import { SendMessageDto } from '$modules/platform/mail/dto/send-message.dto';
+import { SendMessageDto } from './dto/send-message.dto';
 import type { Response } from 'express';
 
 @ApiTags('Mail')

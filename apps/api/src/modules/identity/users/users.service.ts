@@ -642,6 +642,14 @@ export class UsersService {
       subject: 'You are invited to StanforteEdge Portal',
       text: `${displayName},\n\nYou have been invited to StanforteEdge Portal. Set up your password here:\n${inviteLink}\n\n${message ?? ''}`.trim(),
       html: `<p>Hello ${displayName},</p><p>You have been invited to StanforteEdge Portal. Set up your password here:</p><p><a href="${inviteLink}">${inviteLink}</a></p>${message ? `<p>${message}</p>` : ''}<p>This invite expires on ${expiresAt.toDateString()}.</p>`,
+      template: 'invitation',
+      templateContext: {
+        subject: 'You are invited to StanforteEdge Portal',
+        displayName,
+        inviteUrl: inviteLink,
+        expiresOn: expiresAt.toDateString(),
+        message: message?.trim() || undefined
+      },
       threadKey: `invite-${user.id.toString()}`,
       userId: user.id
     });
@@ -656,6 +664,12 @@ export class UsersService {
       subject: 'Welcome to StanforteEdge Portal',
       text: `Hello ${displayName},\n\nYour account has been created. You can sign in here:\n${portalUrl}/login`,
       html: `<p>Hello ${displayName},</p><p>Your account has been created.</p><p>You can sign in here: <a href="${portalUrl}/login">${portalUrl}/login</a></p>`,
+      template: 'welcome',
+      templateContext: {
+        subject: 'Welcome to StanforteEdge Portal',
+        displayName,
+        portalUrl: `${portalUrl}/login`
+      },
       threadKey: `welcome-${user.id.toString()}`,
       userId: user.id
     });

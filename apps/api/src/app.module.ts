@@ -31,7 +31,7 @@ import { PoliciesModule } from '$modules/requests/policies/policies.module';
 import { PayrollModule } from '$modules/hr/payroll/payroll.module';
 import { TasksModule } from '$modules/operations/tasks/tasks.module';
 import { VersionModule } from '$modules/platform/version/version.module';
-import { MailModule } from '$modules/platform/mail/mail.module';
+import { MailModule } from '$modules/communication/mail/mail.module';
 import { TenancyModule } from '$modules/tenancy/tenancy.module';
 import { BillingModule } from '$modules/platform/billing/billing.module';
 import { QueuesModule } from '$common/queues/queues.module';

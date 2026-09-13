@@ -345,11 +345,18 @@ export class AuthService {
 
     const appUrl = process.env.APP_BASE_URL || 'http://localhost:3000';
     const resetLink = `${appUrl}/reset-password?token=${encodeURIComponent(resetToken)}`;
+    const displayName = `${profile.firstName ?? ''} ${profile.lastName ?? ''}`.trim() || profile.email;
     await this.mailService.send({
       to: profile.email,
       subject: 'Reset your StanforteEdge password',
       text: `Use this link to reset your password: ${resetLink}`,
       html: `<p>Use this link to reset your password:</p><p><a href=\"${resetLink}\">${resetLink}</a></p>`,
+      template: 'reset_password',
+      templateContext: {
+        subject: 'Reset your StanforteEdge password',
+        displayName,
+        resetUrl: resetLink
+      },
       threadKey: `auth-reset-${profile.id.toString()}`,
       userId: profile.id
     });
