@@ -2,12 +2,12 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import * as bcrypt from 'bcryptjs';
 import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { toBigInt } from '$common/utils/ids';
-import { CreateAdminUserDto } from '$modules/auth/admin/dto/create-admin-user.dto';
-import { UpdateAdminUserDto } from '$modules/auth/admin/dto/update-admin-user.dto';
-import { UpdateUserStatusDto } from '$modules/auth/admin/dto/update-user-status.dto';
+import { CreateAdminUserDto } from '$modules/identity/admin/dto/create-admin-user.dto';
+import { UpdateAdminUserDto } from '$modules/identity/admin/dto/update-admin-user.dto';
+import { UpdateUserStatusDto } from '$modules/identity/admin/dto/update-user-status.dto';
 import { generateUniqueUsername, makeUsernameSeed } from '$common/utils/username';
 import { paginatedResponse } from '$common/helpers/paginated-response';
-import { UsersService } from '$modules/auth/users/users.service';
+import { UsersService } from '$modules/identity/users/users.service';
 import { Drizzle } from '$common/db/drizzle-compat';
 import { TenantContext } from '$common/auth/tenant-context';
 

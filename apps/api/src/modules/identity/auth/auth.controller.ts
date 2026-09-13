@@ -1,15 +1,15 @@
 import { Body, Controller, Get, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
-import { LoginDto } from '$modules/auth/auth/dto/login.dto';
-import { ChangePasswordDto } from '$modules/auth/auth/dto/change-password.dto';
-import { RefreshDto } from '$modules/auth/auth/dto/refresh.dto';
-import { ForgotPasswordDto } from '$modules/auth/auth/dto/forgot-password.dto';
-import { ResetPasswordDto } from '$modules/auth/auth/dto/reset-password.dto';
+import { LoginDto } from '$modules/identity/auth/dto/login.dto';
+import { ChangePasswordDto } from '$modules/identity/auth/dto/change-password.dto';
+import { RefreshDto } from '$modules/identity/auth/dto/refresh.dto';
+import { ForgotPasswordDto } from '$modules/identity/auth/dto/forgot-password.dto';
+import { ResetPasswordDto } from '$modules/identity/auth/dto/reset-password.dto';
 import { JwtAuthGuard } from '$common/auth/jwt-auth.guard';
-import { AuthStatusResponseDto, LoginResponseDto } from '$modules/auth/auth/dto/auth-response.dto';
-import { AcceptInviteDto } from '$modules/auth/auth/dto/accept-invite.dto';
-import { SwitchTenantDto } from '$modules/auth/auth/dto/switch-tenant.dto';
+import { AuthStatusResponseDto, LoginResponseDto } from '$modules/identity/auth/dto/auth-response.dto';
+import { AcceptInviteDto } from '$modules/identity/auth/dto/accept-invite.dto';
+import { SwitchTenantDto } from '$modules/identity/auth/dto/switch-tenant.dto';
 import type { Response } from 'express';
 
 @Controller('auth')

@@ -3,8 +3,8 @@ import { sql } from 'drizzle-orm';
 import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { TenantContext } from '$common/auth/tenant-context';
 import { TenantContextService } from '$common/auth/tenant-context.service';
-import { UsersService } from '$modules/auth/users/users.service';
-import { InviteUserDto } from '$modules/auth/users/dto/invite-user.dto';
+import { UsersService } from '$modules/identity/users/users.service';
+import { InviteUserDto } from '$modules/identity/users/dto/invite-user.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 
 const TENANT_SCOPED_TABLES = [

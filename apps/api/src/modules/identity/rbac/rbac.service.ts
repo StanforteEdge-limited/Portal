@@ -3,12 +3,12 @@ import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { paginatedResponse } from '$common/helpers/paginated-response';
 import { toBigInt } from '$common/utils/ids';
 import { TenantContext } from '$common/auth/tenant-context';
-import { AssignUserRolesDto } from '$modules/auth/rbac/dto/assign-user-roles.dto';
-import { CreatePermissionDto } from '$modules/auth/rbac/dto/create-permission.dto';
-import { CreateRoleDto } from '$modules/auth/rbac/dto/create-role.dto';
-import { SetRolePermissionsDto } from '$modules/auth/rbac/dto/set-role-permissions.dto';
-import { UpdatePermissionDto } from '$modules/auth/rbac/dto/update-permission.dto';
-import { UpdateRoleDto } from '$modules/auth/rbac/dto/update-role.dto';
+import { AssignUserRolesDto } from '$modules/identity/rbac/dto/assign-user-roles.dto';
+import { CreatePermissionDto } from '$modules/identity/rbac/dto/create-permission.dto';
+import { CreateRoleDto } from '$modules/identity/rbac/dto/create-role.dto';
+import { SetRolePermissionsDto } from '$modules/identity/rbac/dto/set-role-permissions.dto';
+import { UpdatePermissionDto } from '$modules/identity/rbac/dto/update-permission.dto';
+import { UpdateRoleDto } from '$modules/identity/rbac/dto/update-role.dto';
 
 @Injectable()
 export class RbacService {

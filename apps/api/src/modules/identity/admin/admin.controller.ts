@@ -3,9 +3,9 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '$common/auth/jwt-auth.guard';
 import { Permissions } from '$common/auth/permissions.decorator';
 import { PermissionsGuard } from '$common/auth/permissions.guard';
-import { CreateAdminUserDto } from '$modules/auth/admin/dto/create-admin-user.dto';
-import { UpdateAdminUserDto } from '$modules/auth/admin/dto/update-admin-user.dto';
-import { UpdateUserStatusDto } from '$modules/auth/admin/dto/update-user-status.dto';
+import { CreateAdminUserDto } from '$modules/identity/admin/dto/create-admin-user.dto';
+import { UpdateAdminUserDto } from '$modules/identity/admin/dto/update-admin-user.dto';
+import { UpdateUserStatusDto } from '$modules/identity/admin/dto/update-user-status.dto';
 import { AdminService } from './admin.service';
 import { CurrentTenant, TenantContext } from '$common/auth/tenant-context';
 

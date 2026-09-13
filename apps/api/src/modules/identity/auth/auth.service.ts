@@ -3,15 +3,15 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import type { Response } from 'express';
 import { DrizzleService } from '$common/drizzle/drizzle.service';
-import { LoginDto } from '$modules/auth/auth/dto/login.dto';
-import { ChangePasswordDto } from '$modules/auth/auth/dto/change-password.dto';
-import { RefreshDto } from '$modules/auth/auth/dto/refresh.dto';
-import { ForgotPasswordDto } from '$modules/auth/auth/dto/forgot-password.dto';
-import { ResetPasswordDto } from '$modules/auth/auth/dto/reset-password.dto';
+import { LoginDto } from '$modules/identity/auth/dto/login.dto';
+import { ChangePasswordDto } from '$modules/identity/auth/dto/change-password.dto';
+import { RefreshDto } from '$modules/identity/auth/dto/refresh.dto';
+import { ForgotPasswordDto } from '$modules/identity/auth/dto/forgot-password.dto';
+import { ResetPasswordDto } from '$modules/identity/auth/dto/reset-password.dto';
 import { sha256, randomToken } from '$common/utils/crypto';
 import { toBigInt } from '$common/utils/ids';
-import { AuthStatusResponseDto, LoginResponseDto } from '$modules/auth/auth/dto/auth-response.dto';
-import { AcceptInviteDto } from '$modules/auth/auth/dto/accept-invite.dto';
+import { AuthStatusResponseDto, LoginResponseDto } from '$modules/identity/auth/dto/auth-response.dto';
+import { AcceptInviteDto } from '$modules/identity/auth/dto/accept-invite.dto';
 import { MailService } from '$common/mail/mail.service';
 import {
   AUTH_ACCESS_COOKIE,

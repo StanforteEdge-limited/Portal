@@ -1,11 +1,13 @@
 import { defineRelationsPart } from 'drizzle-orm';
 import { bigint, bigserial, boolean, date, doublePrecision, index, integer, jsonb, numeric, pgTable, serial, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
-import { tokenTypeEnum, organizationTypeEnum, groupUserRoleEnum, requestStatusEnum, employmentTypeEnum, employmentStatusEnum, workModeEnum, onboardingStatusEnum, workItemTypeEnum, workItemStatusEnum, workPriorityEnum, workLogApprovalStatusEnum, procurementCategoryEnum, paymentPatternEnum, procurementStatusEnum, poStatusEnum, grnStatusEnum, mailProviderEnum } from '../../../db/enums';
+import { tokenTypeEnum, organizationTypeEnum, groupUserRoleEnum, requestStatusEnum, employmentTypeEnum, employmentStatusEnum, workModeEnum, onboardingStatusEnum, workItemTypeEnum, workItemStatusEnum, workPriorityEnum, workLogApprovalStatusEnum, procurementCategoryEnum, paymentPatternEnum, procurementStatusEnum, poStatusEnum, grnStatusEnum, mailProviderEnum } from '$app/db/enums';
+import { profile } from '$modules/identity/users/model';
+import { tenant } from '$modules/tenancy/model';
 
 export const token = pgTable("sta_tokens", {
   id: varchar("id", { length: 255 }).primaryKey().notNull(),
-  profileId: bigint("profile_id", { mode: 'bigint' }).notNull(),
-  tenantId: bigint("tenant_id", { mode: 'bigint' }),
+  profileId: bigint("profile_id", { mode: 'bigint' }).notNull().references(() => profile.id, { onDelete: 'cascade' }),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).references(() => tenant.id, { onDelete: 'cascade' }),
   type: tokenTypeEnum("type").notNull(),
   tokenHash: varchar("token_hash", { length: 255 }).notNull(),
   expiresAt: timestamp("expires_at", { mode: 'date', precision: 6 }).notNull(),
@@ -25,4 +27,9 @@ export const token = pgTable("sta_tokens", {
 export type Token = typeof token.$inferSelect;
 export type NewToken = typeof token.$inferInsert;
 
-export const modules_auth_authRelations = defineRelationsPart({ token });
+export const modules_identity_authRelations = defineRelationsPart({ token, profile, tenant }, (r) => ({
+  token: {
+    profile: r.one.profile({ from: r.token.profileId, to: r.profile.id, optional: false }),
+    tenant: r.one.tenant({ from: r.token.tenantId, to: r.tenant.id }),
+  },
+}));

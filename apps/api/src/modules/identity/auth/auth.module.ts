@@ -4,7 +4,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
 import { MailModule } from '$common/mail/mail.module';
-import { AuditModule } from '$modules/auth/audit/audit.module';
+import { AuditModule } from '$modules/identity/audit/audit.module';
 
 @Module({
   imports: [

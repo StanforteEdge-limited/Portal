@@ -3,7 +3,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '$common/auth/jwt-auth.guard';
 import { Permissions } from '$common/auth/permissions.decorator';
 import { PermissionsGuard } from '$common/auth/permissions.guard';
-import { CreateAuditEventDto } from '$modules/auth/audit/dto/create-audit-event.dto';
+import { CreateAuditEventDto } from '$modules/identity/audit/dto/create-audit-event.dto';
 import { AuditService } from './audit.service';
 
 @Controller('audit')

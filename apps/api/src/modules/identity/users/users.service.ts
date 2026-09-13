@@ -2,12 +2,12 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import * as bcrypt from 'bcryptjs';
 import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { toBigInt } from '$common/utils/ids';
-import { UpdateProfileDto } from '$modules/auth/users/dto/update-profile.dto';
-import { CreateUserDto } from '$modules/auth/users/dto/create-user.dto';
-import { ProfileResponseDto } from '$modules/auth/users/dto/profile-response.dto';
-import { AssignUserRolesDto } from '$modules/auth/users/dto/assign-user-roles.dto';
-import { InviteUserDto } from '$modules/auth/users/dto/invite-user.dto';
-import { UpdateUserDto } from '$modules/auth/users/dto/update-user.dto';
+import { UpdateProfileDto } from '$modules/identity/users/dto/update-profile.dto';
+import { CreateUserDto } from '$modules/identity/users/dto/create-user.dto';
+import { ProfileResponseDto } from '$modules/identity/users/dto/profile-response.dto';
+import { AssignUserRolesDto } from '$modules/identity/users/dto/assign-user-roles.dto';
+import { InviteUserDto } from '$modules/identity/users/dto/invite-user.dto';
+import { UpdateUserDto } from '$modules/identity/users/dto/update-user.dto';
 import { randomToken, sha256 } from '$common/utils/crypto';
 import { MailService } from '$common/mail/mail.service';
 import { generateUniqueUsername, makeUsernameSeed } from '$common/utils/username';

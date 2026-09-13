@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { Drizzle } from '$common/db/drizzle-compat';
 import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { toBigInt } from '$common/utils/ids';
-import { CreateAuditEventDto } from '$modules/auth/audit/dto/create-audit-event.dto';
+import { CreateAuditEventDto } from '$modules/identity/audit/dto/create-audit-event.dto';
 import { paginatedResponse } from '$common/helpers/paginated-response';
 
 @Injectable()

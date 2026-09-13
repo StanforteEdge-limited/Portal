@@ -4,10 +4,10 @@ import { JwtAuthGuard } from '$common/auth/jwt-auth.guard';
 import { Permissions } from '$common/auth/permissions.decorator';
 import { PermissionsGuard } from '$common/auth/permissions.guard';
 import { CurrentTenant, TenantContext } from '$common/auth/tenant-context';
-import { AssignUserRolesDto } from '$modules/auth/rbac/dto/assign-user-roles.dto';
-import { CreateRoleDto } from '$modules/auth/rbac/dto/create-role.dto';
-import { SetRolePermissionsDto } from '$modules/auth/rbac/dto/set-role-permissions.dto';
-import { UpdateRoleDto } from '$modules/auth/rbac/dto/update-role.dto';
+import { AssignUserRolesDto } from '$modules/identity/rbac/dto/assign-user-roles.dto';
+import { CreateRoleDto } from '$modules/identity/rbac/dto/create-role.dto';
+import { SetRolePermissionsDto } from '$modules/identity/rbac/dto/set-role-permissions.dto';
+import { UpdateRoleDto } from '$modules/identity/rbac/dto/update-role.dto';
 import { RbacService } from './rbac.service';
 
 @Controller('admin/rbac')

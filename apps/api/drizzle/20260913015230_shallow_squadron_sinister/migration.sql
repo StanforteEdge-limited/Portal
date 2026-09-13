@@ -1,0 +1,54 @@
+ALTER TABLE "sta_role_permissions" ADD PRIMARY KEY ("role_id","permission_id");--> statement-breakpoint
+ALTER TABLE "sta_user_roles" ALTER COLUMN "tenant_id" SET NOT NULL;--> statement-breakpoint
+ALTER TABLE "sta_documents" ALTER COLUMN "tenant_id" SET NOT NULL;--> statement-breakpoint
+ALTER TABLE "sta_file_assets" ALTER COLUMN "tenant_id" SET NOT NULL;--> statement-breakpoint
+ALTER TABLE "sta_form_submissions" ALTER COLUMN "organization_id" SET DATA TYPE bigint USING "organization_id"::bigint;--> statement-breakpoint
+ALTER TABLE "sta_tokens" ADD CONSTRAINT "sta_tokens_profile_id_sta_profiles_id_fkey" FOREIGN KEY ("profile_id") REFERENCES "sta_profiles"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "sta_tokens" ADD CONSTRAINT "sta_tokens_tenant_id_sta_tenants_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "sta_tenants"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "sta_role_permissions" ADD CONSTRAINT "sta_role_permissions_role_id_sta_roles_id_fkey" FOREIGN KEY ("role_id") REFERENCES "sta_roles"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "sta_role_permissions" ADD CONSTRAINT "sta_role_permissions_permission_id_sta_permissions_id_fkey" FOREIGN KEY ("permission_id") REFERENCES "sta_permissions"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "sta_user_roles" ADD CONSTRAINT "sta_user_roles_tenant_id_sta_tenants_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "sta_tenants"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "sta_user_roles" ADD CONSTRAINT "sta_user_roles_profile_id_sta_profiles_id_fkey" FOREIGN KEY ("profile_id") REFERENCES "sta_profiles"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "sta_user_roles" ADD CONSTRAINT "sta_user_roles_role_id_sta_roles_id_fkey" FOREIGN KEY ("role_id") REFERENCES "sta_roles"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "sta_user_roles" ADD CONSTRAINT "sta_user_roles_organization_id_sta_organizations_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "sta_organizations"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "sta_file_assets" ADD CONSTRAINT "sta_file_assets_tenant_id_sta_tenants_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "sta_tenants"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "sta_file_assets" ADD CONSTRAINT "sta_file_assets_organization_id_sta_organizations_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "sta_organizations"("id") ON DELETE SET NULL;--> statement-breakpoint
+ALTER TABLE "sta_file_assets" ADD CONSTRAINT "sta_file_assets_uploaded_by_sta_profiles_id_fkey" FOREIGN KEY ("uploaded_by") REFERENCES "sta_profiles"("id") ON DELETE SET NULL;--> statement-breakpoint
+ALTER TABLE "sta_documents" ADD CONSTRAINT "sta_documents_tenant_id_sta_tenants_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "sta_tenants"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "sta_documents" ADD CONSTRAINT "sta_documents_organization_id_sta_organizations_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "sta_organizations"("id") ON DELETE SET NULL;--> statement-breakpoint
+ALTER TABLE "sta_documents" ADD CONSTRAINT "sta_documents_file_id_sta_file_assets_id_fkey" FOREIGN KEY ("file_id") REFERENCES "sta_file_assets"("id") ON DELETE SET NULL;--> statement-breakpoint
+ALTER TABLE "sta_documents" ADD CONSTRAINT "sta_documents_created_by_sta_profiles_id_fkey" FOREIGN KEY ("created_by") REFERENCES "sta_profiles"("id") ON DELETE SET NULL;--> statement-breakpoint
+ALTER TABLE "sta_documents" ADD CONSTRAINT "sta_documents_updated_by_sta_profiles_id_fkey" FOREIGN KEY ("updated_by") REFERENCES "sta_profiles"("id") ON DELETE SET NULL;--> statement-breakpoint
+ALTER TABLE "sta_document_acknowledgements" ADD CONSTRAINT "sta_document_acknowledgements_document_id_sta_documents_id_fkey" FOREIGN KEY ("document_id") REFERENCES "sta_documents"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "sta_document_acknowledgements" ADD CONSTRAINT "sta_document_acknowledgements_user_id_sta_profiles_id_fkey" FOREIGN KEY ("user_id") REFERENCES "sta_profiles"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "sta_forms" ADD CONSTRAINT "sta_forms_created_by_profile_id_sta_profiles_id_fkey" FOREIGN KEY ("created_by_profile_id") REFERENCES "sta_profiles"("id") ON DELETE SET NULL;--> statement-breakpoint
+ALTER TABLE "sta_form_assignments" ADD CONSTRAINT "sta_form_assignments_form_id_sta_forms_id_fkey" FOREIGN KEY ("form_id") REFERENCES "sta_forms"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "sta_form_assignments" ADD CONSTRAINT "sta_form_assignments_4ZBszcwYQWrD_fkey" FOREIGN KEY ("assigned_to_profile_id") REFERENCES "sta_profiles"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "sta_form_fields" ADD CONSTRAINT "sta_form_fields_form_id_sta_forms_id_fkey" FOREIGN KEY ("form_id") REFERENCES "sta_forms"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "sta_form_submissions" ADD CONSTRAINT "sta_form_submissions_form_id_sta_forms_id_fkey" FOREIGN KEY ("form_id") REFERENCES "sta_forms"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "sta_form_submissions" ADD CONSTRAINT "sta_form_submissions_k9AVhJwsqFcX_fkey" FOREIGN KEY ("submitted_by_profile_id") REFERENCES "sta_profiles"("id") ON DELETE RESTRICT;--> statement-breakpoint
+ALTER TABLE "sta_form_submissions" ADD CONSTRAINT "sta_form_submissions_organization_id_sta_organizations_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "sta_organizations"("id") ON DELETE SET NULL;--> statement-breakpoint
+ALTER TABLE "sta_form_submissions" ADD CONSTRAINT "sta_form_submissions_XoYTn9PDtucI_fkey" FOREIGN KEY ("assigned_to_profile_id") REFERENCES "sta_profiles"("id") ON DELETE SET NULL;--> statement-breakpoint
+ALTER TABLE "sta_form_submission_data" ADD CONSTRAINT "sta_form_submission_data_MBAwCwie6Us0_fkey" FOREIGN KEY ("submission_id") REFERENCES "sta_form_submissions"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "sta_form_submission_data" ADD CONSTRAINT "sta_form_submission_data_field_id_sta_form_fields_id_fkey" FOREIGN KEY ("field_id") REFERENCES "sta_form_fields"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "sta_form_submission_history" ADD CONSTRAINT "sta_form_submission_history_OOHVMkWbAouk_fkey" FOREIGN KEY ("submission_id") REFERENCES "sta_form_submissions"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "sta_form_submission_history" ADD CONSTRAINT "sta_form_submission_history_02tevF1ZSdJe_fkey" FOREIGN KEY ("performed_by_profile_id") REFERENCES "sta_profiles"("id") ON DELETE SET NULL;--> statement-breakpoint
+ALTER TABLE "sta_workflows" ADD CONSTRAINT "sta_workflows_created_by_sta_profiles_id_fkey" FOREIGN KEY ("created_by") REFERENCES "sta_profiles"("id") ON DELETE SET NULL;--> statement-breakpoint
+ALTER TABLE "sta_workflows" ADD CONSTRAINT "sta_workflows_updated_by_sta_profiles_id_fkey" FOREIGN KEY ("updated_by") REFERENCES "sta_profiles"("id") ON DELETE SET NULL;--> statement-breakpoint
+ALTER TABLE "sta_workflow_history" ADD CONSTRAINT "sta_workflow_history_instance_id_sta_workflow_instances_id_fkey" FOREIGN KEY ("instance_id") REFERENCES "sta_workflow_instances"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "sta_workflow_history" ADD CONSTRAINT "sta_workflow_history_I5W2UTaLPbyN_fkey" FOREIGN KEY ("transition_id") REFERENCES "sta_workflow_transitions"("id") ON DELETE SET NULL;--> statement-breakpoint
+ALTER TABLE "sta_workflow_history" ADD CONSTRAINT "sta_workflow_history_from_step_id_sta_workflow_steps_id_fkey" FOREIGN KEY ("from_step_id") REFERENCES "sta_workflow_steps"("id") ON DELETE SET NULL;--> statement-breakpoint
+ALTER TABLE "sta_workflow_history" ADD CONSTRAINT "sta_workflow_history_to_step_id_sta_workflow_steps_id_fkey" FOREIGN KEY ("to_step_id") REFERENCES "sta_workflow_steps"("id") ON DELETE SET NULL;--> statement-breakpoint
+ALTER TABLE "sta_workflow_history" ADD CONSTRAINT "sta_workflow_history_performed_by_sta_profiles_id_fkey" FOREIGN KEY ("performed_by") REFERENCES "sta_profiles"("id") ON DELETE SET NULL;--> statement-breakpoint
+ALTER TABLE "sta_workflow_instances" ADD CONSTRAINT "sta_workflow_instances_workflow_id_sta_workflows_id_fkey" FOREIGN KEY ("workflow_id") REFERENCES "sta_workflows"("id") ON DELETE RESTRICT;--> statement-breakpoint
+ALTER TABLE "sta_workflow_instances" ADD CONSTRAINT "sta_workflow_instances_mpGMmnujQi4n_fkey" FOREIGN KEY ("current_step_id") REFERENCES "sta_workflow_steps"("id") ON DELETE SET NULL;--> statement-breakpoint
+ALTER TABLE "sta_workflow_instances" ADD CONSTRAINT "sta_workflow_instances_initiated_by_sta_profiles_id_fkey" FOREIGN KEY ("initiated_by") REFERENCES "sta_profiles"("id") ON DELETE SET NULL;--> statement-breakpoint
+ALTER TABLE "sta_workflow_steps" ADD CONSTRAINT "sta_workflow_steps_workflow_id_sta_workflows_id_fkey" FOREIGN KEY ("workflow_id") REFERENCES "sta_workflows"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "sta_workflow_step_approvers" ADD CONSTRAINT "sta_workflow_step_approvers_step_id_sta_workflow_steps_id_fkey" FOREIGN KEY ("step_id") REFERENCES "sta_workflow_steps"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "sta_workflow_transitions" ADD CONSTRAINT "sta_workflow_transitions_workflow_id_sta_workflows_id_fkey" FOREIGN KEY ("workflow_id") REFERENCES "sta_workflows"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "sta_workflow_transitions" ADD CONSTRAINT "sta_workflow_transitions_fm4tVFlACi8C_fkey" FOREIGN KEY ("from_step_id") REFERENCES "sta_workflow_steps"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "sta_workflow_transitions" ADD CONSTRAINT "sta_workflow_transitions_to_step_id_sta_workflow_steps_id_fkey" FOREIGN KEY ("to_step_id") REFERENCES "sta_workflow_steps"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "sta_tenant_memberships" ADD CONSTRAINT "sta_tenant_memberships_tenant_id_sta_tenants_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "sta_tenants"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "sta_tenant_memberships" ADD CONSTRAINT "sta_tenant_memberships_profile_id_sta_profiles_id_fkey" FOREIGN KEY ("profile_id") REFERENCES "sta_profiles"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "sta_tenant_organizations" ADD CONSTRAINT "sta_tenant_organizations_tenant_id_sta_tenants_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "sta_tenants"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "sta_tenant_organizations" ADD CONSTRAINT "sta_tenant_organizations_zdb4eWrxhad6_fkey" FOREIGN KEY ("organization_id") REFERENCES "sta_organizations"("id") ON DELETE CASCADE;

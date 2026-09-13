@@ -2,11 +2,11 @@ import { sql } from 'drizzle-orm';
 import { NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { RepositoryService } from '$common/db/repository.service';
 import { TenantContextService } from '$common/auth/tenant-context.service';
-import { UsersService } from '$modules/auth/users/users.service';
+import { UsersService } from '$modules/identity/users/users.service';
 import { OrganizationsService } from '$modules/directory/organizations/organizations.service';
-import { RbacService } from '$modules/auth/rbac/rbac.service';
+import { RbacService } from '$modules/identity/rbac/rbac.service';
 import { TenancyService } from '$modules/tenancy/tenancy.service';
-import { AuthService } from '$modules/auth/auth/auth.service';
+import { AuthService } from '$modules/identity/auth/auth.service';
 
 const tenantA = { tenantId: 10n, profileId: 1n, membershipId: 100n, isOwner: true };
 

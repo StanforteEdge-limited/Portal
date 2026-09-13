@@ -3,12 +3,12 @@ import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '$common/auth/jwt-auth.guard';
 import { Permissions } from '$common/auth/permissions.decorator';
 import { PermissionsGuard } from '$common/auth/permissions.guard';
-import { UpdateProfileDto } from '$modules/auth/users/dto/update-profile.dto';
+import { UpdateProfileDto } from '$modules/identity/users/dto/update-profile.dto';
 import { UsersService } from './users.service';
-import { CreateUserDto } from '$modules/auth/users/dto/create-user.dto';
-import { AssignUserRolesDto } from '$modules/auth/users/dto/assign-user-roles.dto';
-import { InviteUserDto } from '$modules/auth/users/dto/invite-user.dto';
-import { UpdateUserDto } from '$modules/auth/users/dto/update-user.dto';
+import { CreateUserDto } from '$modules/identity/users/dto/create-user.dto';
+import { AssignUserRolesDto } from '$modules/identity/users/dto/assign-user-roles.dto';
+import { InviteUserDto } from '$modules/identity/users/dto/invite-user.dto';
+import { UpdateUserDto } from '$modules/identity/users/dto/update-user.dto';
 import { CurrentTenant, TenantContext } from '$common/auth/tenant-context';
 
 @Controller()
