@@ -1,10 +1,11 @@
 import { defineRelationsPart } from 'drizzle-orm';
 import { bigint, bigserial, boolean, date, doublePrecision, index, integer, jsonb, numeric, pgTable, serial, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
 import { tokenTypeEnum, organizationTypeEnum, groupUserRoleEnum, requestStatusEnum, employmentTypeEnum, employmentStatusEnum, workModeEnum, onboardingStatusEnum, workItemTypeEnum, workItemStatusEnum, workPriorityEnum, workLogApprovalStatusEnum, procurementCategoryEnum, paymentPatternEnum, procurementStatusEnum, poStatusEnum, grnStatusEnum, mailProviderEnum } from '$app/db/enums';
+import { tenant } from '$modules/tenancy/model';
 
 export const employeeProfile = pgTable("sta_employee_profiles", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
-  tenantId: bigint("tenant_id", { mode: 'bigint' }),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).references(() => tenant.id, { onDelete: 'cascade' }),
   userId: bigint("user_id", { mode: 'bigint' }).notNull().unique(),
   employeeCode: varchar("employee_code", { length: 60 }).unique(),
   jobTitle: varchar("job_title", { length: 120 }),
@@ -47,7 +48,7 @@ export type NewEmployeeMeta = typeof employeeMeta.$inferInsert;
 
 export const attendanceEntry = pgTable("sta_attendance_entries", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
-  tenantId: bigint("tenant_id", { mode: 'bigint' }),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).references(() => tenant.id, { onDelete: 'cascade' }),
   userId: bigint("user_id", { mode: 'bigint' }).notNull(),
   entryType: varchar("entry_type", { length: 30 }).notNull(),
   entryAt: timestamp("entry_at", { mode: 'date', precision: 6 }).notNull(),
@@ -72,7 +73,7 @@ export type NewAttendanceEntry = typeof attendanceEntry.$inferInsert;
 
 export const attendanceDaily = pgTable("sta_attendance_daily", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
-  tenantId: bigint("tenant_id", { mode: 'bigint' }),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).references(() => tenant.id, { onDelete: 'cascade' }),
   userId: bigint("user_id", { mode: 'bigint' }).notNull(),
   workDate: date("work_date", { mode: 'date' }).notNull(),
   status: varchar("status", { length: 20 }).default("absent").notNull(),
@@ -101,7 +102,7 @@ export type NewAttendanceDaily = typeof attendanceDaily.$inferInsert;
 
 export const attendanceHoliday = pgTable("sta_attendance_holidays", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
-  tenantId: bigint("tenant_id", { mode: 'bigint' }),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).references(() => tenant.id, { onDelete: 'cascade' }),
   organizationId: bigint("organization_id", { mode: 'bigint' }),
   officeLocationId: bigint("office_location_id", { mode: 'bigint' }),
   holidayDate: date("holiday_date", { mode: 'date' }).notNull(),
@@ -122,7 +123,7 @@ export type NewAttendanceHoliday = typeof attendanceHoliday.$inferInsert;
 
 export const attendanceCorrection = pgTable("sta_attendance_corrections", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
-  tenantId: bigint("tenant_id", { mode: 'bigint' }),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).references(() => tenant.id, { onDelete: 'cascade' }),
   userId: bigint("user_id", { mode: 'bigint' }).notNull(),
   attendanceDailyId: uuid("attendance_daily_id"),
   attendanceEntryId: uuid("attendance_entry_id"),
@@ -155,7 +156,7 @@ export type NewAttendanceCorrection = typeof attendanceCorrection.$inferInsert;
 
 export const attendanceException = pgTable("sta_attendance_exceptions", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
-  tenantId: bigint("tenant_id", { mode: 'bigint' }),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).references(() => tenant.id, { onDelete: 'cascade' }),
   userId: bigint("user_id", { mode: 'bigint' }).notNull(),
   attendanceDailyId: uuid("attendance_daily_id"),
   attendanceEntryId: uuid("attendance_entry_id"),
@@ -181,7 +182,7 @@ export type NewAttendanceException = typeof attendanceException.$inferInsert;
 
 export const leaveBalanceLedger = pgTable("sta_leave_balance_ledger", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
-  tenantId: bigint("tenant_id", { mode: 'bigint' }),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).references(() => tenant.id, { onDelete: 'cascade' }),
   userId: bigint("user_id", { mode: 'bigint' }).notNull(),
   leaveTypeKey: varchar("leave_type_key", { length: 100 }).notNull(),
   periodYear: integer("period_year").notNull(),

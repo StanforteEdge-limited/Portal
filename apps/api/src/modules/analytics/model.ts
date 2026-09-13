@@ -1,10 +1,11 @@
 import { defineRelationsPart } from 'drizzle-orm';
 import { bigint, index, jsonb, pgTable, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
 import { tokenTypeEnum, organizationTypeEnum, groupUserRoleEnum, requestStatusEnum, employmentTypeEnum, employmentStatusEnum, workModeEnum, onboardingStatusEnum, workItemTypeEnum, workItemStatusEnum, workPriorityEnum, workLogApprovalStatusEnum, procurementCategoryEnum, paymentPatternEnum, procurementStatusEnum, poStatusEnum, grnStatusEnum, mailProviderEnum } from '$app/db/enums';
+import { tenant } from '$modules/tenancy/model';
 
 export const analyticsEvent = pgTable('sta_analytics_events', {
   id: uuid('id').defaultRandom().primaryKey().notNull(),
-  tenantId: bigint('tenant_id', { mode: 'bigint' }),
+  tenantId: bigint('tenant_id', { mode: 'bigint' }).references(() => tenant.id, { onDelete: 'cascade' }),
   profileId: bigint('profile_id', { mode: 'bigint' }),
   name: varchar('name', { length: 120 }).notNull(),
   source: varchar('source', { length: 80 }).notNull(),

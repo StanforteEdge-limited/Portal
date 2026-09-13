@@ -1,10 +1,11 @@
 import { defineRelationsPart } from 'drizzle-orm';
 import { bigint, bigserial, boolean, date, doublePrecision, index, integer, jsonb, numeric, pgTable, serial, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
 import { tokenTypeEnum, organizationTypeEnum, groupUserRoleEnum, requestStatusEnum, employmentTypeEnum, employmentStatusEnum, workModeEnum, onboardingStatusEnum, workItemTypeEnum, workItemStatusEnum, workPriorityEnum, workLogApprovalStatusEnum, procurementCategoryEnum, paymentPatternEnum, procurementStatusEnum, poStatusEnum, grnStatusEnum, mailProviderEnum } from '$app/db/enums';
+import { tenant } from '$modules/tenancy/model';
 
 export const payrollWorker = pgTable("sta_payroll_workers", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
-  tenantId: bigint("tenant_id", { mode: 'bigint' }),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).references(() => tenant.id, { onDelete: 'cascade' }),
   profileId: bigint("profile_id", { mode: 'bigint' }),
   organizationId: bigint("organization_id", { mode: 'bigint' }),
   teamId: bigint("team_id", { mode: 'bigint' }),
@@ -139,7 +140,7 @@ export type NewPayrollWorkerAllocation = typeof payrollWorkerAllocation.$inferIn
 
 export const payrollRun = pgTable("sta_payroll_runs", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
-  tenantId: bigint("tenant_id", { mode: 'bigint' }),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).references(() => tenant.id, { onDelete: 'cascade' }),
   organizationId: bigint("organization_id", { mode: 'bigint' }),
   paidFromAccountId: uuid("paid_from_account_id"),
   workflowInstanceId: uuid("workflow_instance_id"),

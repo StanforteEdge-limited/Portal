@@ -1,6 +1,7 @@
 import { defineRelationsPart } from 'drizzle-orm';
 import { bigint, bigserial, boolean, date, doublePrecision, index, integer, jsonb, numeric, pgTable, serial, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
 import { tokenTypeEnum, organizationTypeEnum, groupUserRoleEnum, requestStatusEnum, employmentTypeEnum, employmentStatusEnum, workModeEnum, onboardingStatusEnum, workItemTypeEnum, workItemStatusEnum, workPriorityEnum, workLogApprovalStatusEnum, procurementCategoryEnum, paymentPatternEnum, procurementStatusEnum, poStatusEnum, grnStatusEnum, mailProviderEnum } from '$app/db/enums';
+import { tenant } from '$modules/tenancy/model';
 
 export const financeSetting = pgTable("sta_finance_settings", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
@@ -16,7 +17,7 @@ export type NewFinanceSetting = typeof financeSetting.$inferInsert;
 
 export const financeAccount = pgTable("sta_finance_accounts", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
-  tenantId: bigint("tenant_id", { mode: 'bigint' }),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).references(() => tenant.id, { onDelete: 'cascade' }),
   organizationId: bigint("organization_id", { mode: 'bigint' }),
   name: varchar("name", { length: 150 }).notNull(),
   code: varchar("code", { length: 60 }),
@@ -67,7 +68,7 @@ export type NewFinanceDonor = typeof financeDonor.$inferInsert;
 
 export const financeFund = pgTable("sta_finance_funds", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
-  tenantId: bigint("tenant_id", { mode: 'bigint' }),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).references(() => tenant.id, { onDelete: 'cascade' }),
   organizationId: bigint("organization_id", { mode: 'bigint' }),
   projectId: bigint("project_id", { mode: 'bigint' }),
   donorId: uuid("donor_id"),
@@ -183,7 +184,7 @@ export type NewFinanceChartAccount = typeof financeChartAccount.$inferInsert;
 
 export const financeReportingPeriod = pgTable("sta_finance_reporting_periods", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
-  tenantId: bigint("tenant_id", { mode: 'bigint' }),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).references(() => tenant.id, { onDelete: 'cascade' }),
   year: integer("year").notNull(),
   month: integer("month").notNull(),
   quarter: integer("quarter").notNull(),
@@ -207,7 +208,7 @@ export type NewFinanceReportingPeriod = typeof financeReportingPeriod.$inferInse
 
 export const financeJournalEntry = pgTable("sta_finance_journal_entries", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
-  tenantId: bigint("tenant_id", { mode: 'bigint' }),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).references(() => tenant.id, { onDelete: 'cascade' }),
   entryNo: varchar("entry_no", { length: 60 }).notNull(),
   entryDate: timestamp("entry_date", { mode: 'date', precision: 6 }).notNull(),
   periodId: uuid("period_id").notNull(),
@@ -235,7 +236,7 @@ export type NewFinanceJournalEntry = typeof financeJournalEntry.$inferInsert;
 
 export const financeJournalSequence = pgTable("sta_finance_journal_sequences", {
   id: varchar("id", { length: 32 }).primaryKey().notNull(),
-  tenantId: bigint("tenant_id", { mode: 'bigint' }),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).references(() => tenant.id, { onDelete: 'cascade' }),
   prefix: varchar("prefix", { length: 10 }).notNull(),
   sequenceYear: integer("sequence_year").notNull(),
   lastNumber: integer("last_number").default(0).notNull(),
@@ -251,7 +252,7 @@ export type NewFinanceJournalSequence = typeof financeJournalSequence.$inferInse
 
 export const financeJournalLine = pgTable("sta_finance_journal_lines", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
-  tenantId: bigint("tenant_id", { mode: 'bigint' }),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).references(() => tenant.id, { onDelete: 'cascade' }),
   journalEntryId: uuid("journal_entry_id").notNull(),
   chartAccountId: uuid("chart_account_id").notNull(),
   organizationId: bigint("organization_id", { mode: 'bigint' }),
@@ -279,7 +280,7 @@ export type NewFinanceJournalLine = typeof financeJournalLine.$inferInsert;
 
 export const financeLedgerEntry = pgTable("sta_finance_ledger_entries", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
-  tenantId: bigint("tenant_id", { mode: 'bigint' }),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).references(() => tenant.id, { onDelete: 'cascade' }),
   accountId: uuid("account_id").notNull(),
   direction: varchar("direction", { length: 10 }).notNull(),
   amount: numeric("amount", { precision: 15, scale: 2 }).notNull(),
@@ -667,7 +668,7 @@ export type NewFinanceReportNote = typeof financeReportNote.$inferInsert;
 
 export const financeBudget = pgTable("sta_finance_budgets", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
-  tenantId: bigint("tenant_id", { mode: 'bigint' }),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).references(() => tenant.id, { onDelete: 'cascade' }),
   organizationId: bigint("organization_id", { mode: 'bigint' }),
   teamId: bigint("team_id", { mode: 'bigint' }),
   projectId: bigint("project_id", { mode: 'bigint' }),
@@ -993,7 +994,7 @@ export type NewFinanceItem = typeof financeItem.$inferInsert;
 
 export const financeExpense = pgTable("sta_finance_expenses", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
-  tenantId: bigint("tenant_id", { mode: 'bigint' }),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).references(() => tenant.id, { onDelete: 'cascade' }),
   expenseNumber: varchar("expense_number", { length: 60 }).notNull().unique(),
   contactId: uuid("contact_id"),
   accountId: uuid("account_id").notNull(),

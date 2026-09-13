@@ -1,6 +1,7 @@
 import { defineRelationsPart } from 'drizzle-orm';
 import { bigint, bigserial, boolean, date, doublePrecision, index, integer, jsonb, numeric, pgTable, serial, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
 import { tokenTypeEnum, organizationTypeEnum, groupUserRoleEnum, requestStatusEnum, employmentTypeEnum, employmentStatusEnum, workModeEnum, onboardingStatusEnum, workItemTypeEnum, workItemStatusEnum, workPriorityEnum, workLogApprovalStatusEnum, procurementCategoryEnum, paymentPatternEnum, procurementStatusEnum, poStatusEnum, grnStatusEnum, mailProviderEnum } from '$app/db/enums';
+import { tenant } from '$modules/tenancy/model';
 
 export const procurementCase = pgTable("sta_procurement_cases", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
@@ -23,7 +24,7 @@ export type NewProcurementCase = typeof procurementCase.$inferInsert;
 
 export const procurementRequisition = pgTable("sta_procurement_requisitions", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
-  tenantId: bigint("tenant_id", { mode: 'bigint' }),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).references(() => tenant.id, { onDelete: 'cascade' }),
   requisitionNumber: varchar("requisition_number", { length: 30 }).notNull().unique(),
   organizationId: bigint("organization_id", { mode: 'bigint' }),
   teamId: bigint("team_id", { mode: 'bigint' }),
@@ -51,7 +52,7 @@ export type NewProcurementRequisition = typeof procurementRequisition.$inferInse
 
 export const procurementOrder = pgTable("sta_procurement_orders", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
-  tenantId: bigint("tenant_id", { mode: 'bigint' }),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).references(() => tenant.id, { onDelete: 'cascade' }),
   poNumber: varchar("po_number", { length: 30 }).notNull().unique(),
   requisitionId: uuid("requisition_id").notNull(),
   vendorId: uuid("vendor_id").notNull(),

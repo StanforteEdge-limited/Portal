@@ -1,10 +1,11 @@
 import { defineRelationsPart } from 'drizzle-orm';
 import { bigint, date, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
 import { tokenTypeEnum, organizationTypeEnum, groupUserRoleEnum, requestStatusEnum, employmentTypeEnum, employmentStatusEnum, workModeEnum, onboardingStatusEnum, workItemTypeEnum, workItemStatusEnum, workPriorityEnum, workLogApprovalStatusEnum, procurementCategoryEnum, paymentPatternEnum, procurementStatusEnum, poStatusEnum, grnStatusEnum, mailProviderEnum } from '$app/db/enums';
+import { tenant } from '$modules/tenancy/model';
 
 export const leaveType = pgTable('sta_leave_types', {
   id: uuid('id').defaultRandom().primaryKey().notNull(),
-  tenantId: bigint('tenant_id', { mode: 'bigint' }),
+  tenantId: bigint('tenant_id', { mode: 'bigint' }).references(() => tenant.id, { onDelete: 'cascade' }),
   code: varchar('code', { length: 50 }).notNull(),
   name: varchar('name', { length: 120 }).notNull(),
   annualEntitlementDays: integer('annual_entitlement_days').default(0).notNull(),
@@ -20,7 +21,7 @@ export const leaveType = pgTable('sta_leave_types', {
 
 export const leaveRequest = pgTable('sta_leave_requests', {
   id: uuid('id').defaultRandom().primaryKey().notNull(),
-  tenantId: bigint('tenant_id', { mode: 'bigint' }).notNull(),
+  tenantId: bigint('tenant_id', { mode: 'bigint' }).notNull().references(() => tenant.id, { onDelete: 'cascade' }),
   userId: bigint('user_id', { mode: 'bigint' }).notNull(),
   leaveTypeId: uuid('leave_type_id').notNull(),
   startDate: date('start_date', { mode: 'date' }).notNull(),
