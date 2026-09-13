@@ -4,7 +4,7 @@ import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { MailTemplatesService } from './mail-templates.service';
 import { toBigInt } from '$common/utils/ids';
 
-type SendMailInput = {
+export type SendMailInput = {
   to: string;
   subject: string;
   text: string;
