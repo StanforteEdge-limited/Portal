@@ -4,7 +4,6 @@ import { tokenTypeEnum, organizationTypeEnum, groupUserRoleEnum, requestStatusEn
 
 export const profile = pgTable("sta_profiles", {
   id: bigserial("id", { mode: 'bigint' }).primaryKey(),
-  wpUserId: bigint("wp_user_id", { mode: 'bigint' }),
   username: varchar("username", { length: 100 }).unique(),
   email: varchar("email", { length: 255 }).notNull().unique(),
   passwordHash: varchar("password_hash", { length: 255 }),
