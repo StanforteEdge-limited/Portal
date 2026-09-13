@@ -53,6 +53,13 @@ const TENANT_SCOPED_TABLES = [
   'sta_form_submission_history',
   'sta_acknowledgements',
   'sta_taxonomy_tag_assignments',
+  'sta_crm_accounts',
+  'sta_crm_contacts',
+  'sta_crm_leads',
+  'sta_crm_pipelines',
+  'sta_crm_pipeline_stages',
+  'sta_crm_opportunities',
+  'sta_crm_activities',
 ] as const;
 
 @Injectable()

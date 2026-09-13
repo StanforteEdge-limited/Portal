@@ -1,4 +1,6 @@
 export * from "./enums";
+export { crmAccount, crmContact, crmLead, crmPipeline, crmPipelineStage, crmOpportunity, crmActivity } from '$modules/crm/model';
+export type { CrmAccount, NewCrmAccount, CrmContact, NewCrmContact, CrmLead, NewCrmLead, CrmPipeline, NewCrmPipeline, CrmPipelineStage, NewCrmPipelineStage, CrmOpportunity, NewCrmOpportunity, CrmActivity, NewCrmActivity } from '$modules/crm/model';
 export { analyticsEvent } from '$modules/analytics/model';
 export type { AnalyticsEvent, NewAnalyticsEvent } from '$modules/analytics/model';
 export { auditEvent } from '$modules/identity/audit/model';

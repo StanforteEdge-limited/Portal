@@ -9,6 +9,7 @@ import { AdminModule } from '$modules/identity/admin/admin.module';
 import { UsersModule } from '$modules/identity/users/users.module';
 import { OrganizationsModule } from '$modules/directory/organizations/organizations.module';
 import { ContactsModule } from '$modules/directory/contacts/contacts.module';
+import { CrmModule } from '$modules/crm/crm.module';
 import { FormsModule } from '$modules/requests/forms/forms.module';
 import { RequestsModule } from '$modules/requests/requests/requests.module';
 import { WorkflowModule } from '$modules/requests/workflow/workflow.module';
@@ -46,6 +47,7 @@ import { SchedulingModule } from '$modules/scheduling/scheduling.module';
     UsersModule,
     OrganizationsModule,
     ContactsModule,
+    CrmModule,
     FormsModule,
     RequestsModule,
     WorkflowModule,
