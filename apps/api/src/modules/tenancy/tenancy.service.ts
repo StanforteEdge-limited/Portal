@@ -196,13 +196,18 @@ export class TenancyService {
 
   async inviteMember(context: TenantContext, emailValue: string, message?: string) {
     const email = emailValue.trim().toLowerCase();
-    const profile = await this.tenantContext.runSystem('tenancy.inviteMember', () =>
+    let profile = await this.tenantContext.runSystem('tenancy.inviteMember', () =>
       this.drizzle.profile.findUnique({
         where: { email },
         select: { id: true, status: true },
       }),
     );
-    if (!profile) throw new NotFoundException('User account not found; create the user account before inviting it');
+    if (!profile) {
+      const created = await this.drizzle.profile.create({
+        data: { email, type: 'staff', status: 'invited' },
+      });
+      profile = { id: created.id, status: created.status };
+    }
 
     const existing = await this.drizzle.tenantMembership.findFirst({
       where: { tenantId: context.tenantId, profileId: profile.id },
@@ -262,5 +267,76 @@ export class TenancyService {
     });
 
     return { success: true, profileId: profileId.toString(), roles: roles.map((role) => role.slug) };
+  }
+
+  async transferOwnership(context: TenantContext, targetProfileId: bigint) {
+    this.requireOwner(context);
+    if (targetProfileId === context.profileId) {
+      throw new BadRequestException('You are already the tenant owner');
+    }
+
+    const current = await this.drizzle.tenantMembership.findFirst({
+      where: { tenantId: context.tenantId, profileId: context.profileId, status: 'active' },
+    });
+    if (!current || !current.isOwner) {
+      throw new BadRequestException('You are not an active tenant owner');
+    }
+
+    const target = await this.drizzle.tenantMembership.findFirst({
+      where: { tenantId: context.tenantId, profileId: targetProfileId, status: 'active' },
+    });
+    if (!target) throw new NotFoundException('Target user is not an active tenant member');
+    if (target.isOwner) throw new BadRequestException('Target user is already the tenant owner');
+
+    await this.drizzle.$transaction(async (tx) => {
+      await tx.tenantMembership.update({ where: { id: current.id }, data: { isOwner: false } });
+      await tx.tenantMembership.update({ where: { id: target.id }, data: { isOwner: true } });
+    });
+
+    return { success: true, ownerProfileId: targetProfileId.toString() };
+  }
+
+  async exportTenantData(context: TenantContext) {
+    this.requireOwner(context);
+
+    const tables = await this.drizzle.$queryRaw<{ tableName: string }[]>(
+      sql`SELECT table_name AS "tableName"
+          FROM information_schema.columns
+          WHERE table_schema = 'public' AND column_name = 'tenant_id'
+          ORDER BY table_name ASC`,
+    );
+
+    const exported: Record<string, unknown[]> = {};
+    for (const { tableName } of tables) {
+      const rows = await this.drizzle.$queryRaw<Record<string, unknown>[]>(
+        sql`SELECT * FROM ${sql.raw(`"${tableName}"`)} WHERE tenant_id = ${context.tenantId}`,
+      );
+      exported[tableName] = rows;
+    }
+
+    exported['sta_profiles'] = await this.drizzle.$queryRaw<Record<string, unknown>[]>(
+      sql`SELECT p.* FROM sta_profiles p
+          JOIN sta_tenant_memberships m ON m.profile_id = p.id
+          WHERE m.tenant_id = ${context.tenantId}`,
+    );
+    exported['sta_tenants'] = await this.drizzle.$queryRaw<Record<string, unknown>[]>(
+      sql`SELECT * FROM sta_tenants WHERE id = ${context.tenantId}`,
+    );
+
+    return {
+      exportedAt: new Date().toISOString(),
+      tenantId: context.tenantId.toString(),
+      tables: exported,
+    };
+  }
+
+  async decommissionTenant(context: TenantContext, confirm: boolean) {
+    this.requireOwner(context);
+    if (confirm !== true) {
+      throw new BadRequestException('Tenant decommissioning requires explicit confirmation');
+    }
+
+    await this.drizzle.tenant.delete({ where: { id: context.tenantId } });
+    return { success: true };
   }
 }

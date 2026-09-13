@@ -10,6 +10,8 @@ import { toBigInt } from '$common/utils/ids';
 import { InviteTenantMemberDto } from './dto/invite-tenant-member.dto';
 import { AssignTenantRolesDto } from './dto/assign-tenant-roles.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
+import { TransferOwnershipDto } from './dto/transfer-ownership.dto';
+import { DecommissionTenantDto } from './dto/decommission-tenant.dto';
 
 @Controller('tenancy')
 @ApiTags('Tenancy')
@@ -89,5 +91,23 @@ export class TenancyController {
     @Body() dto: AssignTenantRolesDto,
   ) {
     return this.tenancyService.assignRoles(tenant, toBigInt(profileId), dto.roles);
+  }
+
+  @Post('current/ownership')
+  @Permissions('admin.users.manage')
+  transferOwnership(@CurrentTenant() tenant: TenantContext, @Body() dto: TransferOwnershipDto) {
+    return this.tenancyService.transferOwnership(tenant, toBigInt(dto.profile_id));
+  }
+
+  @Get('current/export')
+  @Permissions('admin.users.manage')
+  exportTenantData(@CurrentTenant() tenant: TenantContext) {
+    return this.tenancyService.exportTenantData(tenant);
+  }
+
+  @Post('current/decommission')
+  @Permissions('admin.users.manage')
+  decommissionTenant(@CurrentTenant() tenant: TenantContext, @Body() dto: DecommissionTenantDto) {
+    return this.tenancyService.decommissionTenant(tenant, dto.confirm);
   }
 }
