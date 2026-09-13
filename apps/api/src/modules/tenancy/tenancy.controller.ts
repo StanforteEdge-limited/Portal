@@ -4,6 +4,7 @@ import { JwtAuthGuard } from '$common/auth/jwt-auth.guard';
 import { PermissionsGuard } from '$common/auth/permissions.guard';
 import { Permissions } from '$common/auth/permissions.decorator';
 import { TenancyService } from './tenancy.service';
+import { WorkspaceService } from './workspace.service';
 import { CurrentTenant, TenantContext } from '$common/auth/tenant-context';
 import { toBigInt } from '$common/utils/ids';
 import { InviteTenantMemberDto } from './dto/invite-tenant-member.dto';
@@ -15,7 +16,10 @@ import { UpdateTenantDto } from './dto/update-tenant.dto';
 @ApiBearerAuth('bearer')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class TenancyController {
-  constructor(private readonly tenancyService: TenancyService) {}
+  constructor(
+    private readonly tenancyService: TenancyService,
+    private readonly workspaceService: WorkspaceService,
+  ) {}
 
   @Get('coverage')
   @Permissions('admin.users.manage')
@@ -24,6 +28,15 @@ export class TenancyController {
       throw new ForbiddenException('Only tenant owners can audit tenant coverage');
     }
     return this.tenancyService.auditTenantCoverage(tenant);
+  }
+
+  @Post('workspace/bootstrap')
+  @Permissions('admin.users.manage')
+  bootstrapDefaults(@CurrentTenant() tenant: TenantContext) {
+    if (!tenant.isOwner) {
+      throw new ForbiddenException('Only tenant owners can bootstrap workspace defaults');
+    }
+    return this.workspaceService.bootstrapDefaults(tenant);
   }
 
   @Get('current')

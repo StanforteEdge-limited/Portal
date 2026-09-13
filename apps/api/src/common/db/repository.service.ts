@@ -291,6 +291,20 @@ class TableRepository {
   }
 
   async findFirst(args: QueryArgs = {}): Promise<any> {
+    const context = this.tenantContext?.get();
+    const tenantId = context && 'tenantId' in context ? context.tenantId : undefined;
+    if (tenantId && TEMPLATE_TABLE_KEYS.has(this.tableName) && tableColumns(this.table)?.tenantId) {
+      const orderBy = args?.orderBy
+        ? (Array.isArray(args.orderBy) ? args.orderBy : [args.orderBy])
+        : [];
+      const rows =
+        await this.findMany({
+          ...args,
+          take: 1,
+          orderBy: [{ tenantId: 'asc' }, ...orderBy],
+        });
+      return rows[0] ?? null;
+    }
     const rows = await this.findMany({ ...args, take: 1 });
     return rows[0] ?? null;
   }
