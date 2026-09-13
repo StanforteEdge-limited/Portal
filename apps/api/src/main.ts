@@ -10,6 +10,7 @@ import { config as loadEnv } from 'dotenv';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from '$common/http/all-exceptions.filter';
 import { ResponseEnvelopeInterceptor } from '$common/http/response-envelope.interceptor';
+import { RedisIoAdapter } from '$common/realtime/realtime-io.adapter';
 
 const envCandidates = [
   resolve(process.cwd(), '.env'),
@@ -97,6 +98,18 @@ async function bootstrap() {
     mkdirSync(uploadsRoot, { recursive: true });
   }
   app.useStaticAssets(uploadsRoot, { prefix: '/uploads/' });
+
+  // Socket.io chat backed by Redis pub/sub (rooms + presence fan out across
+  // instances). Falls back to the in-process adapter if Redis is unavailable.
+  if (String(process.env.REALTIME_ENABLED ?? 'true').toLowerCase() !== 'false') {
+    const realtimeAdapter = new RedisIoAdapter(app);
+    try {
+      await realtimeAdapter.connectToRedis();
+      app.useWebSocketAdapter(realtimeAdapter);
+    } catch (error) {
+      console.warn(`Realtime Redis adapter unavailable; chat will run in-process: ${(error as Error)?.message}`);
+    }
+  }
 
   const authWindowMs = Number(process.env.AUTH_RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000);
   const loginLimit = Number(process.env.AUTH_LOGIN_RATE_LIMIT_MAX || 10);

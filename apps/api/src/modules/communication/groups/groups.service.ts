@@ -3,11 +3,11 @@ import { GroupUserRole, Drizzle } from '$common/db/drizzle-compat';
 import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { paginatedResponse } from '$common/helpers/paginated-response';
 import { toBigInt } from '$common/utils/ids';
-import { AddGroupMemberDto } from '$modules/directory/groups/dto/add-group-member.dto';
-import { CreateTeamDto } from '$modules/directory/groups/dto/create-team.dto';
-import { SetGroupMemberScopesDto } from '$modules/directory/groups/dto/set-group-member-scopes.dto';
-import { SetGroupOrganizationsDto } from '$modules/directory/groups/dto/set-group-organizations.dto';
-import { UpdateTeamDto } from '$modules/directory/groups/dto/update-team.dto';
+import { AddGroupMemberDto } from './dto/add-group-member.dto';
+import { CreateTeamDto } from './dto/create-team.dto';
+import { SetGroupMemberScopesDto } from './dto/set-group-member-scopes.dto';
+import { SetGroupOrganizationsDto } from './dto/set-group-organizations.dto';
+import { UpdateTeamDto } from './dto/update-team.dto';
 
 @Injectable()
 export class GroupsService {

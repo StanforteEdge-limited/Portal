@@ -3,7 +3,7 @@ import { bigint, bigserial, boolean, date, doublePrecision, index, integer, json
 import { tokenTypeEnum, organizationTypeEnum, groupUserRoleEnum, requestStatusEnum, employmentTypeEnum, employmentStatusEnum, workModeEnum, onboardingStatusEnum, workItemTypeEnum, workItemStatusEnum, workPriorityEnum, workLogApprovalStatusEnum, procurementCategoryEnum, paymentPatternEnum, procurementStatusEnum, poStatusEnum, grnStatusEnum, mailProviderEnum } from '$app/db/enums';
 import { profile } from '$modules/identity/users/model';
 import { organization } from '$modules/directory/organizations/model';
-import { fileAsset } from '$modules/platform/files/model';
+import { fileAsset } from '$modules/storage/model';
 import { tenant } from '$modules/tenancy/model';
 
 export const document = pgTable("sta_documents", {

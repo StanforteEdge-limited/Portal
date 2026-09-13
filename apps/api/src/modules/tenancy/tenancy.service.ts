@@ -60,6 +60,11 @@ const TENANT_SCOPED_TABLES = [
   'sta_crm_pipeline_stages',
   'sta_crm_opportunities',
   'sta_crm_activities',
+  'sta_chat_conversations',
+  'sta_chat_conversation_members',
+  'sta_chat_messages',
+  'sta_chat_message_attachments',
+  'sta_storage_folders',
 ] as const;
 
 @Injectable()

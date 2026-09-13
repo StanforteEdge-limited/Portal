@@ -35,6 +35,11 @@ export class AttachFileDto {
   @IsUUID()
   organization_id?: string;
 
+  @ApiPropertyOptional({ example: '241' })
+  @IsOptional()
+  @IsString()
+  folder_id?: string;
+
   @ApiPropertyOptional({
     type: 'object',
     additionalProperties: true,
