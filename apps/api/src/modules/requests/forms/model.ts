@@ -1,11 +1,13 @@
 import { defineRelationsPart } from 'drizzle-orm';
 import { bigint, bigserial, boolean, date, doublePrecision, index, integer, jsonb, numeric, pgTable, serial, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
 import { tokenTypeEnum, organizationTypeEnum, groupUserRoleEnum, requestStatusEnum, employmentTypeEnum, employmentStatusEnum, workModeEnum, onboardingStatusEnum, workItemTypeEnum, workItemStatusEnum, workPriorityEnum, workLogApprovalStatusEnum, procurementCategoryEnum, paymentPatternEnum, procurementStatusEnum, poStatusEnum, grnStatusEnum, mailProviderEnum } from '$app/db/enums';
+import { tenant } from '$modules/tenancy/model';
 import { profile } from '$modules/identity/users/model';
 import { organization } from '$modules/directory/organizations/model';
 
 export const form = pgTable("sta_forms", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).references(() => tenant.id, { onDelete: 'cascade' }),
   name: varchar("name", { length: 150 }).notNull(),
   description: text("description"),
   module: varchar("module", { length: 20 }).default("general").notNull(),
@@ -20,13 +22,16 @@ export const form = pgTable("sta_forms", {
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at", { mode: 'date', precision: 6 }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: 'date', precision: 6 }).notNull().$onUpdate(() => new Date()),
-});
+}, (table) => [
+    index("form_index_tenantId").on(table.tenantId),
+]);
 
 export type Form = typeof form.$inferSelect;
 export type NewForm = typeof form.$inferInsert;
 
 export const formField = pgTable("sta_form_fields", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).references(() => tenant.id, { onDelete: 'cascade' }),
   formId: uuid("form_id").notNull().references(() => form.id, { onDelete: 'cascade' }),
   fieldKey: varchar("field_key", { length: 100 }).notNull(),
   fieldLabel: varchar("field_label", { length: 255 }).notNull(),
@@ -39,6 +44,7 @@ export const formField = pgTable("sta_form_fields", {
   updatedAt: timestamp("updated_at", { mode: 'date', precision: 6 }).notNull().$onUpdate(() => new Date()),
 }, (table) => [
     uniqueIndex("unique_form_field_key").on(table.formId, table.fieldKey),
+    index("formField_index_tenantId").on(table.tenantId),
 ]);
 
 export type FormField = typeof formField.$inferSelect;
@@ -46,6 +52,7 @@ export type NewFormField = typeof formField.$inferInsert;
 
 export const formAssignment = pgTable("sta_form_assignments", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).references(() => tenant.id, { onDelete: 'cascade' }),
   formId: uuid("form_id").notNull().references(() => form.id, { onDelete: 'cascade' }),
   assignedToRole: varchar("assigned_to_role", { length: 100 }),
   assignedToProfileId: bigint("assigned_to_profile_id", { mode: 'bigint' }).references(() => profile.id, { onDelete: 'cascade' }),
@@ -54,13 +61,16 @@ export const formAssignment = pgTable("sta_form_assignments", {
   dueDate: date("due_date", { mode: 'date' }),
   createdAt: timestamp("created_at", { mode: 'date', precision: 6 }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: 'date', precision: 6 }).notNull().$onUpdate(() => new Date()),
-});
+}, (table) => [
+    index("formAssignment_index_tenantId").on(table.tenantId),
+]);
 
 export type FormAssignment = typeof formAssignment.$inferSelect;
 export type NewFormAssignment = typeof formAssignment.$inferInsert;
 
 export const formSubmission = pgTable("sta_form_submissions", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).references(() => tenant.id, { onDelete: 'cascade' }),
   formId: uuid("form_id").notNull().references(() => form.id, { onDelete: 'cascade' }),
   submissionNumber: varchar("submission_number", { length: 50 }).notNull(),
   submittedByProfileId: bigint("submitted_by_profile_id", { mode: 'bigint' }).notNull().references(() => profile.id, { onDelete: 'restrict' }),
@@ -74,6 +84,7 @@ export const formSubmission = pgTable("sta_form_submissions", {
   updatedAt: timestamp("updated_at", { mode: 'date', precision: 6 }).notNull().$onUpdate(() => new Date()),
 }, (table) => [
     uniqueIndex("uniqueIndex_submissionNumber").on(table.submissionNumber),
+    index("formSubmission_index_tenantId").on(table.tenantId),
 ]);
 
 export type FormSubmission = typeof formSubmission.$inferSelect;
@@ -81,6 +92,7 @@ export type NewFormSubmission = typeof formSubmission.$inferInsert;
 
 export const formSubmissionData = pgTable("sta_form_submission_data", {
   id: bigserial("id", { mode: 'bigint' }).primaryKey(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).references(() => tenant.id, { onDelete: 'cascade' }),
   submissionId: uuid("submission_id").notNull().references(() => formSubmission.id, { onDelete: 'cascade' }),
   fieldId: uuid("field_id").notNull().references(() => formField.id, { onDelete: 'cascade' }),
   fieldKey: varchar("field_key", { length: 100 }).notNull(),
@@ -93,6 +105,7 @@ export const formSubmissionData = pgTable("sta_form_submission_data", {
   updatedAt: timestamp("updated_at", { mode: 'date', precision: 6 }).notNull().$onUpdate(() => new Date()),
 }, (table) => [
     uniqueIndex("unique_submission_field").on(table.submissionId, table.fieldId),
+    index("formSubmissionData_index_tenantId").on(table.tenantId),
 ]);
 
 export type FormSubmissionData = typeof formSubmissionData.$inferSelect;
@@ -100,6 +113,7 @@ export type NewFormSubmissionData = typeof formSubmissionData.$inferInsert;
 
 export const formSubmissionHistory = pgTable("sta_form_submission_history", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).references(() => tenant.id, { onDelete: 'cascade' }),
   submissionId: uuid("submission_id").notNull().references(() => formSubmission.id, { onDelete: 'cascade' }),
   actionType: varchar("action_type", { length: 20 }).notNull(),
   performedByProfileId: bigint("performed_by_profile_id", { mode: 'bigint' }).references(() => profile.id, { onDelete: 'set null' }),
@@ -107,7 +121,9 @@ export const formSubmissionHistory = pgTable("sta_form_submission_history", {
   newValue: text("new_value"),
   notes: text("notes"),
   createdAt: timestamp("created_at", { mode: 'date', precision: 6 }).defaultNow().notNull(),
-});
+}, (table) => [
+    index("formSubmissionHistory_index_tenantId").on(table.tenantId),
+]);
 
 export type FormSubmissionHistory = typeof formSubmissionHistory.$inferSelect;
 export type NewFormSubmissionHistory = typeof formSubmissionHistory.$inferInsert;

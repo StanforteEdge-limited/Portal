@@ -1,9 +1,11 @@
 import { defineRelationsPart } from 'drizzle-orm';
 import { bigint, bigserial, boolean, date, doublePrecision, index, integer, jsonb, numeric, pgTable, serial, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
 import { tokenTypeEnum, organizationTypeEnum, groupUserRoleEnum, requestStatusEnum, employmentTypeEnum, employmentStatusEnum, workModeEnum, onboardingStatusEnum, workItemTypeEnum, workItemStatusEnum, workPriorityEnum, workLogApprovalStatusEnum, procurementCategoryEnum, paymentPatternEnum, procurementStatusEnum, poStatusEnum, grnStatusEnum, mailProviderEnum } from '$app/db/enums';
+import { tenant } from '$modules/tenancy/model';
 
 export const policy = pgTable("sta_policies", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).references(() => tenant.id, { onDelete: 'cascade' }),
   module: varchar("module", { length: 60 }).notNull(),
   policyKey: varchar("policy_key", { length: 120 }).notNull(),
   scopeType: varchar("scope_type", { length: 40 }).default("global").notNull(),
@@ -24,6 +26,7 @@ export const policy = pgTable("sta_policies", {
     index("policy_index_module_policyKey_isActive").on(table.module, table.policyKey, table.isActive),
     index("policy_index_scopeType_scopeId").on(table.scopeType, table.scopeId),
     index("policy_index_effectiveFrom_effectiveTo").on(table.effectiveFrom, table.effectiveTo),
+    index("policy_index_tenantId").on(table.tenantId),
 ]);
 
 export type Policy = typeof policy.$inferSelect;

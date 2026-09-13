@@ -1,10 +1,12 @@
 import { defineRelationsPart } from 'drizzle-orm';
 import { bigint, bigserial, boolean, date, doublePrecision, index, integer, jsonb, numeric, pgTable, serial, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
 import { tokenTypeEnum, organizationTypeEnum, groupUserRoleEnum, requestStatusEnum, employmentTypeEnum, employmentStatusEnum, workModeEnum, onboardingStatusEnum, workItemTypeEnum, workItemStatusEnum, workPriorityEnum, workLogApprovalStatusEnum, procurementCategoryEnum, paymentPatternEnum, procurementStatusEnum, poStatusEnum, grnStatusEnum, mailProviderEnum } from '$app/db/enums';
+import { tenant } from '$modules/tenancy/model';
 import { profile } from '$modules/identity/users/model';
 
 export const workflow = pgTable("sta_workflows", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).references(() => tenant.id, { onDelete: 'cascade' }),
   name: varchar("name", { length: 150 }).notNull(),
   description: text("description"),
   entityType: varchar("entity_type", { length: 100 }).notNull(),
@@ -17,6 +19,7 @@ export const workflow = pgTable("sta_workflows", {
 }, (table) => [
     index("workflow_index_entityType").on(table.entityType),
     index("workflow_index_isActive").on(table.isActive),
+    index("workflow_index_tenantId").on(table.tenantId),
 ]);
 
 export type Workflow = typeof workflow.$inferSelect;
@@ -24,6 +27,7 @@ export type NewWorkflow = typeof workflow.$inferInsert;
 
 export const workflowStep = pgTable("sta_workflow_steps", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).references(() => tenant.id, { onDelete: 'cascade' }),
   workflowId: uuid("workflow_id").notNull().references(() => workflow.id, { onDelete: 'cascade' }),
   name: varchar("name", { length: 150 }).notNull(),
   description: text("description"),
@@ -39,6 +43,7 @@ export const workflowStep = pgTable("sta_workflow_steps", {
 }, (table) => [
     index("workflowStep_index_workflowId").on(table.workflowId),
     index("workflowStep_index_order").on(table.order),
+    index("workflowStep_index_tenantId").on(table.tenantId),
 ]);
 
 export type WorkflowStep = typeof workflowStep.$inferSelect;
@@ -46,6 +51,7 @@ export type NewWorkflowStep = typeof workflowStep.$inferInsert;
 
 export const workflowStepApprover = pgTable("sta_workflow_step_approvers", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).references(() => tenant.id, { onDelete: 'cascade' }),
   stepId: uuid("step_id").notNull().references(() => workflowStep.id, { onDelete: 'cascade' }),
   approverType: varchar("approver_type", { length: 10 }).notNull(),
   approverId: varchar("approver_id", { length: 64 }).notNull(),
@@ -57,6 +63,7 @@ export const workflowStepApprover = pgTable("sta_workflow_step_approvers", {
   updatedAt: timestamp("updated_at", { mode: 'date', precision: 6 }).notNull().$onUpdate(() => new Date()),
 }, (table) => [
     index("workflowStepApprover_index_stepId").on(table.stepId),
+    index("workflowStepApprover_index_tenantId").on(table.tenantId),
 ]);
 
 export type WorkflowStepApprover = typeof workflowStepApprover.$inferSelect;
@@ -64,6 +71,7 @@ export type NewWorkflowStepApprover = typeof workflowStepApprover.$inferInsert;
 
 export const workflowTransition = pgTable("sta_workflow_transitions", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).references(() => tenant.id, { onDelete: 'cascade' }),
   workflowId: uuid("workflow_id").notNull().references(() => workflow.id, { onDelete: 'cascade' }),
   fromStepId: uuid("from_step_id").notNull().references(() => workflowStep.id, { onDelete: 'cascade' }),
   toStepId: uuid("to_step_id").notNull().references(() => workflowStep.id, { onDelete: 'cascade' }),
@@ -80,6 +88,7 @@ export const workflowTransition = pgTable("sta_workflow_transitions", {
     index("workflowTransition_index_workflowId").on(table.workflowId),
     index("workflowTransition_index_fromStepId").on(table.fromStepId),
     index("workflowTransition_index_toStepId").on(table.toStepId),
+    index("workflowTransition_index_tenantId").on(table.tenantId),
 ]);
 
 export type WorkflowTransition = typeof workflowTransition.$inferSelect;
@@ -87,6 +96,7 @@ export type NewWorkflowTransition = typeof workflowTransition.$inferInsert;
 
 export const workflowInstance = pgTable("sta_workflow_instances", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).references(() => tenant.id, { onDelete: 'cascade' }),
   workflowId: uuid("workflow_id").notNull().references(() => workflow.id, { onDelete: 'restrict' }),
   entityType: varchar("entity_type", { length: 100 }).notNull(),
   entityId: varchar("entity_id", { length: 36 }).notNull(),
@@ -100,6 +110,7 @@ export const workflowInstance = pgTable("sta_workflow_instances", {
 }, (table) => [
     index("workflowInstance_index_workflowId").on(table.workflowId),
     index("workflowInstance_index_status").on(table.status),
+    index("workflowInstance_index_tenantId").on(table.tenantId),
 ]);
 
 export type WorkflowInstance = typeof workflowInstance.$inferSelect;
@@ -107,6 +118,7 @@ export type NewWorkflowInstance = typeof workflowInstance.$inferInsert;
 
 export const workflowHistory = pgTable("sta_workflow_history", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).references(() => tenant.id, { onDelete: 'cascade' }),
   instanceId: uuid("instance_id").notNull().references(() => workflowInstance.id, { onDelete: 'cascade' }),
   transitionId: uuid("transition_id").references(() => workflowTransition.id, { onDelete: 'set null' }),
   fromStepId: uuid("from_step_id").references(() => workflowStep.id, { onDelete: 'set null' }),
@@ -119,6 +131,7 @@ export const workflowHistory = pgTable("sta_workflow_history", {
   updatedAt: timestamp("updated_at", { mode: 'date', precision: 6 }).notNull().$onUpdate(() => new Date()),
 }, (table) => [
     index("workflowHistory_index_instanceId").on(table.instanceId),
+    index("workflowHistory_index_tenantId").on(table.tenantId),
 ]);
 
 export type WorkflowHistory = typeof workflowHistory.$inferSelect;

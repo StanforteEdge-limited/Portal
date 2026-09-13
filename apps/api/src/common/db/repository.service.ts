@@ -33,6 +33,11 @@ type QueryArgs = Record<string, any> | undefined;
 
 const tableMap = schema as Record<string, any>;
 
+const TEMPLATE_TABLE_KEYS = new Set([
+  'workflow', 'workflowStep', 'workflowStepApprover', 'workflowTransition',
+  'form', 'formField', 'policy', 'taxonomy', 'taxonomyTerm',
+]);
+
 function lowerFirst(value: string) {
   return value.charAt(0).toLowerCase() + value.slice(1);
 }
@@ -256,6 +261,15 @@ class TableRepository {
       return tenantScopedWhere(this.table, {
         AND: [{ id: { in: organizations.map((row: any) => row.organizationId) } }, ...(where ? [where] : [])],
       }, tenantId);
+    }
+
+    if (TEMPLATE_TABLE_KEYS.has(this.tableName) && tableColumns(this.table)?.tenantId) {
+      return {
+        AND: [
+          { OR: [{ tenantId }, { tenantId: null }] },
+          ...(where ? [where] : []),
+        ],
+      };
     }
 
     return tenantScopedWhere(this.table, where, tenantId);

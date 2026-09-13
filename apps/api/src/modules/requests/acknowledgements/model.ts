@@ -1,9 +1,11 @@
 import { defineRelationsPart } from 'drizzle-orm';
 import { bigint, bigserial, boolean, date, doublePrecision, index, integer, jsonb, numeric, pgTable, serial, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
 import { tokenTypeEnum, organizationTypeEnum, groupUserRoleEnum, requestStatusEnum, employmentTypeEnum, employmentStatusEnum, workModeEnum, onboardingStatusEnum, workItemTypeEnum, workItemStatusEnum, workPriorityEnum, workLogApprovalStatusEnum, procurementCategoryEnum, paymentPatternEnum, procurementStatusEnum, poStatusEnum, grnStatusEnum, mailProviderEnum } from '$app/db/enums';
+import { tenant } from '$modules/tenancy/model';
 
 export const acknowledgement = pgTable("sta_acknowledgements", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).references(() => tenant.id, { onDelete: 'cascade' }),
   userId: bigint("user_id", { mode: 'bigint' }).notNull(),
   subjectType: varchar("subject_type", { length: 60 }).notNull(),
   subjectId: varchar("subject_id", { length: 191 }).notNull(),
@@ -20,6 +22,7 @@ export const acknowledgement = pgTable("sta_acknowledgements", {
     uniqueIndex("unique_ack_subject_version").on(table.userId, table.subjectType, table.subjectId, table.version),
     index("acknowledgement_index_subjectType_subjectId").on(table.subjectType, table.subjectId),
     index("acknowledgement_index_status").on(table.status),
+    index("acknowledgement_index_tenantId").on(table.tenantId),
 ]);
 
 export type Acknowledgement = typeof acknowledgement.$inferSelect;
