@@ -102,10 +102,12 @@ async function bootstrap() {
   const loginLimit = Number(process.env.AUTH_LOGIN_RATE_LIMIT_MAX || 10);
   const forgotLimit = Number(process.env.AUTH_FORGOT_RATE_LIMIT_MAX || 5);
   const inviteLimit = Number(process.env.AUTH_INVITE_ACCEPT_RATE_LIMIT_MAX || 10);
-  // Global Rate Limiting using existing express-rate-limit
+  const globalWindowMs = Number(process.env.GLOBAL_RATE_LIMIT_WINDOW_MS || 60 * 1000);
+  const globalMax = Number(process.env.GLOBAL_RATE_LIMIT_MAX || 600);
+  // Coarse global ceiling; tight per-endpoint limits below guard auth specifically.
   app.use(rateLimit({
-    windowMs: 60 * 1000, // 1 minute
-    max: 100, // limit each IP to 100 requests per windowMs
+    windowMs: globalWindowMs,
+    max: globalMax,
     standardHeaders: true,
     legacyHeaders: false,
   }));
