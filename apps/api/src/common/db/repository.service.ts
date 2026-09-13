@@ -429,8 +429,64 @@ class TableRepository {
   }
 
   public async attachIncludes<T>(rows: T[], include?: Record<string, any>): Promise<T[]> {
-    if (!include) return rows;
-    return Promise.all(rows.map((row) => this.attachInclude(row, include)));
+    if (!rows.length || !include) return rows;
+    const decorated: Array<{ row: Record<string, any>; result: Record<string, any> }> =
+      rows.map((row) => ({ row: row as Record<string, any>, result: { ...(row as Record<string, any>) } }));
+
+    for (const [relationName, relationArgs] of Object.entries(include)) {
+      if (relationName === '_count') {
+        for (const entry of decorated) {
+          entry.result._count = await this.loadRelationCounts(entry.result, relationArgs as any);
+        }
+        continue;
+      }
+
+      const args = relationArgs === true ? {} : (relationArgs ?? {});
+      const relation = this.resolveRelation(relationName, decorated[0].result);
+      if (!relation) continue;
+
+      const valueFor = (row: Record<string, any>) =>
+        relation.many ? row.id : relation.foreignValue(row);
+
+      const sourceKeys = decorated.map((entry) => valueFor(entry.row)).filter((value) => value != null);
+
+      const distinctKeys = Array.from(new Set(sourceKeys));
+      if (distinctKeys.length === 0) {
+        for (const entry of decorated) {
+          entry.result[relationName] = relation.many ? [] : null;
+        }
+        continue;
+      }
+
+      const relatedRows = await relation.repository.findMany({
+        where: { AND: [args.where ?? {}, { [relation.foreignKey]: { in: distinctKeys } }] },
+        select: args.select,
+        include: args.include,
+        orderBy: args.orderBy,
+      });
+
+      const grouped = new Map<string, any[]>();
+      const byId = new Map<string, any>();
+      for (const related of relatedRows) {
+        const key = String(relation.many ? related[relation.foreignKey] : related.id);
+        if (relation.many) {
+          const bucket = grouped.get(key);
+          if (bucket) bucket.push(related);
+          else grouped.set(key, [related]);
+        } else {
+          byId.set(key, related);
+        }
+      }
+
+      for (const entry of decorated) {
+        const key = String(valueFor(entry.row));
+        entry.result[relationName] = relation.many
+          ? grouped.get(key) ?? []
+          : byId.get(key) ?? null;
+      }
+    }
+
+    return decorated.map((entry) => entry.result);
   }
 
   public async attachInclude<T>(row: T, include?: Record<string, any>): Promise<T> {
@@ -712,10 +768,9 @@ class TableRepository {
       if (!enabled) continue;
       const relation = this.resolveRelation(relationName, row);
       if (!relation) continue;
-      const rows = await relation.repository.findMany({
+      counts[relationName] = await relation.repository.count({
         where: { [relation.foreignKey]: relation.foreignValue(row) },
       });
-      counts[relationName] = rows.length;
     }
     return counts;
   }
@@ -746,8 +801,7 @@ class JoinTableRepository extends TableRepository {
     let query = this.db.select().from(this.joinTable).$dynamic();
     const scoped = await this.scopedWhere(args?.where);
     const where = buildWhere(this.joinTable, scoped);
-    const conditions = [where, eq(columns[this.sourceForeignKey], this.sourceId)].filter(Boolean);
-    if (conditions.length) query = query.where(and(...conditions));
+    if (where) query = query.where(where);
     const orderBy = buildOrderBy(this.joinTable, args?.orderBy);
     if (orderBy?.length) query = query.orderBy(...orderBy);
     if (args?.skip != null) query = query.offset(Number(args.skip));
@@ -758,6 +812,16 @@ class JoinTableRepository extends TableRepository {
     if (!joinName) return rows;
     const joinRepository = new TableRepository(this.db, joinName, this.joinTable, this.tenantContext);
     return joinRepository.attachIncludes(rows, args?.include);
+  }
+
+  async count(args: QueryArgs = {}): Promise<number> {
+    const columns = tableColumns(this.joinTable);
+    let query = this.db.select({ value: drizzleCount() }).from(this.joinTable).$dynamic();
+    const scoped = await this.scopedWhere(args?.where);
+    const where = buildWhere(this.joinTable, scoped);
+    if (where) query = query.where(where);
+    const rows = await query;
+    return Number(rows[0]?.value ?? 0);
   }
 }
 
