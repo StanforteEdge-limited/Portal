@@ -1,6 +1,7 @@
 import { defineRelationsPart } from 'drizzle-orm';
 import { bigint, boolean, index, integer, jsonb, pgTable, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
 import { tokenTypeEnum, organizationTypeEnum, groupUserRoleEnum, requestStatusEnum, employmentTypeEnum, employmentStatusEnum, workModeEnum, onboardingStatusEnum, workItemTypeEnum, workItemStatusEnum, workPriorityEnum, workLogApprovalStatusEnum, procurementCategoryEnum, paymentPatternEnum, procurementStatusEnum, poStatusEnum, grnStatusEnum, mailProviderEnum } from '$app/db/enums';
+import { tenant } from '$modules/tenancy/model';
 
 export const subscriptionPlan = pgTable('sta_subscription_plans', {
   id: uuid('id').defaultRandom().primaryKey().notNull(),
@@ -18,7 +19,7 @@ export const subscriptionPlan = pgTable('sta_subscription_plans', {
 
 export const subscriptionPlanPrice = pgTable('sta_subscription_plan_prices', {
   id: uuid('id').defaultRandom().primaryKey().notNull(),
-  planId: uuid('plan_id').notNull(),
+  planId: uuid('plan_id').notNull().references(() => subscriptionPlan.id, { onDelete: 'cascade' }),
   provider: varchar('provider', { length: 30 }).notNull(),
   amountMinor: integer('amount_minor').default(0).notNull(),
   currency: varchar('currency', { length: 3 }).default('NGN').notNull(),
@@ -33,8 +34,8 @@ export const subscriptionPlanPrice = pgTable('sta_subscription_plan_prices', {
 
 export const tenantSubscription = pgTable('sta_tenant_subscriptions', {
   id: uuid('id').defaultRandom().primaryKey().notNull(),
-  tenantId: bigint('tenant_id', { mode: 'bigint' }).notNull(),
-  planId: uuid('plan_id').notNull(),
+  tenantId: bigint('tenant_id', { mode: 'bigint' }).notNull().references(() => tenant.id, { onDelete: 'cascade' }),
+  planId: uuid('plan_id').notNull().references(() => subscriptionPlan.id),
   status: varchar('status', { length: 30 }).default('active').notNull(),
   startsAt: timestamp('starts_at', { mode: 'date', precision: 6 }).defaultNow().notNull(),
   endsAt: timestamp('ends_at', { mode: 'date', precision: 6 }),
@@ -61,9 +62,9 @@ export type NewTenantSubscription = typeof tenantSubscription.$inferInsert;
 
 export const billingInvoice = pgTable('sta_billing_invoices', {
   id: uuid('id').defaultRandom().primaryKey().notNull(),
-  tenantId: bigint('tenant_id', { mode: 'bigint' }).notNull(),
-  subscriptionId: uuid('subscription_id'),
-  planId: uuid('plan_id').notNull(),
+  tenantId: bigint('tenant_id', { mode: 'bigint' }).notNull().references(() => tenant.id, { onDelete: 'cascade' }),
+  subscriptionId: uuid('subscription_id').references(() => tenantSubscription.id),
+  planId: uuid('plan_id').notNull().references(() => subscriptionPlan.id),
   number: varchar('number', { length: 40 }).notNull(),
   amountMinor: integer('amount_minor').notNull(),
   currency: varchar('currency', { length: 3 }).notNull(),
@@ -84,8 +85,8 @@ export const billingInvoice = pgTable('sta_billing_invoices', {
 
 export const billingPaymentAttempt = pgTable('sta_billing_payment_attempts', {
   id: uuid('id').defaultRandom().primaryKey().notNull(),
-  tenantId: bigint('tenant_id', { mode: 'bigint' }).notNull(),
-  invoiceId: uuid('invoice_id').notNull(),
+  tenantId: bigint('tenant_id', { mode: 'bigint' }).notNull().references(() => tenant.id, { onDelete: 'cascade' }),
+  invoiceId: uuid('invoice_id').notNull().references(() => billingInvoice.id, { onDelete: 'cascade' }),
   provider: varchar('provider', { length: 30 }).notNull(),
   reference: varchar('reference', { length: 255 }).notNull(),
   status: varchar('status', { length: 30 }).default('initialized').notNull(),
