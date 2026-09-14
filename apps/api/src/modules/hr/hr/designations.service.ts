@@ -1,10 +1,13 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { DrizzleService } from '$common/drizzle/drizzle.service';
+import { asc, eq, sql } from 'drizzle-orm';
+import { DbService } from '$common/db/db.service';
 import { toBigInt } from '$common/utils/ids';
+import { document } from '$modules/requests/documents/model';
+import { hrDesignation } from './model';
 
 @Injectable()
 export class DesignationsService {
-  constructor(private readonly drizzle: DrizzleService) {}
+  constructor(private readonly db: DbService) {}
 
   private slugify(text: string): string {
     return text
@@ -16,19 +19,13 @@ export class DesignationsService {
   }
 
   async list() {
-    const list = await this.drizzle.hrDesignation.findMany({
-      include: { document: true },
-      orderBy: { name: 'asc' }
-    });
+    const list = await this.findDesignationsWithDocuments();
     return list.map((item) => this.serialize(item));
   }
 
   async get(id: string) {
     const bigId = toBigInt(id);
-    const item = await this.drizzle.hrDesignation.findUnique({
-      where: { id: bigId },
-      include: { document: true }
-    });
+    const item = await this.findDesignationWithDocument(bigId);
     if (!item) throw new NotFoundException('Designation not found');
     return this.serialize(item);
   }
@@ -42,109 +39,96 @@ export class DesignationsService {
     const code = dto.code?.trim() || null;
     const description = dto.description?.trim() || null;
 
-    const existing = await this.drizzle.hrDesignation.findFirst({
-      where: { name: { equals: name, mode: 'insensitive' } }
-    });
+    const existing = await this.findDesignationByName(name);
     if (existing) throw new BadRequestException('Designation name already exists');
 
-    return await this.drizzle.$transaction(async (tx) => {
+    return await this.db.client.transaction(async (tx) => {
       let documentId: string | null = null;
 
       if (dto.job_description !== undefined) {
         const slug = `jd-${this.slugify(name)}-${Date.now()}`;
-        const doc = await tx.document.create({
-          data: {
+        const [doc] = await tx.insert(document).values({
             title: `${name} Job Description`,
             slug,
             category: 'job_description',
             status: 'active',
             contentHtml: dto.job_description || '',
             requireAcknowledgement: false
-          }
-        });
+          } as typeof document.$inferInsert)
+          .returning();
         documentId = doc.id;
       }
 
-      const created = await tx.hrDesignation.create({
-        data: {
+      const [created] = await tx.insert(hrDesignation)
+        .values({
           name,
           code,
           description,
           documentId
-        },
-        include: { document: true }
-      });
+        })
+        .returning();
 
-      return this.serialize(created);
+      return this.serialize({ ...created, document: documentId ? await this.findDocument(documentId) : null });
     });
   }
 
   async update(id: string, dto: { name?: string; code?: string; description?: string; job_description?: string }) {
     const bigId = toBigInt(id);
-    const existing = await this.drizzle.hrDesignation.findUnique({
-      where: { id: bigId },
-      include: { document: true }
-    });
+    const existing = await this.findDesignationWithDocument(bigId);
     if (!existing) throw new NotFoundException('Designation not found');
 
     if (dto.name && dto.name.trim().toLowerCase() !== existing.name.toLowerCase()) {
-      const nameCheck = await this.drizzle.hrDesignation.findFirst({
-        where: { name: { equals: dto.name.trim(), mode: 'insensitive' } }
-      });
+      const nameCheck = await this.findDesignationByName(dto.name.trim());
       if (nameCheck) throw new BadRequestException('Designation name already exists');
     }
 
-    return await this.drizzle.$transaction(async (tx) => {
+    return await this.db.client.transaction(async (tx) => {
       let documentId = existing.documentId;
 
       if (dto.job_description !== undefined) {
         if (documentId) {
-          await tx.document.update({
-            where: { id: documentId },
-            data: {
-              contentHtml: dto.job_description || ''
-            }
-          });
+          await tx.update(document)
+            .set({ contentHtml: dto.job_description || '' })
+            .where(eq(document.id, documentId));
         } else {
           const slug = `jd-${this.slugify(dto.name || existing.name)}-${Date.now()}`;
-          const doc = await tx.document.create({
-            data: {
+          const [doc] = await tx.insert(document)
+            .values({
               title: `${dto.name || existing.name} Job Description`,
               slug,
               category: 'job_description',
               status: 'active',
               contentHtml: dto.job_description || '',
               requireAcknowledgement: false
-            }
-          });
+            } as typeof document.$inferInsert)
+            .returning();
           documentId = doc.id;
         }
       }
 
-      const updated = await tx.hrDesignation.update({
-        where: { id: bigId },
-        data: {
+      const [updated] = await tx.update(hrDesignation)
+        .set({
           name: dto.name?.trim(),
           code: dto.code?.trim(),
           description: dto.description?.trim(),
           documentId
-        },
-        include: { document: true }
-      });
+        })
+        .where(eq(hrDesignation.id, bigId))
+        .returning();
 
-      return this.serialize(updated);
+      return this.serialize({ ...updated, document: documentId ? await this.findDocument(documentId) : null });
     });
   }
 
   async delete(id: string) {
     const bigId = toBigInt(id);
-    const existing = await this.drizzle.hrDesignation.findUnique({ where: { id: bigId } });
+    const [existing] = await this.db.client.select().from(hrDesignation).where(eq(hrDesignation.id, bigId)).limit(1);
     if (!existing) throw new NotFoundException('Designation not found');
 
-    await this.drizzle.hrDesignation.delete({ where: { id: bigId } });
+    await this.db.client.delete(hrDesignation).where(eq(hrDesignation.id, bigId));
     if (existing.documentId) {
       try {
-        await this.drizzle.document.delete({ where: { id: existing.documentId } });
+        await this.db.client.delete(document).where(eq(document.id, existing.documentId));
       } catch (err) {
         // ignore if already deleted
       }
@@ -164,5 +148,42 @@ export class DesignationsService {
       created_at: item.createdAt,
       updated_at: item.updatedAt
     };
+  }
+
+  private async findDesignationsWithDocuments() {
+    const rows = await this.db.client
+      .select({ designation: hrDesignation, document })
+      .from(hrDesignation)
+      .leftJoin(document, eq(hrDesignation.documentId, document.id))
+      .orderBy(asc(hrDesignation.name));
+    return rows.map(({ designation, document }) => ({ ...designation, document }));
+  }
+
+  private async findDesignationWithDocument(id: bigint) {
+    const [row] = await this.db.client
+      .select({ designation: hrDesignation, document })
+      .from(hrDesignation)
+      .leftJoin(document, eq(hrDesignation.documentId, document.id))
+      .where(eq(hrDesignation.id, id))
+      .limit(1);
+    return row ? { ...row.designation, document: row.document } : null;
+  }
+
+  private async findDesignationByName(name: string) {
+    const [designation] = await this.db.client
+      .select()
+      .from(hrDesignation)
+      .where(eq(sql<string>`lower(${hrDesignation.name})`, name.toLowerCase()))
+      .limit(1);
+    return designation ?? null;
+  }
+
+  private async findDocument(documentId: string) {
+    const [doc] = await this.db.client
+      .select()
+      .from(document)
+      .where(eq(document.id, documentId))
+      .limit(1);
+    return doc ?? null;
   }
 }
