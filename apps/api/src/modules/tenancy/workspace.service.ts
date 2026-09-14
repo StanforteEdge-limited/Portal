@@ -1,11 +1,19 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import * as bcrypt from 'bcryptjs';
-import { DrizzleService } from '$common/drizzle/drizzle.service';
+import { and, count, eq, inArray, isNull } from 'drizzle-orm';
+import { AppDb, DbService } from '$common/db/db.service';
 import { TenantContextService } from '$common/auth/tenant-context.service';
 import { TenantContext } from '$common/auth/tenant-context';
 import { generateUniqueUsername, makeUsernameSeed } from '$common/utils/username';
+import { form, formField } from '$modules/requests/forms/model';
+import { policy } from '$modules/requests/policies/model';
+import { role, userRole } from '$modules/identity/rbac/model';
+import { profile } from '$modules/identity/users/model';
+import { taxonomy, taxonomyTerm } from '$modules/requests/taxonomy/model';
+import { workflow, workflowStep, workflowStepApprover, workflowTransition } from '$modules/requests/workflow/model';
 import { CreateWorkspaceDto } from './dto/create-workspace.dto';
+import { tenant, tenantMembership } from './model';
 
 const RESERVED_SLUGS = new Set([
   'admin', 'administrator', 'system', 'platform', 'stanforteedge',
@@ -15,7 +23,7 @@ const RESERVED_SLUGS = new Set([
 @Injectable()
 export class WorkspaceService {
   constructor(
-    private readonly drizzle: DrizzleService,
+    private readonly db: DbService,
     private readonly tenantContext: TenantContextService,
   ) {}
 
@@ -27,8 +35,8 @@ export class WorkspaceService {
 
     await this.tenantContext.runSystem('workspace.createWorkspace.validate', async () => {
       const [existingTenant, existingProfile] = await Promise.all([
-        this.drizzle.tenant.findUnique({ where: { slug } }),
-        this.drizzle.profile.findUnique({ where: { email } }),
+        this.findTenantBySlug(slug),
+        this.findProfileByEmail(email),
       ]);
       if (existingTenant) throw new BadRequestException('Workspace slug is already taken');
       if (existingProfile) {
@@ -41,20 +49,20 @@ export class WorkspaceService {
       makeUsernameSeed(dto.first_name, dto.last_name, email.split('@')[0]),
       async (candidate) =>
         await this.tenantContext.runSystem('workspace.createWorkspace.username', () =>
-          this.drizzle.profile.findFirst({ where: { username: candidate } }).then(Boolean),
+          this.findProfileByUsername(candidate).then(Boolean),
         ),
     );
 
     return this.tenantContext.runSystem('workspace.createWorkspace', () =>
-      this.drizzle.$transaction(async (tx) => {
-        const tenant = await tx.tenant.create({
-          data: { name, slug, plan: dto.plan?.trim() || 'trial' },
-        });
+      this.db.client.transaction(async (tx) => {
+        const [tenantRecord] = await tx.insert(tenant)
+          .values({ name, slug, plan: dto.plan?.trim() || 'trial' })
+          .returning();
 
-        const defaults = await this.cloneTemplates(tx, tenant.id);
+        const defaults = await this.cloneTemplates(tx, tenantRecord.id);
 
-        const owner = await tx.profile.create({
-          data: {
+        const [owner] = await tx.insert(profile)
+          .values({
             username,
             email,
             passwordHash,
@@ -62,36 +70,34 @@ export class WorkspaceService {
             status: 'active',
             firstName: dto.first_name,
             lastName: dto.last_name,
-          },
-        });
+          })
+          .returning();
 
-        await tx.tenantMembership.create({
-          data: { tenantId: tenant.id, profileId: owner.id, status: 'active', isOwner: true },
-        });
+        await tx.insert(tenantMembership)
+          .values({ tenantId: tenantRecord.id, profileId: owner.id, status: 'active', isOwner: true });
 
-        const adminRoles = await tx.role.findMany({
-          where: { slug: { in: ['administrator', 'admin'] }, isActive: true, tenantId: null },
-          select: { id: true },
-        });
+        const adminRoles = await tx
+          .select({ id: role.id })
+          .from(role)
+          .where(and(eq(role.isActive, true), inArray(role.slug, ['administrator', 'admin']), isNull(role.tenantId)));
 
         if (adminRoles.length > 0) {
-          await tx.userRole.createMany({
-            data: adminRoles.map((role) => ({
+          await tx.insert(userRole).values(
+            adminRoles.map((roleRecord) => ({
               profileId: owner.id,
-              roleId: role.id,
-              tenantId: tenant.id,
+              roleId: roleRecord.id,
+              tenantId: tenantRecord.id,
               organizationId: null,
               isPrimaryRole: true,
             })),
-            skipDuplicates: true,
-          });
+          ).onConflictDoNothing();
         }
 
         return {
-          tenant_id: tenant.id.toString(),
-          name: tenant.name,
-          slug: tenant.slug,
-          plan: tenant.plan,
+          tenant_id: tenantRecord.id.toString(),
+          name: tenantRecord.name,
+          slug: tenantRecord.slug,
+          plan: tenantRecord.plan,
           owner_id: owner.id.toString(),
           email: owner.email,
           role: adminRoles.length > 0 ? 'administrator' : 'owner',
@@ -105,13 +111,13 @@ export class WorkspaceService {
     if (!context.isOwner) throw new BadRequestException('Only tenant owners can bootstrap workspace defaults');
 
     return this.tenantContext.runSystem('workspace.bootstrapDefaults', () =>
-      this.drizzle.$transaction(
+      this.db.client.transaction(
         async (tx) => ({ success: true, ...(await this.cloneTemplates(tx, context.tenantId)) }),
       ),
     );
   }
 
-  private async cloneTemplates(tx: DrizzleService, tenantId: bigint) {
+  private async cloneTemplates(tx: Parameters<Parameters<AppDb['transaction']>[0]>[0], tenantId: bigint) {
     const outcome = {
       workflows: { cloned: 0, skipped: false },
       forms: { cloned: 0, skipped: false },
@@ -119,13 +125,12 @@ export class WorkspaceService {
       taxonomies: { cloned: 0, skipped: false },
     };
 
-    if ((await tx.workflow.count({ where: { tenantId } })) === 0) {
-      const workflows = await tx.workflow.findMany({ where: { tenantId: null } });
+    if ((await this.countRows(tx, workflow, eq(workflow.tenantId, tenantId))) === 0) {
+      const workflows = await tx.select().from(workflow).where(isNull(workflow.tenantId));
       const workflowId = new Map<string, string>();
       for (const w of workflows) workflowId.set(w.id, randomUUID());
       if (workflows.length > 0) {
-        await tx.workflow.createMany({
-          data: workflows.map((w) => ({
+        await tx.insert(workflow).values(workflows.map((w) => ({
             id: workflowId.get(w.id) as string,
             tenantId,
             name: w.name,
@@ -135,15 +140,13 @@ export class WorkspaceService {
             isActive: w.isActive,
             createdAt: w.createdAt,
             updatedAt: w.updatedAt,
-          })),
-        });
+          })));
 
-        const steps = await tx.workflowStep.findMany({ where: { tenantId: null } });
+        const steps = await tx.select().from(workflowStep).where(isNull(workflowStep.tenantId));
         const stepId = new Map<string, string>();
         for (const s of steps) stepId.set(s.id, randomUUID());
         if (steps.length > 0) {
-          await tx.workflowStep.createMany({
-            data: steps.map((s) => ({
+          await tx.insert(workflowStep).values(steps.map((s) => ({
               id: stepId.get(s.id) as string,
               tenantId,
               workflowId: workflowId.get(s.workflowId) as string,
@@ -156,13 +159,11 @@ export class WorkspaceService {
               config: s.config,
               createdAt: s.createdAt,
               updatedAt: s.updatedAt,
-            })),
-          });
+            })));
 
-          const approvers = await tx.workflowStepApprover.findMany({ where: { tenantId: null } });
+          const approvers = await tx.select().from(workflowStepApprover).where(isNull(workflowStepApprover.tenantId));
           if (approvers.length > 0) {
-            await tx.workflowStepApprover.createMany({
-              data: approvers.map((a) => ({
+            await tx.insert(workflowStepApprover).values(approvers.map((a) => ({
                 tenantId,
                 stepId: stepId.get(a.stepId) as string,
                 approverType: a.approverType,
@@ -171,14 +172,12 @@ export class WorkspaceService {
                 approvalOrder: a.approvalOrder,
                 createdAt: a.createdAt,
                 updatedAt: a.updatedAt,
-              })),
-            });
+              })));
           }
 
-          const transitions = await tx.workflowTransition.findMany({ where: { tenantId: null } });
+          const transitions = await tx.select().from(workflowTransition).where(isNull(workflowTransition.tenantId));
           if (transitions.length > 0) {
-            await tx.workflowTransition.createMany({
-              data: transitions.map((t) => ({
+            await tx.insert(workflowTransition).values(transitions.map((t) => ({
                 tenantId,
                 workflowId: workflowId.get(t.workflowId) as string,
                 fromStepId: stepId.get(t.fromStepId) as string,
@@ -190,8 +189,7 @@ export class WorkspaceService {
                 config: t.config,
                 createdAt: t.createdAt,
                 updatedAt: t.updatedAt,
-              })),
-            });
+              })));
           }
         }
       }
@@ -200,13 +198,12 @@ export class WorkspaceService {
       outcome.workflows = { cloned: 0, skipped: true };
     }
 
-    if ((await tx.form.count({ where: { tenantId } })) === 0) {
-      const forms = await tx.form.findMany({ where: { tenantId: null } });
+    if ((await this.countRows(tx, form, eq(form.tenantId, tenantId))) === 0) {
+      const forms = await tx.select().from(form).where(isNull(form.tenantId));
       const formId = new Map<string, string>();
       for (const f of forms) formId.set(f.id, randomUUID());
       if (forms.length > 0) {
-        await tx.form.createMany({
-          data: forms.map((f) => ({
+        await tx.insert(form).values(forms.map((f) => ({
             id: formId.get(f.id) as string,
             tenantId,
             name: f.name,
@@ -222,13 +219,11 @@ export class WorkspaceService {
             isActive: f.isActive,
             createdAt: f.createdAt,
             updatedAt: f.updatedAt,
-          })),
-        });
+          })));
 
-        const fields = await tx.formField.findMany({ where: { tenantId: null } });
+        const fields = await tx.select().from(formField).where(isNull(formField.tenantId));
         if (fields.length > 0) {
-          await tx.formField.createMany({
-            data: fields.map((f) => ({
+          await tx.insert(formField).values(fields.map((f) => ({
               tenantId,
               formId: formId.get(f.formId) as string,
               fieldKey: f.fieldKey,
@@ -240,8 +235,7 @@ export class WorkspaceService {
               displayOrder: f.displayOrder,
               createdAt: f.createdAt,
               updatedAt: f.updatedAt,
-            })),
-          });
+            })));
         }
       }
       outcome.forms = { cloned: forms.length, skipped: false };
@@ -249,11 +243,10 @@ export class WorkspaceService {
       outcome.forms = { cloned: 0, skipped: true };
     }
 
-    if ((await tx.policy.count({ where: { tenantId } })) === 0) {
-      const policies = await tx.policy.findMany({ where: { tenantId: null } });
+    if ((await this.countRows(tx, policy, eq(policy.tenantId, tenantId))) === 0) {
+      const policies = await tx.select().from(policy).where(isNull(policy.tenantId));
       if (policies.length > 0) {
-        await tx.policy.createMany({
-          data: policies.map((p) => ({
+        await tx.insert(policy).values(policies.map((p) => ({
             tenantId,
             module: p.module,
             policyKey: p.policyKey,
@@ -269,21 +262,19 @@ export class WorkspaceService {
             requireAcknowledgement: p.requireAcknowledgement,
             createdAt: p.createdAt,
             updatedAt: p.updatedAt,
-          })),
-        });
+          })));
       }
       outcome.policies = { cloned: policies.length, skipped: false };
     } else {
       outcome.policies = { cloned: 0, skipped: true };
     }
 
-    if ((await tx.taxonomy.count({ where: { tenantId } })) === 0) {
-      const taxonomies = await tx.taxonomy.findMany({ where: { tenantId: null } });
+    if ((await this.countRows(tx, taxonomy, eq(taxonomy.tenantId, tenantId))) === 0) {
+      const taxonomies = await tx.select().from(taxonomy).where(isNull(taxonomy.tenantId));
       const taxonomyId = new Map<string, string>();
       for (const t of taxonomies) taxonomyId.set(t.id, randomUUID());
       if (taxonomies.length > 0) {
-        await tx.taxonomy.createMany({
-          data: taxonomies.map((t) => ({
+        await tx.insert(taxonomy).values(taxonomies.map((t) => ({
             id: taxonomyId.get(t.id) as string,
             tenantId,
             key: t.key,
@@ -294,13 +285,11 @@ export class WorkspaceService {
             isActive: t.isActive,
             createdAt: t.createdAt,
             updatedAt: t.updatedAt,
-          })),
-        });
+          })));
 
-        const terms = await tx.taxonomyTerm.findMany({ where: { tenantId: null } });
+        const terms = await tx.select().from(taxonomyTerm).where(isNull(taxonomyTerm.tenantId));
         if (terms.length > 0) {
-          await tx.taxonomyTerm.createMany({
-            data: terms.map((t) => ({
+          await tx.insert(taxonomyTerm).values(terms.map((t) => ({
               tenantId,
               taxonomyId: taxonomyId.get(t.taxonomyId) as string,
               value: t.value,
@@ -310,8 +299,7 @@ export class WorkspaceService {
               metadata: t.metadata,
               createdAt: t.createdAt,
               updatedAt: t.updatedAt,
-            })),
-          });
+            })));
         }
       }
       outcome.taxonomies = { cloned: taxonomies.length, skipped: false };
@@ -320,6 +308,26 @@ export class WorkspaceService {
     }
 
     return outcome;
+  }
+
+  private async findTenantBySlug(slug: string) {
+    const [row] = await this.db.client.select().from(tenant).where(eq(tenant.slug, slug)).limit(1);
+    return row ?? null;
+  }
+
+  private async findProfileByEmail(email: string) {
+    const [row] = await this.db.client.select().from(profile).where(eq(profile.email, email)).limit(1);
+    return row ?? null;
+  }
+
+  private async findProfileByUsername(username: string) {
+    const [row] = await this.db.client.select().from(profile).where(eq(profile.username, username)).limit(1);
+    return row ?? null;
+  }
+
+  private async countRows(tx: Parameters<Parameters<AppDb['transaction']>[0]>[0], table: any, where: any) {
+    const [row] = await tx.select({ value: count() }).from(table).where(where);
+    return row.value;
   }
 
   private normalizeSlug(value: string) {
