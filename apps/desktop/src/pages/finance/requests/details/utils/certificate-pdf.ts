@@ -1,4 +1,5 @@
 import { downloadRequestArtifact } from "@/pages/requests/requests-api";
+import { fetchJobFile } from "@/shared/lib/download";
 
 export function formatCertificateCurrency(
   amount: number,
@@ -28,7 +29,7 @@ export async function buildCertificateOfHonorPdf(input: {
   issuedAt: string;
   signatureFileId?: string;
 }): Promise<File> {
-  const result = await downloadRequestArtifact(input.requestId, {
+  const file = await downloadRequestArtifact(input.requestId, {
     action: "certificate_of_honor_pdf",
     staff_name: input.staffName,
     request_label: input.requestLabel,
@@ -40,15 +41,11 @@ export async function buildCertificateOfHonorPdf(input: {
     signature_file_id: input.signatureFileId,
   });
 
-  // Convert base64 → ArrayBuffer → File
-  const binary = atob(result.content_base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
+  // Poll the background job, fetch the generated file, return it as a File
+  const { bytes, file_name } = await fetchJobFile(file.job_id);
   return new File(
-    [bytes.buffer],
-    result.file_name ||
+    [bytes],
+    file_name ||
       `Certificate_of_Honor_${input.requestLabel.replace(/[\\/]+/g, "-")}.pdf`,
     { type: "application/pdf" },
   );

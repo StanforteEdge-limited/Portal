@@ -52,7 +52,7 @@ import {
 import { listEntityTags, listManagedTaxonomies } from "@/pages/requests/taxonomy-api";
 import type { MyOrganization, ProjectOption, TeamOption } from "@/pages/requests/requests-api";
 import { financeApi } from "@/shared/lib/core";
-import { downloadBase64File } from "@/shared/lib/download";
+import { downloadBackgroundJob } from "@/shared/lib/download";
 import { formatDisplayDate } from "@stanforte/shared";
 import {
   buildLeaveWorkflow,
@@ -502,7 +502,7 @@ export function RequestDetailsPage(props: RequestDetailsPageProps = {}) {
         action,
         voucher_id: voucherId,
       });
-      downloadBase64File(file.file_name, file.mime_type, file.content_base64);
+      await downloadBackgroundJob(file.job_id);
       showToast({
         title: "Download ready",
         message:

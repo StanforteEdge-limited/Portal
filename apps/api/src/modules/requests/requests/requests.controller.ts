@@ -19,13 +19,17 @@ import { DownloadRequestDto } from '$modules/requests/requests/dto/download-requ
 import { JwtAuthGuard } from '$common/auth/jwt-auth.guard';
 import { Permissions } from '$common/auth/permissions.decorator';
 import { PermissionsGuard } from '$common/auth/permissions.guard';
+import { BackgroundJobsService } from '$modules/background-jobs/background-jobs.service';
 
 @Controller('requests')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @ApiTags('Requests')
 @ApiBearerAuth('bearer')
 export class RequestsController {
-  constructor(private readonly requestsService: RequestsService) {}
+  constructor(
+    private readonly requestsService: RequestsService,
+    private readonly backgroundJobs: BackgroundJobsService,
+  ) {}
 
   @Get('groups')
   @Permissions('requests.view')
@@ -308,7 +312,12 @@ export class RequestsController {
     }
   })
   generatePdf(@Req() req: any, @Body('id') id: string) {
-    return this.requestsService.downloadByAction(id, req.user?.id, { action: 'request_pdf' });
+    return this.backgroundJobs.enqueue({
+      type: 'requests.document-generate',
+      input: { requestId: id, download: { action: 'request_pdf' } },
+      onSuccessTitle: 'Request PDF generated',
+      onSuccessMessage: `The request PDF is ready to download.`,
+    });
   }
 
   @Post('generate-pv')
@@ -323,7 +332,12 @@ export class RequestsController {
     }
   })
   generatePaymentVoucher(@Req() req: any, @Body('id') id: string) {
-    return this.requestsService.downloadByAction(id, req.user?.id, { action: 'pv_pdf' });
+    return this.backgroundJobs.enqueue({
+      type: 'requests.document-generate',
+      input: { requestId: id, download: { action: 'pv_pdf' } },
+      onSuccessTitle: 'Payment voucher PDF generated',
+      onSuccessMessage: `The payment voucher PDF is ready to download.`,
+    });
   }
 
   @Post(':id/download')
@@ -334,7 +348,12 @@ export class RequestsController {
   })
   @ApiBody({ type: DownloadRequestDto })
   downloadByAction(@Req() req: any, @Param('id') id: string, @Body() dto: DownloadRequestDto) {
-    return this.requestsService.downloadByAction(id, req.user?.id, dto);
+    return this.backgroundJobs.enqueue({
+      type: 'requests.document-generate',
+      input: { requestId: id, download: dto },
+      onSuccessTitle: 'Document generated',
+      onSuccessMessage: `The requested document for request #${id} has been generated.`,
+    });
   }
 
   @Post('manual-entry')

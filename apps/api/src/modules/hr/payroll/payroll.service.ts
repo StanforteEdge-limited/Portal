@@ -6,6 +6,7 @@ import { PdfService } from '$common/pdf/pdf.service';
 import { existsSync, readFileSync } from 'node:fs';
 import { extname, resolve } from 'node:path';
 import { MailService } from '$common/mail/mail.service';
+import { StorageService } from '$modules/storage/storage.service';
 import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { toBigInt } from '$common/utils/ids';
 import { NotificationsService } from '$modules/notifications/notifications.service';
@@ -28,7 +29,8 @@ export class PayrollService {
     private readonly drizzle: DrizzleService,
     private readonly notificationsService: NotificationsService,
     private readonly mailService: MailService,
-    private readonly pdfService: PdfService
+    private readonly pdfService: PdfService,
+    private readonly storageService: StorageService
   ) {}
 
   async summary(query: Record<string, any> = {}) {
@@ -1733,6 +1735,17 @@ export class PayrollService {
       file_name: `${this.safeFileName(run.name)}-payslips.zip`,
       mime_type: 'application/zip',
       content_base64: content.toString('base64'),
+    };
+  }
+
+  async generateRunPayslipsPackageToAsset(runId: string, actorId?: string) {
+    const pkg = await this.generateRunPayslipsPackage(runId);
+    const stored = await this.storageService.storeGeneratedFile(actorId, pkg);
+    return {
+      file_asset_id: stored.file_asset_id,
+      file_name: stored.file_name,
+      mime_type: stored.mime_type,
+      size: stored.size,
     };
   }
 

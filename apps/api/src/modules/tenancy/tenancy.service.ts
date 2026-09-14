@@ -65,6 +65,7 @@ const TENANT_SCOPED_TABLES = [
   'sta_chat_messages',
   'sta_chat_message_attachments',
   'sta_storage_folders',
+  'sta_background_jobs',
 ] as const;
 
 @Injectable()

@@ -10,6 +10,7 @@ import { InviteUserDto } from '$modules/identity/users/dto/invite-user.dto';
 import { UpdateUserDto } from '$modules/identity/users/dto/update-user.dto';
 import { randomToken, sha256 } from '$common/utils/crypto';
 import { MailService } from '$common/mail/mail.service';
+import { MailQueueService } from '$common/mail/mail-queue.service';
 import { generateUniqueUsername, makeUsernameSeed } from '$common/utils/username';
 import { paginatedResponse } from '$common/helpers/paginated-response';
 import { Drizzle } from '$common/db/drizzle-compat';
@@ -21,6 +22,7 @@ export class UsersService {
   constructor(
     private readonly drizzle: DrizzleService,
     private readonly mailService: MailService,
+    private readonly mailQueue: MailQueueService,
     private readonly tenantContext: TenantContextService
   ) {}
 
@@ -637,7 +639,7 @@ export class UsersService {
     const inviteLink = `${portalUrl}/accept-invite?token=${encodeURIComponent(inviteToken)}`;
     const displayName = `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || user.email;
 
-    await this.mailService.send({
+    await this.mailQueue.enqueue({
       to: user.email,
       subject: 'You are invited to StanforteEdge Portal',
       text: `${displayName},\n\nYou have been invited to StanforteEdge Portal. Set up your password here:\n${inviteLink}\n\n${message ?? ''}`.trim(),
@@ -659,7 +661,7 @@ export class UsersService {
     const portalUrl = this.resolvePortalUrl();
     const displayName = `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || user.email;
 
-    await this.mailService.send({
+    await this.mailQueue.enqueue({
       to: user.email,
       subject: 'Welcome to StanforteEdge Portal',
       text: `Hello ${displayName},\n\nYour account has been created. You can sign in here:\n${portalUrl}/login`,
@@ -713,12 +715,20 @@ export class UsersService {
       primary_organization_id: user.primaryOrganizationId ? user.primaryOrganizationId.toString() : null,
       created_at: user.createdAt,
       updated_at: user.updatedAt,
-      organizations: (user.organizations ?? []).map((item: any) => ({
-        id: item.organization.id.toString(),
-        name: item.organization.name,
-        code: item.organization.code,
-        is_primary: item.isPrimary
-      })),
+      organizations: (user.organizations ?? []).map((item: any) => {
+        const metadata =
+          item.organization.metadata && typeof item.organization.metadata === 'object'
+            ? (item.organization.metadata as Record<string, unknown>)
+            : {};
+        return {
+          id: item.organization.id.toString(),
+          name: item.organization.name,
+          code: item.organization.code,
+          is_primary: item.isPrimary,
+          logo_url: typeof metadata.logo_url === 'string' ? metadata.logo_url : null,
+          theme: typeof metadata.theme === 'string' ? metadata.theme : 'ocean',
+        };
+      }),
       groups: groupMemberships.filter((item: any) => String(item.type).toLowerCase() !== 'project'),
       teams: groupMemberships.filter((item: any) => {
         const type = String(item.type).toLowerCase();

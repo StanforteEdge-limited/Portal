@@ -18,7 +18,15 @@ export type WorkspaceProfile = {
   marital_status?: string | null;
   bio?: string | null;
   occupation?: string | null;
-  organizations?: Array<{ id: string; name: string; code: string; is_primary?: boolean }>;
+  primary_organization_id?: string | null;
+  organizations?: Array<{
+    id: string;
+    name: string;
+    code: string;
+    is_primary?: boolean;
+    logo_url?: string | null;
+    theme?: string;
+  }>;
   groups?: Array<{ id: string; name: string; type: string; role: string; is_primary?: boolean }>;
   employee_profile?: {
     employee_code?: string | null;

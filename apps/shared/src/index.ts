@@ -101,6 +101,8 @@ export type {
 export { LocalDB, useLocalDB } from "./lib/local-db";
 
 export { createMailApi } from "./api/mail-api";
+export { createJobsApi, waitForBackgroundJob } from "./api/jobs-api";
+export type { JobsApi, BackgroundJobResponse, BackgroundJobStatus, BackgroundJobDownload } from "./api/jobs-api";
 export type {
   MailAccount,
   MailHeader,
@@ -109,3 +111,12 @@ export type {
   SendMessageDto,
 } from "./api/mail-api";
 export * from "./data/form-schemas";
+export {
+  BRAND_THEMES,
+  DEFAULT_BRAND_THEME_KEY,
+  getBrandTheme,
+  hexToRgbTriplet,
+  brandThemeCssVars,
+  applyBrandTheme,
+} from "./branding/themes";
+export type { BrandTheme, BrandThemeKey, BrandShade } from "./branding/themes";

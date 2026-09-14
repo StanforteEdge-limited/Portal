@@ -22,7 +22,7 @@ export class MailQueueService {
   ) {
     return this.mailQueue.add(
       'send-email',
-      input,
+      this.serialize(input),
       {
         jobId: options.jobId,
         attempts: 3,
@@ -32,5 +32,20 @@ export class MailQueueService {
         delay: options.delayMs ?? 0,
       },
     );
+  }
+
+  private serialize(input: SendMailInput): SendMailInput {
+    if (!input.attachments?.length) return input;
+    const attachments = input.attachments.map((attachment) => {
+      if (Buffer.isBuffer(attachment.content)) {
+        return {
+          ...attachment,
+          content: attachment.content.toString('base64'),
+          encoding: attachment.encoding ?? 'base64',
+        };
+      }
+      return attachment;
+    });
+    return { ...input, attachments };
   }
 }

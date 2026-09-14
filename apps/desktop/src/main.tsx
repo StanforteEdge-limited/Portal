@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import { ToastProvider } from "@/shared";
 import App from "./App";
 import { AuthProvider } from "@/shared/context/AuthProvider";
+import { BrandingProvider } from "@/shared/branding/BrandingProvider";
 import { AppVersion } from "@/shared/components/AppVersion";
 import "./styles.css";
 import faviconUrl from "../../shared/assets/brand/stanforte-icon-white.png";
@@ -104,7 +105,9 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
       <BrowserRouter basename={import.meta.env.BASE_URL}>
         <AuthProvider>
           <ToastProvider>
-            <App />
+            <BrandingProvider>
+              <App />
+            </BrandingProvider>
           </ToastProvider>
         </AuthProvider>
       </BrowserRouter>

@@ -64,11 +64,11 @@ export function createMailApi(httpRequest: HttpRequest) {
       httpRequest<void>(`${base}/accounts/${id}`, { method: 'DELETE' }),
 
     syncAll: () =>
-      httpRequest<SyncResult[]>(`${base}/sync`, { method: 'POST' }),
+      httpRequest<{ job_id: string }>(`${base}/sync`, { method: 'POST' }),
 
     syncAccount: (accountId: string, folder?: string) => {
       const q = folder ? `?folder=${encodeURIComponent(folder)}` : '';
-      return httpRequest<SyncResult[]>(`${base}/${accountId}/sync${q}`, { method: 'POST' });
+      return httpRequest<{ job_id: string }>(`${base}/${accountId}/sync${q}`, { method: 'POST' });
     },
 
     listFolders: (accountId: string) =>

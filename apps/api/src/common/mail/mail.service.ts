@@ -21,6 +21,7 @@ export type SendMailInput = {
     filename: string;
     content: Buffer | string;
     contentType?: string;
+    encoding?: string;
   }>;
 };
 

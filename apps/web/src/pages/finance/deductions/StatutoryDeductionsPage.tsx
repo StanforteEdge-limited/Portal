@@ -8,6 +8,7 @@ import {
 import { AppShell } from "@/shared/components/layout/AppShell";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { financeApi, resourceApi } from "@/shared/lib/core";
+import { downloadBackgroundJob } from "@/shared/lib/download";
 import { buildAppNavigation, buildAppMobileNav } from "@/shared/navigation";
 import type { FinanceRequestDeductionRecord } from "@/shared";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -354,20 +355,10 @@ export default function StatutoryDeductionsPage() {
       )
     : 0;
 
-  const downloadBase64Pdf = (res: { file_name: string; content_base64: string }) => {
-    const bytes = Uint8Array.from(atob(res.content_base64), (c) => c.charCodeAt(0));
-    const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = res.file_name;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
   const handleDownloadTrm = async (id: string) => {
     try {
       const res = await financeApi.downloadTrmSlip(id);
-      downloadBase64Pdf(res as any);
+      await downloadBackgroundJob(res.job_id);
     } catch {
       showToast({ tone: "danger", title: "Download failed", message: "Could not generate TRM slip." });
     }

@@ -60,9 +60,7 @@ export type ProcurementAttachmentRecord = {
 };
 
 export type ProcurementDocumentDownload = {
-  file_name: string;
-  mime_type: string;
-  content_base64: string;
+  job_id: string;
 };
 
 export function createProcurementApi(http: HttpRequest) {

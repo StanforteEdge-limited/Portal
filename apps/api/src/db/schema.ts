@@ -39,6 +39,8 @@ export { subscriptionPlan, subscriptionPlanPrice, tenantSubscription, billingInv
 export type { SubscriptionPlan, NewSubscriptionPlan, SubscriptionPlanPrice, NewSubscriptionPlanPrice, TenantSubscription, NewTenantSubscription } from '$modules/platform/billing/model';
 export { fileAsset, storageFolder } from '$modules/storage/model';
 export type { FileAsset, NewFileAsset, StorageFolder, NewStorageFolder } from '$modules/storage/model';
+export { backgroundJob } from '$modules/background-jobs/model';
+export type { BackgroundJob, NewBackgroundJob } from '$modules/background-jobs/model';
 export { emailLog, mailAccount, mailHeader } from '$modules/communication/mail/model';
 export type { EmailLog, NewEmailLog, MailAccount, NewMailAccount, MailHeader, NewMailHeader } from '$modules/communication/mail/model';
 export { systemVersion } from '$modules/platform/version/model';

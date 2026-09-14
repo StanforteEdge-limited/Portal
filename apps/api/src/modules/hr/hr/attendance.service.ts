@@ -1188,6 +1188,26 @@ export class AttendanceService {
     };
   }
 
+  /**
+   * Resolves the user's effective clock-out time for a given work date based on
+   * their attendance schedule policy (organization/team/staff-type/user scoping).
+   * Returns null when the schedule cannot be resolved.
+   */
+  async getClockOutTime(userId: string | bigint, workDate: Date): Promise<Date | null> {
+    const uid = toBigInt(userId);
+    try {
+      const policy = await this.resolveAttendancePolicy(uid);
+      return this.atTime(workDate, policy.end_time);
+    } catch (error) {
+      this.logger.warn(
+        `Failed to resolve attendance schedule for user ${uid}: ${
+          error instanceof Error ? error.message : 'unknown error'
+        }`
+      );
+      return null;
+    }
+  }
+
   private async getProfileContext(userId: bigint): Promise<ProfileContext> {
     const [profile, primaryTeam] = await this.drizzle.$transaction([
       this.drizzle.profile.findUnique({

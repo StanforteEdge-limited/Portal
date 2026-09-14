@@ -19,13 +19,17 @@ import { UpsertPayrollSettingDto } from '$modules/hr/payroll/dto/upsert-payroll-
 import { UpsertPayrollWorkerDto } from '$modules/hr/payroll/dto/upsert-payroll-worker.dto';
 import { AuthorizePayrollRunDto } from '$modules/hr/payroll/dto/authorize-payroll-run.dto';
 import { PayrollService } from './payroll.service';
+import { BackgroundJobsService } from '$modules/background-jobs/background-jobs.service';
 
 @Controller('payroll')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @ApiTags('Payroll')
 @ApiBearerAuth('bearer')
 export class PayrollController {
-  constructor(private readonly payrollService: PayrollService) {}
+  constructor(
+    private readonly payrollService: PayrollService,
+    private readonly backgroundJobs: BackgroundJobsService,
+  ) {}
 
   @Get('summary')
   @Permissions('finance.view')
@@ -326,13 +330,23 @@ export class PayrollController {
   @Post('runs/:id/payslips-package')
   @Permissions('finance.view')
   generateRunPayslipsPackage(@Param('id') id: string) {
-    return this.payrollService.generateRunPayslipsPackage(id);
+    return this.backgroundJobs.enqueue({
+      type: 'payroll.generate-payslips-package',
+      input: { runId: id },
+      onSuccessTitle: 'Payslips package generated',
+      onSuccessMessage: `Payslips package for payroll run #${id} has been generated and is ready to download.`,
+    });
   }
 
   @Post('runs/:id/distribute-payslips')
   @Permissions('finance.view')
   distributeRunPayslips(@Req() req: any, @Param('id') id: string) {
-    return this.payrollService.distributeRunPayslips(id, req.user?.id);
+    return this.backgroundJobs.enqueue({
+      type: 'payroll.distribute-payslips',
+      input: { runId: id },
+      onSuccessTitle: 'Payslips distributed',
+      onSuccessMessage: `Payslips for payroll run #${id} have been distributed to workers.`,
+    });
   }
 
   @Post('runs/:id/bank-schedule')

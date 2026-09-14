@@ -30,6 +30,7 @@ import {
 import type { RequestRecord } from "@/pages/requests/requests-api";
 import { getWorkspaceProfile } from "@/shared/api/workspace-api";
 import { financeApi, useCachedQuery } from "@/shared/lib/core";
+import { downloadBackgroundJob } from "@/shared/lib/download";
 
 function toTitleCase(value: string) {
   return String(value || "")
@@ -121,12 +122,9 @@ export default function FinanceRequestsPage() {
   async function handleExport() {
     setExporting(true);
     try {
-      const file = await financeApi.exportRequests(financeRequestQuery);
-      if (file && file.content_base64 && file.file_name) {
-        const link = document.createElement("a");
-        link.href = `data:${file.mime_type};base64,${file.content_base64}`;
-        link.download = file.file_name;
-        link.click();
+      const job = await financeApi.exportRequests(financeRequestQuery);
+      if (job && job.job_id) {
+        await downloadBackgroundJob(job.job_id);
       }
     } catch (err: any) {
       console.error("Export failed", err);

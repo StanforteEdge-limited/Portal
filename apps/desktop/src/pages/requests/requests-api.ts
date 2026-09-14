@@ -425,9 +425,8 @@ export type RequestDownloadAction =
   | "certificate_of_honor_pdf";
 
 export type DownloadedRequestFile = {
-  file_name: string;
-  mime_type: string;
-  content_base64: string;
+  job_id: string;
+  file_name?: string;
   generated_at?: string;
   request_id?: string;
   voucher_no?: string;

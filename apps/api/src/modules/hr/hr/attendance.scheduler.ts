@@ -3,6 +3,9 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { TenantContextService } from '$common/auth/tenant-context.service';
 import { NotificationsService } from '$modules/notifications/notifications.service';
+import { AttendanceService } from './attendance.service';
+
+const CLOCK_OUT_REMINDER_MINUTES = 30;
 
 @Injectable()
 export class AttendanceScheduler {
@@ -12,23 +15,19 @@ export class AttendanceScheduler {
     private readonly drizzle: DrizzleService,
     private readonly tenantContext: TenantContextService,
     private readonly notifications: NotificationsService,
+    private readonly attendance: AttendanceService,
   ) {}
 
-  @Cron(CronExpression.EVERY_30_MINUTES)
+  @Cron(CronExpression.EVERY_15_MINUTES)
   async remindOpenSessions() {
     const now = new Date();
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
-
-    if (currentMinutes < 16 * 60 || currentMinutes > 23 * 60) {
-      return;
-    }
+    const todayKey = now.toISOString().slice(0, 10);
+    const workDate = new Date(todayKey);
 
     await this.tenantContext.runSystem('attendance clock-out reminder', async () => {
-      const todayKey = now.toISOString().slice(0, 10);
-
       const entries = await this.drizzle.attendanceEntry.findMany({
         where: {
-          workDate: new Date(todayKey),
+          workDate,
           entryAt: { lte: now },
         },
         orderBy: { entryAt: 'asc' },
@@ -66,28 +65,62 @@ export class AttendanceScheduler {
         });
 
         for (const profile of profiles) {
-          const displayName = [profile.firstName, profile.lastName].filter(Boolean).join(' ') || profile.username || 'there';
           try {
+            const endTime = await this.attendance.getClockOutTime(profile.id, workDate);
+            if (!endTime) continue;
+
+            const reminderAt = new Date(
+              endTime.getTime() - CLOCK_OUT_REMINDER_MINUTES * 60000
+            );
+
+            const existing = await this.drizzle.notification.findFirst({
+              where: {
+                userId: profile.id,
+                notifiableType: 'attendance_reminder',
+                createdAt: { gte: new Date(todayKey) },
+              },
+            });
+            if (existing) continue;
+
+            const displayName =
+              [profile.firstName, profile.lastName].filter(Boolean).join(' ') ||
+              profile.username ||
+              'there';
+            const endLabel = this.formatTime(endTime);
+
             await this.notifications.create({
               userId: profile.id,
               title: 'Clock Out Reminder',
               message:
-                `Hi ${displayName}, you have an open attendance session and have not clocked out yet. ` +
-                `Please remember to clock out before leaving for the day.`,
+                `Hi ${displayName}, your work day ends at ${endLabel}. ` +
+                `Please remember to clock out before leaving.`,
               link: '/attendance',
               sentVia: ['in-app', 'email'],
               emailSubject: 'Reminder: Clock out your attendance session',
               emailHtml: undefined,
               notifiableType: 'attendance_reminder',
+              notifiableId: profile.id,
+              data: { work_date: todayKey },
+              scheduledFor: reminderAt,
             });
-            this.logger.log(`Sent clock-out reminder to user ${profile.id}`);
+            this.logger.log(
+              `Scheduled clock-out reminder for user ${profile.id} at ${reminderAt.toISOString()}`
+            );
           } catch (error) {
             this.logger.warn(
-              `Failed to enqueue clock-out reminder for user ${profile.id}: ${error instanceof Error ? error.message : 'unknown error'}`
+              `Failed to schedule clock-out reminder for user ${profile.id}: ${
+                error instanceof Error ? error.message : 'unknown error'
+              }`
             );
           }
         }
       }
     });
+  }
+
+  private formatTime(date: Date) {
+    const hh = String(date.getUTCHours()).padStart(2, '0');
+    const mm = String(date.getUTCMinutes()).padStart(2, '0');
+    return `${hh}:${mm}`;
   }
 }

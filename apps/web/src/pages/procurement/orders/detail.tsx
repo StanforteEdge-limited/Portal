@@ -4,7 +4,7 @@ import { procurementApi } from "@/shared/lib/core";
 import { formatCurrency } from "@stanforte/shared";
 import { Button, SectionCard } from '@/shared';
 import { uploadFileAsset } from '@/pages/files/files-api';
-import { downloadBase64File } from '@/shared/lib/download';
+import { downloadBackgroundJob } from '@/shared/lib/download';
 import { AppShell } from '@/shared/components/layout/AppShell';
 import { buildAppNavigation, buildAppMobileNav } from '@/shared/navigation';
 import { useAuth } from '@/shared/context/AuthProvider';
@@ -125,9 +125,7 @@ export default function PoDetail() {
             <Button
               variant="secondary"
               onClick={() => {
-                procurementApi.downloadPo(id!).then((file) => {
-                  downloadBase64File(file.file_name, file.mime_type, file.content_base64);
-                }).catch(console.error);
+                procurementApi.downloadPo(id!).then((job) => downloadBackgroundJob(job.job_id)).catch(console.error);
               }}
             >
               Download PO

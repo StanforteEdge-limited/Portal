@@ -5,6 +5,7 @@ import { Permissions } from '$common/auth/permissions.decorator';
 import { PermissionsGuard } from '$common/auth/permissions.guard';
 import { DisburseRequestDto } from '$modules/finance/finance/dto/disburse-request.dto';
 import { FinanceService } from './finance.service';
+import { BackgroundJobsService } from '$modules/background-jobs/background-jobs.service';
 import { UpdateFinanceSettingsDto } from '$modules/finance/finance/dto/update-finance-settings.dto';
 import { UpsertFinanceAccountDto } from '$modules/finance/finance/dto/upsert-finance-account.dto';
 import { CreateFinanceIncomeDto } from '$modules/finance/finance/dto/create-finance-income.dto';
@@ -51,6 +52,7 @@ export class FinanceController {
   constructor(
     private readonly financeService: FinanceService,
     private readonly deductionService: DeductionService,
+    private readonly backgroundJobs: BackgroundJobsService,
   ) {}
 
   @Get('summary')
@@ -97,7 +99,12 @@ export class FinanceController {
   @Permissions('requests.view')
   @ApiOperation({ summary: 'Export finance requests' })
   exportRequests(@Query() query: Record<string, any>, @Query('format') format?: string) {
-    return this.financeService.exportRequests(query, format);
+    return this.backgroundJobs.enqueue({
+      type: 'finance.export',
+      input: { kind: 'requests', query, format },
+      onSuccessTitle: 'Requests export ready',
+      onSuccessMessage: 'The finance requests export is ready to download.',
+    });
   }
 
   @Get('accounts')
@@ -384,7 +391,12 @@ export class FinanceController {
   @Permissions('finance.manage')
   @ApiOperation({ summary: 'Download Pledge Acknowledgment PDF' })
   downloadPledgeAcknowledgment(@Param('id') id: string) {
-    return this.financeService.generatePledgeAcknowledgmentPdf(id);
+    return this.backgroundJobs.enqueue({
+      type: 'finance.pdf',
+      input: { kind: 'pledge', id },
+      onSuccessTitle: 'Pledge acknowledgment ready',
+      onSuccessMessage: 'The pledge acknowledgment PDF is ready to download.',
+    });
   }
 
   @Get('budgets')
@@ -412,7 +424,12 @@ export class FinanceController {
   @Permissions('finance.view')
   @ApiOperation({ summary: 'Export finance budget' })
   exportBudget(@Param('id') id: string, @Query('format') format?: string) {
-    return this.financeService.exportBudget(id, format);
+    return this.backgroundJobs.enqueue({
+      type: 'finance.export',
+      input: { kind: 'budget', id, format },
+      onSuccessTitle: 'Budget export ready',
+      onSuccessMessage: 'The finance budget export is ready to download.',
+    });
   }
 
   @Post('budgets')
@@ -526,7 +543,12 @@ export class FinanceController {
   @Permissions('requests.view')
   @ApiOperation({ summary: 'Export ledger entries' })
   exportLedger(@Query() query: Record<string, any>, @Query('format') format?: string) {
-    return this.financeService.exportLedger(query, format);
+    return this.backgroundJobs.enqueue({
+      type: 'finance.export',
+      input: { kind: 'ledger', query, format },
+      onSuccessTitle: 'Ledger export ready',
+      onSuccessMessage: 'The finance ledger export is ready to download.',
+    });
   }
 
   @Post('income')
@@ -548,7 +570,12 @@ export class FinanceController {
   @Permissions('finance.manage')
   @ApiOperation({ summary: 'Download Funder Receipt PDF for an income entry' })
   downloadFunderReceipt(@Param('id') id: string) {
-    return this.financeService.generateFunderReceiptPdf(id);
+    return this.backgroundJobs.enqueue({
+      type: 'finance.pdf',
+      input: { kind: 'receipt', id },
+      onSuccessTitle: 'Funder receipt ready',
+      onSuccessMessage: 'The funder receipt PDF is ready to download.',
+    });
   }
 
   @Get('manual-entry')
@@ -681,7 +708,12 @@ export class FinanceController {
   @Permissions('finance.view')
   @ApiOperation({ summary: 'Generate finance sales invoice PDF' })
   generateSalesInvoicePdf(@Param('id') id: string) {
-    return this.financeService.generateSalesInvoicePdf(id);
+    return this.backgroundJobs.enqueue({
+      type: 'finance.pdf',
+      input: { kind: 'invoice', id },
+      onSuccessTitle: 'Invoice PDF ready',
+      onSuccessMessage: 'The sales invoice PDF is ready to download.',
+    });
   }
 
   @Get('bills')
@@ -1057,13 +1089,23 @@ export class FinanceController {
   @Permissions('finance.view')
   @ApiOperation({ summary: 'Download TRM slip PDF for a request remittance' })
   downloadTrmSlip(@Param('id') id: string) {
-    return this.deductionService.generateTrmSlipPdf(id);
+    return this.backgroundJobs.enqueue({
+      type: 'finance.pdf',
+      input: { kind: 'trm_slip', id },
+      onSuccessTitle: 'TRM slip ready',
+      onSuccessMessage: 'The TRM slip PDF is ready to download.',
+    });
   }
 
   @Post('payment-vouchers/:pvDeductionId/wht-certificate')
   @Permissions('finance.view')
   @ApiOperation({ summary: 'Download WHT certificate PDF for a PV deduction' })
   downloadWhtCertificate(@Param('pvDeductionId') pvDeductionId: string) {
-    return this.deductionService.generateWhtCertificatePdf(pvDeductionId);
+    return this.backgroundJobs.enqueue({
+      type: 'finance.pdf',
+      input: { kind: 'wht_certificate', id: pvDeductionId },
+      onSuccessTitle: 'WHT certificate ready',
+      onSuccessMessage: 'The WHT certificate PDF is ready to download.',
+    });
   }
 }

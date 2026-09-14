@@ -8,6 +8,7 @@ import { httpRequest } from "@/shared/lib/core";
 import { requestApi, adminUsersApi, resourceApi, financeApi } from "@/shared/lib/core";
 import { formatCurrency } from "@stanforte/shared";
 import { listProjects, downloadRequestArtifact, type RequestItemInput } from "../../requests/requests-api";
+import { downloadBackgroundJob } from "@/shared/lib/download";
 import { buildAppMobileNav, buildRequestsNavigation } from "@/pages/requests/requests-data";
 import { listManagedTaxonomies, type ManagedTaxonomy } from "../../requests/taxonomy-api";
 import { buildCertificateOfHonorPdf, formatCertificateCurrency } from "./details/utils/certificate-pdf";
@@ -73,19 +74,6 @@ type ManualDisbursement = {
 type ManualEntryPickerTarget = {
   kind: "item" | "pv" | "retirement";
   index: number;
-};
-
-const downloadBase64File = (fileName: string, mimeType: string, contentBase64: string) => {
-  const bytes = atob(contentBase64);
-  const array = new Uint8Array(bytes.length);
-  for (let i = 0; i < bytes.length; i += 1) array[i] = bytes.charCodeAt(i);
-  const blob = new Blob([array], { type: mimeType });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = fileName;
-  anchor.click();
-  URL.revokeObjectURL(url);
 };
 
 const normalizeText = (value: unknown) => String(value ?? "").trim();
@@ -1649,7 +1637,7 @@ function FinanceManualEntryPage() {
             if (!requestId) return;
             try {
               const file = await downloadRequestArtifact(requestId, { action: "request_pdf" });
-              downloadBase64File(file.file_name, file.mime_type, file.content_base64);
+              await downloadBackgroundJob(file.job_id);
             } catch (err: any) {
               alert(err?.message || "Failed to download");
             }
@@ -1660,7 +1648,7 @@ function FinanceManualEntryPage() {
             if (!requestId) return;
             try {
               const file = await downloadRequestArtifact(requestId, { action: "pv_pdf" });
-              downloadBase64File(file.file_name, file.mime_type, file.content_base64);
+              await downloadBackgroundJob(file.job_id);
             } catch (err: any) {
               alert(err?.message || "Failed to download");
             }
@@ -1671,7 +1659,7 @@ function FinanceManualEntryPage() {
             if (!requestId) return;
             try {
               const file = await downloadRequestArtifact(requestId, { action: "request_with_attachments" });
-              downloadBase64File(file.file_name, file.mime_type, file.content_base64);
+              await downloadBackgroundJob(file.job_id);
             } catch (err: any) {
               alert(err?.message || "Failed to download");
             }
@@ -1682,7 +1670,7 @@ function FinanceManualEntryPage() {
             if (!requestId || !voucherId) return;
             try {
               const file = await downloadRequestArtifact(requestId, { action: "pv_with_attachments", voucher_id: voucherId });
-              downloadBase64File(file.file_name, file.mime_type, file.content_base64);
+              await downloadBackgroundJob(file.job_id);
             } catch (err: any) {
               alert(err?.message || "Failed to download");
             }
@@ -1693,8 +1681,8 @@ function FinanceManualEntryPage() {
             if (!requestId) return;
             try {
               const file = await downloadRequestArtifact(requestId, { action: "full_package" });
-              if (file.content_base64 && file.mime_type) {
-                downloadBase64File(file.file_name, file.mime_type, file.content_base64);
+              if (file.job_id) {
+                await downloadBackgroundJob(file.job_id);
               }
             } catch (err: any) {
               alert(err?.message || "Failed to download");

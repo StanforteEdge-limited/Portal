@@ -425,14 +425,7 @@ export type RequestDownloadAction =
   | "certificate_of_honor_pdf";
 
 export type DownloadedRequestFile = {
-  file_name: string;
-  mime_type: string;
-  content_base64: string;
-  generated_at?: string;
-  request_id?: string;
-  voucher_no?: string;
-  voucher_number?: string;
-  total_amount?: number;
+  job_id: string;
 };
 
 export async function downloadRequestArtifact(

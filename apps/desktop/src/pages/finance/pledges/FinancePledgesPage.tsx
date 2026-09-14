@@ -22,7 +22,7 @@ import { buildAppMobileNav, buildAppNavigation } from "@/shared/navigation";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { resourceApi, useCachedQuery } from "@/shared/lib/core";
 import { asMoney } from "@stanforte/shared";
-import { downloadBase64File } from "@/shared/lib/download";
+import { downloadBackgroundJob } from "@/shared/lib/download";
 
 type Pledge = {
   id: string;
@@ -185,7 +185,7 @@ export default function FinancePledgesPage() {
     setDownloadingId(pledge.id);
     try {
       const pdf = await resourceApi.downloadPledgeAcknowledgment(pledge.id);
-      downloadBase64File(pdf.file_name, pdf.mime_type, pdf.content_base64);
+      await downloadBackgroundJob(pdf.job_id);
     } catch (err) {
       showToast({ tone: "danger", title: "Download failed", message: err instanceof Error ? err.message : "Unable to download." });
     } finally {

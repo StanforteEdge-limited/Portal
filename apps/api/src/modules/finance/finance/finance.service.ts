@@ -28,6 +28,7 @@ import { UpdatePaymentVoucherDto } from '$modules/finance/finance/dto/update-pay
 import { UpsertFinanceItemDto } from '$modules/finance/finance/dto/upsert-finance-item.dto';
 import { CreateFinanceExpenseDto } from '$modules/finance/finance/dto/create-finance-expense.dto';
 import { MailService } from '$common/mail/mail.service';
+import { MailQueueService } from '$common/mail/mail-queue.service';
 import { PdfService } from '$common/pdf/pdf.service';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 import { TenantContextService } from '$common/auth/tenant-context.service';
@@ -40,6 +41,7 @@ export class FinanceService {
     private readonly drizzle: DrizzleService,
     private readonly notificationsService: NotificationsService,
     private readonly mailService: MailService,
+    private readonly mailQueue: MailQueueService,
     private readonly payrollService: PayrollService,
     private readonly pdfService: PdfService,
     private readonly tenantContext: TenantContextService
@@ -6622,7 +6624,7 @@ export class FinanceService {
     const to = invoice?.contact.email?.trim();
     if (!to) return;
     const pdf = await this.generateSalesInvoicePdf(invoiceId);
-    await this.mailService.send({
+    await this.mailQueue.enqueue({
       to,
       subject,
       text,

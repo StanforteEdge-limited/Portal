@@ -13,6 +13,7 @@ import { toBigInt } from '$common/utils/ids';
 import { AuthStatusResponseDto, LoginResponseDto } from '$modules/identity/auth/dto/auth-response.dto';
 import { AcceptInviteDto } from '$modules/identity/auth/dto/accept-invite.dto';
 import { MailService } from '$common/mail/mail.service';
+import { MailQueueService } from '$common/mail/mail-queue.service';
 import {
   AUTH_ACCESS_COOKIE,
   AUTH_REFRESH_COOKIE,
@@ -29,7 +30,8 @@ export class AuthService {
   constructor(
     private readonly drizzle: DrizzleService,
     private readonly jwt: JwtService,
-    private readonly mailService: MailService
+    private readonly mailService: MailService,
+    private readonly mailQueue: MailQueueService
   ) {}
 
   async login(dto: LoginDto, res?: Response): Promise<LoginResponseDto> {
@@ -346,7 +348,7 @@ export class AuthService {
     const appUrl = process.env.APP_BASE_URL || 'http://localhost:3000';
     const resetLink = `${appUrl}/reset-password?token=${encodeURIComponent(resetToken)}`;
     const displayName = `${profile.firstName ?? ''} ${profile.lastName ?? ''}`.trim() || profile.email;
-    await this.mailService.send({
+    await this.mailQueue.enqueue({
       to: profile.email,
       subject: 'Reset your StanforteEdge password',
       text: `Use this link to reset your password: ${resetLink}`,

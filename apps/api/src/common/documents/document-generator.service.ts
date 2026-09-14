@@ -8,6 +8,7 @@ import { Drizzle } from '$common/db/drizzle-compat';
 import { DrizzleService } from '$common/drizzle/drizzle.service';
 import { PdfService } from '$common/pdf/pdf.service';
 import { MailService } from '$common/mail/mail.service';
+import { MailQueueService } from '$common/mail/mail-queue.service';
 import { DeductionService } from '$modules/finance/finance/deduction.service';
 import { toBigInt } from '$common/utils/ids';
 import {
@@ -30,6 +31,7 @@ export class DocumentGeneratorService {
     readonly drizzle: DrizzleService,
     private readonly pdfService: PdfService,
     private readonly mailService: MailService,
+    private readonly mailQueue: MailQueueService,
     private readonly deductionService: DeductionService,
   ) {}
 
@@ -141,7 +143,7 @@ export class DocumentGeneratorService {
     if (delivery.mode === 'email') {
       const recipient = delivery.email_to?.trim() || delivery.creatorEmail;
       if (!recipient) throw new BadRequestException('No recipient email available for package delivery');
-      await this.mailService.send({
+      await this.mailQueue.enqueue({
         to: recipient,
         subject: `Full Request Package - ${delivery.requestNumber}`,
         text: `Attached is the full request package for ${delivery.requestNumber}.`,

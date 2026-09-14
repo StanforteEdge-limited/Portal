@@ -5,6 +5,16 @@
 @layer base {
   :root {
     color-scheme: light;
+    --brand-50: 238 244 251;
+    --brand-100: 216 230 243;
+    --brand-200: 178 205 233;
+    --brand-300: 134 171 217;
+    --brand-400: 78 135 195;
+    --brand-500: 43 102 172;
+    --brand-600: 25 84 154;
+    --brand-700: 14 69 136;
+    --brand-800: 7 60 118;
+    --brand-900: 3 71 133;
   }
 
   html {
@@ -20,16 +30,16 @@
   }
 
   ::selection {
-    background: rgba(3, 71, 133, 0.16);
+    background: rgb(var(--brand-900) / 0.16);
   }
 }
 
 @layer components {
   .app-shell {
     background:
-      radial-gradient(circle at top left, rgba(3, 71, 133, 0.12), transparent 30%),
-      radial-gradient(circle at top right, rgba(53, 109, 157, 0.08), transparent 26%),
-      linear-gradient(180deg, #f7f9fc 0%, #eef4fb 100%);
+      radial-gradient(circle at top left, rgb(var(--brand-900) / 0.12), transparent 30%),
+      radial-gradient(circle at top right, rgb(var(--brand-700) / 0.08), transparent 26%),
+      linear-gradient(180deg, #f7f9fc 0%, rgb(var(--brand-50) / 0.55) 100%);
   }
 
   .shell-panel {

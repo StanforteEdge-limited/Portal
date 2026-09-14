@@ -1,5 +1,6 @@
 import { Controller, Post, Get, Param, Body, Req, UseGuards } from '@nestjs/common';
 import { ProcurementService } from './procurement.service';
+import { BackgroundJobsService } from '$modules/background-jobs/background-jobs.service';
 import { CreatePrDto } from '$modules/finance/procurement/dto/create-pr.dto';
 import { ActionPrDto } from '$modules/finance/procurement/dto/action-pr.dto';
 import { CreatePoDto } from '$modules/finance/procurement/dto/create-po.dto';
@@ -13,7 +14,10 @@ import { JwtAuthGuard } from '$common/auth/jwt-auth.guard';
 @Controller('procurement')
 @UseGuards(JwtAuthGuard)
 export class ProcurementController {
-  constructor(private readonly service: ProcurementService) {}
+  constructor(
+    private readonly service: ProcurementService,
+    private readonly backgroundJobs: BackgroundJobsService,
+  ) {}
 
   @Post('requisitions')
   createPr(@Req() req: any, @Body() dto: CreatePrDto) {
@@ -77,7 +81,12 @@ export class ProcurementController {
 
   @Post('orders/:id/download')
   downloadPo(@Param('id') id: string, @Req() req: any) {
-    return this.service.downloadPo(id, req.user.id);
+    return this.backgroundJobs.enqueue({
+      type: 'procurement.po-download',
+      input: { poId: id },
+      onSuccessTitle: 'Purchase order generated',
+      onSuccessMessage: `The purchase order PDF has been generated and is ready to download.`,
+    });
   }
 
   @Post('orders/:id/attachments')

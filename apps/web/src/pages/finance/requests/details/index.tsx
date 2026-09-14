@@ -34,7 +34,7 @@ import {
   listEntityTags,
   listManagedTaxonomies,
 } from "@/pages/requests/taxonomy-api";
-import { downloadBase64File } from "@/shared/lib/download";
+import { downloadBackgroundJob } from "@/shared/lib/download";
 import { formatCurrency, formatDisplayDate } from "@stanforte/shared";
 import {
   formatPersonName,
@@ -800,7 +800,7 @@ export function FinanceRequestDetailsPage() {
         action,
         voucher_id: voucherId,
       });
-      downloadBase64File(file.file_name, file.mime_type, file.content_base64);
+      await downloadBackgroundJob(file.job_id);
       showToast({
         title: "Download ready",
         message:

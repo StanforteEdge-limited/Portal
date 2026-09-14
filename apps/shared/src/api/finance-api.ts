@@ -432,7 +432,7 @@ export function createFinanceApi(httpRequest: HttpRequest) {
     },
 
     exportRequests(params?: Record<string, unknown>) {
-      return httpRequest<DownloadedFile>(`/finance/requests/export${toQuery(params)}`);
+      return httpRequest<{ job_id: string }>(`/finance/requests/export${toQuery(params)}`);
     },
 
     listPaymentVouchers(params?: Record<string, unknown>) {
@@ -480,7 +480,7 @@ export function createFinanceApi(httpRequest: HttpRequest) {
     },
 
     exportLedger(params?: Record<string, unknown>) {
-      return httpRequest<DownloadedFile>(`/finance/ledger/export${toQuery(params)}`);
+      return httpRequest<{ job_id: string }>(`/finance/ledger/export${toQuery(params)}`);
     },
 
     async listManualEntries(params?: Record<string, unknown>) {
@@ -989,14 +989,14 @@ export function createFinanceApi(httpRequest: HttpRequest) {
     },
 
     downloadTrmSlip(remittanceId: string) {
-      return httpRequest<{ file_name: string; mime_type: string; content_base64: string }>(
+      return httpRequest<{ job_id: string }>(
         `/finance/request-remittances/${remittanceId}/pdf`,
         { method: 'POST' },
       );
     },
 
     downloadWhtCertificate(pvDeductionId: string) {
-      return httpRequest<{ file_name: string; mime_type: string; content_base64: string }>(
+      return httpRequest<{ job_id: string }>(
         `/finance/payment-vouchers/${pvDeductionId}/wht-certificate`,
         { method: 'POST' },
       );

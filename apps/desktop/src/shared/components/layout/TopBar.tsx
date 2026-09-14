@@ -5,6 +5,7 @@ import { Button, Chip, Icon } from "@/shared";
 import type { WorkspaceNotification } from "@/shared/api/workspace-api";
 import stanforteLogo from "../../../../../shared/assets/brand/Landscape.svg";
 import stanforteIcon from "../../../../../shared/assets/brand/icon.svg";
+import { useOrgBranding } from "@/shared/branding/BrandingProvider";
 
 type TopBarProps = {
   user: {
@@ -83,6 +84,7 @@ export function DesktopTopBar({
   onSignOut,
 }: TopBarProps) {
   const location = useLocation();
+  const { logoUrl } = useOrgBranding();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [busyId, setBusyId] = useState<string>("");
@@ -166,8 +168,8 @@ export function DesktopTopBar({
           aria-label="Go to dashboard"
         >
           <img
-            src={sidebarCollapsed ? stanforteIcon : stanforteLogo}
-            alt="Stanforte Edge"
+            src={logoUrl ?? (sidebarCollapsed ? stanforteIcon : stanforteLogo)}
+            alt="Organization logo"
             className={
               sidebarCollapsed
                 ? "w-54 h-auto object-contain"
@@ -439,6 +441,7 @@ export function MobileTopBar({
   onSignOut,
 }: TopBarProps) {
   const location = useLocation();
+  const { logoUrl } = useOrgBranding();
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement | null>(null);
 
@@ -463,8 +466,8 @@ export function MobileTopBar({
         aria-label="Go to dashboard"
       >
         <img
-          src={stanforteLogo}
-          alt="Stanforte Edge"
+          src={logoUrl ?? stanforteLogo}
+          alt="Organization logo"
           className="h-10 w-auto object-contain"
         />
       </NavLink>

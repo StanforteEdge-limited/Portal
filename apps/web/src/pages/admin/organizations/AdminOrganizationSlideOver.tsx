@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Button,
   Icon,
@@ -13,6 +13,8 @@ import {
   useToast,
 } from "@/shared";
 import { httpRequest } from "@/shared/lib/core";
+import { BRAND_THEMES } from "@stanforte/shared";
+import { uploadFileAsset } from "@/pages/files/files-api";
 
 type Props = {
   org?: any | null;
@@ -23,12 +25,15 @@ type Props = {
 export function AdminOrganizationSlideOver({ org, onClose, onSaved }: Props) {
   const { showToast } = useToast();
   const [saving, setSaving] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement | null>(null);
   const [form, setForm] = useState({
     name: "",
     code: "",
     organization_type: "venture",
     is_active: true,
     parent_organization_id: "",
+    theme: "ocean",
     logo_url: "",
     address: "",
     phone: "",
@@ -59,6 +64,7 @@ export function AdminOrganizationSlideOver({ org, onClose, onSaved }: Props) {
         organization_type: org.organizationType ?? "venture",
         is_active: org.isActive ?? true,
         parent_organization_id: org.parentOrganizationId ? String(org.parentOrganizationId) : "",
+        theme: metadata.theme ?? "ocean",
         logo_url: metadata.logo_url ?? "",
         address: metadata.address ?? "",
         phone: metadata.phone ?? "",
@@ -67,6 +73,30 @@ export function AdminOrganizationSlideOver({ org, onClose, onSaved }: Props) {
       });
     }
   }, [org]);
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingLogo(true);
+    try {
+      const asset = await uploadFileAsset(file, {
+        organization_id: org ? String(org.id) : undefined,
+        metadata: { purpose: "branding_logo" },
+      });
+      setForm((p) => ({ ...p, logo_url: asset.public_url ?? "" }));
+      showToast({
+        tone: "success",
+        title: "Logo uploaded",
+        message: "Logo saved. It will appear in the portal after saving the organization.",
+      });
+    } catch (err) {
+      console.error("Logo upload failed", err);
+      showToast({ tone: "danger", title: "Error", message: "Failed to upload logo." });
+    } finally {
+      setUploadingLogo(false);
+      if (logoInputRef.current) logoInputRef.current.value = "";
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,6 +114,7 @@ export function AdminOrganizationSlideOver({ org, onClose, onSaved }: Props) {
       parent_organization_id: form.parent_organization_id || undefined,
       metadata: {
         logo_url: form.logo_url,
+        theme: form.theme,
         address: form.address,
         phone: form.phone,
         website: form.website,
@@ -167,14 +198,74 @@ export function AdminOrganizationSlideOver({ org, onClose, onSaved }: Props) {
           </SelectField>
 
           <div className="border-t border-slate-100 my-4 pt-4">
-            <h4 className="text-sm font-semibold text-slate-800 mb-3">Corporate Metadata</h4>
+            <h4 className="text-sm font-semibold text-slate-800 mb-3">Branding</h4>
             <div className="space-y-4">
+              <SelectField
+                label="Color Theme"
+                value={form.theme}
+                onChange={(e) => setForm((p) => ({ ...p, theme: e.target.value }))}
+                helpText="Predefined platform themes. Applies across the portal for this organization."
+              >
+                {BRAND_THEMES.map((theme) => (
+                  <option key={theme.key} value={theme.key}>
+                    {theme.label}
+                  </option>
+                ))}
+              </SelectField>
+              <div>
+                <span className="field-label">Logo</span>
+                <div className="flex items-center gap-3">
+                  {form.logo_url ? (
+                    <img
+                      src={form.logo_url}
+                      alt="Organization logo"
+                      className="h-12 w-12 rounded-xl border border-slate-200 bg-white object-contain p-1"
+                    />
+                  ) : (
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-surface-container-low text-slate-400">
+                      <Icon name="image" />
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => logoInputRef.current?.click()}
+                      disabled={uploadingLogo}
+                    >
+                      {uploadingLogo ? "Uploading..." : "Upload Logo"}
+                    </Button>
+                    {form.logo_url ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setForm((p) => ({ ...p, logo_url: "" }))}
+                      >
+                        Remove
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleLogoUpload}
+                />
+              </div>
               <TextField
                 label="Logo URL"
                 value={form.logo_url}
                 onChange={(e) => setForm((p) => ({ ...p, logo_url: e.target.value }))}
-                placeholder="e.g., https://example.com/logo.png"
+                placeholder="https://example.com/logo.png or a generated upload URL"
               />
+            </div>
+            <div className="border-t border-slate-100 my-4 pt-4">
+              <h4 className="text-sm font-semibold text-slate-800 mb-3">Corporate Metadata</h4>
+            <div className="space-y-4">
               <TextField
                 label="Contact Phone"
                 value={form.phone}

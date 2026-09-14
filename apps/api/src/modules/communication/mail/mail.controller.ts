@@ -10,6 +10,8 @@ import { MailSyncService } from './mail-sync.service';
 import { MailImapService } from './mail-imap.service';
 import { MailSmtpService } from './mail-smtp.service';
 import { SendMessageDto } from './dto/send-message.dto';
+import { BackgroundJobsService } from '$modules/background-jobs/background-jobs.service';
+import { toBigInt } from '$common/utils/ids';
 import type { Response } from 'express';
 
 @ApiTags('Mail')
@@ -21,6 +23,7 @@ export class MailController {
     private readonly imapService: MailImapService,
     private readonly smtpService: MailSmtpService,
     private readonly drizzle: DrizzleService,
+    private readonly backgroundJobs: BackgroundJobsService,
   ) {}
 
   // ── OAuth — NOT guarded (callback comes from Google/Microsoft redirect) ─────
@@ -83,7 +86,10 @@ export class MailController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('bearer')
   syncAll(@Req() req: any) {
-    return this.syncService.syncAllAccounts(BigInt(req.user.id));
+    return this.backgroundJobs.enqueue({
+      type: 'mail.sync-all',
+      input: { profileId: req.user.id },
+    });
   }
 
   @Post(':accountId/sync')
@@ -94,8 +100,11 @@ export class MailController {
     @Query('folder') folder: string | undefined,
     @Req() req: any,
   ) {
-    const account = await this.accountService.findAccountForUser(BigInt(accountId), BigInt(req.user.id));
-    return this.syncService.syncAccount(account, folder);
+    await this.accountService.findAccountForUser(BigInt(accountId), BigInt(req.user.id));
+    return this.backgroundJobs.enqueue({
+      type: 'mail.sync-account',
+      input: { accountId, folder },
+    });
   }
 
   // ── Headers ───────────────────────────────────────────────────────────────────
@@ -375,6 +384,27 @@ export class MailController {
     return { html: result };
   }
 
+  private async enqueueSyncedAccount(accountId: bigint) {
+    const account = await this.drizzle.mailAccount.findUnique({ where: { id: accountId } });
+    if (!account) return;
+    const membership = await this.drizzle.tenantMembership.findFirst({
+      where: { profileId: account.profileId, status: 'active' },
+    });
+    if (!membership) return;
+    await this.backgroundJobs
+      .enqueue({
+        type: 'mail.sync-account',
+        input: { accountId: account.id.toString() },
+        tenantId: membership.tenantId,
+        actor: {
+          profileId: account.profileId.toString(),
+          membershipId: membership.id.toString(),
+          isOwner: membership.isOwner === true,
+        },
+      })
+      .catch((err) => console.error('Failed to enqueue mail sync job', err));
+  }
+
   @Post('webhooks/gmail')
   async handleGmailWebhook(@Body() body: any) {
     if (!body?.message?.data) return { ok: true };
@@ -387,7 +417,7 @@ export class MailController {
           where: { emailAddress, provider: 'GOOGLE' },
         });
         if (account) {
-          await this.syncService.syncAccount(account);
+          await this.enqueueSyncedAccount(account.id);
         }
       }
     } catch (err) {
@@ -415,7 +445,7 @@ export class MailController {
             where: { outlookSubscriptionId: subscriptionId },
           });
           if (account) {
-            await this.syncService.syncAccount(account);
+            await this.enqueueSyncedAccount(account.id);
           }
         }
       }

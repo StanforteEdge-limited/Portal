@@ -268,6 +268,30 @@ export class StorageService {
     });
   }
 
+  /**
+   * Persist an artifact produced by a background job (base64 document/export)
+   * as a tracked fileAsset in the current tenant. Returns the id + file name.
+   */
+  async storeGeneratedFile(
+    actorId: string | undefined,
+    artifact: { file_name?: string; mime_type?: string; content_base64?: string },
+  ) {
+    if (!artifact?.content_base64) {
+      throw new BadRequestException('Generated artifact has no content_base64');
+    }
+    const file = await this.createFromUploadedFile(actorId ?? '', {
+      originalname: artifact.file_name || 'document.pdf',
+      mimetype: artifact.mime_type || 'application/pdf',
+      buffer: Buffer.from(artifact.content_base64, 'base64'),
+    });
+    return {
+      file_asset_id: file.id,
+      file_name: file.fileName,
+      mime_type: file.mimeType,
+      size: Number(file.fileSize ?? 0n),
+    };
+  }
+
   async presignUpload(
     payload: { file_name?: string; mime_type?: string; file_size?: number; expires_in_seconds?: number }
   ) {

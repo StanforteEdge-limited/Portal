@@ -17,7 +17,7 @@ import {
 import { buildAppMobileNav, buildRequestsNavigation } from "@/pages/requests/requests-data";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { financeApi, useCachedQuery } from "@/shared/lib/core";
-import { downloadBase64File } from "@/shared/lib/download";
+import { downloadBackgroundJob } from "@/shared/lib/download";
 import { formatCurrency } from "@stanforte/shared";
 import type { FinanceLedgerEntry } from "@stanforte/shared";
 
@@ -105,7 +105,7 @@ export default function FinanceLedgerPage() {
         account_id: accountId !== "all" ? accountId : undefined,
         q: search.trim() || undefined,
       });
-      downloadBase64File(file.file_name, file.mime_type, file.content_base64);
+      await downloadBackgroundJob(file.job_id);
       showToast({ tone: "success", title: "Ledger exported", message: "Your ledger CSV has been downloaded." });
     } catch (err) {
       showToast({

@@ -3,16 +3,7 @@ import { SlideOver, SlideOverHeader, SlideOverContent, SlideOverFooter } from "@
 import { Button, useToast } from "@/shared";
 import { financeApi, useCachedQuery } from "@/shared/lib/core";
 import { formatCurrency } from "@stanforte/shared";
-
-function downloadBase64Pdf(res: { file_name: string; content_base64: string }) {
-  const bytes = Uint8Array.from(atob(res.content_base64), (c) => c.charCodeAt(0));
-  const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = res.file_name;
-  a.click();
-  URL.revokeObjectURL(url);
-}
+import { downloadBackgroundJob } from "@/shared/lib/download";
 
 type DeductionLine = {
   deduction_type_id: string;
@@ -36,7 +27,7 @@ export default function PVDeductionsPanel({ pv, onClose, onSaved }: Props) {
     setDownloadingCert(pvDeductionId);
     try {
       const res = await financeApi.downloadWhtCertificate(pvDeductionId);
-      downloadBase64Pdf(res as any);
+      await downloadBackgroundJob(res.job_id);
     } catch {
       showToast({ tone: "danger", title: "Download failed", message: "Could not generate WHT certificate." });
     } finally {

@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { procurementApi } from "@/shared/lib/core";
 import { formatCurrency } from "@stanforte/shared";
 import { Button, SectionCard } from '@/shared';
-import { downloadBase64File } from '@/shared/lib/download';
+import { downloadBackgroundJob } from '@/shared/lib/download';
 
 export default function VendorOrderDetail() {
   const { id } = useParams<{ id: string }>();
@@ -58,9 +58,7 @@ export default function VendorOrderDetail() {
         <Button
           variant="secondary"
           onClick={() => {
-            procurementApi.downloadPo(id!).then((file) => {
-              downloadBase64File(file.file_name, file.mime_type, file.content_base64);
-            }).catch(console.error);
+            procurementApi.downloadPo(id!).then((job) => downloadBackgroundJob(job.job_id)).catch(console.error);
           }}
         >
           Download PO

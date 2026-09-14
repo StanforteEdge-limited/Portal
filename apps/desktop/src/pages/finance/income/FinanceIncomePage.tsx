@@ -18,7 +18,7 @@ import { resourceApi, useCachedQuery } from "@/shared/lib/core";
 import { buildAppMobileNav, buildAppNavigation } from "@/shared/navigation";
 import { getWorkspaceProfile } from "@/shared/api/workspace-api";
 import { formatCurrency, formatDate } from "@stanforte/shared";
-import { downloadBase64File } from "@/shared/lib/download";
+import { downloadBackgroundJob } from "@/shared/lib/download";
 
 export default function FinanceIncomePage() {
   const { user } = useAuth();
@@ -148,7 +148,7 @@ export default function FinanceIncomePage() {
     setDownloadingId(entry.id);
     try {
       const pdf = await resourceApi.downloadFunderReceipt(entry.id);
-      downloadBase64File(pdf.file_name, pdf.mime_type, pdf.content_base64);
+      await downloadBackgroundJob(pdf.job_id);
     } catch (err) {
       showToast({ tone: "danger", title: "Download failed", message: err instanceof Error ? err.message : "Unable to download receipt." });
     } finally {

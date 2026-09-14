@@ -807,12 +807,12 @@ export function createResourceApi(httpRequest: HttpRequest) {
 
     async downloadPledgeAcknowledgment(id: string) {
       const response = await httpRequest<any>(`/finance/pledges/${id}/acknowledgment`);
-      return response?.data as { file_name: string; mime_type: string; content_base64: string };
+      return response?.data as { job_id: string };
     },
 
     async downloadFunderReceipt(id: string) {
       const response = await httpRequest<any>(`/finance/income/${id}/receipt`);
-      return response?.data as { file_name: string; mime_type: string; content_base64: string };
+      return response?.data as { job_id: string };
     },
   };
 }
