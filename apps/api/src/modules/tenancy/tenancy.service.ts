@@ -1,10 +1,13 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { sql } from 'drizzle-orm';
-import { DrizzleService } from '$common/drizzle/drizzle.service';
+import { and, asc, eq, inArray, SQL, sql } from 'drizzle-orm';
+import { DbService } from '$common/db/db.service';
 import { TenantContext } from '$common/auth/tenant-context';
 import { TenantContextService } from '$common/auth/tenant-context.service';
 import { UsersService } from '$modules/identity/users/users.service';
 import { InviteUserDto } from '$modules/identity/users/dto/invite-user.dto';
+import { profile } from '$modules/identity/users/model';
+import { role, userRole } from '$modules/identity/rbac/model';
+import { tenant, tenantMembership } from './model';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 
 const TENANT_SCOPED_TABLES = [
@@ -71,7 +74,7 @@ const TENANT_SCOPED_TABLES = [
 @Injectable()
 export class TenancyService {
   constructor(
-    private readonly drizzle: DrizzleService,
+    private readonly db: DbService,
     private readonly usersService: UsersService,
     private readonly tenantContext: TenantContextService,
   ) {}
@@ -83,7 +86,7 @@ export class TenancyService {
   async auditTenantCoverage(context: TenantContext) {
     const results = await Promise.all(
       TENANT_SCOPED_TABLES.map(async (table) => {
-        const rows = await this.drizzle.$queryRaw<{ total: number; unscoped: number }>(
+        const rows = await this.queryRaw<{ total: number; unscoped: number }>(
           sql`SELECT COUNT(*) FILTER (WHERE tenant_id = ${context.tenantId})::int AS total,
                      COUNT(*) FILTER (WHERE tenant_id IS NULL)::int AS unscoped
               FROM ${sql.raw(`"${table}"`)}`,
@@ -104,29 +107,32 @@ export class TenancyService {
   }
 
   async listMembers(context: TenantContext) {
-    const memberships = await this.drizzle.tenantMembership.findMany({
-      where: { tenantId: context.tenantId, status: 'active' },
-      orderBy: { joinedAt: 'asc' },
-    });
+    const memberships = await this.db.client
+      .select()
+      .from(tenantMembership)
+      .where(and(eq(tenantMembership.tenantId, context.tenantId), eq(tenantMembership.status, 'active')))
+      .orderBy(asc(tenantMembership.joinedAt));
 
     const members = await Promise.all(
       memberships.map(async (membership) => {
-        const profile = await this.drizzle.profile.findUnique({
-          where: { id: membership.profileId },
-          select: { id: true, email: true, firstName: true, lastName: true, status: true },
-        });
-        if (!profile) return null;
-        const roles = await this.drizzle.userRole.findMany({
-          where: { profileId: profile.id, tenantId: context.tenantId },
-          include: { role: true },
-        });
+        const [memberProfile] = await this.db.client
+          .select({ id: profile.id, email: profile.email, firstName: profile.firstName, lastName: profile.lastName, status: profile.status })
+          .from(profile)
+          .where(eq(profile.id, membership.profileId))
+          .limit(1);
+        if (!memberProfile) return null;
+        const roles = await this.db.client
+          .select({ role })
+          .from(userRole)
+          .innerJoin(role, eq(userRole.roleId, role.id))
+          .where(and(eq(userRole.profileId, memberProfile.id), eq(userRole.tenantId, context.tenantId)));
         return {
           membershipId: membership.id.toString(),
-          profileId: profile.id.toString(),
-          email: profile.email,
-          firstName: profile.firstName,
-          lastName: profile.lastName,
-          profileStatus: profile.status,
+          profileId: memberProfile.id.toString(),
+          email: memberProfile.email,
+          firstName: memberProfile.firstName,
+          lastName: memberProfile.lastName,
+          profileStatus: memberProfile.status,
           isOwner: membership.isOwner,
           joinedAt: membership.joinedAt,
           roles: roles.map((assignment) => assignment.role.slug),
@@ -137,17 +143,17 @@ export class TenancyService {
   }
 
   async getTenant(context: TenantContext) {
-    const tenant = await this.drizzle.tenant.findUnique({ where: { id: context.tenantId } });
-    if (!tenant) throw new NotFoundException('Tenant not found');
+    const tenantRecord = await this.findTenant(context.tenantId);
+    if (!tenantRecord) throw new NotFoundException('Tenant not found');
     return {
-      id: tenant.id.toString(),
-      name: tenant.name,
-      slug: tenant.slug,
-      status: tenant.status,
-      plan: tenant.plan,
-      metadata: tenant.metadata,
-      createdAt: tenant.createdAt,
-      updatedAt: tenant.updatedAt,
+      id: tenantRecord.id.toString(),
+      name: tenantRecord.name,
+      slug: tenantRecord.slug,
+      status: tenantRecord.status,
+      plan: tenantRecord.plan,
+      metadata: tenantRecord.metadata,
+      createdAt: tenantRecord.createdAt,
+      updatedAt: tenantRecord.updatedAt,
     };
   }
 
@@ -159,117 +165,106 @@ export class TenancyService {
     if (dto.metadata !== undefined) data.metadata = dto.metadata;
     if (Object.keys(data).length === 0) throw new BadRequestException('At least one tenant field is required');
 
-    const tenant = await this.drizzle.tenant.update({
-      where: { id: context.tenantId },
-      data,
-    });
+    const [tenantRecord] = await this.db.client
+      .update(tenant)
+      .set(data)
+      .where(eq(tenant.id, context.tenantId))
+      .returning();
     return {
-      id: tenant.id.toString(),
-      name: tenant.name,
-      slug: tenant.slug,
-      status: tenant.status,
-      plan: tenant.plan,
-      metadata: tenant.metadata,
-      updatedAt: tenant.updatedAt,
+      id: tenantRecord.id.toString(),
+      name: tenantRecord.name,
+      slug: tenantRecord.slug,
+      status: tenantRecord.status,
+      plan: tenantRecord.plan,
+      metadata: tenantRecord.metadata,
+      updatedAt: tenantRecord.updatedAt,
     };
   }
 
   async setTenantStatus(context: TenantContext, status: 'active' | 'suspended') {
     this.requireOwner(context);
-    const tenant = await this.drizzle.tenant.update({
-      where: { id: context.tenantId },
-      data: { status },
-    });
-    return { id: tenant.id.toString(), status: tenant.status };
+    const [tenantRecord] = await this.db.client
+      .update(tenant)
+      .set({ status })
+      .where(eq(tenant.id, context.tenantId))
+      .returning();
+    return { id: tenantRecord.id.toString(), status: tenantRecord.status };
   }
 
   async deactivateMember(context: TenantContext, profileId: bigint) {
-    const membership = await this.drizzle.tenantMembership.findFirst({
-      where: { tenantId: context.tenantId, profileId, status: 'active' },
-    });
+    const membership = await this.findActiveMembership(context.tenantId, profileId);
     if (!membership) throw new NotFoundException('Tenant membership not found');
     if (membership.isOwner) throw new BadRequestException('Tenant owners cannot be deactivated');
     if (membership.profileId === context.profileId) {
       throw new BadRequestException('You cannot deactivate your own tenant membership');
     }
 
-    await this.drizzle.tenantMembership.update({
-      where: { id: membership.id },
-      data: { status: 'inactive', removedAt: new Date() },
-    });
+    await this.db.client.update(tenantMembership)
+      .set({ status: 'inactive', removedAt: new Date() })
+      .where(eq(tenantMembership.id, membership.id));
     return { success: true };
   }
 
   async inviteMember(context: TenantContext, emailValue: string, message?: string) {
     const email = emailValue.trim().toLowerCase();
-    let profile = await this.tenantContext.runSystem('tenancy.inviteMember', () =>
-      this.drizzle.profile.findUnique({
-        where: { email },
-        select: { id: true, status: true },
-      }),
+    let invitee = await this.tenantContext.runSystem('tenancy.inviteMember', () =>
+      this.findProfileByEmail(email),
     );
-    if (!profile) {
-      const created = await this.drizzle.profile.create({
-        data: { email, type: 'staff', status: 'invited' },
-      });
-      profile = { id: created.id, status: created.status };
+    if (!invitee) {
+      const [created] = await this.db.client
+        .insert(profile)
+        .values({ email, type: 'staff', status: 'invited' })
+        .returning({ id: profile.id, status: profile.status });
+      invitee = { id: created.id, status: created.status };
     }
 
-    const existing = await this.drizzle.tenantMembership.findFirst({
-      where: { tenantId: context.tenantId, profileId: profile.id },
-    });
+    const existing = await this.findMembership(context.tenantId, invitee.id);
     if (existing?.status === 'active') throw new BadRequestException('User is already a tenant member');
 
     if (existing) {
-      await this.drizzle.tenantMembership.update({
-        where: { id: existing.id },
-        data: { status: 'active', removedAt: null },
-      });
+      await this.db.client.update(tenantMembership)
+        .set({ status: 'active', removedAt: null })
+        .where(eq(tenantMembership.id, existing.id));
     } else {
-      await this.drizzle.tenantMembership.create({
-        data: {
+      await this.db.client.insert(tenantMembership).values({
           tenantId: context.tenantId,
-          profileId: profile.id,
+          profileId: invitee.id,
           status: 'active',
           isOwner: false,
-        },
       });
     }
 
-    await this.usersService.inviteUser(profile.id.toString(), {
+    await this.usersService.inviteUser(invitee.id.toString(), {
       message,
     } as InviteUserDto, context.tenantId);
 
-    return { success: true, profileId: profile.id.toString() };
+    return { success: true, profileId: invitee.id.toString() };
   }
 
   async assignRoles(context: TenantContext, profileId: bigint, roleSlugs: string[]) {
-    const membership = await this.drizzle.tenantMembership.findFirst({
-      where: { tenantId: context.tenantId, profileId, status: 'active' },
-    });
+    const membership = await this.findActiveMembership(context.tenantId, profileId);
     if (!membership) throw new NotFoundException('Tenant membership not found');
 
     const normalized = Array.from(new Set(roleSlugs.map((role) => role.trim()).filter(Boolean)));
-    const roles = await this.drizzle.role.findMany({
-      where: { slug: { in: normalized }, isActive: true },
-      select: { id: true, slug: true },
-    });
+    const roles = await this.db.client
+      .select({ id: role.id, slug: role.slug })
+      .from(role)
+      .where(and(inArray(role.slug, normalized), eq(role.isActive, true)));
     if (roles.length !== normalized.length) {
       const found = new Set(roles.map((role) => role.slug));
       throw new BadRequestException(`Unknown role(s): ${normalized.filter((role) => !found.has(role)).join(', ')}`);
     }
 
-    await this.drizzle.$transaction(async (tx) => {
-      await tx.userRole.deleteMany({ where: { profileId, tenantId: context.tenantId } });
-      await tx.userRole.createMany({
-        data: roles.map((role, index) => ({
+    await this.db.client.transaction(async (tx) => {
+      await tx.delete(userRole).where(and(eq(userRole.profileId, profileId), eq(userRole.tenantId, context.tenantId)));
+      if (roles.length > 0) {
+        await tx.insert(userRole).values(roles.map((role, index) => ({
           profileId,
           roleId: role.id,
           tenantId: context.tenantId,
           isPrimaryRole: index === 0,
-        })),
-        skipDuplicates: true,
-      });
+        }))).onConflictDoNothing();
+      }
     });
 
     return { success: true, profileId: profileId.toString(), roles: roles.map((role) => role.slug) };
@@ -281,22 +276,18 @@ export class TenancyService {
       throw new BadRequestException('You are already the tenant owner');
     }
 
-    const current = await this.drizzle.tenantMembership.findFirst({
-      where: { tenantId: context.tenantId, profileId: context.profileId, status: 'active' },
-    });
+    const current = await this.findActiveMembership(context.tenantId, context.profileId);
     if (!current || !current.isOwner) {
       throw new BadRequestException('You are not an active tenant owner');
     }
 
-    const target = await this.drizzle.tenantMembership.findFirst({
-      where: { tenantId: context.tenantId, profileId: targetProfileId, status: 'active' },
-    });
+    const target = await this.findActiveMembership(context.tenantId, targetProfileId);
     if (!target) throw new NotFoundException('Target user is not an active tenant member');
     if (target.isOwner) throw new BadRequestException('Target user is already the tenant owner');
 
-    await this.drizzle.$transaction(async (tx) => {
-      await tx.tenantMembership.update({ where: { id: current.id }, data: { isOwner: false } });
-      await tx.tenantMembership.update({ where: { id: target.id }, data: { isOwner: true } });
+    await this.db.client.transaction(async (tx) => {
+      await tx.update(tenantMembership).set({ isOwner: false }).where(eq(tenantMembership.id, current.id));
+      await tx.update(tenantMembership).set({ isOwner: true }).where(eq(tenantMembership.id, target.id));
     });
 
     return { success: true, ownerProfileId: targetProfileId.toString() };
@@ -305,7 +296,7 @@ export class TenancyService {
   async exportTenantData(context: TenantContext) {
     this.requireOwner(context);
 
-    const tables = await this.drizzle.$queryRaw<{ tableName: string }[]>(
+    const tables = await this.queryRaw<{ tableName: string }>(
       sql`SELECT table_name AS "tableName"
           FROM information_schema.columns
           WHERE table_schema = 'public' AND column_name = 'tenant_id'
@@ -314,18 +305,18 @@ export class TenancyService {
 
     const exported: Record<string, unknown[]> = {};
     for (const { tableName } of tables) {
-      const rows = await this.drizzle.$queryRaw<Record<string, unknown>[]>(
+      const rows = await this.queryRaw<Record<string, unknown>>(
         sql`SELECT * FROM ${sql.raw(`"${tableName}"`)} WHERE tenant_id = ${context.tenantId}`,
       );
       exported[tableName] = rows;
     }
 
-    exported['sta_profiles'] = await this.drizzle.$queryRaw<Record<string, unknown>[]>(
+    exported['sta_profiles'] = await this.queryRaw<Record<string, unknown>>(
       sql`SELECT p.* FROM sta_profiles p
           JOIN sta_tenant_memberships m ON m.profile_id = p.id
           WHERE m.tenant_id = ${context.tenantId}`,
     );
-    exported['sta_tenants'] = await this.drizzle.$queryRaw<Record<string, unknown>[]>(
+    exported['sta_tenants'] = await this.queryRaw<Record<string, unknown>>(
       sql`SELECT * FROM sta_tenants WHERE id = ${context.tenantId}`,
     );
 
@@ -342,7 +333,48 @@ export class TenancyService {
       throw new BadRequestException('Tenant decommissioning requires explicit confirmation');
     }
 
-    await this.drizzle.tenant.delete({ where: { id: context.tenantId } });
+    await this.db.client.delete(tenant).where(eq(tenant.id, context.tenantId));
     return { success: true };
+  }
+
+  private async findTenant(id: bigint) {
+    const [tenantRecord] = await this.db.client.select().from(tenant).where(eq(tenant.id, id)).limit(1);
+    return tenantRecord ?? null;
+  }
+
+  private async findProfileByEmail(email: string) {
+    const [user] = await this.db.client
+      .select({ id: profile.id, status: profile.status })
+      .from(profile)
+      .where(eq(profile.email, email))
+      .limit(1);
+    return user ?? null;
+  }
+
+  private async findMembership(tenantId: bigint, profileId: bigint) {
+    const [membership] = await this.db.client
+      .select()
+      .from(tenantMembership)
+      .where(and(eq(tenantMembership.tenantId, tenantId), eq(tenantMembership.profileId, profileId)))
+      .limit(1);
+    return membership ?? null;
+  }
+
+  private async findActiveMembership(tenantId: bigint, profileId: bigint) {
+    const [membership] = await this.db.client
+      .select()
+      .from(tenantMembership)
+      .where(and(
+        eq(tenantMembership.tenantId, tenantId),
+        eq(tenantMembership.profileId, profileId),
+        eq(tenantMembership.status, 'active'),
+      ))
+      .limit(1);
+    return membership ?? null;
+  }
+
+  private async queryRaw<T>(statement: SQL): Promise<T[]> {
+    const result = await this.db.client.execute(statement) as { rows?: T[] } | T[];
+    return Array.isArray(result) ? result : result.rows ?? [];
   }
 }
