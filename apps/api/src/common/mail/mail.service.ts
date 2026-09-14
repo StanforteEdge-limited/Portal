@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import nodemailer from 'nodemailer';
-import { DrizzleService } from '$common/drizzle/drizzle.service';
+import { DbService } from '$common/db/db.service';
 import { MailTemplatesService } from './mail-templates.service';
 import { toBigInt } from '$common/utils/ids';
+import { emailLog } from '$modules/communication/mail/model';
 
 export type SendMailInput = {
   to: string;
@@ -37,7 +38,7 @@ function escapeHtml(input: string): string {
 @Injectable()
 export class MailService {
   constructor(
-    private readonly drizzle: DrizzleService,
+    private readonly db: DbService,
     private readonly templates: MailTemplatesService,
   ) {}
 
@@ -148,20 +149,9 @@ export class MailService {
     const renderedHtml = this.renderEmailHtml(input);
     if (!this.transporter || !process.env.MAIL_FROM) {
       try {
-        await this.drizzle.emailLog.create({
-          data: {
-            userId: input.userId !== undefined ? toBigInt(input.userId) : null,
-            toEmail: input.to,
-            subject: input.subject,
-            bodyText: input.text,
-            bodyHtml: renderedHtml,
-            threadKey: input.threadKey ?? null,
-            provider: 'smtp',
-            status: 'skipped',
-            errorMessage: 'smtp_not_configured',
-            notifiableType: input.notifiableType ?? null,
-            notifiableId: input.notifiableId !== undefined ? toBigInt(input.notifiableId) : null
-          }
+        await this.logEmail(input, renderedHtml, {
+          status: 'skipped',
+          errorMessage: 'smtp_not_configured',
         });
       } catch (error) {
         void error;
@@ -192,20 +182,9 @@ export class MailService {
       });
 
       try {
-        await this.drizzle.emailLog.create({
-          data: {
-            userId: input.userId !== undefined ? toBigInt(input.userId) : null,
-            toEmail: input.to,
-            subject: input.subject,
-            bodyText: input.text,
-            bodyHtml: renderedHtml,
-            threadKey: input.threadKey ?? null,
-            provider: 'smtp',
-            status: 'sent',
-            messageId: info.messageId ?? messageId,
-            notifiableType: input.notifiableType ?? null,
-            notifiableId: input.notifiableId !== undefined ? toBigInt(input.notifiableId) : null
-          }
+        await this.logEmail(input, renderedHtml, {
+          status: 'sent',
+          messageId: info.messageId ?? messageId,
         });
       } catch (error) {
         void error;
@@ -217,25 +196,35 @@ export class MailService {
       };
     } catch (error: any) {
       try {
-        await this.drizzle.emailLog.create({
-          data: {
-            userId: input.userId !== undefined ? toBigInt(input.userId) : null,
-            toEmail: input.to,
-            subject: input.subject,
-            bodyText: input.text,
-            bodyHtml: renderedHtml,
-            threadKey: input.threadKey ?? null,
-            provider: 'smtp',
-            status: 'failed',
-            errorMessage: error?.message ? String(error.message) : 'send_failed',
-            notifiableType: input.notifiableType ?? null,
-            notifiableId: input.notifiableId !== undefined ? toBigInt(input.notifiableId) : null
-          }
+        await this.logEmail(input, renderedHtml, {
+          status: 'failed',
+          errorMessage: error?.message ? String(error.message) : 'send_failed',
         });
       } catch (logError) {
         void logError;
       }
       return { sent: false as const, reason: 'send_failed' as const };
     }
+  }
+
+  private async logEmail(
+    input: SendMailInput,
+    renderedHtml: string,
+    status: { status: string; messageId?: string; errorMessage?: string },
+  ) {
+    await this.db.client.insert(emailLog).values({
+      userId: input.userId !== undefined ? toBigInt(input.userId) : null,
+      toEmail: input.to,
+      subject: input.subject,
+      bodyText: input.text,
+      bodyHtml: renderedHtml,
+      threadKey: input.threadKey ?? null,
+      provider: 'smtp',
+      status: status.status,
+      messageId: status.messageId,
+      errorMessage: status.errorMessage,
+      notifiableType: input.notifiableType ?? null,
+      notifiableId: input.notifiableId !== undefined ? toBigInt(input.notifiableId) : null,
+    });
   }
 }
