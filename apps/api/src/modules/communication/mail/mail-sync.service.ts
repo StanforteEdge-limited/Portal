@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { DrizzleService } from '$common/drizzle/drizzle.service';
+import { and, desc, eq } from 'drizzle-orm';
+import { DbService } from '$common/db/db.service';
 import { MailAccountService } from './mail-account.service';
 import { MailImapService } from './mail-imap.service';
 import { NotificationsService } from '$modules/notifications/notifications.service';
-import type { MailAccount } from '$common/db/drizzle-compat';
+import { mailAccount, MailAccount, mailHeader } from './model';
 import type { SyncResultDto } from './dto/sync-result.dto';
 
 const DEFAULT_FOLDERS: Record<string, string[]> = {
@@ -14,7 +15,7 @@ const DEFAULT_FOLDERS: Record<string, string[]> = {
 @Injectable()
 export class MailSyncService {
   constructor(
-    private readonly drizzle: DrizzleService,
+    private readonly db: DbService,
     private readonly accountService: MailAccountService,
     private readonly imapService: MailImapService,
     private readonly notificationsService: NotificationsService,
@@ -41,30 +42,27 @@ export class MailSyncService {
       }
     }
 
-    await this.drizzle.mailAccount.update({
-      where: { id: account.id },
-      data: { lastSyncedAt: new Date() },
-    });
+    await this.db.client.update(mailAccount).set({ lastSyncedAt: new Date() }).where(eq(mailAccount.id, account.id));
 
     return results;
   }
 
   private async syncFolder(account: MailAccount, accessToken: string, folder: string): Promise<SyncResultDto> {
-    const latest = await this.drizzle.mailHeader.findFirst({
-      where: { accountId: account.id, folder },
-      orderBy: { uid: 'desc' },
-      select: { uid: true },
-    });
+    const [latest] = await this.db.client
+      .select({ uid: mailHeader.uid })
+      .from(mailHeader)
+      .where(and(eq(mailHeader.accountId, account.id), eq(mailHeader.folder, folder)))
+      .orderBy(desc(mailHeader.uid))
+      .limit(1);
     const sinceUid = latest ? Number(latest.uid) + 1 : 1;
 
     const headers = await this.imapService.fetchNewHeaders(account, accessToken, folder, sinceUid);
     if (headers.length === 0) return { accountId: String(account.id), folder, newCount: 0 };
 
-    await this.drizzle.$transaction(
-      headers.map(h =>
-        this.drizzle.mailHeader.upsert({
-          where: { accountId_folder_uid: { accountId: account.id, folder, uid: h.uid } },
-          create: {
+    await this.db.client.transaction(async (tx) => {
+      for (const h of headers) {
+        await tx.insert(mailHeader)
+          .values({
             accountId: account.id,
             uid: h.uid,
             folder,
@@ -75,11 +73,13 @@ export class MailSyncService {
             isRead: h.isRead,
             hasAttachment: h.hasAttachment,
             snippet: h.snippet,
-          },
-          update: { isRead: h.isRead, subject: h.subject },
-        }),
-      ),
-    );
+          })
+          .onConflictDoUpdate({
+            target: [mailHeader.accountId, mailHeader.folder, mailHeader.uid],
+            set: { isRead: h.isRead, subject: h.subject },
+          });
+      }
+    });
 
     // Dispatch system notifications for new unread emails
     for (const h of headers) {
@@ -103,7 +103,7 @@ export class MailSyncService {
   }
 
   async syncAllAccounts(profileId: bigint): Promise<SyncResultDto[]> {
-    const accounts = await this.drizzle.mailAccount.findMany({ where: { profileId } });
+    const accounts = await this.db.client.select().from(mailAccount).where(eq(mailAccount.profileId, profileId));
     const all: SyncResultDto[] = [];
     for (const account of accounts) {
       all.push(...await this.syncAccount(account));
