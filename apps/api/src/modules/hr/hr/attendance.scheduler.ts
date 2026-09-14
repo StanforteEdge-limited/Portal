@@ -1,9 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
-import { DrizzleService } from '$common/drizzle/drizzle.service';
+import { Cron } from '@nestjs/schedule';
+import { and, asc, eq, gte, inArray, lte } from 'drizzle-orm';
 import { TenantContextService } from '$common/auth/tenant-context.service';
+import { DbService } from '$common/db/db.service';
 import { NotificationsService } from '$modules/notifications/notifications.service';
+import { profile } from '$modules/identity/users/model';
+import { notification } from '$modules/notifications/model';
 import { AttendanceService } from './attendance.service';
+import { attendanceEntry } from './model';
 
 const CLOCK_OUT_REMINDER_MINUTES = 30;
 
@@ -12,26 +16,24 @@ export class AttendanceScheduler {
   private readonly logger = new Logger(AttendanceScheduler.name);
 
   constructor(
-    private readonly drizzle: DrizzleService,
+    private readonly db: DbService,
     private readonly tenantContext: TenantContextService,
     private readonly notifications: NotificationsService,
     private readonly attendance: AttendanceService,
   ) {}
 
-  @Cron(CronExpression.EVERY_15_MINUTES)
+  @Cron('0 */15 * * * *')
   async remindOpenSessions() {
     const now = new Date();
     const todayKey = now.toISOString().slice(0, 10);
     const workDate = new Date(todayKey);
 
     await this.tenantContext.runSystem('attendance clock-out reminder', async () => {
-      const entries = await this.drizzle.attendanceEntry.findMany({
-        where: {
-          workDate,
-          entryAt: { lte: now },
-        },
-        orderBy: { entryAt: 'asc' },
-      });
+      const entries = await this.db.client
+        .select()
+        .from(attendanceEntry)
+        .where(and(eq(attendanceEntry.workDate, workDate), lte(attendanceEntry.entryAt, now)))
+        .orderBy(asc(attendanceEntry.entryAt));
 
       if (!entries.length) return;
 
@@ -59,10 +61,16 @@ export class AttendanceScheduler {
       const batchSize = 50;
       for (let i = 0; i < openUserIds.length; i += batchSize) {
         const batch = openUserIds.slice(i, i + batchSize).map((key) => BigInt(key));
-        const profiles = await this.drizzle.profile.findMany({
-          where: { id: { in: batch } },
-          select: { id: true, firstName: true, lastName: true, email: true, username: true },
-        });
+        const profiles = await this.db.client
+          .select({
+            id: profile.id,
+            firstName: profile.firstName,
+            lastName: profile.lastName,
+            email: profile.email,
+            username: profile.username,
+          })
+          .from(profile)
+          .where(inArray(profile.id, batch));
 
         for (const profile of profiles) {
           try {
@@ -73,13 +81,15 @@ export class AttendanceScheduler {
               endTime.getTime() - CLOCK_OUT_REMINDER_MINUTES * 60000
             );
 
-            const existing = await this.drizzle.notification.findFirst({
-              where: {
-                userId: profile.id,
-                notifiableType: 'attendance_reminder',
-                createdAt: { gte: new Date(todayKey) },
-              },
-            });
+            const [existing] = await this.db.client
+              .select({ id: notification.id })
+              .from(notification)
+              .where(and(
+                eq(notification.userId, profile.id),
+                eq(notification.notifiableType, 'attendance_reminder'),
+                gte(notification.createdAt, new Date(todayKey)),
+              ))
+              .limit(1);
             if (existing) continue;
 
             const displayName =
