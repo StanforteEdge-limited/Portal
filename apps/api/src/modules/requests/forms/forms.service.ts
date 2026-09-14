@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { Drizzle } from '$common/db/drizzle-compat';
-import { DrizzleService } from '$common/drizzle/drizzle.service';
+import { SQL, and, asc, desc, eq, ilike, inArray, isNull, or } from 'drizzle-orm';
+import { DbService } from '$common/db/db.service';
+import { TenantContextService } from '$common/auth/tenant-context.service';
 import { paginatedResponse } from '$common/helpers/paginated-response';
 import {
   CreateFormAssignmentDto,
@@ -10,144 +11,159 @@ import {
   UpdateFormFieldDto
 } from '$modules/requests/forms/dto/manage-forms.dto';
 import { toBigInt } from '$common/utils/ids';
+import { form, formAssignment, formField } from './model';
+import { profile } from '$modules/identity/users/model';
+import { requestType } from '$modules/requests/requests/model';
 
 @Injectable()
 export class FormsService {
-  constructor(private readonly drizzle: DrizzleService) {}
+  constructor(
+    private readonly db: DbService,
+    private readonly tenantContext: TenantContextService,
+  ) {}
 
   async list(query?: Record<string, any>) {
-    const where: Drizzle.FormWhereInput = { isActive: true };
-    if (query?.module) where.module = String(query.module);
-    const items = await this.drizzle.form.findMany({
-      where,
-      orderBy: { createdAt: 'desc' }
-    });
+    const conditions = [...this.formReadConditions(), eq(form.isActive, true)];
+    if (query?.module) conditions.push(eq(form.module, String(query.module)));
+    const items = await this.db.client
+      .select()
+      .from(form)
+      .where(and(...conditions))
+      .orderBy(desc(form.createdAt));
     return paginatedResponse(items, { page: 1, per_page: items.length, total: items.length });
   }
 
   async getFormById(id: string) {
-    const form = await this.drizzle.form.findUnique({
-      where: { id },
-      include: { fields: true }
-    });
+    const row = await this.findFormById(id);
 
-    if (!form) throw new NotFoundException('Form not found');
-    return form;
+    if (!row) throw new NotFoundException('Form not found');
+    return this.withFields(row);
   }
 
   async listForManagement(query: Record<string, any>) {
-    const where: Drizzle.FormWhereInput = {};
-    if (query.module) where.module = String(query.module);
-    if (query.include_inactive !== 'true') where.isActive = true;
+    const conditions = this.formReadConditions();
+    if (query.module) conditions.push(eq(form.module, String(query.module)));
+    if (query.include_inactive !== 'true') conditions.push(eq(form.isActive, true));
     if (query.search) {
-      where.OR = [
-        { name: { contains: String(query.search), mode: 'insensitive' } },
-        { description: { contains: String(query.search), mode: 'insensitive' } }
-      ];
+      const search = `%${String(query.search)}%`;
+      conditions.push(or(ilike(form.name, search), ilike(form.description, search)) as SQL);
     }
+    const where = conditions.length ? and(...conditions) : undefined;
 
-    const items = await this.drizzle.form.findMany({
-      where,
-      include: {
-        fields: { orderBy: { displayOrder: 'asc' } },
-        assignments: true
-      },
-      orderBy: [{ module: 'asc' }, { createdAt: 'desc' }]
-    });
-    return paginatedResponse(items, { page: 1, per_page: items.length, total: items.length });
+    const items = await this.db.client
+      .select()
+      .from(form)
+      .where(where)
+      .orderBy(asc(form.module), desc(form.createdAt));
+    const hydrated = await Promise.all(items.map((item) => this.withFieldsAndAssignments(item)));
+    return paginatedResponse(hydrated, { page: 1, per_page: items.length, total: items.length });
   }
 
   async createForm(actorId: string, dto: CreateFormDto) {
-    return this.drizzle.form.create({
-      data: {
+    const [created] = await this.db.client
+      .insert(form)
+      .values({
+        tenantId: this.currentTenantId(),
         name: dto.name,
         description: dto.description ?? null,
         module: dto.module ?? 'general',
         storageType: dto.storage_type ?? 'json',
         createdByProfileId: actorId ? this.parseBigInt(actorId, 'actor id') : null,
         isActive: dto.is_active ?? true
-      }
-    });
+      })
+      .returning();
+    return created ?? null;
   }
 
   async updateForm(id: string, dto: UpdateFormDto) {
-    const existing = await this.drizzle.form.findUnique({ where: { id } });
+    const existing = await this.findFormById(id);
     if (!existing) throw new NotFoundException('Form not found');
 
-    return this.drizzle.form.update({
-      where: { id },
-      data: {
+    const [updated] = await this.db.client
+      .update(form)
+      .set({
         name: dto.name ?? existing.name,
         description: dto.description ?? existing.description,
         module: dto.module ?? existing.module,
         storageType: dto.storage_type ?? existing.storageType,
         isActive: dto.is_active ?? existing.isActive
-      },
-      include: {
-        fields: { orderBy: { displayOrder: 'asc' } },
-        assignments: true
-      }
-    });
+      })
+      .where(and(eq(form.id, id), ...this.formWriteConditions()))
+      .returning();
+    return this.withFieldsAndAssignments(updated);
   }
 
   async createField(formId: string, dto: CreateFormFieldDto) {
     await this.ensureForm(formId);
-    return this.drizzle.formField.create({
-      data: {
+    const [created] = await this.db.client
+      .insert(formField)
+      .values({
+        tenantId: this.currentTenantId(),
         formId,
         fieldKey: dto.field_key,
         fieldLabel: dto.field_label,
         fieldType: dto.field_type,
-        fieldOptions: (dto.field_options ?? null) as Drizzle.InputJsonValue,
+        fieldOptions: dto.field_options ?? null,
         isRequired: dto.is_required ?? false,
-        validationRules: (dto.validation_rules ?? null) as Drizzle.InputJsonValue,
+        validationRules: dto.validation_rules ?? null,
         displayOrder: dto.display_order ?? 0
-      }
-    });
+      })
+      .returning();
+    return created ?? null;
   }
 
   async updateField(formId: string, fieldId: string, dto: UpdateFormFieldDto) {
-    const field = await this.drizzle.formField.findFirst({ where: { id: fieldId, formId } });
-    if (!field) throw new NotFoundException('Field not found');
+    const existing = await this.findField(fieldId, formId);
+    if (!existing) throw new NotFoundException('Field not found');
 
-    return this.drizzle.formField.update({
-      where: { id: field.id },
-      data: {
-        fieldLabel: dto.field_label ?? field.fieldLabel,
-        fieldType: dto.field_type ?? field.fieldType,
+    const [updated] = await this.db.client
+      .update(formField)
+      .set({
+        fieldLabel: dto.field_label ?? existing.fieldLabel,
+        fieldType: dto.field_type ?? existing.fieldType,
         fieldOptions:
           dto.field_options !== undefined
-            ? (dto.field_options as Drizzle.InputJsonValue)
-            : (field.fieldOptions ?? Drizzle.JsonNull),
-        isRequired: dto.is_required ?? field.isRequired,
+            ? dto.field_options
+            : (existing.fieldOptions ?? null),
+        isRequired: dto.is_required ?? existing.isRequired,
         validationRules:
           dto.validation_rules !== undefined
-            ? (dto.validation_rules as Drizzle.InputJsonValue)
-            : (field.validationRules ?? Drizzle.JsonNull),
-        displayOrder: dto.display_order ?? field.displayOrder
-      }
-    });
+            ? dto.validation_rules
+            : (existing.validationRules ?? null),
+        displayOrder: dto.display_order ?? existing.displayOrder
+      })
+      .where(eq(formField.id, existing.id))
+      .returning();
+    return updated ?? null;
   }
 
   async deleteField(formId: string, fieldId: string) {
-    const field = await this.drizzle.formField.findFirst({ where: { id: fieldId, formId } });
-    if (!field) throw new NotFoundException('Field not found');
-    await this.drizzle.formField.delete({ where: { id: field.id } });
+    const existing = await this.findField(fieldId, formId);
+    if (!existing) throw new NotFoundException('Field not found');
+    await this.db.client.delete(formField).where(eq(formField.id, existing.id));
     return { success: true };
   }
 
   async listAssignments(query: Record<string, any>) {
-    const where: Drizzle.FormAssignmentWhereInput = {};
-    if (query.form_id) where.formId = String(query.form_id);
+    const conditions = this.formAssignmentConditions();
+    if (query.form_id) conditions.push(eq(formAssignment.formId, String(query.form_id)));
+    const where = conditions.length ? and(...conditions) : undefined;
 
-    const items = await this.drizzle.formAssignment.findMany({
-      where,
-      include: {
-        form: { select: { id: true, name: true, module: true } }
-      },
-      orderBy: [{ dueDate: 'asc' }, { createdAt: 'desc' }]
-    });
-    return paginatedResponse(items, { page: 1, per_page: items.length, total: items.length });
+    const items = await this.db.client
+      .select({
+        row: formAssignment,
+        form: {
+          id: form.id,
+          name: form.name,
+          module: form.module,
+        },
+      })
+      .from(formAssignment)
+      .leftJoin(form, eq(formAssignment.formId, form.id))
+      .where(where)
+      .orderBy(asc(formAssignment.dueDate), desc(formAssignment.createdAt));
+    const rows = items.map(({ row, form: linkedForm }) => ({ ...row, form: linkedForm }));
+    return paginatedResponse(rows, { page: 1, per_page: rows.length, total: rows.length });
   }
 
   async createAssignment(dto: CreateFormAssignmentDto) {
@@ -160,52 +176,66 @@ export class FormsService {
       : null;
 
     if (assignedToProfileId) {
-      const profile = await this.drizzle.profile.findUnique({ where: { id: assignedToProfileId } });
-      if (!profile) throw new NotFoundException('Assigned profile not found');
+      const [assignedProfile] = await this.db.client
+        .select({ id: profile.id })
+        .from(profile)
+        .where(eq(profile.id, assignedToProfileId))
+        .limit(1);
+      if (!assignedProfile) throw new NotFoundException('Assigned profile not found');
     }
 
-    return this.drizzle.formAssignment.create({
-      data: {
+    const [created] = await this.db.client
+      .insert(formAssignment)
+      .values({
+        tenantId: this.currentTenantId(),
         formId: dto.form_id,
         assignedToRole: dto.assigned_to_role ?? null,
         assignedToProfileId,
         dueDate: dto.due_date ? new Date(dto.due_date) : null
-      }
-    });
+      })
+      .returning();
+    return created ?? null;
   }
 
   async deleteAssignment(id: string) {
-    const existing = await this.drizzle.formAssignment.findUnique({ where: { id } });
+    const [existing] = await this.db.client
+      .select()
+      .from(formAssignment)
+      .where(and(eq(formAssignment.id, id), ...this.formAssignmentConditions()))
+      .limit(1);
     if (!existing) throw new NotFoundException('Assignment not found');
-    await this.drizzle.formAssignment.delete({ where: { id } });
+    await this.db.client.delete(formAssignment).where(eq(formAssignment.id, id));
     return { success: true };
   }
 
   async validateRequestTypePayload(requestTypeId: string, data: Record<string, unknown>) {
-    const requestType = await this.drizzle.requestType.findUnique({
-      where: { id: requestTypeId },
-      select: { id: true, storageType: true, formId: true, isActive: true }
-    });
+    const [request] = await this.db.client
+      .select({
+        id: requestType.id,
+        storageType: requestType.storageType,
+        formId: requestType.formId,
+        isActive: requestType.isActive,
+      })
+      .from(requestType)
+      .where(eq(requestType.id, requestTypeId))
+      .limit(1);
 
-    if (!requestType || !requestType.isActive) {
+    if (!request || !request.isActive) {
       throw new BadRequestException('Invalid request type');
     }
 
-    if ((requestType.storageType ?? 'form') !== 'form') return;
-    if (!requestType.formId) {
+    if ((request.storageType ?? 'form') !== 'form') return;
+    if (!request.formId) {
       throw new BadRequestException('Form-backed request type is missing form binding');
     }
 
-    const form = await this.drizzle.form.findUnique({
-      where: { id: requestType.formId },
-      include: { fields: true }
-    });
+    const linkedForm = await this.getFormById(request.formId);
 
-    if (!form || !form.isActive) {
+    if (!linkedForm || !linkedForm.isActive) {
       throw new BadRequestException('Assigned form is inactive or missing');
     }
 
-    const requiredFields = form.fields.filter((field) => field.isRequired);
+    const requiredFields = linkedForm.fields.filter((field: any) => field.isRequired);
     const missing = requiredFields
       .filter((field) => {
         const value = data[field.fieldKey];
@@ -221,9 +251,9 @@ export class FormsService {
   }
 
   private async ensureForm(id: string) {
-    const form = await this.drizzle.form.findUnique({ where: { id } });
-    if (!form) throw new NotFoundException('Form not found');
-    return form;
+    const row = await this.findFormById(id);
+    if (!row) throw new NotFoundException('Form not found');
+    return row;
   }
 
   private parseBigInt(value: string, label: string) {
@@ -232,5 +262,72 @@ export class FormsService {
     } catch {
       throw new BadRequestException(`Invalid ${label}`);
     }
+  }
+
+  private currentTenantId() {
+    const context = this.tenantContext.get();
+    return context && context.scope !== 'system' ? context.tenantId : undefined;
+  }
+
+  private formReadConditions(): SQL[] {
+    const tenantId = this.currentTenantId();
+    return tenantId ? [or(eq(form.tenantId, tenantId), isNull(form.tenantId)) as SQL] : [];
+  }
+
+  private formWriteConditions(): SQL[] {
+    const tenantId = this.currentTenantId();
+    return tenantId ? [eq(form.tenantId, tenantId)] : [];
+  }
+
+  private formFieldConditions(): SQL[] {
+    const tenantId = this.currentTenantId();
+    return tenantId ? [or(eq(formField.tenantId, tenantId), isNull(formField.tenantId)) as SQL] : [];
+  }
+
+  private formAssignmentConditions(): SQL[] {
+    const tenantId = this.currentTenantId();
+    return tenantId ? [eq(formAssignment.tenantId, tenantId)] : [];
+  }
+
+  private async findFormById(id: string) {
+    const [row] = await this.db.client
+      .select()
+      .from(form)
+      .where(and(eq(form.id, id), ...this.formReadConditions()))
+      .limit(1);
+    return row ?? null;
+  }
+
+  private async findField(id: string, formId: string) {
+    const [row] = await this.db.client
+      .select()
+      .from(formField)
+      .where(and(eq(formField.id, id), eq(formField.formId, formId), ...this.formFieldConditions()))
+      .limit(1);
+    return row ?? null;
+  }
+
+  private async withFields(row: typeof form.$inferSelect) {
+    const fields = await this.db.client
+      .select()
+      .from(formField)
+      .where(and(eq(formField.formId, row.id), ...this.formFieldConditions()))
+      .orderBy(asc(formField.displayOrder));
+    return { ...row, fields };
+  }
+
+  private async withFieldsAndAssignments(row: typeof form.$inferSelect) {
+    const [fields, assignments] = await Promise.all([
+      this.db.client
+        .select()
+        .from(formField)
+        .where(and(eq(formField.formId, row.id), ...this.formFieldConditions()))
+        .orderBy(asc(formField.displayOrder)),
+      this.db.client
+        .select()
+        .from(formAssignment)
+        .where(and(eq(formAssignment.formId, row.id), ...this.formAssignmentConditions())),
+    ]);
+    return { ...row, fields, assignments };
   }
 }

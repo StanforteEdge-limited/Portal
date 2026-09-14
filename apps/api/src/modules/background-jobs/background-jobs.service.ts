@@ -1,9 +1,11 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-import { DrizzleService } from '$common/drizzle/drizzle.service';
+import { eq } from 'drizzle-orm';
+import { DbService } from '$common/db/db.service';
 import { TenantContextService } from '$common/auth/tenant-context.service';
 import { toBigInt } from '$common/utils/ids';
+import { backgroundJob } from './model';
 
 export type BackgroundJobActor = {
   profileId: bigint | string;
@@ -37,7 +39,7 @@ export class BackgroundJobsService {
   private readonly handlers = new Map<string, BackgroundJobHandler>();
 
   constructor(
-    private readonly drizzle: DrizzleService,
+    private readonly db: DbService,
     private readonly tenantContext: TenantContextService,
     @InjectQueue('background-jobs') private readonly queue: Queue,
   ) {}
@@ -68,15 +70,17 @@ export class BackgroundJobsService {
 
     const createdBy = actor?.profileId;
 
-    const row = await this.drizzle.backgroundJob.create({
-      data: {
+    const [row] = await this.db.client
+      .insert(backgroundJob)
+      .values({
+        tenantId: toBigInt(tenantId),
         type: input.type,
         status: 'queued',
         payload: (input.input ?? {}) as any,
         notifiable: input.notifiable ?? true,
         createdBy: createdBy ? toBigInt(createdBy) : null,
-      } as any,
-    });
+      })
+      .returning();
 
     const jobId = row.id.toString();
 
@@ -111,7 +115,11 @@ export class BackgroundJobsService {
   }
 
   async getJob(id: string) {
-    const row = await this.drizzle.backgroundJob.findUnique({ where: { id: toBigInt(id) } });
+    const [row] = await this.db.client
+      .select()
+      .from(backgroundJob)
+      .where(eq(backgroundJob.id, toBigInt(id)))
+      .limit(1);
     if (!row) throw new NotFoundException('Background job not found');
     return {
       id: row.id.toString(),
@@ -127,28 +135,34 @@ export class BackgroundJobsService {
   }
 
   async markStarted(id: bigint) {
-    await this.drizzle.backgroundJob
-      .update({ where: { id }, data: { status: 'processing', startedAt: new Date(), error: null } })
+    await this.db.client
+      .update(backgroundJob)
+      .set({ status: 'processing', startedAt: new Date(), error: null })
+      .where(eq(backgroundJob.id, id))
       .catch(() => null);
   }
 
   async updateProgress(id: bigint, percent: number) {
     const clamped = Math.max(0, Math.min(100, Math.floor(percent)));
-    await this.drizzle.backgroundJob
-      .update({ where: { id }, data: { progress: clamped } })
+    await this.db.client
+      .update(backgroundJob)
+      .set({ progress: clamped })
+      .where(eq(backgroundJob.id, id))
       .catch(() => null);
   }
 
   async complete(id: bigint, result: unknown) {
-    await this.drizzle.backgroundJob.update({
-      where: { id },
-      data: { status: 'completed', progress: 100, result: (result ?? {}) as any, finishedAt: new Date() },
-    });
+    await this.db.client
+      .update(backgroundJob)
+      .set({ status: 'completed', progress: 100, result: (result ?? {}) as any, finishedAt: new Date() })
+      .where(eq(backgroundJob.id, id));
   }
 
   async fail(id: bigint, error: string) {
-    await this.drizzle.backgroundJob
-      .update({ where: { id }, data: { status: 'failed', error, finishedAt: new Date() } })
+    await this.db.client
+      .update(backgroundJob)
+      .set({ status: 'failed', error, finishedAt: new Date() })
+      .where(eq(backgroundJob.id, id))
       .catch(() => null);
   }
 }

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import nodemailer from 'nodemailer';
-import type { MailAccount } from '$common/db/drizzle-compat';
+import type { MailAccount } from './model';
 import type { SendMessageDto } from './dto/send-message.dto';
 
 @Injectable()

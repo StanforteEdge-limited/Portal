@@ -1,19 +1,18 @@
 import { Injectable } from '@nestjs/common';
-import { DrizzleService } from '$common/drizzle/drizzle.service';
+import { and, eq } from 'drizzle-orm';
+import { DbService } from '$common/db/db.service';
+import { systemVersion } from './model';
 
 @Injectable()
 export class VersionService {
-  constructor(private readonly drizzle: DrizzleService) {}
+  constructor(private readonly db: DbService) {}
 
   async getVersionConfig(platform: string, moduleName: string) {
-    const config = await this.drizzle.systemVersion.findUnique({
-      where: {
-        platform_module: {
-          platform,
-          module: moduleName,
-        },
-      },
-    });
+    const [config] = await this.db.client
+      .select()
+      .from(systemVersion)
+      .where(and(eq(systemVersion.platform, platform), eq(systemVersion.module, moduleName)))
+      .limit(1);
 
     if (!config) {
       // Default fallback when config is not yet seeded

@@ -1,8 +1,9 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
-import { DrizzleService } from '$common/drizzle/drizzle.service';
+import { and, asc, eq, isNotNull } from 'drizzle-orm';
+import { DbService } from '$common/db/db.service';
 import { MailCryptoService } from './mail-crypto.service';
 import { google } from 'googleapis';
-import type { MailAccount } from '$common/db/drizzle-compat';
+import { MailAccount, mailAccount } from './model';
 
 const GOOGLE_SCOPES = ['https://mail.google.com/', 'email', 'profile'];
 
@@ -28,7 +29,7 @@ const MICROSOFT_IMAP_SCOPES = [
 @Injectable()
 export class MailAccountService {
   constructor(
-    private readonly drizzle: DrizzleService,
+    private readonly db: DbService,
     private readonly crypto: MailCryptoService,
   ) {}
 
@@ -78,8 +79,9 @@ export class MailAccountService {
     const oauth2 = google.oauth2({ version: 'v2', auth: client });
     const { data } = await oauth2.userinfo.get();
 
-    const account = await this.drizzle.mailAccount.create({
-      data: {
+    const [account] = await this.db.client
+      .insert(mailAccount)
+      .values({
         profileId,
         provider: 'GOOGLE',
         emailAddress: data.email!,
@@ -87,8 +89,8 @@ export class MailAccountService {
         accessToken: this.crypto.encrypt(tokens.access_token),
         refreshToken: this.crypto.encrypt(tokens.refresh_token),
         tokenExpiresAt: new Date(tokens.expiry_date ?? Date.now() + 3_600_000),
-      },
-    });
+      })
+      .returning();
 
     try {
       await this.setupGoogleWatch(account);
@@ -167,8 +169,9 @@ export class MailAccountService {
 
     const email = profile.mail ?? profile.userPrincipalName ?? '';
 
-    const account = await this.drizzle.mailAccount.create({
-      data: {
+    const [account] = await this.db.client
+      .insert(mailAccount)
+      .values({
         profileId,
         provider: 'MICROSOFT',
         emailAddress: email,
@@ -176,8 +179,8 @@ export class MailAccountService {
         accessToken: this.crypto.encrypt(tokens.access_token),
         refreshToken: this.crypto.encrypt(tokens.refresh_token),
         tokenExpiresAt: new Date(Date.now() + tokens.expires_in * 1_000),
-      },
-    });
+      })
+      .returning();
 
     try {
       await this.setupMicrosoftWatch(account);
@@ -243,10 +246,10 @@ export class MailAccountService {
 
       const data = await res.json() as any;
       if (data?.id) {
-        await this.drizzle.mailAccount.update({
-          where: { id: account.id },
-          data: { outlookSubscriptionId: data.id },
-        });
+        await this.db.client
+          .update(mailAccount)
+          .set({ outlookSubscriptionId: data.id })
+          .where(eq(mailAccount.id, account.id));
       }
     } catch (err) {
       console.error('Failed to setup Microsoft mailbox subscription watch', err);
@@ -254,9 +257,10 @@ export class MailAccountService {
   }
 
   async renewMicrosoftSubscriptions(): Promise<void> {
-    const accounts = await this.drizzle.mailAccount.findMany({
-      where: { provider: 'MICROSOFT', outlookSubscriptionId: { not: null } },
-    });
+    const accounts = await this.db.client
+      .select()
+      .from(mailAccount)
+      .where(and(eq(mailAccount.provider, 'MICROSOFT'), isNotNull(mailAccount.outlookSubscriptionId)));
     for (const a of accounts) {
       try {
         const graphToken = await this.getMicrosoftGraphToken(a);
@@ -296,13 +300,13 @@ export class MailAccountService {
     const client = this.googleOAuth2Client();
     client.setCredentials({ refresh_token: this.crypto.decrypt(account.refreshToken) });
     const { credentials } = await client.refreshAccessToken();
-    await this.drizzle.mailAccount.update({
-      where: { id: account.id },
-      data: {
+    await this.db.client
+      .update(mailAccount)
+      .set({
         accessToken: this.crypto.encrypt(credentials.access_token!),
         tokenExpiresAt: new Date(credentials.expiry_date ?? Date.now() + 3_600_000),
-      },
-    });
+      })
+      .where(eq(mailAccount.id, account.id));
     return credentials.access_token!;
   }
 
@@ -325,57 +329,66 @@ export class MailAccountService {
     const tokens = await res.json() as { access_token: string; expires_in: number; error?: string };
     if (tokens.error) throw new Error(`Microsoft token refresh failed: ${tokens.error}`);
 
-    await this.drizzle.mailAccount.update({
-      where: { id: account.id },
-      data: {
+    await this.db.client
+      .update(mailAccount)
+      .set({
         accessToken: this.crypto.encrypt(tokens.access_token),
         tokenExpiresAt: new Date(Date.now() + tokens.expires_in * 1_000),
-      },
-    });
+      })
+      .where(eq(mailAccount.id, account.id));
     return tokens.access_token;
   }
 
   // ── CRUD ────────────────────────────────────────────────────────────────────
 
   listAccounts(profileId: bigint) {
-    return this.drizzle.mailAccount.findMany({
-      where: { profileId },
-      select: {
-        id: true,
-        provider: true,
-        emailAddress: true,
-        displayName: true,
-        isShared: true,
-        label: true,
-        lastSyncedAt: true,
-        createdAt: true,
-        profileId: true,
-        tokenExpiresAt: true,
-        signature: true,
-      },
-      orderBy: { createdAt: 'asc' },
-    });
+    return this.db.client
+      .select({
+        id: mailAccount.id,
+        provider: mailAccount.provider,
+        emailAddress: mailAccount.emailAddress,
+        displayName: mailAccount.displayName,
+        isShared: mailAccount.isShared,
+        label: mailAccount.label,
+        lastSyncedAt: mailAccount.lastSyncedAt,
+        createdAt: mailAccount.createdAt,
+        profileId: mailAccount.profileId,
+        tokenExpiresAt: mailAccount.tokenExpiresAt,
+        signature: mailAccount.signature,
+      })
+      .from(mailAccount)
+      .where(eq(mailAccount.profileId, profileId))
+      .orderBy(asc(mailAccount.createdAt));
   }
 
   async updateSignature(id: bigint, profileId: bigint, signature: string | null): Promise<void> {
     const account = await this.findAccountForUser(id, profileId);
-    await this.drizzle.mailAccount.update({
-      where: { id: account.id },
-      data: { signature },
-    });
+    await this.db.client
+      .update(mailAccount)
+      .set({ signature })
+      .where(eq(mailAccount.id, account.id));
   }
 
   async deleteAccount(id: bigint, profileId: bigint): Promise<void> {
-    const account = await this.drizzle.mailAccount.findUnique({ where: { id } });
+    const account = await this.findAccount(id);
     if (!account) throw new NotFoundException('Account not found');
     if (account.profileId !== profileId) throw new ForbiddenException();
-    await this.drizzle.mailAccount.delete({ where: { id } });
+    await this.db.client.delete(mailAccount).where(eq(mailAccount.id, id));
   }
 
   async findAccountForUser(accountId: bigint, profileId: bigint): Promise<MailAccount> {
-    const account = await this.drizzle.mailAccount.findUnique({ where: { id: accountId } });
+    const account = await this.findAccount(accountId);
     if (!account) throw new NotFoundException('Mail account not found');
     if (account.profileId !== profileId) throw new ForbiddenException();
     return account;
+  }
+
+  private async findAccount(id: bigint): Promise<MailAccount | null> {
+    const [account] = await this.db.client
+      .select()
+      .from(mailAccount)
+      .where(eq(mailAccount.id, id))
+      .limit(1);
+    return account ?? null;
   }
 }

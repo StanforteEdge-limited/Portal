@@ -1,15 +1,22 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { Drizzle } from '$common/db/drizzle-compat';
-import { DrizzleService } from '$common/drizzle/drizzle.service';
+import { SQL, and, count, desc, eq } from 'drizzle-orm';
+import { DbService } from '$common/db/db.service';
+import { TenantContextService } from '$common/auth/tenant-context.service';
 import { toBigInt } from '$common/utils/ids';
 import { CreateAcknowledgementDto } from '$modules/requests/acknowledgements/dto/create-acknowledgement.dto';
 import { ListAcknowledgementsDto } from '$modules/requests/acknowledgements/dto/list-acknowledgements.dto';
 import { RevokeAcknowledgementDto } from '$modules/requests/acknowledgements/dto/revoke-acknowledgement.dto';
 import { paginatedResponse } from '$common/helpers/paginated-response';
+import { acknowledgement, NewAcknowledgement } from './model';
+import { profile } from '$modules/identity/users/model';
+import { formSubmission } from '$modules/requests/forms/model';
 
 @Injectable()
 export class AcknowledgementsService {
-  constructor(private readonly drizzle: DrizzleService) {}
+  constructor(
+    private readonly db: DbService,
+    private readonly tenantContext: TenantContextService,
+  ) {}
 
   async listMine(profileId: string, query: ListAcknowledgementsDto) {
     return this.listInternal({ ...query, user_id: profileId }, false);
@@ -29,24 +36,24 @@ export class AcknowledgementsService {
       throw new BadRequestException('subject_type and subject_id are required');
     }
 
-    const existing = await this.drizzle.acknowledgement.findFirst({
-      where: {
-        userId,
-        subjectType,
-        subjectId,
-        version
-      }
-    });
+    const existing = await this.findAcknowledgement([
+      eq(acknowledgement.userId, userId),
+      eq(acknowledgement.subjectType, subjectType),
+      eq(acknowledgement.subjectId, subjectId),
+      eq(acknowledgement.version, version),
+    ]);
 
     if (dto.source_form_submission_id) {
-      const source = await this.drizzle.formSubmission.findUnique({
-        where: { id: dto.source_form_submission_id },
-        select: { id: true }
-      });
+      const [source] = await this.db.client
+        .select({ id: formSubmission.id })
+        .from(formSubmission)
+        .where(eq(formSubmission.id, dto.source_form_submission_id))
+        .limit(1);
       if (!source) throw new NotFoundException('Source form submission not found');
     }
 
-    const data: Drizzle.AcknowledgementUncheckedCreateInput = {
+    const data: NewAcknowledgement = {
+      tenantId: this.currentTenantId(),
       userId,
       subjectType,
       subjectId,
@@ -56,24 +63,22 @@ export class AcknowledgementsService {
       acknowledgedAt: new Date(),
       revokedAt: null,
       sourceFormSubmissionId: dto.source_form_submission_id || null,
-      metadata: (dto.metadata ?? null) as Drizzle.InputJsonValue | Drizzle.NullableJsonNullValueInput
+      metadata: dto.metadata ?? null,
     };
 
-    const row = existing
-      ? await this.drizzle.acknowledgement.update({
-          where: { id: existing.id },
-          data: {
-            ...data,
-            updatedAt: new Date()
-          }
-        })
-      : await this.drizzle.acknowledgement.create({ data });
+    const [row] = existing
+      ? await this.db.client
+          .update(acknowledgement)
+          .set({ ...data, updatedAt: new Date() })
+          .where(and(eq(acknowledgement.id, existing.id), ...this.acknowledgementConditions()))
+          .returning()
+      : await this.db.client.insert(acknowledgement).values(data).returning();
 
     return this.getById(row.id);
   }
 
   async revoke(id: string, dto: RevokeAcknowledgementDto) {
-    const existing = await this.drizzle.acknowledgement.findUnique({ where: { id } });
+    const existing = await this.findAcknowledgement([eq(acknowledgement.id, id)]);
     if (!existing) throw new NotFoundException('Acknowledgement not found');
 
     const metadata =
@@ -85,40 +90,20 @@ export class AcknowledgementsService {
       metadata.revocation_reason = dto.reason.trim();
     }
 
-    await this.drizzle.acknowledgement.update({
-      where: { id },
-      data: {
+    await this.db.client
+      .update(acknowledgement)
+      .set({
         status: 'revoked',
         revokedAt: new Date(),
-        metadata: metadata as Drizzle.InputJsonValue
-      }
-    });
+        metadata,
+      })
+      .where(and(eq(acknowledgement.id, id), ...this.acknowledgementConditions()));
 
     return this.getById(id);
   }
 
   async getById(id: string) {
-    const row = await this.drizzle.acknowledgement.findUnique({
-      where: { id },
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            username: true,
-            firstName: true,
-            lastName: true
-          }
-        },
-        sourceSubmission: {
-          select: {
-            id: true,
-            submissionNumber: true,
-            status: true
-          }
-        }
-      }
-    });
+    const row = await this.findAcknowledgementWithDetails([eq(acknowledgement.id, id)]);
 
     if (!row) throw new NotFoundException('Acknowledgement not found');
     return this.serialize(row);
@@ -128,49 +113,54 @@ export class AcknowledgementsService {
     const page = Math.max(1, Number(query.page ?? 1));
     const perPage = Math.min(100, Math.max(1, Number(query.per_page ?? 20)));
 
-    const where: Drizzle.AcknowledgementWhereInput = {};
+    const conditions = this.acknowledgementConditions();
 
-    if (query.subject_type) where.subjectType = String(query.subject_type).toLowerCase();
-    if (query.subject_id) where.subjectId = String(query.subject_id);
-    if (query.status) where.status = String(query.status).toLowerCase();
+    if (query.subject_type) conditions.push(eq(acknowledgement.subjectType, String(query.subject_type).toLowerCase()));
+    if (query.subject_id) conditions.push(eq(acknowledgement.subjectId, String(query.subject_id)));
+    if (query.status) conditions.push(eq(acknowledgement.status, String(query.status).toLowerCase()));
 
     if (query.user_id) {
       if (!allowUserFilter) {
-        where.userId = this.parseId(String(query.user_id), 'user_id');
+        conditions.push(eq(acknowledgement.userId, this.parseId(String(query.user_id), 'user_id')));
       } else {
-        where.userId = this.parseId(String(query.user_id), 'user_id');
+        conditions.push(eq(acknowledgement.userId, this.parseId(String(query.user_id), 'user_id')));
       }
     }
+    const where = and(...conditions);
 
-    const [rows, total] = await this.drizzle.$transaction([
-      this.drizzle.acknowledgement.findMany({
-        where,
-        include: {
+    const [rows, totalRows] = await Promise.all([
+      this.db.client
+        .select({
+          row: acknowledgement,
           user: {
-            select: {
-              id: true,
-              email: true,
-              username: true,
-              firstName: true,
-              lastName: true
-            }
+            id: profile.id,
+            email: profile.email,
+            username: profile.username,
+            firstName: profile.firstName,
+            lastName: profile.lastName,
           },
           sourceSubmission: {
-            select: {
-              id: true,
-              submissionNumber: true,
-              status: true
-            }
-          }
-        },
-        orderBy: [{ acknowledgedAt: 'desc' }, { createdAt: 'desc' }],
-        skip: (page - 1) * perPage,
-        take: perPage
-      }),
-      this.drizzle.acknowledgement.count({ where })
+            id: formSubmission.id,
+            submissionNumber: formSubmission.submissionNumber,
+            status: formSubmission.status,
+          },
+        })
+        .from(acknowledgement)
+        .leftJoin(profile, eq(acknowledgement.userId, profile.id))
+        .leftJoin(formSubmission, eq(acknowledgement.sourceFormSubmissionId, formSubmission.id))
+        .where(where)
+        .orderBy(desc(acknowledgement.acknowledgedAt), desc(acknowledgement.createdAt))
+        .offset((page - 1) * perPage)
+        .limit(perPage),
+      this.db.client.select({ value: count() }).from(acknowledgement).where(where),
     ]);
+    const data = rows.map(({ row, user, sourceSubmission }) => ({ ...row, user, sourceSubmission }));
 
-    return paginatedResponse(rows.map((row) => this.serialize(row)), { page, per_page: perPage, total });
+    return paginatedResponse(data.map((row) => this.serialize(row)), {
+      page,
+      per_page: perPage,
+      total: Number(totalRows[0]?.value ?? 0),
+    });
   }
 
   private serialize(row: any) {
@@ -212,5 +202,50 @@ export class AcknowledgementsService {
     } catch {
       throw new BadRequestException(`Invalid ${label}`);
     }
+  }
+
+  private currentTenantId() {
+    const context = this.tenantContext.get();
+    return context && context.scope !== 'system' ? context.tenantId : undefined;
+  }
+
+  private acknowledgementConditions(): SQL[] {
+    const tenantId = this.currentTenantId();
+    return tenantId ? [eq(acknowledgement.tenantId, tenantId)] : [];
+  }
+
+  private async findAcknowledgement(conditions: SQL[]) {
+    const [row] = await this.db.client
+      .select()
+      .from(acknowledgement)
+      .where(and(...this.acknowledgementConditions(), ...conditions))
+      .limit(1);
+    return row ?? null;
+  }
+
+  private async findAcknowledgementWithDetails(conditions: SQL[]) {
+    const [row] = await this.db.client
+      .select({
+        row: acknowledgement,
+        user: {
+          id: profile.id,
+          email: profile.email,
+          username: profile.username,
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+        },
+        sourceSubmission: {
+          id: formSubmission.id,
+          submissionNumber: formSubmission.submissionNumber,
+          status: formSubmission.status,
+        },
+      })
+      .from(acknowledgement)
+      .leftJoin(profile, eq(acknowledgement.userId, profile.id))
+      .leftJoin(formSubmission, eq(acknowledgement.sourceFormSubmissionId, formSubmission.id))
+      .where(and(...this.acknowledgementConditions(), ...conditions))
+      .limit(1);
+
+    return row ? { ...row.row, user: row.user, sourceSubmission: row.sourceSubmission } : null;
   }
 }

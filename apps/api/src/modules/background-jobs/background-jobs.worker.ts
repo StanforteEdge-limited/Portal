@@ -1,11 +1,13 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Injectable, Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
-import { DrizzleService } from '$common/drizzle/drizzle.service';
+import { eq } from 'drizzle-orm';
+import { DbService } from '$common/db/db.service';
 import { TenantContextService } from '$common/auth/tenant-context.service';
 import { NotificationsService } from '$modules/notifications/notifications.service';
 import { BackgroundJobsService } from './background-jobs.service';
 import { toBigInt } from '$common/utils/ids';
+import { backgroundJob } from './model';
 
 @Injectable()
 @Processor('background-jobs')
@@ -13,7 +15,7 @@ export class BackgroundJobsWorker extends WorkerHost {
   private readonly logger = new Logger(BackgroundJobsWorker.name);
 
   constructor(
-    private readonly drizzle: DrizzleService,
+    private readonly db: DbService,
     private readonly tenantContext: TenantContextService,
     private readonly jobs: BackgroundJobsService,
     private readonly notifications: NotificationsService,
@@ -25,9 +27,11 @@ export class BackgroundJobsWorker extends WorkerHost {
     const data = job.data ?? {};
     const { jobId, onSuccessTitle, onSuccessMessage } = data;
 
-    const row = await this.drizzle.backgroundJob.findUnique({
-      where: { id: toBigInt(String(jobId)) },
-    });
+    const [row] = await this.db.client
+      .select()
+      .from(backgroundJob)
+      .where(eq(backgroundJob.id, toBigInt(String(jobId))))
+      .limit(1);
     if (!row) {
       this.logger.warn(`Background job row ${jobId} not found, skipping`);
       return null;

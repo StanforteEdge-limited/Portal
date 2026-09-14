@@ -1,10 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { DrizzleService } from '$common/drizzle/drizzle.service';
+import { and, count, desc, eq } from 'drizzle-orm';
+import { DbService } from '$common/db/db.service';
 import { toBigInt } from '$common/utils/ids';
-import { Drizzle } from '$common/db/drizzle-compat';
 import { TenantContextService } from '$common/auth/tenant-context.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+import { notification, notificationJob } from './model';
+import { profile } from '$modules/identity/users/model';
+import { tenantMembership } from '$modules/tenancy/model';
 
 type NotificationInput = {
   userId: string | bigint;
@@ -12,7 +15,7 @@ type NotificationInput = {
   title: string;
   message: string;
   link?: string;
-  data?: Drizzle.InputJsonValue;
+  data?: unknown;
   sentVia?: string[];
   notifiableType?: string;
   notifiableId?: string | number | bigint;
@@ -30,7 +33,7 @@ export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
 
   constructor(
-    private readonly drizzle: DrizzleService,
+    private readonly db: DbService,
     private readonly tenantContext: TenantContextService,
     @InjectQueue('notifications') private readonly queue: Queue,
   ) {}
@@ -56,8 +59,12 @@ export class NotificationsService {
   }
 
   async create(input: NotificationInput) {
-    const created = await this.drizzle.notification.create({
-      data: {
+    const context = this.tenantContext.get();
+    const tenantId = context && context.scope !== 'system' ? context.tenantId : undefined;
+    const [created] = await this.db.client
+      .insert(notification)
+      .values({
+        tenantId,
         userId: toBigInt(input.userId),
         type: input.type ?? 'info',
         title: input.title,
@@ -67,8 +74,8 @@ export class NotificationsService {
         sentVia: input.sentVia ?? ['in-app'],
         notifiableType: input.notifiableType,
         notifiableId: input.notifiableId !== undefined ? toBigInt(input.notifiableId) : undefined
-      }
-    });
+      })
+      .returning();
 
     const wantsEmail = input.sentVia
       ? input.sentVia.includes('email')
@@ -77,32 +84,33 @@ export class NotificationsService {
       const recipientEmail =
         input.emailTo ??
         (
-          await this.drizzle.profile.findUnique({
-            where: { id: toBigInt(input.userId) },
-            select: { email: true }
-          })
-        )?.email;
+          await this.db.client
+            .select({ email: profile.email })
+            .from(profile)
+            .where(eq(profile.id, toBigInt(input.userId)))
+            .limit(1)
+        )[0]?.email;
 
       if (recipientEmail) {
-        const context = this.tenantContext.get();
-        const tenantId =
-          context && context.scope !== 'system'
-            ? context.tenantId
-            : (
-                await this.drizzle.tenantMembership.findFirst({
-                  where: { profileId: toBigInt(input.userId) },
-                  select: { tenantId: true }
-                })
-              )?.tenantId;
-        if (!tenantId) {
+        const emailTenantId =
+          tenantId ??
+          (
+            await this.db.client
+              .select({ tenantId: tenantMembership.tenantId })
+              .from(tenantMembership)
+              .where(eq(tenantMembership.profileId, toBigInt(input.userId)))
+              .limit(1)
+          )[0]?.tenantId;
+        if (!emailTenantId) {
           this.logger.warn(
             `Cannot schedule email for user ${input.userId}: no tenant context available`
           );
           return created;
         }
-        const job = await this.drizzle.notificationJob.create({
-          data: {
-            tenantId,
+        const [job] = await this.db.client
+          .insert(notificationJob)
+          .values({
+            tenantId: emailTenantId,
             notificationId: created.id,
             channel: 'email',
             runAt: input.scheduledFor ? new Date(input.scheduledFor) : new Date(),
@@ -120,9 +128,9 @@ export class NotificationsService {
               userId: input.userId.toString(),
               notifiableType: input.notifiableType,
               notifiableId: input.notifiableId?.toString(),
-            } as Drizzle.InputJsonValue,
-          },
-        });
+            },
+          })
+          .returning();
         await this.queue.add('deliver-notification', { notificationJobId: job.id.toString() }, {
           jobId: job.id.toString(),
           delay: input.scheduledFor ? Math.max(0, new Date(input.scheduledFor).getTime() - Date.now()) : 0,
@@ -138,57 +146,55 @@ export class NotificationsService {
   }
 
   async listForUser(userId: string, status?: 'read' | 'unread') {
-    return this.drizzle.notification.findMany({
-      where: {
-        userId: toBigInt(userId),
-        ...(status ? { status } : {})
-      },
-      orderBy: { createdAt: 'desc' }
-    });
+    const conditions = [eq(notification.userId, toBigInt(userId))];
+    if (status) conditions.push(eq(notification.status, status));
+    return this.db.client
+      .select()
+      .from(notification)
+      .where(and(...conditions))
+      .orderBy(desc(notification.createdAt));
   }
 
   async markRead(userId: string, notificationId: string) {
-    return this.drizzle.notification.updateMany({
-      where: {
-        id: toBigInt(notificationId),
-        userId: toBigInt(userId),
-        status: 'unread'
-      },
-      data: {
+    const result = await this.db.client
+      .update(notification)
+      .set({
         status: 'read',
         readAt: new Date()
-      }
-    });
+      })
+      .where(and(
+        eq(notification.id, toBigInt(notificationId)),
+        eq(notification.userId, toBigInt(userId)),
+        eq(notification.status, 'unread'),
+      ));
+    return { count: Number(result?.rowCount ?? 0) };
   }
 
   async markAllRead(userId: string) {
-    return this.drizzle.notification.updateMany({
-      where: {
-        userId: toBigInt(userId),
-        status: 'unread'
-      },
-      data: {
+    const result = await this.db.client
+      .update(notification)
+      .set({
         status: 'read',
         readAt: new Date()
-      }
-    });
+      })
+      .where(and(eq(notification.userId, toBigInt(userId)), eq(notification.status, 'unread')));
+    return { count: Number(result?.rowCount ?? 0) };
   }
 
   async getOneForUser(userId: string, notificationId: string) {
-    return this.drizzle.notification.findFirst({
-      where: {
-        id: toBigInt(notificationId),
-        userId: toBigInt(userId)
-      }
-    });
+    const [row] = await this.db.client
+      .select()
+      .from(notification)
+      .where(and(eq(notification.id, toBigInt(notificationId)), eq(notification.userId, toBigInt(userId))))
+      .limit(1);
+    return row ?? null;
   }
 
   async unreadCount(userId: string) {
-    return this.drizzle.notification.count({
-      where: {
-        userId: toBigInt(userId),
-        status: 'unread'
-      }
-    });
+    const [row] = await this.db.client
+      .select({ value: count() })
+      .from(notification)
+      .where(and(eq(notification.userId, toBigInt(userId)), eq(notification.status, 'unread')));
+    return Number(row?.value ?? 0);
   }
 }
