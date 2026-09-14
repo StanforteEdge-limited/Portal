@@ -1,64 +1,54 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { GroupUserRole, Drizzle } from '$common/db/drizzle-compat';
-import { DrizzleService } from '$common/drizzle/drizzle.service';
+import { and, desc, eq, ilike, inArray, isNotNull, or, SQL } from 'drizzle-orm';
+import { DbService } from '$common/db/db.service';
 import { paginatedResponse } from '$common/helpers/paginated-response';
 import { toBigInt } from '$common/utils/ids';
+import type { GroupUserRole } from '$app/db/enums';
+import { organization } from '$modules/directory/organizations/model';
+import { profile } from '$modules/identity/users/model';
+import { requestInstance } from '$modules/requests/requests/model';
 import { AddProjectMemberDto } from '$modules/operations/projects/dto/add-project-member.dto';
 import { CreateProjectDto } from '$modules/operations/projects/dto/create-project.dto';
 import { UpdateProjectDto } from '$modules/operations/projects/dto/update-project.dto';
+import { project, projectGovernance, projectMember } from './model';
 
 @Injectable()
 export class ProjectsService {
-  constructor(private readonly drizzle: DrizzleService) {}
+  constructor(private readonly db: DbService) {}
 
   async list(query: Record<string, any>) {
-    const where: Drizzle.ProjectWhereInput = {};
-    if (query.organization_id) where.organizationId = this.parseId(String(query.organization_id), 'organization id');
-    if (query.active_only === 'true') where.isActive = true;
+    const conditions: SQL[] = [];
+    if (query.organization_id) conditions.push(eq(project.organizationId, this.parseId(String(query.organization_id), 'organization id')));
+    if (query.active_only === 'true') conditions.push(eq(project.isActive, true));
     if (query.search) {
-      where.OR = [
-        { name: { contains: String(query.search), mode: 'insensitive' } },
-        { description: { contains: String(query.search), mode: 'insensitive' } }
-      ];
+      const search = `%${String(query.search)}%`;
+      conditions.push(or(ilike(project.name, search), ilike(project.description, search))!);
     }
     if (query.owner_user_id) {
       const ownerId = this.parseId(String(query.owner_user_id), 'owner user id');
-      where.members = {
-        some: { userId: ownerId, role: GroupUserRole.admin }
-      };
+      const ownerMemberships = await this.db.client
+        .select({ projectId: projectMember.projectId })
+        .from(projectMember)
+        .where(and(eq(projectMember.userId, ownerId), eq(projectMember.role, 'admin')));
+      if (ownerMemberships.length === 0) {
+        return paginatedResponse([], { page: 1, per_page: 0, total: 0 });
+      }
+      conditions.push(inArray(project.id, ownerMemberships.map((membership) => membership.projectId)));
     }
 
-    const rows = await this.drizzle.project.findMany({
-      where,
-      include: {
-        organization: true,
-        governance: true,
-        members: {
-          include: {
-            user: { select: { id: true, email: true, username: true, firstName: true, lastName: true } }
-          }
-        }
-      },
-      orderBy: { createdAt: 'desc' }
-    });
+    const baseRows = await this.db.client
+      .select({ project })
+      .from(project)
+      .where(conditions.length ? and(...conditions) : undefined)
+      .orderBy(desc(project.createdAt));
+    const rows = await Promise.all(baseRows.map((row) => this.findProjectWithDetails(row.project.id)));
     const items = rows.map((row) => this.serializeProject(row));
     return paginatedResponse(items, { page: 1, per_page: items.length, total: items.length });
   }
 
   async get(id: string) {
     const projectId = this.parseId(id, 'project id');
-    const project = await this.drizzle.project.findUnique({
-      where: { id: projectId },
-      include: {
-        organization: true,
-        governance: true,
-        members: {
-          include: {
-            user: { select: { id: true, email: true, username: true, firstName: true, lastName: true } }
-          }
-        }
-      }
-    });
+    const project = await this.findProjectWithDetails(projectId);
 
     if (!project) throw new NotFoundException('Project not found');
     return this.serializeProject(project);
@@ -71,73 +61,58 @@ export class ProjectsService {
       : null;
 
     if (organizationId) {
-      const org = await this.drizzle.organization.findUnique({ where: { id: organizationId } });
+      const [org] = await this.db.client.select({ id: organization.id }).from(organization).where(eq(organization.id, organizationId)).limit(1);
       if (!org) throw new NotFoundException('Organization not found');
     }
 
     const ownerId = dto.owner_user_id ? this.parseId(dto.owner_user_id, 'owner user id') : createdById;
 
-    const project = await this.drizzle.$transaction(async (tx) => {
-      const created = await tx.project.create({
-        data: {
+    const createdProject = await this.db.client.transaction(async (tx) => {
+      const [created] = await tx.insert(project)
+        .values({
           name: dto.name,
           description: dto.description,
           createdBy: createdById,
           updatedBy: createdById,
           organizationId,
           isActive: true,
-          governance: {
-            create: {
-              projectCode: dto.project_code ?? null,
-              ownerUserId: ownerId,
-              startDate: dto.start_date ? new Date(dto.start_date) : null,
-              endDate: dto.end_date ? new Date(dto.end_date) : null,
-              governanceStatus: dto.governance_status ?? 'planned'
-            }
-          },
-          members: {
-            create: {
-              userId: ownerId,
-              role: GroupUserRole.admin,
-              addedBy: createdById
-            }
-          }
-        }
+        })
+        .returning();
+
+      await tx.insert(projectGovernance).values({
+        projectId: created.id,
+        projectCode: dto.project_code ?? null,
+        ownerUserId: ownerId,
+        startDate: dto.start_date ? new Date(dto.start_date) : null,
+        endDate: dto.end_date ? new Date(dto.end_date) : null,
+        governanceStatus: dto.governance_status ?? 'planned'
+      });
+
+      await tx.insert(projectMember).values({
+        projectId: created.id,
+        userId: ownerId,
+        role: 'admin',
+        addedBy: createdById
       });
 
       if (ownerId !== createdById) {
-        await tx.projectMember.upsert({
-          where: {
-            unique_project_user: {
-              projectId: created.id,
-              userId: createdById
-            }
-          },
-          update: { role: GroupUserRole.admin, addedBy: createdById },
-          create: {
+        await tx.insert(projectMember)
+          .values({
             projectId: created.id,
             userId: createdById,
-            role: GroupUserRole.admin,
+            role: 'admin',
             addedBy: createdById
-          }
-        });
+          })
+          .onConflictDoUpdate({
+            target: [projectMember.projectId, projectMember.userId],
+            set: { role: 'admin', addedBy: createdById },
+          });
       }
 
-      return tx.project.findUnique({
-        where: { id: created.id },
-        include: {
-          organization: true,
-          governance: true,
-          members: {
-            include: {
-              user: { select: { id: true, email: true, username: true, firstName: true, lastName: true } }
-            }
-          }
-        }
-      });
+      return created;
     });
 
-    return this.serializeProject(project);
+    return this.serializeProject(await this.findProjectWithDetails(createdProject.id));
   }
 
   async update(id: string, userId: string, dto: UpdateProjectDto) {
@@ -145,13 +120,10 @@ export class ProjectsService {
     const actorId = this.parseId(userId, 'user id');
     await this.ensureProjectAccess(projectId, actorId);
 
-    const existing = await this.drizzle.project.findUnique({
-      where: { id: projectId },
-      include: { governance: true }
-    });
+    const existing = await this.findProjectWithDetails(projectId);
     if (!existing) throw new NotFoundException('Project not found');
 
-    const projectData: Drizzle.ProjectUpdateInput = {
+    const projectData: Partial<typeof project.$inferInsert> = {
       updatedBy: actorId
     };
     if (dto.name !== undefined) projectData.name = dto.name;
@@ -165,18 +137,13 @@ export class ProjectsService {
     if (dto.governance_status !== undefined) governanceData.governanceStatus = dto.governance_status;
     if (dto.owner_user_id !== undefined) governanceData.ownerUserId = this.parseId(dto.owner_user_id, 'owner user id');
 
-    await this.drizzle.$transaction(async (tx) => {
-      await tx.project.update({
-        where: { id: projectId },
-        data: projectData
-      });
+    await this.db.client.transaction(async (tx) => {
+      await tx.update(project).set(projectData).where(eq(project.id, projectId));
 
       if (Object.keys(governanceData).length > 0) {
-        await tx.projectGovernance.upsert({
-          where: { projectId },
-          create: { projectId, ...governanceData },
-          update: governanceData
-        });
+        await tx.insert(projectGovernance)
+          .values({ projectId, ...governanceData })
+          .onConflictDoUpdate({ target: projectGovernance.projectId, set: governanceData });
       }
     });
 
@@ -188,36 +155,28 @@ export class ProjectsService {
     const actorId = this.parseId(userId, 'user id');
     await this.ensureProjectAccess(projectId, actorId);
 
-    const project = await this.drizzle.project.findUnique({
-      where: { id: projectId },
-      include: { governance: true }
-    });
-    if (!project) throw new NotFoundException('Project not found');
+    const existing = await this.findProjectWithDetails(projectId);
+    if (!existing) throw new NotFoundException('Project not found');
 
     const usage = await this.getProjectUsage(id);
     if (usage.open_requests > 0) {
       throw new BadRequestException('Cannot archive project with open requests');
     }
 
-    await this.drizzle.$transaction(async (tx) => {
-      await tx.project.update({
-        where: { id: projectId },
-        data: {
+    await this.db.client.transaction(async (tx) => {
+      await tx.update(project)
+        .set({
           isActive: false,
           updatedBy: actorId
-        }
-      });
+        })
+        .where(eq(project.id, projectId));
 
-      await tx.projectGovernance.upsert({
-        where: { projectId },
-        create: {
+      await tx.insert(projectGovernance)
+        .values({
           projectId,
           governanceStatus: 'archived'
-        },
-        update: {
-          governanceStatus: 'archived'
-        }
-      });
+        })
+        .onConflictDoUpdate({ target: projectGovernance.projectId, set: { governanceStatus: 'archived' } });
     });
 
     return this.get(id);
@@ -228,27 +187,22 @@ export class ProjectsService {
     const actorId = this.parseId(userId, 'user id');
     await this.ensureProjectAccess(projectId, actorId);
 
-    const project = await this.drizzle.project.findUnique({
-      where: { id: projectId },
-      include: { governance: true }
-    });
-    if (!project) throw new NotFoundException('Project not found');
+    const existing = await this.findProjectWithDetails(projectId);
+    if (!existing) throw new NotFoundException('Project not found');
 
-    await this.drizzle.$transaction(async (tx) => {
-      await tx.project.update({
-        where: { id: projectId },
-        data: {
+    await this.db.client.transaction(async (tx) => {
+      await tx.update(project)
+        .set({
           isActive: true,
           updatedBy: actorId
-        }
-      });
+        })
+        .where(eq(project.id, projectId));
 
-      const gov = project.governance;
+      const gov = existing.governance;
       if (gov && gov.governanceStatus === 'archived') {
-        await tx.projectGovernance.update({
-          where: { projectId },
-          data: { governanceStatus: 'active' }
-        });
+        await tx.update(projectGovernance)
+          .set({ governanceStatus: 'active' })
+          .where(eq(projectGovernance.projectId, projectId));
       }
     });
 
@@ -270,26 +224,22 @@ export class ProjectsService {
     await this.ensureProjectAccess(projectId, actor);
 
     const userId = this.parseId(dto.user_id, 'user id');
-    const profile = await this.drizzle.profile.findUnique({ where: { id: userId } });
-    if (!profile) throw new NotFoundException('User not found');
+    const [user] = await this.db.client.select({ id: profile.id }).from(profile).where(eq(profile.id, userId)).limit(1);
+    if (!user) throw new NotFoundException('User not found');
 
     const role = (dto.role ?? 'member') as GroupUserRole;
 
-    await this.drizzle.projectMember.upsert({
-      where: {
-        unique_project_user: {
-          projectId,
-          userId
-        }
-      },
-      update: { role, addedBy: actor },
-      create: {
+    await this.db.client.insert(projectMember)
+      .values({
         projectId,
         userId,
         role,
         addedBy: actor
-      }
-    });
+      })
+      .onConflictDoUpdate({
+        target: [projectMember.projectId, projectMember.userId],
+        set: { role, addedBy: actor },
+      });
 
     return this.get(id);
   }
@@ -299,26 +249,22 @@ export class ProjectsService {
     const actor = this.parseId(actorId, 'user id');
     await this.ensureProjectAccess(projectId, actor);
 
-    await this.drizzle.projectMember.delete({
-      where: {
-        unique_project_user: {
-          projectId,
-          userId: this.parseId(userId, 'user id')
-        }
-      }
-    });
+    await this.db.client.delete(projectMember)
+      .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, this.parseId(userId, 'user id'))));
 
     return this.get(id);
   }
 
   private async ensureProjectAccess(projectId: bigint, actorId: bigint) {
-    const membership = await this.drizzle.projectMember.findFirst({
-      where: {
-        projectId,
-        userId: actorId,
-        role: { in: [GroupUserRole.admin, GroupUserRole.moderator] }
-      }
-    });
+    const [membership] = await this.db.client
+      .select({ id: projectMember.id })
+      .from(projectMember)
+      .where(and(
+        eq(projectMember.projectId, projectId),
+        eq(projectMember.userId, actorId),
+        inArray(projectMember.role, ['admin', 'moderator']),
+      ))
+      .limit(1);
 
     if (!membership) {
       throw new BadRequestException('Only project admins/moderators can perform this action');
@@ -341,16 +287,17 @@ export class ProjectsService {
 
   private async getProjectUsage(id: string) {
     const projectId = this.parseId(id, 'project id');
-    const project = await this.drizzle.project.findUnique({
-      where: { id: projectId },
-      select: { id: true, name: true }
-    });
-    if (!project) throw new NotFoundException('Project not found');
+    const [projectRecord] = await this.db.client
+      .select({ id: project.id, name: project.name })
+      .from(project)
+      .where(eq(project.id, projectId))
+      .limit(1);
+    if (!projectRecord) throw new NotFoundException('Project not found');
 
-    const requests = await this.drizzle.requestInstance.findMany({
-      where: { data: { not: Drizzle.DbNull } },
-      select: { id: true, status: true, data: true }
-    });
+    const requests = await this.db.client
+      .select({ id: requestInstance.id, status: requestInstance.status, data: requestInstance.data })
+      .from(requestInstance)
+      .where(isNotNull(requestInstance.data));
 
     let total = 0;
     let open = 0;
@@ -359,7 +306,7 @@ export class ProjectsService {
       const data = row.data as Record<string, unknown>;
       const projectIdInData = String(data.project_id ?? '');
       const projectNameInData = String(data.project ?? '');
-      const matched = projectIdInData === id || projectNameInData.toLowerCase() === String(project.name).toLowerCase();
+      const matched = projectIdInData === id || projectNameInData.toLowerCase() === String(projectRecord.name).toLowerCase();
       if (!matched) continue;
       total += 1;
       if (!['completed', 'rejected', 'cancelled'].includes(String(row.status))) open += 1;
@@ -377,5 +324,38 @@ export class ProjectsService {
     } catch {
       throw new BadRequestException(`Invalid ${label}`);
     }
+  }
+
+  private async findProjectWithDetails(projectId: bigint) {
+    const [row] = await this.db.client
+      .select({ project, organization, governance: projectGovernance })
+      .from(project)
+      .leftJoin(organization, eq(project.organizationId, organization.id))
+      .leftJoin(projectGovernance, eq(projectGovernance.projectId, project.id))
+      .where(eq(project.id, projectId))
+      .limit(1);
+    if (!row) return null;
+
+    const members = await this.db.client
+      .select({
+        member: projectMember,
+        user: {
+          id: profile.id,
+          email: profile.email,
+          username: profile.username,
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+        },
+      })
+      .from(projectMember)
+      .leftJoin(profile, eq(projectMember.userId, profile.id))
+      .where(eq(projectMember.projectId, projectId));
+
+    return {
+      ...row.project,
+      organization: row.organization,
+      governance: row.governance,
+      members: members.map(({ member, user }) => ({ ...member, user })),
+    };
   }
 }

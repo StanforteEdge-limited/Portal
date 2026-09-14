@@ -1,5 +1,6 @@
-import { GroupUserRole } from '$common/db/drizzle-compat';
 import { ProjectsService } from '$modules/operations/projects/projects.service';
+
+const PROJECT_ADMIN_ROLE = 'admin';
 
 describe('ProjectsService transaction boundaries', () => {
   const drizzle: any = {
@@ -26,7 +27,7 @@ describe('ProjectsService transaction boundaries', () => {
       organization: null,
     });
     drizzle.project.create.mockResolvedValue({ id: 10n });
-    drizzle.projectMember.findFirst.mockResolvedValue({ role: GroupUserRole.admin });
+    drizzle.projectMember.findFirst.mockResolvedValue({ role: PROJECT_ADMIN_ROLE });
     drizzle.requestInstance.findMany.mockResolvedValue([]);
   });
 
