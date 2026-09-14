@@ -1,6 +1,9 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { GroupUserRole } from '$common/db/drizzle-compat';
-import { DrizzleService } from '$common/drizzle/drizzle.service';
+import { and, asc, eq, gt, inArray } from 'drizzle-orm';
+import { AppDb, DbService } from '$common/db/db.service';
+import { groupUser } from '$modules/communication/groups/model';
+import { permission, role, rolePermission, userRole } from '$modules/identity/rbac/model';
+import { requestInstance, requestType } from '$modules/requests/requests/model';
 import { toBigInt } from '$common/utils/ids';
 import {
   WorkflowStepConfig,
@@ -8,10 +11,18 @@ import {
   isLeadOrManagerApprover,
   normalizeWorkflowStepApprover,
 } from './workflow-approvers';
+import {
+  workflow,
+  workflowHistory,
+  workflowInstance,
+  workflowStep,
+  workflowStepApprover,
+  workflowTransition,
+} from './model';
 
 @Injectable()
 export class WorkflowService {
-  constructor(private readonly drizzle: DrizzleService) {}
+  constructor(private readonly db: DbService) {}
 
   async startForRequest(params: {
     requestId: bigint;
@@ -19,30 +30,36 @@ export class WorkflowService {
     initiatedBy: string;
     amount?: number | null;
   }) {
-    const existing = await this.drizzle.requestInstance.findUnique({
-      where: { id: params.requestId },
-      select: {
-        workflowInstanceId: true,
-        teamId: true,
-        data: true,
-        requestType: { select: { name: true, taxonomyKeys: true, approvalFlowJson: true } }
-      }
-    });
+    const [existing] = await this.db.client
+      .select({
+        workflowInstanceId: requestInstance.workflowInstanceId,
+        teamId: requestInstance.teamId,
+        data: requestInstance.data,
+        requestType: {
+          name: requestType.name,
+          taxonomyKeys: requestType.taxonomyKeys,
+          approvalFlowJson: requestType.approvalFlowJson,
+        },
+      })
+      .from(requestInstance)
+      .innerJoin(requestType, eq(requestInstance.requestTypeId, requestType.id))
+      .where(eq(requestInstance.id, params.requestId))
+      .limit(1);
 
     if (!existing) throw new NotFoundException('Request not found');
     if (existing.workflowInstanceId) {
-      const current = await this.drizzle.workflowInstance.findUnique({
-        where: { id: existing.workflowInstanceId },
-        select: { id: true, status: true }
-      });
+      const [current] = await this.db.client
+        .select({ id: workflowInstance.id, status: workflowInstance.status })
+        .from(workflowInstance)
+        .where(eq(workflowInstance.id, existing.workflowInstanceId))
+        .limit(1);
       if (current?.status === 'pending') {
         return { instanceId: existing.workflowInstanceId, workflowStatus: 'pending' as const };
       }
 
-      await this.drizzle.requestInstance.update({
-        where: { id: params.requestId },
-        data: { workflowInstanceId: null }
-      });
+      await this.db.client.update(requestInstance)
+        .set({ workflowInstanceId: null })
+        .where(eq(requestInstance.id, params.requestId));
     }
 
     const baseSteps = this.extractApprovalSteps(
@@ -55,24 +72,21 @@ export class WorkflowService {
       return { instanceId: null, workflowStatus: 'none' as const };
     }
 
-    return this.drizzle.$transaction(async (tx) => {
-      const workflow = await tx.workflow.create({
-        data: {
+    return this.db.client.transaction(async (tx) => {
+      const [workflowRecord] = await tx.insert(workflow).values({
           name: `${existing.requestType.name} Workflow`,
           entityType: 'request',
           isActive: true,
           createdBy: toBigInt(params.initiatedBy),
           updatedBy: toBigInt(params.initiatedBy),
           config: { requestTypeId: params.requestTypeId }
-        }
-      });
+        }).returning();
 
       const workflowSteps = await Promise.all(
         steps.map((step, index) => {
           const approver = normalizeWorkflowStepApprover(step);
-          return tx.workflowStep.create({
-            data: {
-              workflowId: workflow.id,
+          return tx.insert(workflowStep).values({
+              workflowId: workflowRecord.id,
               name: getWorkflowApproverLabel(approver.approverType, approver.approverId) || `Step ${index + 1}`,
               stepType: 'approval',
               order: index + 1,
@@ -81,16 +95,14 @@ export class WorkflowService {
               config: step,
               createdBy: toBigInt(params.initiatedBy),
               updatedBy: toBigInt(params.initiatedBy)
-            }
-          });
+            }).returning().then(([row]) => row);
         })
       );
 
       await Promise.all(
         workflowSteps.map((step, index) => {
           const approver = normalizeWorkflowStepApprover(steps[index]);
-          return tx.workflowStepApprover.create({
-            data: {
+          return tx.insert(workflowStepApprover).values({
               stepId: step.id,
               approverType: approver.approverType,
               approverId: approver.approverId,
@@ -98,28 +110,24 @@ export class WorkflowService {
               approvalOrder: 1,
               createdBy: toBigInt(params.initiatedBy),
               updatedBy: toBigInt(params.initiatedBy)
-            }
-          });
+            });
         })
       );
 
       for (let i = 0; i < workflowSteps.length - 1; i += 1) {
-        await tx.workflowTransition.create({
-          data: {
-            workflowId: workflow.id,
+        await tx.insert(workflowTransition).values({
+            workflowId: workflowRecord.id,
             fromStepId: workflowSteps[i].id,
             toStepId: workflowSteps[i + 1].id,
             name: `step_${i + 1}_approve`,
             action: 'approve',
             createdBy: toBigInt(params.initiatedBy),
             updatedBy: toBigInt(params.initiatedBy)
-          }
         });
       }
 
-      const instance = await tx.workflowInstance.create({
-        data: {
-          workflowId: workflow.id,
+      const [instance] = await tx.insert(workflowInstance).values({
+          workflowId: workflowRecord.id,
           entityType: 'request',
           entityId: params.requestId.toString(),
           currentStepId: workflowSteps[0].id,
@@ -129,8 +137,7 @@ export class WorkflowService {
             requestId: params.requestId.toString(),
             requestTypeId: params.requestTypeId
           }
-        }
-      });
+        }).returning();
 
       let currentStepId: string | null = workflowSteps[0].id;
       let workflowStatus: 'pending' | 'approved' = 'pending';
@@ -141,15 +148,13 @@ export class WorkflowService {
         if (isLeadOrManager) {
           autoApprovedInitial = true;
           const nextStep = workflowSteps[1];
-          await tx.workflowHistory.create({
-            data: {
+          await tx.insert(workflowHistory).values({
               instanceId: instance.id,
               action: 'auto_approve',
               performedBy: toBigInt(params.initiatedBy),
               comment: 'Auto-approved: requester is team lead',
               fromStepId: workflowSteps[0].id,
               toStepId: nextStep?.id
-            }
           });
           if (nextStep) {
             currentStepId = nextStep.id;
@@ -160,8 +165,7 @@ export class WorkflowService {
         }
       }
 
-      await tx.workflowHistory.create({
-        data: {
+      await tx.insert(workflowHistory).values({
           instanceId: instance.id,
           action: 'start',
           performedBy: toBigInt(params.initiatedBy),
@@ -169,12 +173,10 @@ export class WorkflowService {
             currentStepId,
             autoApprovedInitial
           }
-        }
       });
 
-      await tx.workflowInstance.update({
-        where: { id: instance.id },
-        data: {
+      await tx.update(workflowInstance)
+        .set({
           currentStepId,
           ...(workflowStatus === 'approved'
             ? {
@@ -182,13 +184,12 @@ export class WorkflowService {
                 completedAt: new Date()
               }
             : {})
-        }
-      });
+        })
+        .where(eq(workflowInstance.id, instance.id));
 
-      await tx.requestInstance.update({
-        where: { id: params.requestId },
-        data: { workflowInstanceId: instance.id }
-      });
+      await tx.update(requestInstance)
+        .set({ workflowInstanceId: instance.id })
+        .where(eq(requestInstance.id, params.requestId));
 
       return { instanceId: instance.id, workflowStatus, autoApprovedInitial };
     });
@@ -208,24 +209,21 @@ export class WorkflowService {
       return { instanceId: null, workflowStatus: 'none' as const };
     }
 
-    return this.drizzle.$transaction(async (tx) => {
-      const workflow = await tx.workflow.create({
-        data: {
+    return this.db.client.transaction(async (tx) => {
+      const [workflowRecord] = await tx.insert(workflow).values({
           name: params.name ?? `${params.entityType} workflow`,
           entityType: params.entityType,
           isActive: true,
           createdBy: toBigInt(params.initiatedBy),
           updatedBy: toBigInt(params.initiatedBy),
           config: {},
-        },
-      });
+        }).returning();
 
       const workflowSteps = await Promise.all(
         baseSteps.map((step, index) => {
           const approver = normalizeWorkflowStepApprover(step);
-          return tx.workflowStep.create({
-            data: {
-              workflowId: workflow.id,
+          return tx.insert(workflowStep).values({
+              workflowId: workflowRecord.id,
               name: getWorkflowApproverLabel(approver.approverType, approver.approverId) || `Step ${index + 1}`,
               stepType: 'approval',
               order: index + 1,
@@ -234,21 +232,18 @@ export class WorkflowService {
               config: step as any,
               createdBy: toBigInt(params.initiatedBy),
               updatedBy: toBigInt(params.initiatedBy),
-            },
-          });
+            }).returning().then(([row]) => row);
         }),
       );
 
-      const instance = await tx.workflowInstance.create({
-        data: {
-          workflowId: workflow.id,
+      const [instance] = await tx.insert(workflowInstance).values({
+          workflowId: workflowRecord.id,
           entityType: params.entityType,
           entityId: params.entityId,
           currentStepId: workflowSteps[0].id,
           status: 'pending',
           initiatedBy: toBigInt(params.initiatedBy),
-        },
-      });
+        }).returning();
 
       return { instanceId: instance.id, workflowStatus: 'pending' as const };
     });
@@ -260,10 +255,7 @@ export class WorkflowService {
     performedBy: string;
     comment?: string;
   }) {
-    const instance = await this.drizzle.workflowInstance.findUnique({
-      where: { id: params.instanceId },
-      include: { currentStep: { include: { approvers: true } } }
-    });
+    const instance = await this.findWorkflowInstanceWithCurrentStep(params.instanceId);
     if (!instance) throw new NotFoundException('Workflow instance not found');
     if (instance.status !== 'pending') throw new BadRequestException('Workflow instance is not active');
     if (!instance.currentStep) throw new BadRequestException('Workflow has no active step');
@@ -274,125 +266,104 @@ export class WorkflowService {
       throw new BadRequestException('User is not an allowed approver for the current step');
     }
 
-    return this.drizzle.$transaction(async (tx) => {
+    return this.db.client.transaction(async (tx) => {
       if (params.action === 'reject') {
-        await tx.workflowHistory.create({
-          data: {
+        await tx.insert(workflowHistory).values({
             instanceId: instance.id,
             action: 'reject',
             performedBy: toBigInt(params.performedBy),
             comment: params.comment,
             fromStepId: instance.currentStepId ?? undefined
-          }
         });
 
-        await tx.workflowInstance.update({
-          where: { id: instance.id },
-          data: {
+        await tx.update(workflowInstance)
+          .set({
             status: 'rejected',
             currentStepId: null,
             completedAt: new Date()
-          }
-        });
+          })
+          .where(eq(workflowInstance.id, instance.id));
 
         return { status: 'rejected', completed: true };
       }
 
-      const nextStep = await tx.workflowStep.findFirst({
-        where: {
-          workflowId: instance.workflowId,
-          order: { gt: currentStep.order }
-        },
-        orderBy: { order: 'asc' }
-      });
+      const [nextStep] = await tx.select()
+        .from(workflowStep)
+        .where(and(eq(workflowStep.workflowId, instance.workflowId), gt(workflowStep.order, currentStep.order)))
+        .orderBy(asc(workflowStep.order))
+        .limit(1);
 
-      await tx.workflowHistory.create({
-        data: {
+      await tx.insert(workflowHistory).values({
           instanceId: instance.id,
           action: 'approve',
           performedBy: toBigInt(params.performedBy),
           comment: params.comment,
           fromStepId: currentStep.id,
           toStepId: nextStep?.id
-        }
       });
 
       if (!nextStep) {
-        await tx.workflowInstance.update({
-          where: { id: instance.id },
-          data: {
+        await tx.update(workflowInstance)
+          .set({
             status: 'approved',
             currentStepId: null,
             completedAt: new Date()
-          }
-        });
+          })
+          .where(eq(workflowInstance.id, instance.id));
 
         return { status: 'approved', completed: true };
       }
 
-      await tx.workflowInstance.update({
-        where: { id: instance.id },
-        data: { currentStepId: nextStep.id }
-      });
+      await tx.update(workflowInstance)
+        .set({ currentStepId: nextStep.id })
+        .where(eq(workflowInstance.id, instance.id));
 
       return { status: 'pending', completed: false, currentStepId: nextStep.id };
     });
   }
 
   async getAvailableActions(instanceId: string) {
-    const instance = await this.drizzle.workflowInstance.findUnique({ where: { id: instanceId } });
+    const instance = await this.findWorkflowInstance(instanceId);
     if (!instance) throw new NotFoundException('Workflow instance not found');
     if (instance.status !== 'pending') return [];
     return ['approve', 'reject'];
   }
 
   async getHistory(instanceId: string) {
-    return this.drizzle.workflowHistory.findMany({
-      where: { instanceId },
-      orderBy: { createdAt: 'asc' }
-    });
+    return this.db.client
+      .select()
+      .from(workflowHistory)
+      .where(eq(workflowHistory.instanceId, instanceId))
+      .orderBy(asc(workflowHistory.createdAt));
   }
 
   async getInstance(instanceId: string) {
-    const instance = await this.drizzle.workflowInstance.findUnique({
-      where: { id: instanceId },
-      include: {
-        workflow: {
-          include: {
-            steps: { orderBy: { order: 'asc' }
-            }
-          }
-        }
-      }
-    });
+    const instance = await this.findWorkflowInstanceWithWorkflow(instanceId);
     if (!instance) throw new NotFoundException('Workflow instance not found');
     return instance;
   }
 
   async cancelWorkflow(instanceId: string, performedBy: string, reason?: string) {
-    const instance = await this.drizzle.workflowInstance.findUnique({ where: { id: instanceId } });
+    const instance = await this.findWorkflowInstance(instanceId);
     if (!instance) throw new NotFoundException('Workflow instance not found');
     if (instance.status !== 'pending') throw new BadRequestException('Workflow is already closed');
 
-    return this.drizzle.$transaction(async (tx) => {
-      await tx.workflowHistory.create({
-        data: {
+    return this.db.client.transaction(async (tx) => {
+      await tx.insert(workflowHistory).values({
           instanceId,
           action: 'cancel',
           performedBy: toBigInt(performedBy),
           comment: reason,
           fromStepId: instance.currentStepId
-        }
       });
 
-      await tx.workflowInstance.update({
-        where: { id: instanceId },
-        data: {
+      await tx.update(workflowInstance)
+        .set({
           status: 'cancelled',
           completedAt: new Date(),
           currentStepId: null
-        }
-      });
+        })
+        .where(eq(workflowInstance.id, instanceId));
 
       return { success: true };
     });
@@ -521,13 +492,13 @@ export class WorkflowService {
           approverType === 'role' && approverId === 'accountant'
             ? ['accountant', 'finance_manager']
             : [approverId];
-        const hasRole = await this.drizzle.userRole.count({
-          where: {
-            profileId: toBigInt(userId),
-            role: { slug: { in: roleSlugs } }
-          }
-        });
-        if (hasRole > 0) return true;
+        const [assignment] = await this.db.client
+          .select({ id: userRole.id })
+          .from(userRole)
+          .innerJoin(role, eq(userRole.roleId, role.id))
+          .where(and(eq(userRole.profileId, toBigInt(userId)), inArray(role.slug, roleSlugs)))
+          .limit(1);
+        if (assignment) return true;
       }
 
       if (
@@ -542,17 +513,14 @@ export class WorkflowService {
               : approverId === 'hr'
                 ? 'hr.approve'
                 : approverId;
-        const hasPermission = await this.drizzle.rolePermission.count({
-          where: {
-            role: {
-              users: {
-                some: { profileId: toBigInt(userId) }
-              }
-            },
-            permission: { slug: permissionSlug }
-          }
-        });
-        if (hasPermission > 0) return true;
+        const [assignment] = await this.db.client
+          .select({ id: rolePermission.id })
+          .from(rolePermission)
+          .innerJoin(permission, eq(rolePermission.permissionId, permission.id))
+          .innerJoin(userRole, eq(rolePermission.roleId, userRole.roleId))
+          .where(and(eq(userRole.profileId, toBigInt(userId)), eq(permission.slug, permissionSlug)))
+          .limit(1);
+        if (assignment) return true;
       }
     }
 
@@ -567,20 +535,14 @@ export class WorkflowService {
     userId: string
   ) {
     if (instance.entityType !== 'request') return false;
-    const request = await this.drizzle.requestInstance.findUnique({
-      where: { id: toBigInt(instance.entityId) },
-      select: { teamId: true }
-    });
+    const request = await this.findRequestTeam(toBigInt(instance.entityId));
     if (!request?.teamId) return false;
 
-    const member = await this.drizzle.groupUser.findFirst({
-      where: {
-        groupId: request.teamId,
-        userId: toBigInt(userId),
-        role: GroupUserRole.moderator
-      },
-      select: { id: true }
-    });
+    const [member] = await this.db.client
+      .select({ id: groupUser.id })
+      .from(groupUser)
+      .where(and(eq(groupUser.groupId, request.teamId), eq(groupUser.userId, toBigInt(userId)), eq(groupUser.role, 'moderator')))
+      .limit(1);
     return Boolean(member);
   }
 
@@ -592,79 +554,119 @@ export class WorkflowService {
     userId: string
   ) {
     if (instance.entityType !== 'request') return false;
-    const request = await this.drizzle.requestInstance.findUnique({
-      where: { id: toBigInt(instance.entityId) },
-      select: { teamId: true }
-    });
+    const request = await this.findRequestTeam(toBigInt(instance.entityId));
     if (!request?.teamId) return false;
 
-    const member = await this.drizzle.groupUser.findFirst({
-      where: {
-        groupId: request.teamId,
-        userId: toBigInt(userId),
-        role: { in: [GroupUserRole.moderator, GroupUserRole.admin] }
-      },
-      select: { id: true }
-    });
+    const [member] = await this.db.client
+      .select({ id: groupUser.id })
+      .from(groupUser)
+      .where(and(
+        eq(groupUser.groupId, request.teamId),
+        eq(groupUser.userId, toBigInt(userId)),
+        inArray(groupUser.role, ['moderator', 'admin']),
+      ))
+      .limit(1);
     if (member) return true;
 
-    const managerRole = await this.drizzle.userRole.findFirst({
-      where: {
-        profileId: toBigInt(userId),
-        role: { slug: 'manager' }
-      },
-      select: { id: true }
-    });
+    const [managerRole] = await this.db.client
+      .select({ id: userRole.id })
+      .from(userRole)
+      .innerJoin(role, eq(userRole.roleId, role.id))
+      .where(and(eq(userRole.profileId, toBigInt(userId)), eq(role.slug, 'manager')))
+      .limit(1);
     return Boolean(managerRole);
   }
 
   private async isTeamLeadForRequestIdTx(
-    tx: any,
+    tx: Parameters<Parameters<AppDb['transaction']>[0]>[0],
     requestId: bigint,
     userId: string
   ) {
-    const request = await tx.requestInstance.findUnique({
-      where: { id: requestId },
-      select: { teamId: true }
-    });
+    const request = await this.findRequestTeamTx(tx, requestId);
     if (!request?.teamId) return false;
 
-    const member = await tx.groupUser.findFirst({
-      where: {
-        groupId: request.teamId,
-        userId: toBigInt(userId),
-        role: GroupUserRole.moderator
-      },
-      select: { id: true }
-    });
+    const [member] = await tx
+      .select({ id: groupUser.id })
+      .from(groupUser)
+      .where(and(eq(groupUser.groupId, request.teamId), eq(groupUser.userId, toBigInt(userId)), eq(groupUser.role, 'moderator')))
+      .limit(1);
     return Boolean(member);
   }
 
   private async isTeamLeadOrManagerForRequestIdTx(
-    tx: any,
+    tx: Parameters<Parameters<AppDb['transaction']>[0]>[0],
     requestId: bigint,
     userId: string
   ) {
-    const request = await tx.requestInstance.findUnique({
-      where: { id: requestId },
-      select: { teamId: true }
-    });
+    const request = await this.findRequestTeamTx(tx, requestId);
     if (!request?.teamId) return false;
 
-    const member = await tx.groupUser.findFirst({
-      where: {
-        groupId: request.teamId,
-        userId: toBigInt(userId),
-        role: { in: [GroupUserRole.moderator, GroupUserRole.admin] }
-      },
-      select: { id: true }
-    });
+    const [member] = await tx
+      .select({ id: groupUser.id })
+      .from(groupUser)
+      .where(and(
+        eq(groupUser.groupId, request.teamId),
+        eq(groupUser.userId, toBigInt(userId)),
+        inArray(groupUser.role, ['moderator', 'admin']),
+      ))
+      .limit(1);
     if (member) return true;
 
-    const managerRole = await tx.userRole.findFirst({
-      where: { profileId: toBigInt(userId), role: { slug: 'manager' } },
-      select: { id: true }
-    });
+    const [managerRole] = await tx
+      .select({ id: userRole.id })
+      .from(userRole)
+      .innerJoin(role, eq(userRole.roleId, role.id))
+      .where(and(eq(userRole.profileId, toBigInt(userId)), eq(role.slug, 'manager')))
+      .limit(1);
     return Boolean(managerRole);
+  }
+
+  private async findWorkflowInstance(instanceId: string) {
+    const [instance] = await this.db.client.select().from(workflowInstance).where(eq(workflowInstance.id, instanceId)).limit(1);
+    return instance ?? null;
+  }
+
+  private async findWorkflowInstanceWithCurrentStep(instanceId: string) {
+    const instance = await this.findWorkflowInstance(instanceId);
+    if (!instance) return null;
+    const [currentStep] = instance.currentStepId
+      ? await this.db.client.select().from(workflowStep).where(eq(workflowStep.id, instance.currentStepId)).limit(1)
+      : [null];
+    const approvers = currentStep
+      ? await this.db.client.select().from(workflowStepApprover).where(eq(workflowStepApprover.stepId, currentStep.id))
+      : [];
+    return { ...instance, currentStep: currentStep ? { ...currentStep, approvers } : null };
+  }
+
+  private async findWorkflowInstanceWithWorkflow(instanceId: string) {
+    const instance = await this.findWorkflowInstance(instanceId);
+    if (!instance) return null;
+    const [workflowRecord] = await this.db.client.select().from(workflow).where(eq(workflow.id, instance.workflowId)).limit(1);
+    const steps = workflowRecord
+      ? await this.db.client
+          .select()
+          .from(workflowStep)
+          .where(eq(workflowStep.workflowId, workflowRecord.id))
+          .orderBy(asc(workflowStep.order))
+      : [];
+    return { ...instance, workflow: workflowRecord ? { ...workflowRecord, steps } : null };
+  }
+
+  private async findRequestTeam(requestId: bigint) {
+    const [request] = await this.db.client
+      .select({ teamId: requestInstance.teamId })
+      .from(requestInstance)
+      .where(eq(requestInstance.id, requestId))
+      .limit(1);
+    return request ?? null;
+  }
+
+  private async findRequestTeamTx(tx: Parameters<Parameters<AppDb['transaction']>[0]>[0], requestId: bigint) {
+    const [request] = await tx
+      .select({ teamId: requestInstance.teamId })
+      .from(requestInstance)
+      .where(eq(requestInstance.id, requestId))
+      .limit(1);
+    return request ?? null;
   }
 }

@@ -1,13 +1,12 @@
 import { WorkflowService } from '$modules/requests/workflow/workflow.service';
-import { DrizzleService } from '$common/drizzle/drizzle.service';
 
 describe('WorkflowService.startForEntity', () => {
   let service: WorkflowService;
-  let drizzle: jest.Mocked<DrizzleService>;
+  let db: any;
 
   beforeEach(() => {
-    drizzle = { $transaction: jest.fn(), workflow: { create: jest.fn() }, workflowStep: { create: jest.fn() }, workflowInstance: { create: jest.fn() } } as any;
-    service = new WorkflowService(drizzle as any);
+    db = { client: { transaction: jest.fn() } };
+    service = new WorkflowService(db);
   });
 
   it('returns none when approvalFlowJson has no steps', async () => {
