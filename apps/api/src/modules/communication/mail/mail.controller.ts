@@ -3,15 +3,20 @@ import {
   Param, Body, Query, Req, Res, UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags, ApiQuery } from '@nestjs/swagger';
+import { and, desc, eq } from 'drizzle-orm';
 import { JwtAuthGuard } from '$common/auth/jwt-auth.guard';
-import { DrizzleService } from '$common/drizzle/drizzle.service';
+import { DbService } from '$common/db/db.service';
 import { MailAccountService } from './mail-account.service';
 import { MailSyncService } from './mail-sync.service';
 import { MailImapService } from './mail-imap.service';
 import { MailSmtpService } from './mail-smtp.service';
 import { SendMessageDto } from './dto/send-message.dto';
 import { BackgroundJobsService } from '$modules/background-jobs/background-jobs.service';
-import { toBigInt } from '$common/utils/ids';
+import { organization, profileOrganization } from '$modules/directory/organizations/model';
+import { employeeProfile } from '$modules/hr/hr/model';
+import { profile } from '$modules/identity/users/model';
+import { tenantMembership } from '$modules/tenancy/model';
+import { mailAccount, mailHeader } from './model';
 import type { Response } from 'express';
 
 @ApiTags('Mail')
@@ -22,7 +27,7 @@ export class MailController {
     private readonly syncService: MailSyncService,
     private readonly imapService: MailImapService,
     private readonly smtpService: MailSmtpService,
-    private readonly drizzle: DrizzleService,
+    private readonly db: DbService,
     private readonly backgroundJobs: BackgroundJobsService,
   ) {}
 
@@ -124,12 +129,13 @@ export class MailController {
   ) {
     await this.accountService.findAccountForUser(BigInt(accountId), BigInt(req.user.id));
     const skip = (Number(page) - 1) * Number(limit);
-    const data = await this.drizzle.mailHeader.findMany({
-      where: { accountId: BigInt(accountId), folder },
-      orderBy: { date: 'desc' },
-      skip,
-      take: Number(limit),
-    });
+    const data = await this.db.client
+      .select()
+      .from(mailHeader)
+      .where(and(eq(mailHeader.accountId, BigInt(accountId)), eq(mailHeader.folder, folder)))
+      .orderBy(desc(mailHeader.date))
+      .offset(skip)
+      .limit(Number(limit));
     return { data };
   }
 
@@ -176,10 +182,10 @@ export class MailController {
     const accessToken = await this.accountService.getDecryptedAccessToken(account);
     const read = isRead !== 'false';
     await this.imapService.markRead(account, accessToken, folder, uid, read);
-    await this.drizzle.mailHeader.updateMany({
-      where: { accountId: account.id, folder, uid },
-      data: { isRead: read },
-    }).catch(() => null);
+    await this.db.client.update(mailHeader)
+      .set({ isRead: read })
+      .where(and(eq(mailHeader.accountId, account.id), eq(mailHeader.folder, folder), eq(mailHeader.uid, uid)))
+      .catch(() => null);
     return { ok: true };
   }
 
@@ -262,26 +268,15 @@ export class MailController {
     @Req() req: any,
   ) {
     const account = await this.accountService.findAccountForUser(BigInt(accountId), BigInt(req.user.id));
-    const profile = await this.drizzle.profile.findUnique({
-      where: { id: account.profileId },
-      include: {
-        primaryOrganization: true,
-        employeeProfile: true,
-        organizations: {
-          include: {
-            organization: true,
-          },
-        },
-      },
-    });
+    const user = await this.findSignatureProfile(account.profileId);
 
-    if (!profile) return { html: '' };
+    if (!user) return { html: '' };
 
     const emailDomain = account.emailAddress.split('@')[1]?.toLowerCase().trim();
-    let matchedOrg = profile.primaryOrganization;
+    let matchedOrg = user.primaryOrganization;
 
-    if (emailDomain && profile.organizations && profile.organizations.length > 0) {
-      for (const membership of profile.organizations) {
+    if (emailDomain && user.organizations.length > 0) {
+      for (const membership of user.organizations) {
         const org = membership.organization;
         if (!org) continue;
         const meta = (org.metadata && typeof org.metadata === 'object') ? (org.metadata as any) : {};
@@ -310,11 +305,11 @@ export class MailController {
       : {};
 
     const vars: Record<string, string> = {
-      firstName: profile.firstName ?? '',
-      lastName: profile.lastName ?? '',
-      email: account.emailAddress ?? profile.email ?? '',
-      phone: profile.phone ?? '',
-      title: profile.employeeProfile?.jobTitle ?? profile.occupation ?? 'Staff Member',
+      firstName: user.firstName ?? '',
+      lastName: user.lastName ?? '',
+      email: account.emailAddress ?? user.email ?? '',
+      phone: user.phone ?? '',
+      title: user.employeeProfile?.jobTitle ?? user.occupation ?? 'Staff Member',
       companyName: matchedOrg?.name ?? orgMetadata.company_name ?? 'The Organisation',
       logoUrl: orgMetadata.logo_url ?? '',
       website: orgMetadata.website ?? '',
@@ -385,11 +380,13 @@ export class MailController {
   }
 
   private async enqueueSyncedAccount(accountId: bigint) {
-    const account = await this.drizzle.mailAccount.findUnique({ where: { id: accountId } });
+    const [account] = await this.db.client.select().from(mailAccount).where(eq(mailAccount.id, accountId)).limit(1);
     if (!account) return;
-    const membership = await this.drizzle.tenantMembership.findFirst({
-      where: { profileId: account.profileId, status: 'active' },
-    });
+    const [membership] = await this.db.client
+      .select()
+      .from(tenantMembership)
+      .where(and(eq(tenantMembership.profileId, account.profileId), eq(tenantMembership.status, 'active')))
+      .limit(1);
     if (!membership) return;
     await this.backgroundJobs
       .enqueue({
@@ -413,9 +410,11 @@ export class MailController {
       const data = JSON.parse(decodedString);
       const emailAddress = data.emailAddress;
       if (emailAddress) {
-        const account = await this.drizzle.mailAccount.findFirst({
-          where: { emailAddress, provider: 'GOOGLE' },
-        });
+        const [account] = await this.db.client
+          .select()
+          .from(mailAccount)
+          .where(and(eq(mailAccount.emailAddress, emailAddress), eq(mailAccount.provider, 'GOOGLE')))
+          .limit(1);
         if (account) {
           await this.enqueueSyncedAccount(account.id);
         }
@@ -441,9 +440,11 @@ export class MailController {
       for (const notification of body.value) {
         const subscriptionId = notification.subscriptionId;
         if (subscriptionId) {
-          const account = await this.drizzle.mailAccount.findFirst({
-            where: { outlookSubscriptionId: subscriptionId },
-          });
+          const [account] = await this.db.client
+            .select()
+            .from(mailAccount)
+            .where(eq(mailAccount.outlookSubscriptionId, subscriptionId))
+            .limit(1);
           if (account) {
             await this.enqueueSyncedAccount(account.id);
           }
@@ -452,5 +453,37 @@ export class MailController {
     }
 
     res.status(202).send();
+  }
+
+  private async findSignatureProfile(profileId: bigint) {
+    const [user] = await this.db.client.select().from(profile).where(eq(profile.id, profileId)).limit(1);
+    if (!user) return null;
+
+    const [primaryOrganization] = user.primaryOrganizationId
+      ? await this.db.client
+          .select()
+          .from(organization)
+          .where(eq(organization.id, user.primaryOrganizationId))
+          .limit(1)
+      : [null];
+
+    const [employee] = await this.db.client
+      .select()
+      .from(employeeProfile)
+      .where(eq(employeeProfile.userId, user.id))
+      .limit(1);
+
+    const organizations = await this.db.client
+      .select({ membership: profileOrganization, organization })
+      .from(profileOrganization)
+      .leftJoin(organization, eq(profileOrganization.organizationId, organization.id))
+      .where(eq(profileOrganization.profileId, user.id));
+
+    return {
+      ...user,
+      primaryOrganization,
+      employeeProfile: employee ?? null,
+      organizations,
+    };
   }
 }
