@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { Drizzle } from '$common/db/drizzle-compat';
-import { DrizzleService } from '$common/drizzle/drizzle.service';
+import { SQL, and, asc, count, eq, ilike, inArray, isNull, or } from 'drizzle-orm';
+import { DbService } from '$common/db/db.service';
+import { TenantContextService } from '$common/auth/tenant-context.service';
 import { paginatedResponse } from '$common/helpers/paginated-response';
 import { CreateTaxonomyDto } from '$modules/requests/taxonomy/dto/create-taxonomy.dto';
 import { SyncTaxonomyTermsDto } from '$modules/requests/taxonomy/dto/sync-taxonomy-terms.dto';
@@ -8,46 +9,63 @@ import { UpdateTaxonomyDto } from '$modules/requests/taxonomy/dto/update-taxonom
 import { UpdateFieldOptionsDto } from '$modules/requests/taxonomy/dto/update-field-options.dto';
 import { UpsertTagTermDto } from '$modules/requests/taxonomy/dto/upsert-tag-term.dto';
 import { ReplaceEntityTagsDto } from '$modules/requests/taxonomy/dto/replace-entity-tags.dto';
+import { taxonomy, taxonomyTagAssignment, taxonomyTerm } from './model';
+import { form, formField } from '$modules/requests/forms/model';
+import { requestCategory, requestGroup, requestType } from '$modules/requests/requests/model';
 
 @Injectable()
 export class TaxonomyService {
-  constructor(private readonly drizzle: DrizzleService) {}
+  constructor(
+    private readonly db: DbService,
+    private readonly tenantContext: TenantContextService,
+  ) {}
 
   async list(query: Record<string, any>) {
     const includeInactive = query.include_inactive === 'true';
 
-    const [requestGroups, requestTypes, formFields] = await this.drizzle.$transaction([
-      this.drizzle.requestGroup.findMany({
-        where: includeInactive ? {} : { isActive: true },
-        orderBy: { name: 'asc' }
-      }),
-      this.drizzle.requestType.findMany({
-        where: {
-          ...(includeInactive ? {} : { isActive: true }),
-          ...(query.group_id ? { groupId: String(query.group_id) } : {})
-        },
-        orderBy: { name: 'asc' }
-      }),
-      this.drizzle.formField.findMany({
-        where: {
-          fieldType: { in: ['select', 'radio', 'checkbox', 'multiselect'] }
-        },
-        include: { form: { select: { id: true, name: true } } },
-        orderBy: [{ form: { name: 'asc' } }, { displayOrder: 'asc' }]
-      })
+    const requestGroupConditions = this.requestGroupConditions();
+    if (!includeInactive) requestGroupConditions.push(eq(requestGroup.isActive, true));
+
+    const requestTypeConditions: SQL[] = [];
+    if (!includeInactive) requestTypeConditions.push(eq(requestType.isActive, true));
+
+    const formFieldConditions = [
+      ...this.formFieldReadConditions(),
+      inArray(formField.fieldType, ['select', 'radio', 'checkbox', 'multiselect']),
+    ];
+
+    const [requestGroups, requestTypes, formFields] = await Promise.all([
+      this.db.client
+        .select()
+        .from(requestGroup)
+        .where(requestGroupConditions.length ? and(...requestGroupConditions) : undefined)
+        .orderBy(asc(requestGroup.name)),
+      this.listRequestTypes(query.group_id ? String(query.group_id) : undefined, requestTypeConditions),
+      this.db.client
+        .select({
+          row: formField,
+          form: {
+            id: form.id,
+            name: form.name,
+          },
+        })
+        .from(formField)
+        .leftJoin(form, eq(formField.formId, form.id))
+        .where(and(...formFieldConditions))
+        .orderBy(asc(form.name), asc(formField.displayOrder)),
     ]);
 
     return {
       request_groups: requestGroups,
       request_types: requestTypes,
-      form_field_taxonomies: formFields.map((field) => ({
-        id: field.id,
-        form_id: field.form.id,
-        form_name: field.form.name,
-        field_key: field.fieldKey,
-        field_label: field.fieldLabel,
-        field_type: field.fieldType,
-        options: this.normalizeOptions(field.fieldOptions)
+      form_field_taxonomies: formFields.map(({ row, form: linkedForm }) => ({
+        id: row.id,
+        form_id: linkedForm?.id,
+        form_name: linkedForm?.name,
+        field_key: row.fieldKey,
+        field_label: row.fieldLabel,
+        field_type: row.fieldType,
+        options: this.normalizeOptions(row.fieldOptions)
       }))
     };
   }
@@ -56,55 +74,61 @@ export class TaxonomyService {
     const includeInactive = query.include_inactive === 'true';
     const moduleFilter = query.module ? String(query.module) : undefined;
 
-    const items = await this.drizzle.taxonomy.findMany({
-      where: {
-        ...(includeInactive ? {} : { isActive: true }),
-        ...(moduleFilter ? { module: moduleFilter } : {})
-      },
-      include: {
-        terms: {
-          where: includeInactive ? {} : { isActive: true },
-          orderBy: [{ sortOrder: 'asc' }, { label: 'asc' }]
-        }
-      },
-      orderBy: { name: 'asc' }
-    });
+    const conditions = this.taxonomyReadConditions();
+    if (!includeInactive) conditions.push(eq(taxonomy.isActive, true));
+    if (moduleFilter) conditions.push(eq(taxonomy.module, moduleFilter));
+    const rows = await this.db.client
+      .select()
+      .from(taxonomy)
+      .where(conditions.length ? and(...conditions) : undefined)
+      .orderBy(asc(taxonomy.name));
+    const items = await Promise.all(rows.map((row) => this.withTerms(row, includeInactive)));
     return paginatedResponse(items, { page: 1, per_page: items.length, total: items.length });
   }
 
   async createTaxonomy(dto: CreateTaxonomyDto) {
     const key = dto.key.trim().toLowerCase().replace(/\s+/g, '_');
-    return this.drizzle.taxonomy.create({
-      data: {
+    const [created] = await this.db.client
+      .insert(taxonomy)
+      .values({
+        tenantId: this.currentTenantId(),
         key,
         name: dto.name.trim(),
         description: dto.description,
         module: dto.module,
         isActive: dto.is_active ?? true
-      },
-      include: { terms: { orderBy: [{ sortOrder: 'asc' }, { label: 'asc' }] } }
-    });
+      })
+      .returning();
+    return this.withTerms(created, true);
   }
 
   async updateTaxonomy(id: string, dto: UpdateTaxonomyDto) {
-    const existing = await this.drizzle.taxonomy.findUnique({ where: { id } });
+    const existing = await this.findTaxonomyById(id);
     if (!existing) throw new NotFoundException('Taxonomy not found');
 
     try {
-      return await this.drizzle.taxonomy.update({
-        where: { id },
-        data: {
-          key: dto.key ? dto.key.trim().toLowerCase().replace(/\s+/g, '_') : undefined,
+      const nextKey = dto.key ? dto.key.trim().toLowerCase().replace(/\s+/g, '_') : undefined;
+      if (nextKey && nextKey !== existing.key) {
+        const duplicate = await this.findTaxonomyByKey(nextKey);
+        if (duplicate && duplicate.id !== id) {
+          throw new ConflictException('A taxonomy with this key already exists.');
+        }
+      }
+      const [updated] = await this.db.client
+        .update(taxonomy)
+        .set(this.cleanUpdate({
+          key: nextKey,
           name: dto.name?.trim(),
           description: dto.description,
           module: dto.module,
           renderType: dto.render_type,
           isActive: dto.is_active
-        },
-        include: { terms: { orderBy: [{ sortOrder: 'asc' }, { label: 'asc' }] } }
-      });
+        }))
+        .where(and(eq(taxonomy.id, id), ...this.taxonomyWriteConditions()))
+        .returning();
+      return this.withTerms(updated, true);
     } catch (err) {
-      if (err instanceof Drizzle.DrizzleClientKnownRequestError && err.code === 'P2002') {
+      if (err instanceof ConflictException) {
         throw new ConflictException('A taxonomy with this key already exists.');
       }
       throw err;
@@ -112,43 +136,41 @@ export class TaxonomyService {
   }
 
   async deleteTaxonomy(id: string) {
-    const existing = await this.drizzle.taxonomy.findUnique({ where: { id } });
+    const existing = await this.findTaxonomyById(id);
     if (!existing) throw new NotFoundException('Taxonomy not found');
-    await this.drizzle.taxonomy.delete({ where: { id } });
+    await this.db.client.delete(taxonomy).where(and(eq(taxonomy.id, id), ...this.taxonomyWriteConditions()));
     return { success: true };
   }
 
   async syncTerms(taxonomyId: string, dto: SyncTaxonomyTermsDto) {
-    const taxonomy = await this.drizzle.taxonomy.findUnique({ where: { id: taxonomyId } });
-    if (!taxonomy) throw new NotFoundException('Taxonomy not found');
+    const existing = await this.findTaxonomyById(taxonomyId);
+    if (!existing) throw new NotFoundException('Taxonomy not found');
 
     const terms = dto.terms
       .map((term) => term.trim())
       .filter((term, index, all) => term.length > 0 && all.indexOf(term) === index);
 
-    await this.drizzle.$transaction(async (tx) => {
-      await tx.taxonomyTerm.deleteMany({ where: { taxonomyId } });
+    await this.db.client.transaction(async (tx) => {
+      await tx.delete(taxonomyTerm).where(and(eq(taxonomyTerm.taxonomyId, taxonomyId), ...this.taxonomyTermWriteConditions()));
       if (terms.length > 0) {
-        await tx.taxonomyTerm.createMany({
-          data: terms.map((term, index) => ({
+        await tx.insert(taxonomyTerm).values(
+          terms.map((term, index) => ({
+            tenantId: this.currentTenantId(),
             taxonomyId,
             value: term.toLowerCase().replace(/\s+/g, '_'),
             label: term,
             sortOrder: index,
             isActive: true
-          }))
-        });
+          })),
+        );
       }
     });
 
-    return this.drizzle.taxonomy.findUnique({
-      where: { id: taxonomyId },
-      include: { terms: { orderBy: [{ sortOrder: 'asc' }, { label: 'asc' }] } }
-    });
+    return this.withTerms(existing, true);
   }
 
   async updateFieldOptions(fieldId: string, dto: UpdateFieldOptionsDto) {
-    const field = await this.drizzle.formField.findUnique({ where: { id: fieldId } });
+    const field = await this.findFormField(fieldId);
     if (!field) throw new NotFoundException('Form field not found');
 
     if (!['select', 'radio', 'checkbox', 'multiselect'].includes(field.fieldType)) {
@@ -159,20 +181,23 @@ export class TaxonomyService {
       .map((option) => option.trim())
       .filter((option, index, arr) => option.length > 0 && arr.indexOf(option) === index);
 
-    const updated = await this.drizzle.formField.update({
-      where: { id: fieldId },
-      data: {
-        fieldOptions: options as Drizzle.InputJsonValue
-      },
-      include: {
-        form: { select: { id: true, name: true } }
-      }
-    });
+    const [updated] = await this.db.client
+      .update(formField)
+      .set({
+        fieldOptions: options
+      })
+      .where(and(eq(formField.id, fieldId), ...this.formFieldReadConditions()))
+      .returning();
+    const [linkedForm] = await this.db.client
+      .select({ id: form.id, name: form.name })
+      .from(form)
+      .where(eq(form.id, updated.formId))
+      .limit(1);
 
     return {
       id: updated.id,
-      form_id: updated.form.id,
-      form_name: updated.form.name,
+      form_id: linkedForm?.id,
+      form_name: linkedForm?.name,
       field_key: updated.fieldKey,
       field_label: updated.fieldLabel,
       field_type: updated.fieldType,
@@ -181,88 +206,97 @@ export class TaxonomyService {
   }
 
   async suggestTagTerms(taxonomyKey: string, query?: string) {
-    const taxonomy = await this.drizzle.taxonomy.findUnique({
-      where: { key: this.normalizeTaxonomyKey(taxonomyKey) },
-      select: { id: true },
-    });
-    if (!taxonomy) throw new NotFoundException('Taxonomy not found');
+    const existing = await this.findTaxonomyByKey(this.normalizeTaxonomyKey(taxonomyKey));
+    if (!existing) throw new NotFoundException('Taxonomy not found');
 
     const termQuery = String(query ?? '').trim();
-    const items = await this.drizzle.taxonomyTerm.findMany({
-      where: {
-        taxonomyId: taxonomy.id,
-        isActive: true,
-        ...(termQuery
-          ? {
-              OR: [
-                { label: { contains: termQuery, mode: 'insensitive' } },
-                { value: { contains: this.slugify(termQuery), mode: 'insensitive' } },
-              ],
-            }
-          : {}),
-      },
-      orderBy: [{ sortOrder: 'asc' }, { label: 'asc' }],
-      take: 25,
-    });
+    const conditions = [
+      ...this.taxonomyTermReadConditions(),
+      eq(taxonomyTerm.taxonomyId, existing.id),
+      eq(taxonomyTerm.isActive, true),
+    ];
+    if (termQuery) {
+      conditions.push(or(
+        ilike(taxonomyTerm.label, `%${termQuery}%`),
+        ilike(taxonomyTerm.value, `%${this.slugify(termQuery)}%`),
+      ) as SQL);
+    }
+    const items = await this.db.client
+      .select()
+      .from(taxonomyTerm)
+      .where(and(...conditions))
+      .orderBy(asc(taxonomyTerm.sortOrder), asc(taxonomyTerm.label))
+      .limit(25);
     return paginatedResponse(items, { page: 1, per_page: items.length, total: items.length });
   }
 
   async upsertTagTerm(taxonomyKey: string, dto: UpsertTagTermDto, module?: string) {
-    const taxonomy = await this.resolveOrCreateTagTaxonomy(taxonomyKey, module);
+    const existingTaxonomy = await this.resolveOrCreateTagTaxonomy(taxonomyKey, module);
     const label = dto.label.trim();
     if (!label) throw new BadRequestException('Tag label is required');
 
     const preferredValue = dto.value?.trim() || this.slugify(label);
     const value = preferredValue.slice(0, 120);
-    const existing = await this.drizzle.taxonomyTerm.findFirst({
-      where: {
-        taxonomyId: taxonomy.id,
-        OR: [
-          { value: { equals: value, mode: 'insensitive' } },
-          { label: { equals: label, mode: 'insensitive' } },
-        ],
-      },
-    });
+    const [existing] = await this.db.client
+      .select()
+      .from(taxonomyTerm)
+      .where(and(
+        ...this.taxonomyTermReadConditions(),
+        eq(taxonomyTerm.taxonomyId, existingTaxonomy.id),
+        or(ilike(taxonomyTerm.value, value), ilike(taxonomyTerm.label, label)),
+      ))
+      .limit(1);
     if (existing) return existing;
 
-    const sortAnchor = await this.drizzle.taxonomyTerm.count({
-      where: { taxonomyId: taxonomy.id },
-    });
+    const [sortAnchor] = await this.db.client
+      .select({ value: count() })
+      .from(taxonomyTerm)
+      .where(and(eq(taxonomyTerm.taxonomyId, existingTaxonomy.id), ...this.taxonomyTermReadConditions()));
 
-    return this.drizzle.taxonomyTerm.create({
-      data: {
-        taxonomyId: taxonomy.id,
+    const [created] = await this.db.client
+      .insert(taxonomyTerm)
+      .values({
+        tenantId: this.currentTenantId(),
+        taxonomyId: existingTaxonomy.id,
         value,
         label: label.slice(0, 120),
-        sortOrder: sortAnchor,
+        sortOrder: Number(sortAnchor?.value ?? 0),
         isActive: true,
-      },
-    });
+      })
+      .returning();
+    return created;
   }
 
   async listEntityTags(entityType: string, entityId: string, taxonomyKey: string) {
-    const taxonomy = await this.drizzle.taxonomy.findUnique({
-      where: { key: this.normalizeTaxonomyKey(taxonomyKey) },
-      select: { id: true, key: true, name: true, module: true },
-    });
-    if (!taxonomy) throw new NotFoundException('Taxonomy not found');
+    const existing = await this.findTaxonomyByKey(this.normalizeTaxonomyKey(taxonomyKey));
+    if (!existing) throw new NotFoundException('Taxonomy not found');
 
-    const rows = await this.drizzle.taxonomyTagAssignment.findMany({
-      where: {
-        taxonomyId: taxonomy.id,
-        entityType: this.normalizeEntityType(entityType),
-        entityId: this.normalizeEntityId(entityId),
-      },
-      include: {
+    const rows = await this.db.client
+      .select({
         term: {
-          select: { id: true, value: true, label: true, isActive: true },
+          id: taxonomyTerm.id,
+          value: taxonomyTerm.value,
+          label: taxonomyTerm.label,
+          isActive: taxonomyTerm.isActive,
         },
-      },
-      orderBy: [{ term: { sortOrder: 'asc' } }, { term: { label: 'asc' } }],
-    });
+      })
+      .from(taxonomyTagAssignment)
+      .innerJoin(taxonomyTerm, eq(taxonomyTagAssignment.termId, taxonomyTerm.id))
+      .where(and(
+        ...this.taxonomyTagAssignmentReadConditions(),
+        eq(taxonomyTagAssignment.taxonomyId, existing.id),
+        eq(taxonomyTagAssignment.entityType, this.normalizeEntityType(entityType)),
+        eq(taxonomyTagAssignment.entityId, this.normalizeEntityId(entityId)),
+      ))
+      .orderBy(asc(taxonomyTerm.sortOrder), asc(taxonomyTerm.label));
 
     return {
-      taxonomy,
+      taxonomy: {
+        id: existing.id,
+        key: existing.key,
+        name: existing.name,
+        module: existing.module,
+      },
       tags: rows.map((row) => row.term),
     };
   }
@@ -275,7 +309,7 @@ export class TaxonomyService {
     module?: string,
     userId?: string | number
   ) {
-    const taxonomy = await this.resolveOrCreateTagTaxonomy(taxonomyKey, module);
+    const existingTaxonomy = await this.resolveOrCreateTagTaxonomy(taxonomyKey, module);
     const normalizedEntityType = this.normalizeEntityType(entityType);
     const normalizedEntityId = this.normalizeEntityId(entityId);
 
@@ -287,49 +321,50 @@ export class TaxonomyService {
       : [];
 
     const createdTerms = labels.length > 0
-      ? await Promise.all(labels.map((label) => this.upsertTagTerm(taxonomy.key, { label }, module)))
+      ? await Promise.all(labels.map((label) => this.upsertTagTerm(existingTaxonomy.key, { label }, module)))
       : [];
     const wantedTermIds = Array.from(new Set([...termIds, ...createdTerms.map((term) => term.id)]));
 
     const existingTerms = wantedTermIds.length > 0
-      ? await this.drizzle.taxonomyTerm.findMany({
-          where: {
-            taxonomyId: taxonomy.id,
-            id: { in: wantedTermIds },
-          },
-          select: { id: true },
-        })
+      ? await this.db.client
+          .select({ id: taxonomyTerm.id })
+          .from(taxonomyTerm)
+          .where(and(
+            ...this.taxonomyTermReadConditions(),
+            eq(taxonomyTerm.taxonomyId, existingTaxonomy.id),
+            inArray(taxonomyTerm.id, wantedTermIds),
+          ))
       : [];
     const validTermIds = new Set(existingTerms.map((term) => term.id));
     const filteredTermIds = wantedTermIds.filter((id) => validTermIds.has(id));
 
-    await this.drizzle.$transaction(async (tx) => {
-      await tx.taxonomyTagAssignment.deleteMany({
-        where: {
-          taxonomyId: taxonomy.id,
-          entityType: normalizedEntityType,
-          entityId: normalizedEntityId,
-        },
-      });
+    await this.db.client.transaction(async (tx) => {
+      await tx.delete(taxonomyTagAssignment).where(and(
+        ...this.taxonomyTagAssignmentWriteConditions(),
+        eq(taxonomyTagAssignment.taxonomyId, existingTaxonomy.id),
+        eq(taxonomyTagAssignment.entityType, normalizedEntityType),
+        eq(taxonomyTagAssignment.entityId, normalizedEntityId),
+      ));
 
       if (filteredTermIds.length > 0) {
-        await tx.taxonomyTagAssignment.createMany({
-          data: filteredTermIds.map((termId) => ({
-            taxonomyId: taxonomy.id,
+        await tx
+          .insert(taxonomyTagAssignment)
+          .values(filteredTermIds.map((termId) => ({
+            tenantId: this.currentTenantId(),
+            taxonomyId: existingTaxonomy.id,
             termId,
             entityType: normalizedEntityType,
             entityId: normalizedEntityId,
             createdBy: this.toBigIntOrNull(userId),
-          })),
-          skipDuplicates: true,
-        });
+          })))
+          .onConflictDoNothing();
       }
     });
 
-    return this.listEntityTags(normalizedEntityType, normalizedEntityId, taxonomy.key);
+    return this.listEntityTags(normalizedEntityType, normalizedEntityId, existingTaxonomy.key);
   }
 
-  private normalizeOptions(fieldOptions: Drizzle.JsonValue | null): string[] {
+  private normalizeOptions(fieldOptions: unknown): string[] {
     if (Array.isArray(fieldOptions)) {
       return fieldOptions.filter((value): value is string => typeof value === 'string');
     }
@@ -372,11 +407,13 @@ export class TaxonomyService {
 
   private async resolveOrCreateTagTaxonomy(taxonomyKey: string, module?: string) {
     const key = this.normalizeTaxonomyKey(taxonomyKey);
-    const existing = await this.drizzle.taxonomy.findUnique({ where: { key } });
+    const existing = await this.findTaxonomyByKey(key);
     if (existing) return existing;
 
-    return this.drizzle.taxonomy.create({
-      data: {
+    const [created] = await this.db.client
+      .insert(taxonomy)
+      .values({
+        tenantId: this.currentTenantId(),
         key,
         name: key
           .split('_')
@@ -384,8 +421,9 @@ export class TaxonomyService {
           .join(' '),
         module: module?.trim() || null,
         isActive: true,
-      },
-    });
+      })
+      .returning();
+    return created;
   }
 
   private toBigIntOrNull(value: string | number | undefined): bigint | null {
@@ -397,5 +435,109 @@ export class TaxonomyService {
     } catch {
       return null;
     }
+  }
+
+  private currentTenantId() {
+    const context = this.tenantContext.get();
+    return context && context.scope !== 'system' ? context.tenantId : undefined;
+  }
+
+  private taxonomyReadConditions(): SQL[] {
+    const tenantId = this.currentTenantId();
+    return tenantId ? [or(eq(taxonomy.tenantId, tenantId), isNull(taxonomy.tenantId)) as SQL] : [];
+  }
+
+  private taxonomyWriteConditions(): SQL[] {
+    const tenantId = this.currentTenantId();
+    return tenantId ? [eq(taxonomy.tenantId, tenantId)] : [];
+  }
+
+  private taxonomyTermReadConditions(): SQL[] {
+    const tenantId = this.currentTenantId();
+    return tenantId ? [or(eq(taxonomyTerm.tenantId, tenantId), isNull(taxonomyTerm.tenantId)) as SQL] : [];
+  }
+
+  private taxonomyTermWriteConditions(): SQL[] {
+    const tenantId = this.currentTenantId();
+    return tenantId ? [eq(taxonomyTerm.tenantId, tenantId)] : [];
+  }
+
+  private taxonomyTagAssignmentReadConditions(): SQL[] {
+    const tenantId = this.currentTenantId();
+    return tenantId ? [eq(taxonomyTagAssignment.tenantId, tenantId)] : [];
+  }
+
+  private taxonomyTagAssignmentWriteConditions(): SQL[] {
+    return this.taxonomyTagAssignmentReadConditions();
+  }
+
+  private formFieldReadConditions(): SQL[] {
+    const tenantId = this.currentTenantId();
+    return tenantId ? [or(eq(formField.tenantId, tenantId), isNull(formField.tenantId)) as SQL] : [];
+  }
+
+  private requestGroupConditions(): SQL[] {
+    const tenantId = this.currentTenantId();
+    return tenantId ? [eq(requestGroup.tenantId, tenantId)] : [];
+  }
+
+  private cleanUpdate<T extends Record<string, unknown>>(data: T): Partial<T> {
+    return Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined)) as Partial<T>;
+  }
+
+  private async findTaxonomyById(id: string) {
+    const [row] = await this.db.client
+      .select()
+      .from(taxonomy)
+      .where(and(eq(taxonomy.id, id), ...this.taxonomyReadConditions()))
+      .limit(1);
+    return row ?? null;
+  }
+
+  private async findTaxonomyByKey(key: string) {
+    const [row] = await this.db.client
+      .select()
+      .from(taxonomy)
+      .where(and(eq(taxonomy.key, key), ...this.taxonomyReadConditions()))
+      .limit(1);
+    return row ?? null;
+  }
+
+  private async findFormField(fieldId: string) {
+    const [row] = await this.db.client
+      .select()
+      .from(formField)
+      .where(and(eq(formField.id, fieldId), ...this.formFieldReadConditions()))
+      .limit(1);
+    return row ?? null;
+  }
+
+  private async withTerms(row: typeof taxonomy.$inferSelect, includeInactive: boolean) {
+    const conditions = [...this.taxonomyTermReadConditions(), eq(taxonomyTerm.taxonomyId, row.id)];
+    if (!includeInactive) conditions.push(eq(taxonomyTerm.isActive, true));
+    const terms = await this.db.client
+      .select()
+      .from(taxonomyTerm)
+      .where(and(...conditions))
+      .orderBy(asc(taxonomyTerm.sortOrder), asc(taxonomyTerm.label));
+    return { ...row, terms };
+  }
+
+  private async listRequestTypes(groupId: string | undefined, conditions: SQL[]) {
+    if (!groupId) {
+      return this.db.client
+        .select()
+        .from(requestType)
+        .where(conditions.length ? and(...conditions) : undefined)
+        .orderBy(asc(requestType.name));
+    }
+
+    const rows = await this.db.client
+      .select({ row: requestType })
+      .from(requestType)
+      .innerJoin(requestCategory, eq(requestType.categoryId, requestCategory.id))
+      .where(and(...conditions, eq(requestCategory.groupId, groupId)))
+      .orderBy(asc(requestType.name));
+    return rows.map((row) => row.row);
   }
 }
