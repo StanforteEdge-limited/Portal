@@ -10,6 +10,7 @@ import { ChatRealtimeService } from './chat-realtime.service';
 import { chatConversation, chatConversationMember, chatMessage, chatMessageAttachment } from './model';
 import { profile } from '$modules/identity/users/model';
 import { fileAsset } from '$modules/storage/model';
+import { tenantMembership } from '$modules/tenancy/model';
 
 const PROFILE_SELECT = {
   id: profile.id,
@@ -432,9 +433,9 @@ export class ChatService {
       const files = await this.db.client
         .select({ id: fileAsset.id })
         .from(fileAsset)
-        .where(inArray(fileAsset.id, fileAssetIds));
+        .where(and(inArray(fileAsset.id, fileAssetIds), eq(fileAsset.tenantId, tid)));
       if (files.length !== fileAssetIds.length) {
-        throw new BadRequestException('One or more file_asset_id values do not exist');
+        throw new BadRequestException('One or more file_asset_id values do not exist in this tenant');
       }
       verifiedFiles = fileAssetIds;
     }
@@ -505,10 +506,16 @@ export class ChatService {
 
   async unreadCount(profileId: string) {
     const me = parseBigIntId(profileId, 'profile id');
+    const tid = this.tenantContext.currentTenantId();
     const memberships = await this.db.client
       .select({ conversationId: chatConversationMember.conversationId })
       .from(chatConversationMember)
-      .where(eq(chatConversationMember.profileId, me));
+      .where(
+        and(
+          eq(chatConversationMember.profileId, me),
+          tid ? eq(chatConversationMember.tenantId, tid) : undefined,
+        ),
+      );
     if (!memberships.length) return { unread_count: 0 };
     const counts = await this.getUnreadForConversations(
       me,
@@ -532,6 +539,20 @@ export class ChatService {
     const profiles = await this.db.client.select({ id: profile.id }).from(profile).where(inArray(profile.id, memberIds));
     if (profiles.length !== memberIds.length) {
       throw new BadRequestException('One or more member profiles do not exist');
+    }
+
+    const tenantMembers = await this.db.client
+      .select({ profileId: tenantMembership.profileId })
+      .from(tenantMembership)
+      .where(
+        and(
+          inArray(tenantMembership.profileId, memberIds),
+          eq(tenantMembership.tenantId, tid),
+          eq(tenantMembership.status, 'active'),
+        ),
+      );
+    if (tenantMembers.length !== memberIds.length) {
+      throw new BadRequestException('One or more member profiles are not active in this tenant');
     }
 
     const existing = await this.db.client
