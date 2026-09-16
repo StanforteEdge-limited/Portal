@@ -1,5 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { and, count, desc, eq } from 'drizzle-orm';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { SQL, and, asc, count, desc, eq } from 'drizzle-orm';
 import { DbService } from '$common/db/db.service';
 import { toBigInt } from '$common/utils/ids';
 import { TenantContextService } from '$common/auth/tenant-context.service';
@@ -58,14 +58,47 @@ export class NotificationsService {
     return `${appBaseUrl}${normalizedPath}`;
   }
 
+private notificationConditions(userId: string | bigint): SQL[] {
+    const conditions: SQL[] = [eq(notification.userId, toBigInt(userId))];
+    const tenantId = this.tenantContext.currentTenantId();
+    if (tenantId) conditions.push(eq(notification.tenantId, tenantId));
+    return conditions;
+  }
+
   async create(input: NotificationInput) {
+    const targetId = toBigInt(input.userId);
     const context = this.tenantContext.get();
-    const tenantId = context && context.scope !== 'system' ? context.tenantId : undefined;
+    // Notifications must land in the tenant that owns the target profile.
+    // When running in system scope (scheduler/jobs), resolve the target's
+    // primary active membership instead of stamping a NULL tenant.
+    let tenantId =
+      context && context.scope !== 'system' ? context.tenantId : undefined;
+    if (!tenantId) {
+      const [membership] = await this.db.client
+        .select()
+        .from(tenantMembership)
+        .where(and(eq(tenantMembership.profileId, targetId), eq(tenantMembership.status, 'active')))
+        .orderBy(asc(tenantMembership.isOwner))
+        .limit(1);
+      tenantId = membership?.tenantId;
+      if (!tenantId) {
+        this.logger.warn(`Cannot create notification for user ${input.userId}: no tenant membership`);
+        return undefined;
+      }
+    } else {
+      const [membership] = await this.db.client
+        .select()
+        .from(tenantMembership)
+        .where(and(eq(tenantMembership.tenantId, tenantId), eq(tenantMembership.profileId, targetId), eq(tenantMembership.status, 'active')))
+        .limit(1);
+      if (!membership) throw new BadRequestException('User is not a member of the current tenant');
+    }
+
     const [created] = await this.db.client
       .insert(notification)
       .values({
         tenantId,
-        userId: toBigInt(input.userId),
+        userId: targetId,
         type: input.type ?? 'info',
         title: input.title,
         message: input.message,
@@ -145,8 +178,8 @@ export class NotificationsService {
     return created;
   }
 
-  async listForUser(userId: string, status?: 'read' | 'unread') {
-    const conditions = [eq(notification.userId, toBigInt(userId))];
+async listForUser(userId: string, status?: 'read' | 'unread') {
+    const conditions = this.notificationConditions(userId);
     if (status) conditions.push(eq(notification.status, status));
     return this.db.client
       .select()
@@ -156,45 +189,49 @@ export class NotificationsService {
   }
 
   async markRead(userId: string, notificationId: string) {
+    const conditions = this.notificationConditions(userId);
+    conditions.push(eq(notification.id, toBigInt(notificationId)), eq(notification.status, 'unread'));
     const result = await this.db.client
       .update(notification)
       .set({
         status: 'read',
         readAt: new Date()
       })
-      .where(and(
-        eq(notification.id, toBigInt(notificationId)),
-        eq(notification.userId, toBigInt(userId)),
-        eq(notification.status, 'unread'),
-      ));
+      .where(and(...conditions));
     return { count: Number(result?.rowCount ?? 0) };
   }
 
   async markAllRead(userId: string) {
+    const conditions = this.notificationConditions(userId);
+    conditions.push(eq(notification.status, 'unread'));
     const result = await this.db.client
       .update(notification)
       .set({
         status: 'read',
         readAt: new Date()
       })
-      .where(and(eq(notification.userId, toBigInt(userId)), eq(notification.status, 'unread')));
+      .where(and(...conditions));
     return { count: Number(result?.rowCount ?? 0) };
   }
 
   async getOneForUser(userId: string, notificationId: string) {
+    const conditions = this.notificationConditions(userId);
+    conditions.push(eq(notification.id, toBigInt(notificationId)));
     const [row] = await this.db.client
       .select()
       .from(notification)
-      .where(and(eq(notification.id, toBigInt(notificationId)), eq(notification.userId, toBigInt(userId))))
+      .where(and(...conditions))
       .limit(1);
     return row ?? null;
   }
 
   async unreadCount(userId: string) {
+    const conditions = this.notificationConditions(userId);
+    conditions.push(eq(notification.status, 'unread'));
     const [row] = await this.db.client
       .select({ value: count() })
       .from(notification)
-      .where(and(eq(notification.userId, toBigInt(userId)), eq(notification.status, 'unread')));
+      .where(and(...conditions));
     return Number(row?.value ?? 0);
   }
 }
