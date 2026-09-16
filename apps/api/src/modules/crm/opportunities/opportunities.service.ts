@@ -46,6 +46,8 @@ export class CrmOpportunitiesService {
     if (!ids.length) return new Map<string, any>();
     const tid = this.tenantContext.requireTenantId();
     const contacts = await this.db.client.select().from(crmContact).where(and(inArray(crmContact.id, ids), eq(crmContact.tenantId, tid)));
+    return new Map(contacts.map((contact) => [contact.id.toString(), contact]));
+  }
 
   private async assertAccountExists(id?: string) {
     if (!id) return;

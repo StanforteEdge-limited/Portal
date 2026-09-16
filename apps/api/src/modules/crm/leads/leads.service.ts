@@ -30,6 +30,7 @@ export class CrmLeadsService {
     if (!ids.length) return new Map<string, any>();
     const owners = await this.db.client.select().from(profile).where(inArray(profile.id, ids));
     return new Map(owners.map((owner) => [owner.id.toString(), owner]));
+  }
 
   async listLeads(query: Record<string, any>) {
     const { page, perPage } = this.toPage(query);

@@ -4,6 +4,7 @@ import { TenantContextService } from '$common/auth/tenant-context.service';
 import { DbService } from '$common/db/db.service';
 import { paginatedResponse } from '$common/helpers/paginated-response';
 import { parseBigIntId } from '$common/utils/ids';
+import { profile } from '$modules/identity/users/model';
 import { crmAccount } from '../accounts/model';
 import { crmContact } from '../contacts/model';
 import { crmOpportunity } from '../opportunities/model';
@@ -44,6 +45,8 @@ export class CrmActivitiesService {
     if (!ids.length) return new Map<string, any>();
     const tid = this.tenantContext.requireTenantId();
     const contacts = await this.db.client.select().from(crmContact).where(and(inArray(crmContact.id, ids), eq(crmContact.tenantId, tid)));
+    return new Map(contacts.map((contact) => [contact.id.toString(), contact]));
+  }
 
   private async assertAccountExists(id?: string) {
     if (!id) return;
