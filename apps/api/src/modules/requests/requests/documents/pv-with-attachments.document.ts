@@ -1,5 +1,5 @@
 import { NotFoundException } from '@nestjs/common';
-import { DocumentGeneratorService } from '$common/documents/document-generator.service';
+import { RequestDocumentGeneratorService } from './request-document-generator.service';
 import { Document, DocumentIds, DocumentOutput } from '$common/documents/document.types';
 import { PaymentVoucherDocument } from './payment-voucher.document';
 
@@ -11,7 +11,7 @@ type PVWithAttachmentsContext = {
 };
 
 export class PVWithAttachmentsDocument implements Document<PVWithAttachmentsContext> {
-  constructor(private readonly engine: DocumentGeneratorService) {}
+  constructor(private readonly engine: RequestDocumentGeneratorService) {}
 
   async fetchContext(ids: DocumentIds): Promise<PVWithAttachmentsContext> {
     const { requestId, voucherId } = ids;

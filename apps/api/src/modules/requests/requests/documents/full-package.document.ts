@@ -1,4 +1,4 @@
-import { DocumentGeneratorService } from '$common/documents/document-generator.service';
+import { RequestDocumentGeneratorService } from './request-document-generator.service';
 import { Document, DocumentIds, DocumentOutput, RequestRemittanceAllocationSummary } from '$common/documents/document.types';
 import { RequestPdfDocument } from './request-pdf.document';
 import { PaymentVoucherDocument } from './payment-voucher.document';
@@ -14,7 +14,7 @@ type FullPackageContext = {
 };
 
 export class FullPackageDocument implements Document<FullPackageContext> {
-  constructor(private readonly engine: DocumentGeneratorService) {}
+  constructor(private readonly engine: RequestDocumentGeneratorService) {}
 
   async fetchContext(ids: DocumentIds): Promise<FullPackageContext> {
     const { requestId } = ids;

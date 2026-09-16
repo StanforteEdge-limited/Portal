@@ -1,4 +1,4 @@
-import { DocumentGeneratorService } from '$common/documents/document-generator.service';
+import { RequestDocumentGeneratorService } from './request-document-generator.service';
 import { Document, DocumentIds, DocumentOutput } from '$common/documents/document.types';
 
 type CertificateContext = {
@@ -16,7 +16,7 @@ type CertificateContext = {
 };
 
 export class CertificateOfHonorDocument implements Document<CertificateContext> {
-  constructor(private readonly engine: DocumentGeneratorService) {}
+  constructor(private readonly engine: RequestDocumentGeneratorService) {}
 
   async fetchContext(ids: DocumentIds): Promise<CertificateContext> {
     const { requestId, options = {} } = ids;

@@ -1,4 +1,4 @@
-import { DocumentGeneratorService } from '$common/documents/document-generator.service';
+import { ProcurementDocumentGeneratorService } from './procurement-document-generator.service';
 import { Document, DocumentIds, DocumentOutput } from '$common/documents/document.types';
 
 export type PoLineItem = {
@@ -26,7 +26,7 @@ export type PurchaseOrderContext = {
 };
 
 export class PurchaseOrderDocument implements Document<PurchaseOrderContext> {
-  constructor(private readonly engine: DocumentGeneratorService) {}
+  constructor(private readonly engine: ProcurementDocumentGeneratorService) {}
 
   async fetchContext(ids: DocumentIds): Promise<PurchaseOrderContext> {
     const poId = ids.options?.poId as string;
