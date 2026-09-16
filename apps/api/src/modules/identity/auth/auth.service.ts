@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, UnauthorizedException, BadRequestExcepti
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import type { Response } from 'express';
-import { and, asc, eq, ilike, inArray } from 'drizzle-orm';
+import { and, asc, eq, ilike, inArray, isNull, or } from 'drizzle-orm';
 import { DbService } from '$common/db/db.service';
 import { LoginDto } from '$modules/identity/auth/dto/login.dto';
 import { ChangePasswordDto } from '$modules/identity/auth/dto/change-password.dto';
@@ -836,10 +836,13 @@ export class AuthService {
     const roleSlugs = roles ?? (await this.getUserRoles(profileId, tenantId));
     if (roleSlugs.includes('administrator') || roleSlugs.includes('admin')) return ['*'];
 
+    // Resolve roles by slug within the current tenant only (including the
+    // global template, tenant_id IS NULL). Without this, a slug owned by
+    // another tenant could grant its permissions to this request.
     const roleIds = await this.db.client
       .select({ id: roleTable.id })
       .from(roleTable)
-      .where(inArray(roleTable.slug, roleSlugs));
+      .where(and(inArray(roleTable.slug, roleSlugs), tenantId ? or(eq(roleTable.tenantId, tenantId), isNull(roleTable.tenantId)) : undefined));
 
     if (roleIds.length === 0) return [];
 
@@ -849,7 +852,7 @@ export class AuthService {
           .select({ permission: permissionTable })
           .from(rolePermissionTable)
           .leftJoin(permissionTable, eq(rolePermissionTable.permissionId, permissionTable.id))
-          .where(inArray(rolePermissionTable.roleId, idList))
+          .where(and(inArray(rolePermissionTable.roleId, idList), tenantId ? or(eq(rolePermissionTable.tenantId, tenantId), isNull(rolePermissionTable.tenantId)) : undefined))
       : ([] as any[]);
 
     const slugs = perms.map((p) => p.permission?.slug ?? '');

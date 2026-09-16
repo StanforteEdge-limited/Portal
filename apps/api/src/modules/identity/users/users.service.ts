@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
-import { SQL, and, asc, count, desc, eq, ilike, inArray, ne, or } from 'drizzle-orm';
+import { SQL, and, asc, count, desc, eq, ilike, inArray, isNull, ne, or } from 'drizzle-orm';
 import { DbService } from '$common/db/db.service';
 import { toBigInt } from '$common/utils/ids';
 import { UpdateProfileDto } from '$modules/identity/users/dto/update-profile.dto';
@@ -242,11 +242,14 @@ async getMyProfile(profileId: string, tenant?: TenantContext) {
         });
       }
 
-      if (roleSlugs.length > 0) {
+if (roleSlugs.length > 0) {
+        const roleCond = tenant?.tenantId
+          ? or(eq(roleTable.tenantId, tenant.tenantId), isNull(roleTable.tenantId))
+          : undefined;
         const roles = await tx
           .select({ id: roleTable.id, slug: roleTable.slug })
           .from(roleTable)
-          .where(and(inArray(roleTable.slug, roleSlugs), eq(roleTable.isActive, true)));
+          .where(and(inArray(roleTable.slug, roleSlugs), eq(roleTable.isActive, true), roleCond));
         if (roles.length !== roleSlugs.length) {
           const found = new Set(roles.map((r) => r.slug));
           const missing = roleSlugs.filter((slug) => !found.has(slug));
@@ -407,11 +410,14 @@ async getMyProfile(profileId: string, tenant?: TenantContext) {
       throw new BadRequestException('Primary organization is required for staff');
     }
 
-    if (nextPrimaryOrganizationId) {
+if (nextPrimaryOrganizationId) {
+      const orgCond = tenant?.tenantId
+        ? or(eq(organizationTable.tenantId, tenant.tenantId), isNull(organizationTable.tenantId))
+        : undefined;
       const [organization] = await this.db.client
         .select({ id: organizationTable.id })
         .from(organizationTable)
-        .where(eq(organizationTable.id, nextPrimaryOrganizationId))
+        .where(and(eq(organizationTable.id, nextPrimaryOrganizationId), orgCond))
         .limit(1);
       if (!organization) throw new BadRequestException('Organization not found');
     }
@@ -441,14 +447,17 @@ async getMyProfile(profileId: string, tenant?: TenantContext) {
         .where(eq(profile.id, existing.id))
         .returning();
 
-      if (dto.primary_organization_id !== undefined) {
-        await tx.update(profileOrganization).set({ isPrimary: false }).where(eq(profileOrganization.profileId, existing.id));
+if (dto.primary_organization_id !== undefined) {
+        const clearPrimaryWhere: SQL[] = [eq(profileOrganization.profileId, existing.id)];
+        if (tenant?.tenantId) clearPrimaryWhere.push(eq(profileOrganization.tenantId, tenant.tenantId));
+        await tx.update(profileOrganization).set({ isPrimary: false }).where(and(...clearPrimaryWhere));
         if (nextPrimaryOrganizationId) {
           await tx
             .insert(profileOrganization)
             .values({
               profileId: existing.id,
               organizationId: nextPrimaryOrganizationId,
+              tenantId: tenant?.tenantId ?? null,
               isPrimary: true,
               createdAt: new Date(),
             })
@@ -566,10 +575,14 @@ async getMyProfile(profileId: string, tenant?: TenantContext) {
       throw new BadRequestException('At least one role is required');
     }
 
+const roleCond = tenant?.tenantId
+      ? or(eq(roleTable.tenantId, tenant.tenantId), isNull(roleTable.tenantId))
+      : undefined;
+
     const roles = await this.db.client
       .select({ id: roleTable.id, slug: roleTable.slug, name: roleTable.name })
       .from(roleTable)
-      .where(and(inArray(roleTable.slug, roleSlugs), eq(roleTable.isActive, true)));
+      .where(and(inArray(roleTable.slug, roleSlugs), eq(roleTable.isActive, true), roleCond));
 
     if (roles.length !== roleSlugs.length) {
       const found = new Set(roles.map((r) => r.slug));
@@ -610,7 +623,7 @@ async getMyProfile(profileId: string, tenant?: TenantContext) {
     };
   }
 
-  async inviteUser(userId: string, dto: InviteUserDto, tenantId?: bigint) {
+async inviteUser(userId: string, dto: InviteUserDto, tenantId?: bigint) {
     const profileId = toBigInt(userId);
     const [user] = await this.db.client
       .select({ id: profile.id, email: profile.email, firstName: profile.firstName, lastName: profile.lastName })
@@ -618,6 +631,20 @@ async getMyProfile(profileId: string, tenant?: TenantContext) {
       .where(eq(profile.id, profileId))
       .limit(1);
     if (!user) throw new NotFoundException('User not found');
+    if (tenantId) {
+      const [membership] = await this.db.client
+        .select({ id: tenantMembership.id })
+        .from(tenantMembership)
+        .where(
+          and(
+            eq(tenantMembership.tenantId, tenantId),
+            eq(tenantMembership.profileId, profileId),
+            eq(tenantMembership.status, 'active'),
+          ),
+        )
+        .limit(1);
+      if (!membership) throw new NotFoundException('User is not a member of this tenant');
+    }
 
     const { inviteToken, expiresAt } = await this.issueInvite(user.id, 'invited', tenantId);
     await this.sendInviteEmail(user, inviteToken, expiresAt, dto.message);
