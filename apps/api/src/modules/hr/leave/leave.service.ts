@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { and, asc, desc, eq, gte, inArray, lte, SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNull, lte, or, SQL } from 'drizzle-orm';
 import { TenantContext } from '$common/auth/tenant-context';
 import { DbService } from '$common/db/db.service';
 import { NotificationsService } from '$modules/notifications/notifications.service';
@@ -16,11 +16,14 @@ export class LeaveService {
     private readonly notifications: NotificationsService,
   ) {}
 
-  listTypes() {
+listTypes(context: TenantContext) {
     return this.db.client
       .select()
       .from(leaveType)
-      .where(eq(leaveType.isActive, 1))
+      .where(and(
+        eq(leaveType.isActive, 1),
+        or(eq(leaveType.tenantId, context.tenantId), isNull(leaveType.tenantId)),
+      ))
       .orderBy(asc(leaveType.name));
   }
 
@@ -40,10 +43,14 @@ export class LeaveService {
   }
 
   async createRequest(context: TenantContext, dto: CreateLeaveRequestDto) {
-    const [type] = await this.db.client
+const [type] = await this.db.client
       .select()
       .from(leaveType)
-      .where(and(eq(leaveType.id, dto.leave_type_id), eq(leaveType.isActive, 1)))
+      .where(and(
+        eq(leaveType.id, dto.leave_type_id),
+        eq(leaveType.isActive, 1),
+        or(eq(leaveType.tenantId, context.tenantId), isNull(leaveType.tenantId)),
+      ))
       .limit(1);
     if (!type) throw new NotFoundException('Leave type not found');
     const start = this.parseDate(dto.start_date);

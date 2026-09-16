@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { and, asc, count, desc, eq, inArray, or } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, isNull, or, SQL } from 'drizzle-orm';
 import { DbService } from '$common/db/db.service';
+import { TenantContextService } from '$common/auth/tenant-context.service';
 import { toBigInt } from '$common/utils/ids';
 import { organization, profileOrganization } from '$modules/directory/organizations/model';
 import { employeeMeta, employeeProfile, onboardingProgress } from '$modules/hr/hr/model';
@@ -19,7 +20,18 @@ import { SubmitOnboardingFormDto, UpdateOnboardingDto } from '$modules/hr/onboar
 
 @Injectable()
 export class OnboardingService {
-  constructor(private readonly db: DbService) {}
+  constructor(
+    private readonly db: DbService,
+    private readonly tenantContext: TenantContextService,
+  ) {}
+
+  private currentTenantId(): bigint | null {
+    return this.tenantContext.currentTenantId() ?? null;
+  }
+
+  private templateCond(tid: bigint, column: any): SQL {
+    return or(eq(column, tid), isNull(column)) as SQL;
+  }
 
   async getMyOnboarding(profileId: string) {
     const userId = toBigInt(profileId);
@@ -33,6 +45,7 @@ export class OnboardingService {
       .from(employeeMeta)
       .where(and(eq(employeeMeta.userId, user.id), eq(employeeMeta.metaKey, 'emergency_contacts')))
       .limit(1);
+const tid = this.currentTenantId();
     const assignments = await this.db.client
       .select({
         formId: formAssignment.formId,
@@ -40,9 +53,13 @@ export class OnboardingService {
       })
       .from(formAssignment)
       .innerJoin(form, eq(formAssignment.formId, form.id))
-      .where(or(
-        eq(formAssignment.assignedToProfileId, user.id),
-        roleSlugs.length > 0 ? inArray(formAssignment.assignedToRole, roleSlugs) : undefined,
+      .where(and(
+        tid ? or(eq(formAssignment.tenantId, tid), isNull(formAssignment.tenantId)) : undefined,
+        tid ? or(eq(form.tenantId, tid), isNull(form.tenantId)) : undefined,
+        or(
+          eq(formAssignment.assignedToProfileId, user.id),
+          roleSlugs.length > 0 ? inArray(formAssignment.assignedToRole, roleSlugs) : undefined,
+        ),
       ))
       .orderBy(asc(formAssignment.dueDate), asc(formAssignment.createdAt));
 
@@ -52,7 +69,7 @@ export class OnboardingService {
 
     const submissions = uniqueForms.length === 0
       ? []
-      : await this.db.client
+: await this.db.client
           .select({
             id: formSubmission.id,
             formId: formSubmission.formId,
@@ -63,6 +80,7 @@ export class OnboardingService {
           .where(and(
             eq(formSubmission.submittedByProfileId, user.id),
             inArray(formSubmission.formId, uniqueForms.map((f) => f.id)),
+            tid ? eq(formSubmission.tenantId, tid) : undefined,
           ))
           .orderBy(desc(formSubmission.submittedAt));
 
@@ -207,10 +225,15 @@ export class OnboardingService {
     throw new BadRequestException('Unsupported onboarding action');
   }
 
-  async submitForm(profileId: string, dto: SubmitOnboardingFormDto) {
+async submitForm(profileId: string, dto: SubmitOnboardingFormDto) {
     const userId = toBigInt(profileId);
+    const tid = this.currentTenantId();
 
-    const [formRecord] = await this.db.client.select().from(form).where(eq(form.id, dto.form_id)).limit(1);
+    const [formRecord] = await this.db.client
+      .select()
+      .from(form)
+      .where(and(eq(form.id, dto.form_id), tid ? this.templateCond(tid, form.tenantId) : undefined))
+      .limit(1);
     if (!formRecord || !formRecord.isActive) throw new NotFoundException('Form not found');
     const fields = await this.db.client
       .select()
@@ -224,12 +247,13 @@ export class OnboardingService {
       .where(eq(formSubmission.formId, formRecord.id));
     const submissionNumber = `FM-${new Date().getFullYear()}-${String(value + 1).padStart(5, '0')}`;
 
-    const [submission] = await this.db.client
+const [submission] = await this.db.client
       .insert(formSubmission)
       .values({
         formId: formRecord.id,
         submissionNumber,
         submittedByProfileId: userId,
+        tenantId: tid ?? formRecord.tenantId ?? null,
         status: 'submitted'
       })
       .returning();
@@ -256,10 +280,10 @@ export class OnboardingService {
           throw new BadRequestException(`Field ${field.fieldKey} is missing document_id binding`);
         }
 
-        const [doc] = await this.db.client
+const [doc] = await this.db.client
           .select({ id: document.id, version: document.version })
           .from(document)
-          .where(eq(document.id, documentId))
+          .where(and(eq(document.id, documentId), tid ? this.templateCond(tid, document.tenantId) : undefined))
           .limit(1);
         if (!doc) throw new BadRequestException(`Bound document does not exist for ${field.fieldKey}`);
 
@@ -279,10 +303,11 @@ export class OnboardingService {
           });
       }
 
-      await this.db.client.insert(formSubmissionData).values({
+await this.db.client.insert(formSubmissionData).values({
           submissionId: submission.id,
           fieldId: field.id,
           fieldKey: field.fieldKey,
+          tenantId: tid ?? formRecord.tenantId ?? null,
           ...this.mapFieldValue(field.fieldType, raw)
       });
     }
@@ -291,6 +316,7 @@ export class OnboardingService {
         submissionId: submission.id,
         actionType: 'submit',
         performedByProfileId: userId,
+        tenantId: tid ?? formRecord.tenantId ?? null,
         notes: dto.payload ? JSON.stringify(dto.payload) : null
     });
 
@@ -352,22 +378,27 @@ export class OnboardingService {
     return user ?? null;
   }
 
-  private async findUserWithOnboarding(userId: bigint) {
+private async findUserWithOnboarding(userId: bigint) {
     const user = await this.findUser(userId);
     if (!user) return null;
 
-    const [employee] = await this.db.client.select().from(employeeProfile).where(eq(employeeProfile.userId, user.id)).limit(1);
+    const tid = this.currentTenantId();
+    const [employee] = await this.db.client
+      .select()
+      .from(employeeProfile)
+      .where(and(eq(employeeProfile.userId, user.id), tid ? eq(employeeProfile.tenantId, tid) : undefined))
+      .limit(1);
     const progress = await this.findOnboardingProgress(user.id);
     const organizations = await this.db.client
       .select({ membership: profileOrganization, organization })
       .from(profileOrganization)
       .leftJoin(organization, eq(profileOrganization.organizationId, organization.id))
-      .where(eq(profileOrganization.profileId, user.id));
+      .where(and(eq(profileOrganization.profileId, user.id), tid ? eq(profileOrganization.tenantId, tid) : undefined));
     const roles = await this.db.client
       .select({ role })
       .from(userRole)
       .innerJoin(role, eq(userRole.roleId, role.id))
-      .where(eq(userRole.profileId, user.id));
+      .where(and(eq(userRole.profileId, user.id), tid ? or(eq(userRole.tenantId, tid), isNull(userRole.tenantId)) : undefined));
 
     return {
       ...user,

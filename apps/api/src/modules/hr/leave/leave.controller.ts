@@ -15,8 +15,8 @@ export class LeaveController {
   constructor(private readonly leave: LeaveService) {}
 
   @Get('types')
-  types() {
-    return this.leave.listTypes();
+  types(@CurrentTenant() tenant: TenantContext) {
+    return this.leave.listTypes(tenant);
   }
 
   @Post('types')
