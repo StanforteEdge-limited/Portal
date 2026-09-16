@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { and, asc, desc, eq, ilike, inArray, or, SQL } from 'drizzle-orm';
 import { DbService } from '$common/db/db.service';
+import { TenantContextService } from '$common/auth/tenant-context.service';
 import { paginatedResponse } from '$common/helpers/paginated-response';
 import { parseBigIntId, toBigInt } from '$common/utils/ids';
 import type { AppDb } from '$common/db/db.service';
@@ -16,11 +17,24 @@ import { group, groupOrganization, groupUser, groupUserOrganizationScope } from 
 
 @Injectable()
 export class GroupsService {
-  constructor(private readonly db: DbService) {}
+constructor(
+    private readonly db: DbService,
+    private readonly tenantContext: TenantContextService,
+  ) {}
+
+  private tenantCond(column: any): SQL | undefined {
+    const tid = this.tenantContext.currentTenantId();
+    return tid ? eq(column, tid) : undefined;
+  }
+
+  private currentTenantId(): bigint | null {
+    return this.tenantContext.currentTenantId() ?? null;
+  }
 
   async list(query: Record<string, any>) {
     const groupType = query.group_type ? String(query.group_type) : undefined;
     const conditions: SQL[] = [
+      this.tenantCond(group.tenantId)!,
       groupType ? eq(group.type, groupType) : inArray(group.type, ['team', 'department'])
     ];
     if (query.organization_id) {
@@ -60,7 +74,7 @@ export class GroupsService {
       organizationIds
     });
 
-    await this.ensureOrganizationsExist(organizationIds);
+await this.ensureOrganizationsExist(organizationIds);
 
     const team = await this.db.client.transaction(async (tx) => {
       const [created] = await tx.insert(group)
@@ -69,6 +83,7 @@ export class GroupsService {
           description: dto.description,
           type: dto.group_type ?? 'team',
           organizationId: primaryOrganizationId,
+          tenantId: this.currentTenantId(),
           createdBy: createdById,
           updatedBy: createdById,
           isActive: dto.is_active ?? true
@@ -124,7 +139,7 @@ export class GroupsService {
           isActive: dto.is_active ?? existing.isActive,
           updatedBy: actor
         })
-        .where(eq(group.id, teamId));
+.where(and(eq(group.id, teamId), this.tenantCond(group.tenantId)!));
 
       if (organizationIds) {
         await this.syncGroupOrganizationsTx(tx, teamId, organizationIds, primaryOrganizationId);
@@ -142,6 +157,7 @@ export class GroupsService {
     const role = this.mapMemberRole(dto.role);
 
     const organizationIds = this.parseOrganizationIds(dto.organization_ids);
+    await this.ensureGroupExists(groupId);
     await this.ensureOrganizationsBelongToGroup(groupId, organizationIds);
 
     await this.db.client.transaction(async (tx) => {
@@ -166,9 +182,10 @@ export class GroupsService {
     return this.get(id);
   }
 
-  async removeMember(id: string, userId: string) {
+async removeMember(id: string, userId: string) {
     const groupId = parseBigIntId(id, 'group id');
     const memberId = parseBigIntId(userId, 'user id');
+    await this.ensureGroupExists(groupId);
 
     await this.db.client.delete(groupUser).where(and(eq(groupUser.groupId, groupId), eq(groupUser.userId, memberId)));
 
@@ -187,25 +204,34 @@ export class GroupsService {
     await this.ensureOrganizationsExist(organizationIds);
 
     await this.db.client.transaction(async (tx) => {
-      await this.syncGroupOrganizationsTx(tx, groupId, organizationIds, primaryOrganizationId);
+await this.syncGroupOrganizationsTx(tx, groupId, organizationIds, primaryOrganizationId);
       await tx.update(group)
         .set({
           organizationId: primaryOrganizationId,
           updatedAt: new Date()
         })
-        .where(eq(group.id, groupId));
+        .where(and(eq(group.id, groupId), this.tenantCond(group.tenantId)!));
     });
 
     return this.get(id);
   }
 
-  async forUser(userId: string, query: { organization_id?: string }) {
+async forUser(userId: string, query: { organization_id?: string }) {
     const profileId = parseBigIntId(userId, 'user id');
+    const tid = this.tenantContext.currentTenantId();
 
     const memberships = await this.db.client
       .select()
       .from(groupUser)
-      .where(eq(groupUser.userId, profileId))
+      .where(and(
+        eq(groupUser.userId, profileId),
+        tid
+          ? inArray(
+              groupUser.groupId,
+              this.db.client.select({ id: group.id }).from(group).where(eq(group.tenantId, tid)) as any,
+            )
+          : undefined,
+      ))
       .orderBy(desc(groupUser.isPrimary));
     const orgId = query.organization_id ? parseBigIntId(query.organization_id, 'organization id') : null;
 
@@ -230,9 +256,10 @@ export class GroupsService {
   }
 
   async setMemberScopes(id: string, userId: string, dto: SetGroupMemberScopesDto) {
-    const groupId = parseBigIntId(id, 'group id');
+const groupId = parseBigIntId(id, 'group id');
     const memberId = parseBigIntId(userId, 'user id');
     const organizationIds = this.parseOrganizationIds(dto.organization_ids);
+    await this.ensureGroupExists(groupId);
     await this.ensureOrganizationsBelongToGroup(groupId, organizationIds);
 
     const [membership] = await this.db.client
@@ -303,12 +330,12 @@ export class GroupsService {
     if (!existing) throw new NotFoundException('Group not found');
   }
 
-  private async ensureOrganizationsExist(organizationIds: bigint[]) {
+private async ensureOrganizationsExist(organizationIds: bigint[]) {
     if (organizationIds.length === 0) return;
     const found = await this.db.client
       .select({ id: organization.id })
       .from(organization)
-      .where(inArray(organization.id, organizationIds));
+      .where(and(inArray(organization.id, organizationIds), this.tenantCond(organization.tenantId)!));
     if (found.length !== organizationIds.length) {
       throw new NotFoundException('One or more organizations were not found');
     }
@@ -331,12 +358,13 @@ export class GroupsService {
     organizationIds: bigint[],
     primaryOrganizationId: bigint | null
   ) {
-    await tx.delete(groupOrganization).where(eq(groupOrganization.groupId, groupId));
+await tx.delete(groupOrganization).where(eq(groupOrganization.groupId, groupId));
     if (organizationIds.length === 0) return;
     await tx.insert(groupOrganization).values(
       organizationIds.map((organizationId) => ({
         groupId,
         organizationId,
+        tenantId: this.currentTenantId(),
         isPrimary: primaryOrganizationId ? organizationId === primaryOrganizationId : false
       })),
     );
@@ -348,19 +376,24 @@ export class GroupsService {
     organizationIds: bigint[],
     scopeRole?: string
   ) {
-    await tx.delete(groupUserOrganizationScope).where(eq(groupUserOrganizationScope.groupUserId, groupUserId));
+await tx.delete(groupUserOrganizationScope).where(eq(groupUserOrganizationScope.groupUserId, groupUserId));
     if (organizationIds.length === 0) return;
     await tx.insert(groupUserOrganizationScope).values(
       organizationIds.map((organizationId) => ({
         groupUserId,
         organizationId,
+        tenantId: this.currentTenantId(),
         scopeRole: scopeRole ?? null
       })),
     );
   }
 
-  private async findGroup(groupId: bigint) {
-    const [existing] = await this.db.client.select().from(group).where(eq(group.id, groupId)).limit(1);
+private async findGroup(groupId: bigint) {
+    const [existing] = await this.db.client
+      .select()
+      .from(group)
+      .where(and(eq(group.id, groupId), this.tenantCond(group.tenantId)!))
+      .limit(1);
     return existing ?? null;
   }
 
@@ -369,7 +402,7 @@ export class GroupsService {
       .select({ group, organization })
       .from(group)
       .leftJoin(organization, eq(group.organizationId, organization.id))
-      .where(eq(group.id, groupId))
+      .where(and(eq(group.id, groupId), this.tenantCond(group.tenantId)!))
       .limit(1);
     if (!base) return null;
 
