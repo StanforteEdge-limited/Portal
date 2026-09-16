@@ -1,4 +1,4 @@
-import { BadRequestException, Controller, Get, NotFoundException, Param, UseGuards } from '@nestjs/common';
+import { BadRequestException, Controller, Get, NotFoundException, Param, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '$common/auth/jwt-auth.guard';
 import { BackgroundJobsService } from './background-jobs.service';
@@ -16,15 +16,15 @@ export class BackgroundJobsController {
   @Get(':id')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Get background job status' })
-  getJob(@Param('id') id: string) {
-    return this.jobs.getJob(id);
+  getJob(@Req() req: any, @Param('id') id: string) {
+    return this.jobs.getJob(id, req.tenant.tenantId);
   }
 
   @Get(':id/download')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Get download URL for a completed background job artifact' })
-  async download(@Param('id') id: string) {
-    const job = await this.jobs.getJob(id);
+  async download(@Req() req: any, @Param('id') id: string) {
+    const job = await this.jobs.getJob(id, req.tenant.tenantId);
     const fileAssetId = job.result && typeof job.result === 'object' ? (job.result as any).file_asset_id : undefined;
     if (!fileAssetId) {
       throw new BadRequestException('This job did not produce a downloadable file');

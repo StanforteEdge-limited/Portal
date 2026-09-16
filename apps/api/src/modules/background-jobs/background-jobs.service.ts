@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { DbService } from '$common/db/db.service';
 import { TenantContextService } from '$common/auth/tenant-context.service';
 import { toBigInt } from '$common/utils/ids';
@@ -114,11 +114,13 @@ export class BackgroundJobsService {
     return { job_id: jobId };
   }
 
-  async getJob(id: string) {
+  async getJob(id: string, tenantId?: bigint) {
+    const conditions = [eq(backgroundJob.id, toBigInt(id))];
+    if (tenantId) conditions.push(eq(backgroundJob.tenantId, tenantId));
     const [row] = await this.db.client
       .select()
       .from(backgroundJob)
-      .where(eq(backgroundJob.id, toBigInt(id)))
+      .where(and(...conditions))
       .limit(1);
     if (!row) throw new NotFoundException('Background job not found');
     return {
