@@ -5,7 +5,7 @@ import { MailImapService } from './mail-imap.service';
 import { MailSyncService } from './mail-sync.service';
 import { MailSmtpService } from './mail-smtp.service';
 import { MailCryptoService } from './mail-crypto.service';
-import { NotificationsModule } from '$modules/notifications/notifications.module';
+import { NotificationsModule } from '$modules/hrm/notifications/notifications.module';
 import { BackgroundJobsService } from '$modules/background-jobs/background-jobs.service';
 import { DbService } from '$common/db/db.service';
 import { toBigInt } from '$common/utils/ids';

@@ -3,7 +3,7 @@ import { and, desc, eq } from 'drizzle-orm';
 import { DbService } from '$common/db/db.service';
 import { MailAccountService } from './mail-account.service';
 import { MailImapService } from './mail-imap.service';
-import { NotificationsService } from '$modules/notifications/notifications.service';
+import { NotificationsService } from '$modules/hrm/notifications/notifications.service';
 import { mailAccount, MailAccount, mailHeader } from './model';
 import type { SyncResultDto } from './dto/sync-result.dto';
 

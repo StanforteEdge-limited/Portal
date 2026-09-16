@@ -6,7 +6,7 @@ import { paginatedResponse } from '$common/helpers/paginated-response';
 import { parseBigIntId, toBigInt } from '$common/utils/ids';
 import type { AppDb } from '$common/db/db.service';
 import type { GroupUserRole } from '$app/db/enums';
-import { organization } from '$modules/directory/organizations/model';
+import { organization } from '$modules/hrm/organizations/model';
 import { profile } from '$modules/identity/users/model';
 import { AddGroupMemberDto } from './dto/add-group-member.dto';
 import { CreateTeamDto } from './dto/create-team.dto';
