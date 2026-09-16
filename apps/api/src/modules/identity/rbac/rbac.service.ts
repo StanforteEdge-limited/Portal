@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { SQL, and, asc, count, eq, ilike, inArray, isNull, or } from 'drizzle-orm';
 import { DbService } from '$common/db/db.service';
+import { AuthService } from '$modules/identity/auth/auth.service';
 import { TenantContextService } from '$common/auth/tenant-context.service';
 import { paginatedResponse } from '$common/helpers/paginated-response';
 import { parseBigIntId } from '$common/utils/ids';
@@ -21,6 +22,7 @@ export class RbacService {
   constructor(
     private readonly db: DbService,
     private readonly tenantContext: TenantContextService,
+    private readonly auth: AuthService,
   ) {}
 
 private templateScopeCondition(table: typeof roleTable | typeof permissionTable, tid?: bigint): SQL | undefined {
@@ -161,6 +163,7 @@ private templateScopeCondition(table: typeof roleTable | typeof permissionTable,
         .onConflictDoNothing();
     }
 
+    this.auth.clearRbacStateCache();
     return this.getRoleById(created.id, tid);
   }
 
@@ -208,6 +211,7 @@ private templateScopeCondition(table: typeof roleTable | typeof permissionTable,
       });
     }
 
+    this.auth.clearRbacStateCache();
     return this.getRoleById(id, tid);
   }
 
@@ -325,6 +329,7 @@ private templateScopeCondition(table: typeof roleTable | typeof permissionTable,
       await tx.delete(roleTable).where(eq(roleTable.id, id));
     });
 
+    this.auth.clearRbacStateCache();
     return {
       success: true,
       reassigned_assignments: assignments.length,
@@ -354,6 +359,7 @@ private templateScopeCondition(table: typeof roleTable | typeof permissionTable,
       await tx.update(roleTable).set({ updatedAt: new Date() }).where(eq(roleTable.id, id));
     });
 
+    this.auth.clearRbacStateCache();
     return this.getRoleById(id, tid);
   }
 
@@ -432,6 +438,7 @@ private templateScopeCondition(table: typeof roleTable | typeof permissionTable,
       })
       .returning();
 
+    this.auth.clearRbacStateCache();
     return {
       id: created.id.toString(),
       name: created.name,
@@ -510,6 +517,7 @@ private templateScopeCondition(table: typeof roleTable | typeof permissionTable,
       .where(eq(permissionTable.id, id))
       .returning();
 
+    this.auth.clearRbacStateCache();
     return {
       id: updated.id.toString(),
       name: updated.name,
@@ -574,6 +582,7 @@ private templateScopeCondition(table: typeof roleTable | typeof permissionTable,
       await tx.delete(permissionTable).where(eq(permissionTable.id, id));
     });
 
+    this.auth.clearRbacStateCache();
     return {
       success: true,
       affected_roles: affectedRoleIds.length,
@@ -743,6 +752,7 @@ private templateScopeCondition(table: typeof roleTable | typeof permissionTable,
       }
     });
 
+    this.auth.invalidateRbacState(id, tid);
     return this.getUserRoles(profileId, tenant);
   }
 

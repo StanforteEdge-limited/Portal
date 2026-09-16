@@ -37,6 +37,8 @@ import { TenancyModule } from '$modules/tenancy/tenancy.module';
 import { BillingModule } from '$modules/platform/billing/billing.module';
 import { QueuesModule } from '$common/queues/queues.module';
 import { AppCacheModule } from '$common/cache/cache.module';
+import { RateLimitModule } from '$common/rate-limit/rate-limit.module';
+import { DistributedLockModule } from '$common/locks/distributed-lock.module';
 import { SchedulingModule } from '$modules/scheduling/scheduling.module';
 
 @Module({
@@ -77,6 +79,8 @@ import { SchedulingModule } from '$modules/scheduling/scheduling.module';
     BillingModule,
     QueuesModule,
     AppCacheModule,
+    RateLimitModule,
+    DistributedLockModule,
     SchedulingModule,
   ],
   providers: [

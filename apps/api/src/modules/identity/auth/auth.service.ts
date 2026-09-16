@@ -32,6 +32,17 @@ import { role as roleTable, permission as permissionTable, rolePermission as rol
 const ACCESS_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m';
 const REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '30d';
 
+interface RbacStateCacheEntry {
+  tenantId: bigint;
+  membershipId: bigint;
+  isOwner: boolean;
+  name: string;
+  slug: string;
+  roles: string[];
+  permissions: string[];
+  expiresAt: number;
+}
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -570,25 +581,97 @@ export class AuthService {
       .limit(1);
     if (!profile || profile.status !== 'active') return null;
 
-    // Always resolve fresh roles/permissions from DB so RBAC changes apply immediately
-    // without forcing users to re-login and re-issue tokens.
-    const tenantId = payload?.tenantId ? toBigInt(payload.tenantId) : null;
-    const tenantContext = await this.resolveTenantContext(profileId, undefined, tenantId);
-    if (!tenantContext) return null;
-    const roles = await this.getUserRoles(profileId, tenantContext.tenantId);
-    const permissions = await this.getUserPermissions(profileId, roles, tenantContext.tenantId);
+    // Profile status stays fresh (1 query). Roles, permissions and the tenant
+    // context are resolved once per short TTL instead of on every request: each
+    // resolution is ~5 sequential DB round-trips, which made validation the
+    // dominant DB load on authenticated traffic. RBAC changes now apply within
+    // AUTH_ROLE_CACHE_TTL_MS (default 30s).
+    const requestedTenantId = payload?.tenantId ? toBigInt(payload.tenantId) : null;
+    if (!requestedTenantId) return null;
+    const state = await this.getCachedRbacState(profileId, requestedTenantId);
+    if (!state) return null;
 
     return {
       id: profile.id.toString(),
       email: profile.email,
       first_name: profile.firstName ?? undefined,
       last_name: profile.lastName ?? undefined,
-      permissions,
-      roles,
-      tenantId: tenantContext.tenantId.toString(),
-      tenantMembershipId: tenantContext.membershipId.toString(),
-      isTenantOwner: tenantContext.isOwner
+      permissions: state.permissions,
+      roles: state.roles,
+      tenantId: state.tenantId.toString(),
+      tenantMembershipId: state.membershipId.toString(),
+      isTenantOwner: state.isOwner
     };
+  }
+
+  private readonly rbacStateCache = new Map<string, RbacStateCacheEntry>();
+
+  private readonly maxRbacCacheEntries = Math.max(1000, Number(process.env.AUTH_ROLE_CACHE_MAX_ENTRIES || 100_000));
+
+  private rbacCacheTtlMs(): number {
+    return Math.max(1000, Number(process.env.AUTH_ROLE_CACHE_TTL_MS || 30_000));
+  }
+
+  private static rbacCacheKey(profileId: bigint, tenantId: bigint): string {
+    return `${profileId.toString()}:${tenantId.toString()}`;
+  }
+
+  private getCachedRbacState(profileId: bigint, tenantId: bigint): Promise<RbacStateCacheEntry | null> {
+    const key = AuthService.rbacCacheKey(profileId, tenantId);
+    const now = Date.now();
+    const cached = this.rbacStateCache.get(key);
+    if (cached && cached.expiresAt > now) return Promise.resolve(cached);
+
+    for (const [cachedKey, entry] of this.rbacStateCache) {
+      if (entry.expiresAt <= now) this.rbacStateCache.delete(cachedKey);
+    }
+
+    return this.resolveRbacState(profileId, tenantId).then((entry) => {
+      if (!entry) return null;
+      if (this.rbacStateCache.size >= this.maxRbacCacheEntries) {
+        const overflow = this.rbacStateCache.size - this.maxRbacCacheEntries + 1;
+        const toEvict = Array.from(this.rbacStateCache.keys()).slice(0, Math.max(1, overflow));
+        for (const evictKey of toEvict) this.rbacStateCache.delete(evictKey);
+      }
+      this.rbacStateCache.set(key, entry);
+      return entry;
+    });
+  }
+
+  private async resolveRbacState(profileId: bigint, tenantId: bigint): Promise<RbacStateCacheEntry | null> {
+    const tenantContext = await this.resolveTenantContext(profileId, undefined, tenantId);
+    if (!tenantContext) return null;
+    const roles = await this.getUserRoles(profileId, tenantContext.tenantId);
+    const permissions = await this.getUserPermissions(profileId, roles, tenantContext.tenantId);
+    return {
+      tenantId: tenantContext.tenantId,
+      membershipId: tenantContext.membershipId,
+      isOwner: tenantContext.isOwner,
+      name: tenantContext.name,
+      slug: tenantContext.slug,
+      roles,
+      permissions,
+      expiresAt: Date.now() + this.rbacCacheTtlMs(),
+    };
+  }
+
+  /** Drop cached roles/permissions for a profile (optionally restrained to a tenant), or clear all. */
+  invalidateRbacState(profileId?: bigint, tenantId?: bigint): void {
+    if (profileId === undefined) {
+      this.rbacStateCache.clear();
+      return;
+    }
+    for (const [key, entry] of this.rbacStateCache) {
+      const [cachedProfileId] = key.split(':');
+      if (cachedProfileId !== profileId.toString()) continue;
+      if (tenantId !== undefined && entry.tenantId !== tenantId) continue;
+      this.rbacStateCache.delete(key);
+    }
+  }
+
+  /** Convenience used by RBAC mutations: any role/permission change clears cached permissions. */
+  clearRbacStateCache(): void {
+    this.rbacStateCache.clear();
   }
 
   private async issueTokens(profileId: bigint, tenantId: bigint, permissions: string[], roles: string[]) {

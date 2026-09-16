@@ -26,5 +26,6 @@ ENV NODE_ENV=production \
 WORKDIR /app/apps/api
 EXPOSE 3000
 
-# Apply pending migrations (drizzle-kit migrate) then boot the compiled app
-CMD ["sh", "-c", "pnpm drizzle:migrate && node -r ./path-alias-register.js dist/main.js"]
+# Apply pending migrations under a Postgres advisory lock (single replica wins),
+# then boot the compiled app
+CMD ["sh", "-c", "pnpm drizzle:migrate:locked && node -r ./path-alias-register.js dist/main.js"]

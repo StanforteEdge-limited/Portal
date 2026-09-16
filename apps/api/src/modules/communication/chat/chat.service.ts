@@ -70,10 +70,11 @@ export class ChatService {
 
   async membershipIds(profileId: string): Promise<bigint[]> {
     const me = parseBigIntId(profileId, 'profile id');
+    const tid = this.tenantContext.currentTenantId();
     const rows = await this.db.client
       .select({ conversationId: chatConversationMember.conversationId })
       .from(chatConversationMember)
-      .where(eq(chatConversationMember.profileId, me));
+      .where(and(eq(chatConversationMember.profileId, me), tid ? eq(chatConversationMember.tenantId, tid) : undefined));
     return rows.map((row) => row.conversationId);
   }
 

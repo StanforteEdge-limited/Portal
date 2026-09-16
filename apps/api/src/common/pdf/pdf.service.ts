@@ -7,6 +7,31 @@ import puppeteer from 'puppeteer';
 @Injectable()
 export class PdfService {
   private readonly logger = new Logger(PdfService.name);
+  private active = 0;
+  private readonly waiters: Array<() => void> = [];
+
+  private get maxConcurrentRenders(): number {
+    return Math.max(1, Number(process.env.PDF_MAX_CONCURRENCY || 2));
+  }
+
+  /**
+   * Bounded concurrency guard so a burst of HTML→PDF requests never launches an
+   * unbounded number of Chromium processes on the same node.
+   */
+  private async acquire(): Promise<() => void> {
+    if (this.active >= this.maxConcurrentRenders) {
+      await new Promise<void>((resolve) => this.waiters.push(resolve));
+    }
+    this.active += 1;
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      this.active -= 1;
+      const next = this.waiters.shift();
+      if (next) next();
+    };
+  }
 
   /**
    * Single entry point for HTML → PDF rendering across the app. Never throws:
@@ -14,12 +39,15 @@ export class PdfService {
    * so callers don't each need their own try/catch around Puppeteer.
    */
   async renderPdfFromHtml(html: string, fallbackLines: string[] = []): Promise<Buffer> {
+    const release = await this.acquire();
     try {
       return await this.renderWithPuppeteer(html);
     } catch (error: any) {
       const suffix = error?.message ? String(error.message).slice(0, 120) : 'renderer error';
       this.logger.error(`PDF render failed, using fallback: ${suffix}`);
       return this.buildSimplePdfFallback([...fallbackLines, `PDF renderer fallback: ${suffix}`]);
+    } finally {
+      release();
     }
   }
 
@@ -40,7 +68,9 @@ export class PdfService {
 
     const browser = await puppeteer.launch({
       headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      // --disable-dev-shm-usage is required for Chromium inside Docker containers
+      // (default /dev/shm is 64MB); keep sandbox flags for the container runtime.
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
       env: {
         ...process.env,
         HOME: process.env.HOME || runtimeDir,

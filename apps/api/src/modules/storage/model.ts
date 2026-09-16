@@ -25,7 +25,7 @@ export const fileAsset = pgTable("sta_file_assets", {
   organizationId: bigint("organization_id", { mode: 'bigint' }).references(() => organization.id, { onDelete: 'set null' }),
   folderId: bigint("folder_id", { mode: 'bigint' }).references(() => storageFolder.id, { onDelete: 'set null' }),
   uploadedBy: bigint("uploaded_by", { mode: 'bigint' }).references(() => profile.id, { onDelete: 'set null' }),
-  storageDisk: varchar("storage_disk", { length: 30 }).default("local").notNull(),
+  storageDisk: varchar("storage_disk", { length: 30 }).default("s3").notNull(),
   storagePath: varchar("storage_path", { length: 500 }).notNull(),
   fileName: varchar("file_name", { length: 255 }).notNull(),
   mimeType: varchar("mime_type", { length: 120 }),

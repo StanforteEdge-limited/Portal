@@ -5,12 +5,13 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import rateLimit from 'express-rate-limit';
 import { resolve } from 'node:path';
-import { existsSync, mkdirSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { config as loadEnv } from 'dotenv';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from '$common/http/all-exceptions.filter';
 import { ResponseEnvelopeInterceptor } from '$common/http/response-envelope.interceptor';
 import { RedisIoAdapter } from '$common/realtime/realtime-io.adapter';
+import { RateLimitService } from '$common/rate-limit/rate-limit.service';
 
 const envCandidates = [
   resolve(process.cwd(), '.env'),
@@ -93,10 +94,9 @@ async function bootstrap() {
   app.useGlobalInterceptors(new ResponseEnvelopeInterceptor());
   app.useGlobalFilters(new AllExceptionsFilter());
 
+  // All uploads go to S3 object storage. This read-only mount serves only files
+  // written before the S3-only migration; it never accepts or writes uploads.
   const uploadsRoot = resolve(process.cwd(), 'uploads');
-  if (!existsSync(uploadsRoot)) {
-    mkdirSync(uploadsRoot, { recursive: true });
-  }
   app.useStaticAssets(uploadsRoot, { prefix: '/uploads/' });
 
   // Socket.io chat backed by Redis pub/sub (rooms + presence fan out across
@@ -117,17 +117,25 @@ async function bootstrap() {
   const inviteLimit = Number(process.env.AUTH_INVITE_ACCEPT_RATE_LIMIT_MAX || 10);
   const globalWindowMs = Number(process.env.GLOBAL_RATE_LIMIT_WINDOW_MS || 60 * 1000);
   const globalMax = Number(process.env.GLOBAL_RATE_LIMIT_MAX || 600);
-  // Coarse global ceiling; tight per-endpoint limits below guard auth specifically.
-  app.use(rateLimit({
+  // Shared Redis store keeps counters consistent across all API instances.
+  const rateLimitStore = app.get(RateLimitService).store;
+  const rateLimitOptions = {
     windowMs: globalWindowMs,
     max: globalMax,
     standardHeaders: true,
     legacyHeaders: false,
-  }));
+    // Coarse global ceiling; tight per-endpoint limits below guard auth specifically.
+    store: rateLimitStore,
+  };
+  app.use(rateLimit(rateLimitOptions));
 
-  app.use('/v1/auth/login', rateLimit({ windowMs: authWindowMs, max: loginLimit, standardHeaders: true, legacyHeaders: false }));
-  app.use('/v1/auth/forgot-password', rateLimit({ windowMs: authWindowMs, max: forgotLimit, standardHeaders: true, legacyHeaders: false }));
-  app.use('/v1/auth/accept-invite', rateLimit({ windowMs: authWindowMs, max: inviteLimit, standardHeaders: true, legacyHeaders: false }));
+  const authRateLimitOptions = { store: rateLimitStore, standardHeaders: true, legacyHeaders: false };
+  app.use('/v1/auth/login', rateLimit({ ...authRateLimitOptions, windowMs: authWindowMs, max: loginLimit }));
+  app.use(
+    '/v1/auth/forgot-password',
+    rateLimit({ ...authRateLimitOptions, windowMs: authWindowMs, max: forgotLimit }),
+  );
+  app.use('/v1/auth/accept-invite', rateLimit({ ...authRateLimitOptions, windowMs: authWindowMs, max: inviteLimit }));
 
   const jwtSecret = process.env.JWT_SECRET || '';
   const refreshSecret = process.env.JWT_REFRESH_SECRET || '';

@@ -1,23 +1,21 @@
-import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 @Injectable()
 export class S3StorageService {
-  private readonly client?: S3Client;
+  private readonly client: S3Client;
   private readonly bucket: string;
-  private readonly enabled: boolean;
 
   constructor() {
-    const driver = String(process.env.STORAGE_DRIVER || 'local').toLowerCase();
-    this.enabled = driver === 's3';
-    if (!this.enabled) {
-      this.bucket = '';
-      return;
-    }
+    // Object storage (S3 or any S3-compatible service) is the ONLY supported
+    // upload backend. Local-disk uploads are not supported; unset S3 credentials
+    // fail fast at boot so storage is never silently degraded to disk.
     this.bucket = String(process.env.S3_BUCKET || '').trim();
     if (!this.bucket) {
-      throw new Error('S3_BUCKET is required when STORAGE_DRIVER is s3');
+      throw new Error(
+        'S3_BUCKET is required — object storage (AWS S3, MinIO, DigitalOcean Spaces, R2) is the only supported upload backend'
+      );
     }
     const endpoint = String(process.env.S3_ENDPOINT || '').trim();
     this.client = new S3Client({
@@ -31,14 +29,7 @@ export class S3StorageService {
     });
   }
 
-  get isEnabled(): boolean {
-    return this.enabled;
-  }
-
   private clientOrThrow(): S3Client {
-    if (!this.client) {
-      throw new ServiceUnavailableException('S3 storage is not configured');
-    }
     return this.client;
   }
 

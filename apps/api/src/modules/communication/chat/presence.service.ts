@@ -5,6 +5,7 @@ import { ChatRealtimeService } from './chat-realtime.service';
 
 const PRESENCE_CHANNEL = 'portal:chat:presence';
 const ONLINE_KEY_PREFIX = 'chat:presence:online';
+const SOCKETS_KEY_PREFIX = 'chat:presence:sockets';
 
 interface SocketRegistration {
   tenantId: string;
@@ -15,13 +16,13 @@ interface SocketRegistration {
 /**
  * Online/offline presence tracking.
  *
- * - Per-profile Redis key (`chat:presence:online:{tenant}:{profile}`) holds a
- *   connection count with a TTL refreshed on heartbeat; its existence means
- *   "online".
- * - Presence transitions are published to a Redis channel so every API
- *   instance re-emits them into the affected conversation rooms.
- * - Local maps keep per-socket membership so the last socket of a profile to
- *   disconnect drives the transition to offline.
+ * - Per-profile Redis keys (`chat:presence:online:{tenant}:{profile}`) mark a
+ *   profile online and carry a connection count.
+ * - A Redis SET (`chat:presence:sockets:{tenant}:{profile}`) lists every live
+ *   socket across ALL API instances, so the online→offline transition is only
+ *   published once the last socket of a profile (on any instance) disconnects.
+ * - Local maps keep per-socket membership so the disconnecting socket knows
+ *   which conversation rooms to notify.
  */
 @Injectable()
 export class PresenceService implements OnModuleInit, OnModuleDestroy {
@@ -74,6 +75,10 @@ export class PresenceService implements OnModuleInit, OnModuleDestroy {
     return `${ONLINE_KEY_PREFIX}:${tenantId}:${profileId}`;
   }
 
+  private socketsKey(tenantId: string, profileId: string): string {
+    return `${SOCKETS_KEY_PREFIX}:${tenantId}:${profileId}`;
+  }
+
   private presenceTtlSeconds(): number {
     return Math.max(30, Number(process.env.PRESENCE_TTL_SECONDS || 90));
   }
@@ -106,11 +111,21 @@ export class PresenceService implements OnModuleInit, OnModuleDestroy {
       byProfile = new Map<string, number>();
       this.countByProfile.set(tenantId, byProfile);
     }
-    const previous = byProfile.get(profileId) ?? 0;
-    byProfile.set(profileId, previous + 1);
-    if (previous === 0) {
-      await this.markOnline(tenantId, profileId, 1);
-      await this.publish(tenantId, profileId, 'online', conversationIds);
+    byProfile.set(profileId, (byProfile.get(profileId) ?? 0) + 1);
+
+    if (!this.enabled || !this.pub) return;
+    try {
+      const key = this.socketsKey(tenantId, profileId);
+      const ttl = this.presenceTtlSeconds();
+      const added = await this.pub.sadd(key, socketId);
+      await this.pub.expire(key, ttl);
+      if (added === 1 && (await this.pub.exists(this.onlineKey(tenantId, profileId))) === 0) {
+        // First live socket of this profile across every instance.
+        await this.markOnline(tenantId, profileId);
+        await this.publish(tenantId, profileId, 'online', conversationIds);
+      }
+    } catch (error) {
+      this.logger.debug(`presence register failed: ${(error as Error)?.message}`);
     }
   }
 
@@ -122,11 +137,23 @@ export class PresenceService implements OnModuleInit, OnModuleDestroy {
     const previous = byProfile?.get(meta.profileId) ?? 0;
     const next = Math.max(0, previous - 1);
     if (next === 0) {
-      if (byProfile) byProfile.delete(meta.profileId);
-      await this.markOffline(meta.tenantId, meta.profileId);
-      await this.publish(meta.tenantId, meta.profileId, 'offline', meta.conversationIds);
+      byProfile?.delete(meta.profileId);
     } else if (byProfile) {
       byProfile.set(meta.profileId, next);
+    }
+
+    if (!this.enabled || !this.pub) return;
+    try {
+      const socketsKey = this.socketsKey(meta.tenantId, meta.profileId);
+      await this.pub.srem(socketsKey, socketId);
+      const remaining = await this.pub.scard(socketsKey);
+      if (remaining <= 0) {
+        await this.pub.del(socketsKey);
+        await this.markOffline(meta.tenantId, meta.profileId);
+        await this.publish(meta.tenantId, meta.profileId, 'offline', meta.conversationIds);
+      }
+    } catch (error) {
+      this.logger.debug(`presence unregister failed: ${(error as Error)?.message}`);
     }
   }
 
@@ -134,16 +161,16 @@ export class PresenceService implements OnModuleInit, OnModuleDestroy {
     if (!this.enabled || !this.pub) return;
     try {
       await this.pub.expire(this.onlineKey(tenantId, profileId), this.presenceTtlSeconds());
+      await this.pub.expire(this.socketsKey(tenantId, profileId), this.presenceTtlSeconds());
     } catch {
       /* presence keyed TTL is best-effort */
     }
   }
 
-  private async markOnline(tenantId: string, profileId: string, increment: number): Promise<void> {
+  private async markOnline(tenantId: string, profileId: string): Promise<void> {
     if (!this.enabled || !this.pub) return;
     try {
-      await this.pub.incrby(this.onlineKey(tenantId, profileId), increment);
-      await this.pub.expire(this.onlineKey(tenantId, profileId), this.presenceTtlSeconds());
+      await this.pub.set(this.onlineKey(tenantId, profileId), '1', 'EX', this.presenceTtlSeconds());
     } catch (error) {
       this.logger.debug(`markOnline failed: ${(error as Error)?.message}`);
     }
@@ -152,9 +179,7 @@ export class PresenceService implements OnModuleInit, OnModuleDestroy {
   private async markOffline(tenantId: string, profileId: string): Promise<void> {
     if (!this.enabled || !this.pub) return;
     try {
-      const key = this.onlineKey(tenantId, profileId);
-      const remaining = await this.pub.decr(key);
-      if (remaining <= 0) await this.pub.del(key);
+      await this.pub.del(this.onlineKey(tenantId, profileId));
     } catch (error) {
       this.logger.debug(`markOffline failed: ${(error as Error)?.message}`);
     }

@@ -2,12 +2,12 @@ import { IsNumber, IsObject, IsOptional, IsString, IsUUID } from 'class-validato
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class AttachFileDto {
-  @ApiPropertyOptional({ example: 'local' })
+  @ApiPropertyOptional({ example: 's3', description: 'Storage disk. Only "s3" is supported; local-disk uploads are disabled.' })
   @IsOptional()
   @IsString()
   storage_disk?: string;
 
-  @ApiProperty({ example: 'uploads/requests/invoice-2026-02-17-001.pdf' })
+  @ApiProperty({ example: 'tenants/241/files/invoice-2026-02-17-001.pdf' })
   @IsString()
   storage_path!: string;
 

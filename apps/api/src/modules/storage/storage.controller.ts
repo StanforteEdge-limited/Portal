@@ -93,12 +93,12 @@ export class StorageController {
     examples: {
       invoice: {
         value: {
-          storage_disk: 'local',
-          storage_path: 'uploads/requests/invoice-001.pdf',
+          storage_disk: 's3',
+          storage_path: 'tenants/241/files/invoice-2026-02-17-001.pdf',
           file_name: 'invoice-001.pdf',
           mime_type: 'application/pdf',
           file_size: 245899,
-          file_url: 'https://cdn.stanforteedge.com/uploads/requests/invoice-001.pdf'
+          file_url: 'https://cdn.stanforteedge.com/tenants/241/files/invoice-2026-02-17-001.pdf'
         }
       }
     }
@@ -174,7 +174,7 @@ export class StorageController {
       storage: memoryStorage()
     })
   )
-  @ApiOperation({ summary: 'Upload a file into a folder (local disk or S3-compatible depending on STORAGE_DRIVER)' })
+  @ApiOperation({ summary: 'Upload a file directly to S3 object storage' })
   upload(
     @Req() req: any,
     @UploadedFile() file: any,

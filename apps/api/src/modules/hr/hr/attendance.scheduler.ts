@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { and, asc, eq, gte, inArray, lte } from 'drizzle-orm';
 import { TenantContextService } from '$common/auth/tenant-context.service';
+import { DistributedLockService } from '$common/locks/distributed-lock.service';
 import { DbService } from '$common/db/db.service';
 import { NotificationsService } from '$modules/notifications/notifications.service';
 import { profile } from '$modules/identity/users/model';
@@ -20,10 +21,17 @@ export class AttendanceScheduler {
     private readonly tenantContext: TenantContextService,
     private readonly notifications: NotificationsService,
     private readonly attendance: AttendanceService,
+    private readonly locks: DistributedLockService,
   ) {}
 
   @Cron('0 */15 * * * *')
   async remindOpenSessions() {
+    await this.locks.withLock('attendance-reminder', 1_800_000, async () => {
+      await this.runReminderSweep();
+    });
+  }
+
+  private async runReminderSweep() {
     const now = new Date();
     const todayKey = now.toISOString().slice(0, 10);
     const workDate = new Date(todayKey);

@@ -1,5 +1,5 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { SQL, and, asc, count, desc, eq, exists, ilike, isNotNull, isNull, like, ne, or, sql } from 'drizzle-orm';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { SQL, and, asc, count, desc, eq, exists, ilike, inArray, isNotNull, isNull, like, ne, or, sql } from 'drizzle-orm';
 import { DbService } from '$common/db/db.service';
 import { TenantContextService } from '$common/auth/tenant-context.service';
 import { toBigInt } from '$common/utils/ids';
@@ -14,11 +14,11 @@ import { requestItem } from '$modules/requests/requests/model';
 import { financePaymentVoucher } from '$modules/finance/finance/model';
 import { subscriptionPlan, tenantSubscription } from '$modules/platform/billing/model';
 import { extname } from 'node:path';
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 
 @Injectable()
 export class StorageService {
+  private readonly logger = new Logger(StorageService.name);
+
   constructor(
     private readonly db: DbService,
     private readonly s3Storage: S3StorageService,
@@ -221,7 +221,7 @@ export class StorageService {
       .insert(fileAsset)
       .values({
         tenantId,
-        storageDisk: dto.storage_disk ?? 'local',
+        storageDisk: 's3',
         storagePath: dto.storage_path || dto.file_url!,
         fileName: dto.file_name,
         mimeType: dto.mime_type ?? null,
@@ -244,11 +244,11 @@ export class StorageService {
       mimetype?: string;
       size?: number;
       buffer?: Buffer;
-      path?: string;
     },
     payload?: { organization_id?: string; folder_id?: string; metadata?: Record<string, unknown> }
   ) {
     if (!file?.filename && !file?.originalname) throw new BadRequestException('file is required');
+    if (!file.buffer) throw new BadRequestException('file buffer is required');
     if (payload?.organization_id) {
       await this.ensureOrganizationExists(toBigInt(payload.organization_id));
     }
@@ -256,67 +256,34 @@ export class StorageService {
     const ext = extname(file.originalname || file.filename || '').toLowerCase();
     const mimeType = file.mimetype || (ext === '.pdf' ? 'application/pdf' : 'application/octet-stream');
     const fileName = file.originalname || file.filename || 'file';
-    const fileSize = Number(file.size || (file.buffer ? file.buffer.length : 0) || 0);
+    const fileSize = Number(file.size || file.buffer.length || 0);
     const folderId = await this.resolveFolderId(payload?.folder_id);
     const tenantId = await this.currentRequiredTenantId();
 
     await this.ensureQuota(fileSize);
 
-    if (this.s3Storage.isEnabled) {
-      if (!file.buffer) throw new BadRequestException('File buffer is missing');
-      const tenantKey = this.tenantIdValue();
-      const { key } = await this.s3Storage.putBuffer({
-        tenantId: tenantKey || 'anonymous',
-        fileName,
-        body: file.buffer,
-        contentType: mimeType
-      });
-      const publicUrl = this.s3PublicUrl(key);
-      const [created] = await this.db.client
-        .insert(fileAsset)
-        .values({
-          tenantId,
-          storageDisk: 's3',
-          storagePath: key,
-          fileName,
-          mimeType,
-          fileSize: BigInt(fileSize),
-          publicUrl: publicUrl ?? null,
-          organizationId: payload?.organization_id ? toBigInt(payload.organization_id) : null,
-          folderId,
-          uploadedBy: userId ? toBigInt(userId) : null,
-          metadata: payload?.metadata ?? { s3_key: key }
-        })
-        .returning();
-      return created;
-    }
-
-    const localName = `${Date.now()}-${fileName.replace(/[^a-zA-Z0-9._-]+/g, '-').slice(0, 200)}`;
-    const storagePath = `uploads/files/${localName}`;
-    const diskPath = resolve(process.cwd(), storagePath);
-    if (file.buffer) {
-      mkdirSync(resolve(diskPath, '..'), { recursive: true });
-      writeFileSync(diskPath, file.buffer);
-    } else if (file.path) {
-      const { copyFileSync } = await import('node:fs');
-      mkdirSync(resolve(diskPath, '..'), { recursive: true });
-      copyFileSync(file.path, diskPath);
-    }
-
+    const tenantKey = this.tenantIdValue();
+    const { key } = await this.s3Storage.putBuffer({
+      tenantId: tenantKey || 'anonymous',
+      fileName,
+      body: file.buffer,
+      contentType: mimeType
+    });
+    const publicUrl = this.s3PublicUrl(key);
     const [created] = await this.db.client
       .insert(fileAsset)
       .values({
         tenantId,
-        storageDisk: 'local',
-        storagePath,
+        storageDisk: 's3',
+        storagePath: key,
         fileName,
         mimeType,
         fileSize: BigInt(fileSize),
-        publicUrl: this.buildPublicUrl(storagePath),
+        publicUrl: publicUrl ?? null,
         organizationId: payload?.organization_id ? toBigInt(payload.organization_id) : null,
         folderId,
         uploadedBy: userId ? toBigInt(userId) : null,
-        metadata: payload?.metadata ?? { local_path: diskPath }
+        metadata: payload?.metadata ?? { s3_key: key }
       })
       .returning();
     return created;
@@ -349,9 +316,6 @@ export class StorageService {
   async presignUpload(
     payload: { file_name?: string; mime_type?: string; file_size?: number; expires_in_seconds?: number }
   ) {
-    if (!this.s3Storage.isEnabled) {
-      throw new BadRequestException('S3 storage is not configured');
-    }
     if (!payload?.file_name) throw new BadRequestException('file_name is required');
     if (payload.file_size !== undefined) {
       await this.ensureQuota(payload.file_size);
@@ -369,7 +333,7 @@ export class StorageService {
   async presignDownload(id: string, expiresInSeconds?: number) {
     const file = await this.findFileAssetById(id);
     if (!file) throw new NotFoundException('File not found');
-    if (this.s3Storage.isEnabled && file.storageDisk === 's3') {
+    if (file.storageDisk === 's3') {
       const url = await this.s3Storage.presignedDownload({
         key: file.storagePath,
         fileName: file.fileName,
@@ -394,12 +358,27 @@ export class StorageService {
       throw new BadRequestException('Cannot delete file because it is attached to request records');
     }
 
-    if (this.s3Storage.isEnabled && file.storageDisk === 's3') {
+    if (file.storageDisk === 's3') {
       await this.s3Storage.remove(file.storagePath);
+    } else {
+      // Legacy rows written before S3-only uploads; best-effort disk cleanup.
+      await this.removeLocalFile(file.storagePath);
     }
 
     await this.db.client.delete(fileAsset).where(and(eq(fileAsset.id, id), ...this.fileAssetConditions()));
     return { success: true, id: file.id, file_name: file.fileName };
+  }
+
+  private async removeLocalFile(storagePath: string): Promise<void> {
+    try {
+      const { rmSync } = await import('node:fs');
+      const { resolve } = await import('node:path');
+      if (!storagePath) return;
+      if (storagePath.startsWith('http') || storagePath.startsWith('tenants/')) return;
+      rmSync(resolve(process.cwd(), storagePath.replace(/^\/+/, '')), { force: true });
+    } catch (error) {
+      this.logger.warn(`Failed to remove local file ${storagePath}: ${(error as Error)?.message}`);
+    }
   }
 
   async findOne(id: string) {
@@ -450,31 +429,34 @@ export class StorageService {
       .where(and(...conditions))
       .orderBy(asc(storageFolder.name));
 
-    const withCounts = await Promise.all(
-      folders.map(async (folder) => {
-        const [fileCountRows, childCountRows] = await Promise.all([
+    const folderIds = folders.map((folder) => folder.id).filter((id): id is bigint => id != null);
+    const [fileCountRows, childCountRows] = folderIds.length
+      ? await Promise.all([
           this.db.client
-            .select({ value: count() })
+            .select({ folderId: fileAsset.folderId, value: count() })
             .from(fileAsset)
-            .where(and(eq(fileAsset.folderId, folder.id), ...this.fileAssetConditions())),
+            .where(and(inArray(fileAsset.folderId, folderIds), ...this.fileAssetConditions()))
+            .groupBy(fileAsset.folderId),
           this.db.client
-            .select({ value: count() })
+            .select({ parentId: storageFolder.parentId, value: count() })
             .from(storageFolder)
-            .where(and(eq(storageFolder.parentId, folder.id), ...this.storageFolderConditions())),
-        ]);
-        return {
-          id: folder.id.toString(),
-          name: folder.name,
-          parent_id: folder.parentId?.toString() ?? null,
-          created_by: folder.createdBy?.toString() ?? null,
-          created_at: folder.createdAt,
-          updated_at: folder.updatedAt,
-          file_count: Number(fileCountRows[0]?.value ?? 0),
-          child_count: Number(childCountRows[0]?.value ?? 0),
-        };
-      })
-    );
-    return withCounts;
+            .where(and(inArray(storageFolder.parentId, folderIds), ...this.storageFolderConditions()))
+            .groupBy(storageFolder.parentId),
+        ])
+      : [[], []];
+    const fileCountByFolder = new Map(fileCountRows.map((row) => [String(row.folderId), Number(row.value)]));
+    const childCountByFolder = new Map(childCountRows.map((row) => [String(row.parentId), Number(row.value)]));
+
+    return folders.map((folder) => ({
+      id: folder.id.toString(),
+      name: folder.name,
+      parent_id: folder.parentId?.toString() ?? null,
+      created_by: folder.createdBy?.toString() ?? null,
+      created_at: folder.createdAt,
+      updated_at: folder.updatedAt,
+      file_count: fileCountByFolder.get(String(folder.id)) ?? 0,
+      child_count: childCountByFolder.get(String(folder.id)) ?? 0,
+    }));
   }
 
   async createFolder(

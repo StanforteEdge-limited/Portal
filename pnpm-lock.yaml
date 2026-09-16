@@ -131,6 +131,9 @@ importers:
       puppeteer:
         specifier: ^24.37.4
         version: 24.43.1(typescript@5.9.3)
+      rate-limit-redis:
+        specifier: 4.2.0
+        version: 4.2.0(express-rate-limit@8.7.0(express@4.22.1))
       reflect-metadata:
         specifier: ^0.2.2
         version: 0.2.2
@@ -3273,6 +3276,12 @@ packages:
   range-parser@1.2.1:
     resolution: {integrity: sha512-Hrgsx+orqoygnmhFbKaHE6c296J+HTAQXoxEF6gNupROmmGJRoyzfG3ccAveqCBrwr/2yxQ5BVd/GTl5agOwSg==}
     engines: {node: '>= 0.6'}
+
+  rate-limit-redis@4.2.0:
+    resolution: {integrity: sha512-wV450NQyKC24NmPosJb2131RoczLdfIJdKCReNwtVpm5998U8SgKrAZrIHaN/NfQgqOHaan8Uq++B4sa5REwjA==}
+    engines: {node: '>= 16'}
+    peerDependencies:
+      express-rate-limit: '>= 6'
 
   raw-body@2.5.3:
     resolution: {integrity: sha512-s4VSOf6yN0rvbRZGxs8Om5CWj6seneMwK3oDb4lWDH0UPhWcxwOWw5+qk24bxq87szX1ydrwylIOp2uG1ojUpA==}
@@ -6664,6 +6673,10 @@ snapshots:
   quick-format-unescaped@4.0.4: {}
 
   range-parser@1.2.1: {}
+
+  rate-limit-redis@4.2.0(express-rate-limit@8.7.0(express@4.22.1)):
+    dependencies:
+      express-rate-limit: 8.7.0(express@4.22.1)
 
   raw-body@2.5.3:
     dependencies:

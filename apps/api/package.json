@@ -5,7 +5,7 @@
   "description": "StanforteEdge Portal API (NestJS + Postgres)",
   "scripts": {
     "dev": "ts-node-dev -r ./path-alias-register.js --respawn --transpile-only src/main.ts",
-    "build": "NODE_OPTIONS=--max-old-space-size=4096 tsc -p tsconfig.build.json && node scripts/copy-email-templates.js",
+    "build": "node --max-old-space-size=4096 node_modules/typescript/bin/tsc -p tsconfig.build.json && node scripts/copy-email-templates.js",
     "start": "node -r ./path-alias-register.js dist/main.js",
     "prepare:runtime": "drizzle-kit migrate && npm run seed:version",
     "deploy:server": "npm run prepare:runtime && npm run build",
@@ -27,6 +27,7 @@
     "repair:request-workflows": "node scripts/repair-request-workflow-links.js",
     "drizzle:generate": "drizzle-kit generate",
     "drizzle:migrate": "drizzle-kit migrate",
+    "drizzle:migrate:locked": "node scripts/migrate-locked.js",
     "drizzle:push": "drizzle-kit push",
     "drizzle:studio": "drizzle-kit studio"
   },
@@ -70,6 +71,7 @@
     "pdf-lib": "^1.17.1",
     "pg": "^8.23.0",
     "puppeteer": "^24.37.4",
+    "rate-limit-redis": "4.2.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "socket.io": "^4.8.1",

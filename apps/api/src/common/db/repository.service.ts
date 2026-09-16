@@ -891,27 +891,48 @@ export class RepositoryService {
   }
 
   async $transaction<T>(input: (tx: RepositoryService) => T | Promise<T>): Promise<T>;
-  async $transaction(input: any[]): Promise<any[]>;
+  async $transaction<T>(input: Array<(tx: RepositoryService) => T | Promise<T>>): Promise<T[]>;
+  async $transaction(input: Promise<any>[]): Promise<any[]>;
   async $transaction(input: any): Promise<any> {
+    // Array of functions → executed inside a single real DB transaction (atomic).
+    if (Array.isArray(input) && input.length > 0 && typeof input[0] === 'function') {
+      return this.dbService.client.transaction(async (tx) => {
+        const scoped = RepositoryService.withTransactionScopedClient(this, tx);
+        return Promise.all(input.map((operation: any) => operation(scoped)));
+      });
+    }
+    // Array of pre-built queries (read aggregations). These are NOT atomic across
+    // members; only the callback form is transactional. Kept for the many
+    // count+list read call sites that do not need atomicity.
     if (Array.isArray(input)) return Promise.all(input);
     return this.dbService.client.transaction(async (tx) => {
-      const scoped = Object.create(RepositoryService.prototype) as RepositoryService;
-      (scoped as any).dbService = { client: tx };
-      (scoped as any).tenantContext = this.tenantContext;
-      (scoped as any).delegates = new Map<string, TableRepository>();
-      const proxy = new Proxy(scoped, {
-        get: (target, property, receiver) => {
-          if (typeof property !== 'string') return Reflect.get(target, property, receiver);
-          if (property in target) return Reflect.get(target, property, receiver);
-          const table = tableMap[property] ?? tableMap[lowerFirst(property)];
-          if (!table) return undefined;
-          if (!(target as any).delegates.has(property)) {
-            (target as any).delegates.set(property, new TableRepository(tx, property, table, (target as any).tenantContext));
-          }
-          return (target as any).delegates.get(property);
-        },
-      });
-      return input(proxy);
+      const scoped = RepositoryService.withTransactionScopedClient(this, tx);
+      return input(scoped);
+    });
+  }
+
+  private static withTransactionScopedClient<T>(
+    target: RepositoryService,
+    tx: DbLike,
+  ): RepositoryService {
+    const scoped = Object.create(RepositoryService.prototype) as RepositoryService;
+    (scoped as any).dbService = { client: tx };
+    (scoped as any).tenantContext = target.tenantContext;
+    (scoped as any).delegates = new Map<string, TableRepository>();
+    return new Proxy(scoped, {
+      get: (proxyTarget, property, receiver) => {
+        if (typeof property !== 'string') return Reflect.get(proxyTarget, property, receiver);
+        if (property in proxyTarget) return Reflect.get(proxyTarget, property, receiver);
+        const table = tableMap[property] ?? tableMap[lowerFirst(property)];
+        if (!table) return undefined;
+        if (!(proxyTarget as any).delegates.has(property)) {
+          (proxyTarget as any).delegates.set(
+            property,
+            new TableRepository(tx, property, table, (proxyTarget as any).tenantContext),
+          );
+        }
+        return (proxyTarget as any).delegates.get(property);
+      },
     });
   }
 
