@@ -6,12 +6,12 @@ import { AppDb, DbService } from '$common/db/db.service';
 import { TenantContextService } from '$common/auth/tenant-context.service';
 import { TenantContext } from '$common/auth/tenant-context';
 import { generateUniqueUsername, makeUsernameSeed } from '$common/utils/username';
-import { form, formField } from '$modules/requests/forms/model';
-import { policy } from '$modules/requests/policies/model';
+import { form, formField } from '$modules/hrm/forms/model';
+import { policy } from '$modules/hrm/policies/model';
 import { role, userRole } from '$modules/identity/rbac/model';
 import { profile } from '$modules/identity/users/model';
-import { taxonomy, taxonomyTerm } from '$modules/requests/taxonomy/model';
-import { workflow, workflowStep, workflowStepApprover, workflowTransition } from '$modules/requests/workflow/model';
+import { taxonomy, taxonomyTerm } from '$modules/hrm/taxonomy/model';
+import { workflow, workflowStep, workflowStepApprover, workflowTransition } from '$modules/hrm/workflow/model';
 import { CreateWorkspaceDto } from './dto/create-workspace.dto';
 import { tenant, tenantMembership } from './model';
 
