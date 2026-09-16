@@ -22,7 +22,7 @@ import {
 } from './model';
 import { officeLocation, organization, organizationOfficeLocation, profileOrganization } from '$modules/directory/organizations/model';
 import { profile } from '$modules/identity/users/model';
-import { groupUser } from '$modules/communication/groups/model';
+import { group, groupUser } from '$modules/communication/groups/model';
 import { policy } from '$modules/requests/policies/model';
 import { requestInstance, requestType } from '$modules/requests/requests/model';
 
@@ -402,25 +402,27 @@ private tenantCond(column: any): SQL | undefined {
     const orgId = query.org_id ? toBigInt(String(query.org_id)) : null;
     const teamId = query.team_id ? toBigInt(String(query.team_id)) : null;
 
-    const conds: SQL[] = [
+const conds: SQL[] = [
       gte(attendanceDaily.workDate, fromDate),
       lte(attendanceDaily.workDate, toDate),
       ...(status ? [eq(attendanceDaily.status, status)] : []),
-      ...(userId ? [eq(attendanceDaily.userId, userId)] : [])
+      ...(userId ? [eq(attendanceDaily.userId, userId)] : []),
+      this.tenantCond(attendanceDaily.tenantId)
     ];
 
     if (orgId) {
       const orgUsers = await this.db.client
         .select({ profileId: profileOrganization.profileId })
         .from(profileOrganization)
-        .where(eq(profileOrganization.organizationId, orgId));
+        .where(and(eq(profileOrganization.organizationId, orgId), this.tenantCond(profileOrganization.tenantId)));
       conds.push(inArray(attendanceDaily.userId, orgUsers.map((row) => row.profileId)));
     }
     if (teamId) {
       const teamUsers = await this.db.client
         .select({ userId: groupUser.userId })
         .from(groupUser)
-        .where(eq(groupUser.groupId, teamId));
+        .innerJoin(group, eq(groupUser.groupId, group.id))
+        .where(and(eq(groupUser.groupId, teamId), this.tenantCond(group.tenantId)));
       conds.push(inArray(attendanceDaily.userId, teamUsers.map((row) => row.userId)));
     }
     const where = and(...conds);
@@ -720,7 +722,7 @@ private tenantCond(column: any): SQL | undefined {
     const limit = query.per_page ? Math.max(1, parseInt(String(query.per_page), 10)) : 25;
     const skip = (page - 1) * limit;
 
-    const conds: SQL[] = [];
+const conds: SQL[] = [this.tenantCond(attendanceCorrection.tenantId)];
     if (status) conds.push(eq(attendanceCorrection.status, status));
     if (targetUserId) conds.push(eq(attendanceCorrection.userId, targetUserId));
     if (fromDate) conds.push(gte(attendanceCorrection.workDate, fromDate));
@@ -800,8 +802,9 @@ private tenantCond(column: any): SQL | undefined {
             .orderBy(desc(attendanceEntry.entryAt))
             .limit(1))[0] ?? null;
 
-    const [correction] = await this.db.client.insert(attendanceCorrection).values({
+const [correction] = await this.db.client.insert(attendanceCorrection).values({
       userId: actorId,
+      tenantId: this.tenantContext.currentTenantId() ?? null,
       attendanceDailyId: existingDaily?.id ?? null,
       attendanceEntryId: relevantEntry?.id ?? null,
       officeLocationId: relevantEntry?.officeLocationId ?? existingDaily?.officeLocationId ?? null,
@@ -838,13 +841,19 @@ private tenantCond(column: any): SQL | undefined {
     const policy = await this.resolveAttendancePolicy(correction.userId, profile);
 
     await this.db.client.transaction(async (tx) => {
-      if (correction.requestType === 'clock_in' || correction.requestType === 'clock_out') {
+if (correction.requestType === 'clock_in' || correction.requestType === 'clock_out') {
         if (!correction.proposedAt) throw new BadRequestException('Correction is missing the proposed time');
         const officeLocationRow = correction.proposedOfficeLocationId
-          ? (await tx.select().from(officeLocation).where(eq(officeLocation.id, correction.proposedOfficeLocationId)).limit(1))[0] ?? null
+          ? (await tx
+              .select({ officeLocation })
+              .from(officeLocation)
+              .innerJoin(organizationOfficeLocation, eq(organizationOfficeLocation.officeLocationId, officeLocation.id))
+              .where(and(eq(officeLocation.id, correction.proposedOfficeLocationId), this.tenantCond(organizationOfficeLocation.tenantId)))
+              .limit(1))[0]?.officeLocation ?? null
           : null;
         await tx.insert(attendanceEntry).values({
           userId: correction.userId,
+          tenantId: this.tenantContext.currentTenantId() ?? null,
           entryType: correction.requestType,
           entryAt: correction.proposedAt,
           workDate: correction.workDate,
@@ -863,15 +872,21 @@ private tenantCond(column: any): SQL | undefined {
           metadata: { correction_id: correction.id, approved_by: actorId.toString() }
         });
       } else {
-        const targetEntries = correction.attendanceEntryId
-          ? await tx.select().from(attendanceEntry).where(eq(attendanceEntry.id, correction.attendanceEntryId))
+const targetEntries = correction.attendanceEntryId
+          ? await tx.select().from(attendanceEntry).where(and(eq(attendanceEntry.id, correction.attendanceEntryId), this.tenantCond(attendanceEntry.tenantId)))
           : await tx.select().from(attendanceEntry).where(and(
               eq(attendanceEntry.userId, correction.userId),
-              eq(attendanceEntry.workDate, correction.workDate)
+              eq(attendanceEntry.workDate, correction.workDate),
+              this.tenantCond(attendanceEntry.tenantId)
             ));
         for (const entry of targetEntries) {
           const officeLocationRow = correction.proposedOfficeLocationId
-            ? (await tx.select().from(officeLocation).where(eq(officeLocation.id, correction.proposedOfficeLocationId)).limit(1))[0] ?? null
+            ? (await tx
+                .select({ officeLocation })
+                .from(officeLocation)
+                .innerJoin(organizationOfficeLocation, eq(organizationOfficeLocation.officeLocationId, officeLocation.id))
+                .where(and(eq(officeLocation.id, correction.proposedOfficeLocationId), this.tenantCond(organizationOfficeLocation.tenantId)))
+                .limit(1))[0]?.officeLocation ?? null
             : null;
           await tx.update(attendanceEntry)
             .set({
@@ -959,7 +974,7 @@ private tenantCond(column: any): SQL | undefined {
     const fromDate = query.from ? this.toWorkDate(new Date(String(query.from))) : undefined;
     const toDate = query.to ? this.toWorkDate(new Date(String(query.to))) : undefined;
 
-    const conds: SQL[] = [];
+const conds: SQL[] = [this.tenantCond(attendanceException.tenantId)];
     if (status) conds.push(eq(attendanceException.status, status));
     if (targetUserId) conds.push(eq(attendanceException.userId, targetUserId));
     if (fromDate) conds.push(gte(attendanceException.workDate, fromDate));
