@@ -1,0 +1,4647 @@
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import Decimal from 'decimal.js';
+import type { SQL } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gt, gte, ilike, inArray, isNull, like, lte, not, or } from 'drizzle-orm';
+import JSZip from 'jszip';
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import { PdfService } from '$common/pdf/pdf.service';
+import { existsSync, readFileSync } from 'node:fs';
+import { extname, resolve } from 'node:path';
+import { MailService } from '$common/mail/mail.service';
+import { StorageService } from '$modules/storage/storage.service';
+import { DbService, type AppDb } from '$common/db/db.service';
+import { TenantContextService } from '$common/auth/tenant-context.service';
+import { toBigInt } from '$common/utils/ids';
+import { NotificationsService } from '$modules/hrm/notifications/notifications.service';
+import { CreatePayrollRunDto } from '$modules/hrm/payroll/dto/create-payroll-run.dto';
+import { GeneratePayrollPayslipTemplateDto, GeneratePayrollSummaryTemplateDto } from '$modules/hrm/payroll/dto/generate-payroll-template.dto';
+import { PayPayrollRunDto } from '$modules/hrm/payroll/dto/pay-payroll-run.dto';
+import { PayrollImportDto } from '$modules/hrm/payroll/dto/payroll-import.dto';
+import { UpdatePayrollRunAllocationsDto } from '$modules/hrm/payroll/dto/update-payroll-run-allocations.dto';
+import { UpdatePayrollRunItemDto } from '$modules/hrm/payroll/dto/update-payroll-run-item.dto';
+import { UpdatePayrollRunTimesheetAllocationsDto } from '$modules/hrm/payroll/dto/update-payroll-run-timesheet-allocations.dto';
+import { UpsertPayrollComponentDto } from '$modules/hrm/payroll/dto/upsert-payroll-component.dto';
+import { UpsertPayrollSettingDto } from '$modules/hrm/payroll/dto/upsert-payroll-setting.dto';
+import { UpsertPayrollTaxTableDto } from '$modules/hrm/payroll/dto/upsert-payroll-tax-table.dto';
+import { UpsertPayrollWorkerDto } from '$modules/hrm/payroll/dto/upsert-payroll-worker.dto';
+import { paginatedResponse } from '$common/helpers/paginated-response';
+import {
+  payrollAccountingPosting,
+  payrollComponent,
+  payrollImportJob,
+  payrollImportRow,
+  payrollLoan,
+  payrollLoanRepayment,
+  payrollNotificationPreference,
+  payrollPayslipDistribution,
+  payrollRun,
+  payrollRunEvent,
+  payrollRunItem,
+  payrollRunItemAllocation,
+  payrollRunItemLine,
+  payrollRunTimesheetAllocation,
+  payrollSetting,
+  payrollTaxBand,
+  payrollTaxTable,
+  payrollWorker,
+  payrollWorkerAllocation,
+  payrollWorkerProfile,
+  payrollWorkerProfileComponent,
+} from './model';
+import { group } from '$modules/communication/groups/model';
+import { organization } from '$modules/hrm/organizations/model';
+import { projectTimesheetEntry } from '$modules/hrm/tasks/model';
+import { profile } from '$modules/identity/users/model';
+import { notification } from '$modules/hrm/notifications/model';
+import {
+  financeAccount,
+  financeChartAccount,
+  financeFund,
+  financeGrant,
+  financeJournalEntry,
+  financeJournalLine,
+  financeReportingPeriod,
+} from '$modules/finance/finance/model';
+import type { NewPayrollComponent } from './model';
+
+type TxClient = Parameters<Parameters<AppDb['transaction']>[0]>[0];
+
+@Injectable()
+export class PayrollService {
+  constructor(
+    private readonly db: DbService,
+    private readonly tenantContext: TenantContextService,
+    private readonly notificationsService: NotificationsService,
+    private readonly mailService: MailService,
+    private readonly pdfService: PdfService,
+    private readonly storageService: StorageService
+  ) {}
+
+  private toScale(value: string | number | Decimal | null | undefined): string | null {
+    if (value === null || value === undefined) return null;
+    return value instanceof Decimal ? value.toString() : String(value);
+  }
+
+  private toScaleOrZero(value: string | number | Decimal | null | undefined): string {
+    return this.toScale(value) ?? '0';
+  }
+
+  private tenantWhere() {
+    const tid = this.tenantContext.currentTenantId();
+    return tid ? { tenantId: tid } : {};
+  }
+
+  private tenantCond(column: any): SQL | undefined {
+    const tid = this.tenantContext.currentTenantId();
+    return tid ? eq(column, tid) : undefined;
+  }
+
+  private async findRunScoped(id: string) {
+    const rows = await this.db.client
+      .select()
+      .from(payrollRun)
+      .where(and(eq(payrollRun.id, id), this.tenantCond(payrollRun.tenantId)))
+      .limit(1);
+    return rows[0] ?? null;
+  }
+
+  private combine(...conds: Array<SQL | undefined>): SQL | undefined {
+    const present = conds.filter((c): c is SQL => c !== undefined);
+    return present.length ? and(...present) : undefined;
+  }
+
+  private async countTable(table: any, conds: Array<SQL | undefined>): Promise<number> {
+    const rows = await this.db.client.select({ c: count() }).from(table).where(this.combine(...conds));
+    return rows[0]?.c ?? 0;
+  }
+
+  private async restoreLoanOutstandingTx(tx: TxClient, repayments: Array<{ loanId: string; amount: string | number }>) {
+    if (!repayments.length) return;
+    const loanIds = Array.from(new Set(repayments.map((r) => r.loanId).filter((v): v is string => v != null)));
+    if (!loanIds.length) return;
+    const loans = await tx.select().from(payrollLoan).where(inArray(payrollLoan.id, loanIds));
+    const amountByLoan = new Map<string, number>();
+    for (const repayment of repayments) {
+      amountByLoan.set(repayment.loanId, (amountByLoan.get(repayment.loanId) ?? 0) + Number(repayment.amount || 0));
+    }
+    for (const loan of loans) {
+      const add = amountByLoan.get(loan.id) ?? 0;
+      await tx.update(payrollLoan)
+        .set({
+          outstandingAmount: this.toScale(Number(loan.outstandingAmount || 0) + add),
+          status: 'active',
+        })
+        .where(eq(payrollLoan.id, loan.id));
+    }
+  }
+
+  private async hydrateTaxTable(tableId: string): Promise<any> {
+    const tableRows = await this.db.client.select().from(payrollTaxTable).where(eq(payrollTaxTable.id, tableId)).limit(1);
+    const table = tableRows[0];
+    if (!table) return null;
+    const bands = await this.db.client.select().from(payrollTaxBand).where(eq(payrollTaxBand.tableId, tableId)).orderBy(asc(payrollTaxBand.sortOrder));
+    return { ...table, bands };
+  }
+
+  private async hydrateSetting(row: any): Promise<any> {
+    if (!row) return row;
+    const [organizationRow, expenseAccount, cashAccount, employeeTaxTable] = await Promise.all([
+      row.organizationId
+        ? this.db.client.select({ id: organization.id, name: organization.name }).from(organization).where(eq(organization.id, row.organizationId)).limit(1).then((r) => r[0])
+        : Promise.resolve(null),
+      row.defaultExpenseAccountId
+        ? this.db.client.select({ id: financeAccount.id, code: financeAccount.code, name: financeAccount.name }).from(financeAccount).where(eq(financeAccount.id, row.defaultExpenseAccountId)).limit(1).then((r) => r[0])
+        : Promise.resolve(null),
+      row.defaultCashAccountId
+        ? this.db.client.select({ id: financeAccount.id, code: financeAccount.code, name: financeAccount.name }).from(financeAccount).where(eq(financeAccount.id, row.defaultCashAccountId)).limit(1).then((r) => r[0])
+        : Promise.resolve(null),
+      row.employeeTaxTableId ? this.hydrateTaxTable(row.employeeTaxTableId) : Promise.resolve(null),
+    ]);
+    return { ...row, organization: organizationRow, defaultExpenseAccount: expenseAccount, defaultCashAccount: cashAccount, employeeTaxTable };
+  }
+
+  private async attachTaxBands(rows: any[]) {
+    if (!rows.length) return rows;
+    const ids = rows.map((r: any) => r.id);
+    const bands = await this.db.client.select().from(payrollTaxBand).where(inArray(payrollTaxBand.tableId, ids)).orderBy(asc(payrollTaxBand.sortOrder));
+    const byTable = new Map<string, any[]>();
+    for (const b of bands) {
+      const list = byTable.get(b.tableId) ?? [];
+      list.push(b);
+      byTable.set(b.tableId, list);
+    }
+    return rows.map((r: any) => ({ ...r, bands: byTable.get(r.id) ?? [] }));
+  }
+
+  private async hydrateLoan(row: any): Promise<any> {
+    if (!row) return row;
+    const [workerRow, componentRow, repaymentRows] = await Promise.all([
+      row.workerId
+        ? this.db.client.select({ id: payrollWorker.id, fullName: payrollWorker.fullName, workerType: payrollWorker.workerType, email: payrollWorker.email }).from(payrollWorker).where(eq(payrollWorker.id, row.workerId)).limit(1).then((r) => r[0])
+        : Promise.resolve(null),
+      row.componentId
+        ? this.db.client.select({ id: payrollComponent.id, code: payrollComponent.code, name: payrollComponent.name }).from(payrollComponent).where(eq(payrollComponent.id, row.componentId)).limit(1).then((r) => r[0])
+        : Promise.resolve(null),
+      this.db.client.select().from(payrollLoanRepayment).where(eq(payrollLoanRepayment.loanId, row.id)).orderBy(desc(payrollLoanRepayment.createdAt)).limit(24),
+    ]);
+    return { ...row, worker: workerRow, component: componentRow, repayments: repaymentRows };
+  }
+
+  private async hydrateProjectTimesheet(row: any): Promise<any> {
+    if (!row) return row;
+    const [workerRow, componentRow, organizationRow, fundRow, grantRow, runRow] = await Promise.all([
+      row.workerId
+        ? this.db.client.select({ id: payrollWorker.id, fullName: payrollWorker.fullName, workerType: payrollWorker.workerType, email: payrollWorker.email }).from(payrollWorker).where(eq(payrollWorker.id, row.workerId)).limit(1).then((r) => r[0])
+        : Promise.resolve(null),
+      row.componentId
+        ? this.db.client.select({ id: payrollComponent.id, code: payrollComponent.code, name: payrollComponent.name }).from(payrollComponent).where(eq(payrollComponent.id, row.componentId)).limit(1).then((r) => r[0])
+        : Promise.resolve(null),
+      row.organizationId
+        ? this.db.client.select({ id: organization.id, name: organization.name }).from(organization).where(eq(organization.id, row.organizationId)).limit(1).then((r) => r[0])
+        : Promise.resolve(null),
+      row.fundId
+        ? this.db.client.select({ id: financeFund.id, code: financeFund.code, name: financeFund.name }).from(financeFund).where(eq(financeFund.id, row.fundId)).limit(1).then((r) => r[0])
+        : Promise.resolve(null),
+      row.grantId
+        ? this.db.client.select({ id: financeGrant.id, code: financeGrant.code, name: financeGrant.name }).from(financeGrant).where(eq(financeGrant.id, row.grantId)).limit(1).then((r) => r[0])
+        : Promise.resolve(null),
+      row.syncedRunId
+        ? this.db.client.select({ id: payrollRun.id, name: payrollRun.name, year: payrollRun.year, month: payrollRun.month, status: payrollRun.status }).from(payrollRun).where(eq(payrollRun.id, row.syncedRunId)).limit(1).then((r) => r[0])
+        : Promise.resolve(null),
+    ]);
+    return { ...row, worker: workerRow, component: componentRow, organization: organizationRow, fund: fundRow, grant: grantRow, syncedRun: runRow };
+  }
+
+  async summary(query: Record<string, any> = {}) {
+    const orgFilter = query.organization_id ? { organizationId: toBigInt(String(query.organization_id)) } : {};
+    const tid = this.tenantContext.currentTenantId();
+    const workerScope = tid ? eq(payrollWorker.tenantId, tid) : undefined;
+    const runScope = tid ? eq(payrollRun.tenantId, tid) : undefined;
+    const orgWorkerScope = 'organizationId' in orgFilter ? eq(payrollWorker.organizationId, orgFilter.organizationId as bigint) : undefined;
+    const orgRunScope = 'organizationId' in orgFilter ? eq(payrollRun.organizationId, orgFilter.organizationId as bigint) : undefined;
+    const rows = await Promise.all([
+      this.countTable(payrollWorker, [workerScope, orgWorkerScope]),
+      this.countTable(payrollWorker, [workerScope, orgWorkerScope, eq(payrollWorker.status, 'active')]),
+      this.countTable(payrollWorker, [workerScope, orgWorkerScope, eq(payrollWorker.workerType, 'consultant')]),
+      this.countTable(payrollComponent, [eq(payrollComponent.isActive, true)]),
+      this.countTable(payrollRun, [runScope, orgRunScope]),
+      this.db.client.select().from(payrollRun)
+        .where(this.combine(runScope, orgRunScope))
+        .orderBy(desc(payrollRun.year), desc(payrollRun.month))
+        .limit(1)
+    ]);
+    const [workers, activeWorkers, consultants, components, runs, latestRun] = rows;
+
+    return {
+      workers,
+      active_workers: activeWorkers,
+      consultants,
+      active_components: components,
+      runs,
+      latest_run: latestRun.length ? this.serializeRunSummary(latestRun[0]) : null
+    };
+  }
+
+  async listMyPayslips(userId: string, query: Record<string, any>) {
+    const page = Math.max(1, Number(query.page ?? 1));
+    const perPage = Math.min(50, Math.max(1, Number(query.per_page ?? 20)));
+    const tid = this.tenantContext.currentTenantId();
+    const workerRows = await this.db.client.select({ id: payrollWorker.id }).from(payrollWorker)
+      .where(this.combine(eq(payrollWorker.profileId, toBigInt(userId)), tid ? eq(payrollWorker.tenantId, tid) : undefined))
+      .limit(1);
+    const worker = workerRows[0];
+    if (!worker) {
+      return paginatedResponse([], { page, per_page: perPage, total: 0 });
+    }
+
+    const [pageRows, total] = await Promise.all([
+      this.db.client
+        .select({
+          id: payrollRunItem.id,
+          runId: payrollRunItem.runId,
+          grossPay: payrollRunItem.grossPay,
+          totalDeductions: payrollRunItem.totalDeductions,
+          netPay: payrollRunItem.netPay,
+          paymentStatus: payrollRunItem.paymentStatus,
+          paymentReference: payrollRunItem.paymentReference,
+          run: {
+            id: payrollRun.id,
+            name: payrollRun.name,
+            year: payrollRun.year,
+            month: payrollRun.month,
+            status: payrollRun.status,
+            currency: payrollRun.currency,
+          },
+        })
+        .from(payrollRunItem)
+        .innerJoin(payrollRun, eq(payrollRun.id, payrollRunItem.runId))
+        .where(eq(payrollRunItem.workerId, worker.id))
+        .orderBy(desc(payrollRun.year), desc(payrollRun.month))
+        .limit(perPage)
+        .offset((page - 1) * perPage),
+      this.countTable(payrollRunItem, [eq(payrollRunItem.workerId, worker.id)]),
+    ]);
+
+    const itemIds = pageRows.map((row) => row.id);
+    const distributions: Record<string, any[]> = {};
+    if (itemIds.length) {
+      const dists = await this.db.client.select().from(payrollPayslipDistribution)
+        .where(inArray(payrollPayslipDistribution.runItemId, itemIds))
+        .orderBy(desc(payrollPayslipDistribution.createdAt));
+      for (const dist of dists) {
+        if (!dist.runItemId) continue;
+        const list = distributions[dist.runItemId] ?? [];
+        if (list.length < 5) list.push(dist);
+        distributions[dist.runItemId] = list;
+      }
+    }
+    const rows = pageRows.map((row) => ({ ...row, payslipDistributions: distributions[row.id] ?? [] }));
+
+    return paginatedResponse(rows.map((row) => ({
+      id: row.id,
+      run_id: row.runId,
+      run_name: row.run.name,
+      year: row.run.year,
+      month: row.run.month,
+      status: row.run.status,
+      gross_pay: Number(row.grossPay || 0),
+      total_deductions: Number(row.totalDeductions || 0),
+      net_pay: Number(row.netPay || 0),
+      payment_status: row.paymentStatus,
+      payment_reference: row.paymentReference,
+      latest_distribution: row.payslipDistributions?.[0]
+        ? {
+            id: row.payslipDistributions[0].id,
+            status: row.payslipDistributions[0].status,
+            sent_at: row.payslipDistributions[0].sentAt,
+            created_at: row.payslipDistributions[0].createdAt,
+          }
+        : null,
+    })), { page, per_page: perPage, total });
+  }
+
+  async getMyPayslipDetails(userId: string, runId: string, itemId: string) {
+    const tid = this.tenantContext.currentTenantId();
+    const workerRows = await this.db.client.select({ id: payrollWorker.id }).from(payrollWorker)
+      .where(this.combine(eq(payrollWorker.profileId, toBigInt(userId)), tid ? eq(payrollWorker.tenantId, tid) : undefined))
+      .limit(1);
+    const worker = workerRows[0];
+    if (!worker) throw new NotFoundException('Payslip not found');
+
+    const itemRows = await this.db.client.select().from(payrollRunItem)
+      .where(and(eq(payrollRunItem.id, itemId), eq(payrollRunItem.runId, runId), eq(payrollRunItem.workerId, worker.id)))
+      .limit(1);
+    const row = itemRows[0] as any;
+    if (!row) throw new NotFoundException('Payslip not found');
+
+    const [run, workerRow, organizationRow, lines, distributions] = await Promise.all([
+      this.db.client.select().from(payrollRun).where(eq(payrollRun.id, runId)).limit(1).then((r) => r[0]),
+      this.db.client.select().from(payrollWorker).where(eq(payrollWorker.id, row.workerId)).limit(1).then((r) => r[0]),
+      row.organizationId
+        ? this.db.client.select({ id: organization.id, name: organization.name }).from(organization).where(eq(organization.id, row.organizationId)).limit(1).then((r) => r[0])
+        : Promise.resolve(null),
+      this.db.client
+        .select({ line: payrollRunItemLine, component: { id: payrollComponent.id, name: payrollComponent.name } })
+        .from(payrollRunItemLine)
+        .innerJoin(payrollComponent, eq(payrollComponent.id, payrollRunItemLine.componentId))
+        .where(eq(payrollRunItemLine.runItemId, row.id))
+        .orderBy(asc(payrollRunItemLine.createdAt))
+        .then((r) => r.map((entry) => ({ ...entry.line, component: entry.component }))),
+      this.db.client.select().from(payrollPayslipDistribution)
+        .where(eq(payrollPayslipDistribution.runItemId, row.id))
+        .orderBy(desc(payrollPayslipDistribution.createdAt))
+        .limit(5),
+    ]);
+
+    row.run = run;
+    row.worker = workerRow;
+    row.organization = organizationRow;
+    row.lines = lines;
+    row.payslipDistributions = distributions;
+
+    const earnings = row.lines
+      .filter((line) => line.lineType === 'earning')
+      .map((line) => ({ label: line.component.name, amount: Number(line.amount || 0) }));
+    const deductions = row.lines
+      .filter((line) => line.lineType === 'deduction')
+      .map((line) => ({ label: line.component.name, amount: Number(line.amount || 0) }));
+    const employerCosts = row.lines
+      .filter((line) => line.lineType === 'employer_cost')
+      .map((line) => ({ label: line.component.name, amount: Number(line.amount || 0) }));
+    const employerCostTotal = employerCosts.reduce((sum, item) => sum + item.amount, 0);
+
+    return {
+      id: row.id,
+      run_id: row.runId,
+      run_name: row.run.name,
+      year: row.run.year,
+      month: row.run.month,
+      status: row.run.status,
+      currency: row.run.currency,
+      worker_name: row.worker.fullName,
+      worker_type: row.workerType,
+      organization_name: row.organization?.name || null,
+      gross_pay: Number(row.grossPay || 0),
+      total_deductions: Number(row.totalDeductions || 0),
+      net_pay: Number(row.netPay || 0),
+      employer_cost: employerCostTotal,
+      payment_status: row.paymentStatus,
+      payment_reference: row.paymentReference,
+      latest_distribution: row.payslipDistributions?.[0]
+        ? {
+            id: row.payslipDistributions[0].id,
+            status: row.payslipDistributions[0].status,
+            sent_at: row.payslipDistributions[0].sentAt,
+            created_at: row.payslipDistributions[0].createdAt,
+          }
+        : null,
+      earnings,
+      deductions,
+      employer_costs: employerCosts,
+    };
+  }
+
+  async generateMyPayslip(userId: string, runId: string, itemId: string) {
+    const matchRows = await this.db.client.select({ id: payrollRunItem.id }).from(payrollRunItem)
+      .innerJoin(payrollWorker, eq(payrollWorker.id, payrollRunItem.workerId))
+      .where(and(eq(payrollRunItem.id, itemId), eq(payrollRunItem.runId, runId), eq(payrollWorker.profileId, toBigInt(userId))))
+      .limit(1);
+    const row = matchRows[0];
+    if (!row) throw new NotFoundException('Payslip not found');
+    return this.generateRunItemPayslip(runId, itemId);
+  }
+
+  async listMyProjectTimesheets(userId: string, query: Record<string, any>) {
+    const worker = await this.resolveWorkerForUser(userId);
+    return this.listProjectTimesheets({ ...query, worker_id: worker.id });
+  }
+
+  async createMyProjectTimesheet(userId: string, dto: any) {
+    const worker = await this.resolveWorkerForUser(userId);
+    return this.createProjectTimesheet({ ...dto, worker_id: worker.id }, userId);
+  }
+
+  async updateMyProjectTimesheet(userId: string, id: string, dto: any) {
+    const worker = await this.resolveWorkerForUser(userId);
+    const entryRows = await this.db.client.select().from(projectTimesheetEntry).where(eq(projectTimesheetEntry.id, id)).limit(1);
+    const row = entryRows[0];
+    if (!row || row.workerId !== worker.id) throw new NotFoundException('Project timesheet entry not found');
+    if (!['draft', 'rejected'].includes(row.status)) {
+      throw new BadRequestException('Only draft or rejected timesheets can be edited');
+    }
+    return this.updateProjectTimesheet(id, { ...dto, worker_id: worker.id, status: row.status }, userId);
+  }
+
+  async submitMyProjectTimesheet(userId: string, id: string) {
+    const worker = await this.resolveWorkerForUser(userId);
+    const entryRows = await this.db.client.select().from(projectTimesheetEntry).where(eq(projectTimesheetEntry.id, id)).limit(1);
+    const row = entryRows[0];
+    if (!row || row.workerId !== worker.id) throw new NotFoundException('Project timesheet entry not found');
+    if (!['draft', 'rejected'].includes(row.status)) {
+      throw new BadRequestException('Only draft or rejected timesheets can be submitted');
+    }
+    return this.submitProjectTimesheet(id);
+  }
+
+  async getInbox(userId: string, permissions: string[] = [], query: Record<string, any> = {}) {
+    const actorId = toBigInt(userId);
+    const canManage =
+      permissions.includes('finance.manage') ||
+      permissions.includes('payroll.approve') ||
+      permissions.includes('requests.approve') ||
+      permissions.includes('settings.manage');
+
+    const orgFilter = query.organization_id ? { organizationId: toBigInt(String(query.organization_id)) } : {};
+
+    const tid = this.tenantContext.currentTenantId();
+    const runScope = tid ? eq(payrollRun.tenantId, tid) : undefined;
+    const orgRunScope = 'organizationId' in orgFilter ? eq(payrollRun.organizationId, (orgFilter as any).organizationId) : undefined;
+
+    const fetchRuns = async (status: string, personCond: SQL | undefined, newest: boolean) => {
+      const where = this.combine(runScope, orgRunScope, eq(payrollRun.status, status), personCond);
+      const rows = newest
+        ? await this.db.client.select().from(payrollRun).where(where).orderBy(desc(payrollRun.year), desc(payrollRun.month)).limit(10)
+        : await this.db.client.select().from(payrollRun).where(where).orderBy(desc(payrollRun.updatedAt)).limit(10);
+      return rows as any[];
+    };
+
+    const [approvals, corrections, payments, importJobs, failedDistributions, notifications] = await Promise.all([
+      fetchRuns('under_review', canManage ? undefined : eq(payrollRun.preparedById, actorId), true),
+      fetchRuns('rejected', canManage ? undefined : or(eq(payrollRun.preparedById, actorId), eq(payrollRun.reviewedById, actorId), eq(payrollRun.approvedById, actorId)), false),
+      fetchRuns('approved', canManage ? undefined : eq(payrollRun.preparedById, actorId), false),
+      this.db.client.select().from(payrollImportJob)
+        .where(this.combine(canManage ? undefined : eq(payrollImportJob.uploadedBy, actorId), inArray(payrollImportJob.status, ['partial', 'failed'])))
+        .orderBy(desc(payrollImportJob.createdAt))
+        .limit(10)
+        .then((rows) => rows as any[]),
+      (async () => {
+        const distRows = await this.db.client
+          .select({
+            dist: payrollPayslipDistribution,
+            run: { id: payrollRun.id, name: payrollRun.name, status: payrollRun.status },
+            worker: { id: payrollWorker.id, fullName: payrollWorker.fullName, email: payrollWorker.email, workerType: payrollWorker.workerType },
+          })
+          .from(payrollPayslipDistribution)
+          .leftJoin(payrollRun, eq(payrollRun.id, payrollPayslipDistribution.runId))
+          .leftJoin(payrollWorker, eq(payrollWorker.id, payrollPayslipDistribution.workerId))
+          .where(this.combine(
+            canManage ? undefined : or(eq(payrollPayslipDistribution.sentBy, actorId), eq(payrollRun.preparedById, actorId)),
+            inArray(payrollPayslipDistribution.status, ['failed', 'skipped']),
+          ))
+          .orderBy(desc(payrollPayslipDistribution.createdAt))
+          .limit(20);
+        return distRows.map(({ dist, run, worker }) => ({ ...dist, run, worker }));
+      })(),
+      this.db.client.select().from(notification)
+        .where(this.combine(
+          eq(notification.userId, actorId),
+          tid ? eq(notification.tenantId, tid) : undefined,
+          or(eq(notification.notifiableType, 'payroll_run'), eq(notification.notifiableType, 'payroll_import_job'), like(notification.type, 'payroll.%')),
+        ))
+        .orderBy(desc(notification.createdAt))
+        .limit(20),
+    ]);
+
+    const allRuns = [...approvals, ...corrections, ...payments];
+    const runIds = Array.from(new Set(allRuns.map((run: any) => run.id)));
+    const itemsByRun: Record<string, any[]> = {};
+    if (runIds.length) {
+      const runItems = await this.db.client.select().from(payrollRunItem).where(inArray(payrollRunItem.runId, runIds));
+      for (const item of runItems) {
+        (itemsByRun[item.runId] ??= []).push(item);
+      }
+    }
+    for (const run of allRuns) {
+      run.items = itemsByRun[run.id] ?? [];
+      run._count = { items: run.items.length };
+    }
+
+    const jobIds = importJobs.map((job: any) => job.id);
+    const jobRowCounts = jobIds.length
+      ? await this.db.client.select({ jobId: payrollImportRow.jobId, c: count() }).from(payrollImportRow).where(inArray(payrollImportRow.jobId, jobIds)).groupBy(payrollImportRow.jobId)
+      : [];
+    const jobCountMap = new Map(jobRowCounts.map((r) => [r.jobId, Number(r.c)]));
+    for (const job of importJobs as any[]) {
+      job._count = { rows: jobCountMap.get(job.id) ?? 0 };
+    }
+
+    return {
+      approvals: approvals.map((row) => ({ ...this.serializeRunSummary(row), link: `/app/finance/payroll/runs?run_id=${row.id}` })),
+      corrections: corrections.map((row) => ({ ...this.serializeRunSummary(row), link: `/app/finance/payroll/runs?run_id=${row.id}` })),
+      payments: payments.map((row) => ({ ...this.serializeRunSummary(row), link: `/app/finance/payroll/runs?run_id=${row.id}` })),
+      import_issues: importJobs.map((row) => ({ ...this.serializeImportJobSummary(row), link: `/app/finance/payroll/import?job_id=${row.id}` })),
+      delivery_issues: failedDistributions.map((row) => ({
+        id: row.id,
+        status: row.status,
+        error_message: row.errorMessage,
+        recipient_email: row.recipientEmail,
+        sent_at: row.sentAt,
+        created_at: row.createdAt,
+        link: row.run ? `/app/finance/payroll/runs?run_id=${row.run.id}` : "/app/finance/payroll/runs",
+        run: row.run ? { id: row.run.id, name: row.run.name, status: row.run.status } : null,
+        worker: row.worker
+          ? { id: row.worker.id, full_name: row.worker.fullName, email: row.worker.email, worker_type: row.worker.workerType }
+          : null,
+      })),
+      notifications: notifications.map((row) => ({
+        id: row.id.toString(),
+        type: row.type,
+        title: row.title,
+        message: row.message,
+        link: row.link,
+        status: row.status,
+        created_at: row.createdAt,
+        data: row.data || {},
+      })),
+      counts: {
+        approvals: approvals.length,
+        corrections: corrections.length,
+        payments: payments.length,
+        import_issues: importJobs.length,
+        delivery_issues: failedDistributions.length,
+        notifications: notifications.length,
+      }
+    };
+  }
+
+  async getSettings(query: Record<string, any>) {
+    const organizationId = query.organization_id ? this.parseBigInt(query.organization_id, 'organization id') : null;
+    const settingRows = await this.db.client.select().from(payrollSetting)
+      .where(organizationId ? eq(payrollSetting.organizationId, organizationId) : isNull(payrollSetting.organizationId))
+      .limit(1);
+    const row = await this.hydrateSetting(settingRows[0] ?? null);
+    return row ? this.serializeSetting(row) : null;
+  }
+
+  async getNotificationPreferences(userId: string) {
+    const prefRows = await this.db.client.select().from(payrollNotificationPreference).where(eq(payrollNotificationPreference.userId, toBigInt(userId))).limit(1);
+    const row = prefRows[0] ?? null;
+    return this.serializeNotificationPreferences(row);
+  }
+
+  async upsertNotificationPreferences(userId: string, payload: Record<string, any>) {
+    const config = this.normalizeNotificationPreferenceConfig(payload);
+    const existingRows = await this.db.client.select().from(payrollNotificationPreference).where(eq(payrollNotificationPreference.userId, toBigInt(userId))).limit(1);
+    const existing = existingRows[0];
+    let row: any;
+    if (existing) {
+      const updated = await this.db.client.update(payrollNotificationPreference)
+        .set({ config })
+        .where(eq(payrollNotificationPreference.id, existing.id))
+        .returning();
+      row = updated[0];
+    } else {
+      const created = await this.db.client.insert(payrollNotificationPreference)
+        .values({ userId: toBigInt(userId), config })
+        .returning();
+      row = created[0];
+    }
+    return this.serializeNotificationPreferences(row);
+  }
+
+  async upsertSettings(dto: UpsertPayrollSettingDto, actorId?: string) {
+    const organizationId = dto.organization_id ? this.parseBigInt(dto.organization_id, 'organization id') : null;
+    const existingRows = await this.db.client.select().from(payrollSetting)
+      .where(organizationId ? eq(payrollSetting.organizationId, organizationId) : isNull(payrollSetting.organizationId))
+      .limit(1);
+    const existing = existingRows[0];
+    const payload = {
+      organizationId,
+      defaultExpenseAccountId: dto.default_expense_account_id || null,
+      defaultCashAccountId: dto.default_cash_account_id || null,
+      employeeTaxTableId: dto.employee_tax_table_id || null,
+      config: dto.config || {},
+      updatedBy: actorId ? toBigInt(actorId) : null,
+    };
+    let base: any = null;
+    if (existing) {
+      const updated = await this.db.client.update(payrollSetting)
+        .set(payload)
+        .where(eq(payrollSetting.id, existing.id))
+        .returning();
+      base = updated[0] ?? null;
+    } else {
+      const created = await this.db.client.insert(payrollSetting)
+        .values(payload)
+        .returning();
+      base = created[0] ?? null;
+    }
+    const row = await this.hydrateSetting(base);
+    return this.serializeSetting(row);
+  }
+
+  async listTaxTables(query: Record<string, any>) {
+    const organizationId = query.organization_id ? this.parseBigInt(query.organization_id, 'organization id') : null;
+    const rows = await this.db.client.select().from(payrollTaxTable)
+      .where(this.combine(
+        organizationId ? or(eq(payrollTaxTable.organizationId, organizationId), isNull(payrollTaxTable.organizationId)) : undefined,
+        query.status ? eq(payrollTaxTable.status, String(query.status)) : undefined,
+        query.worker_type ? eq(payrollTaxTable.workerType, String(query.worker_type)) : undefined,
+      ))
+      .orderBy(asc(payrollTaxTable.status), desc(payrollTaxTable.effectiveFrom), asc(payrollTaxTable.name));
+    const items = await this.attachTaxBands(rows);
+    return paginatedResponse(items.map((row) => this.serializeTaxTable(row)), { page: 1, per_page: items.length, total: items.length });
+  }
+
+  async createTaxTable(dto: UpsertPayrollTaxTableDto) {
+    const row = await this.db.client.transaction(async (tx) => {
+      const created = await tx.insert(payrollTaxTable).values(this.mapTaxTableDto(dto)).returning();
+      const table = created[0];
+      const bands = this.mapTaxBandDtos(dto.bands || []);
+      if (bands.length) {
+        await tx.insert(payrollTaxBand).values(bands.map((b) => ({ ...b, tableId: table.id })));
+      }
+      const bandRows = await tx.select().from(payrollTaxBand).where(eq(payrollTaxBand.tableId, table.id)).orderBy(asc(payrollTaxBand.sortOrder));
+      return { ...table, bands: bandRows };
+    });
+    return this.serializeTaxTable(row);
+  }
+
+  async updateTaxTable(id: string, dto: UpsertPayrollTaxTableDto) {
+    const existingRows = await this.db.client.select().from(payrollTaxTable).where(eq(payrollTaxTable.id, id)).limit(1);
+    const existing = existingRows[0];
+    if (!existing) throw new NotFoundException('Payroll tax table not found');
+    const row = await this.db.client.transaction(async (tx) => {
+      await tx.delete(payrollTaxBand).where(eq(payrollTaxBand.tableId, id));
+      const updated = await tx.update(payrollTaxTable)
+        .set(this.mapTaxTableDto(dto))
+        .where(eq(payrollTaxTable.id, id))
+        .returning();
+      const table = updated[0];
+      const bands = this.mapTaxBandDtos(dto.bands || []);
+      if (bands.length) {
+        await tx.insert(payrollTaxBand).values(bands.map((b) => ({ ...b, tableId: table.id })));
+      }
+      const bandRows = await tx.select().from(payrollTaxBand).where(eq(payrollTaxBand.tableId, id)).orderBy(asc(payrollTaxBand.sortOrder));
+      return { ...table, bands: bandRows };
+    });
+    return this.serializeTaxTable(row);
+  }
+
+  async listWorkers(query: Record<string, any>) {
+    const page = Math.max(1, Number(query.page ?? 1));
+    const perPage = Math.min(100, Math.max(1, Number(query.per_page ?? 20)));
+    const tid = this.tenantContext.currentTenantId();
+    const conds: Array<SQL | undefined> = [
+      tid ? eq(payrollWorker.tenantId, tid) : undefined,
+      query.worker_type ? eq(payrollWorker.workerType, String(query.worker_type)) : undefined,
+      query.status ? eq(payrollWorker.status, String(query.status)) : undefined,
+      query.organization_id ? eq(payrollWorker.organizationId, toBigInt(String(query.organization_id))) : undefined,
+    ];
+    if (query.search) {
+      const term = String(query.search);
+      conds.push(or(
+        ilike(payrollWorker.fullName, `%${term}%`),
+        ilike(payrollWorker.email, `%${term}%`),
+        ilike(payrollWorker.staffCode, `%${term}%`)
+      ));
+    }
+    const [rows, total] = await Promise.all([
+      this.db.client.select().from(payrollWorker)
+        .where(this.combine(...conds))
+        .orderBy(asc(payrollWorker.fullName))
+        .limit(perPage)
+        .offset((page - 1) * perPage),
+      this.countTable(payrollWorker, conds),
+    ]);
+    const hydrated = await Promise.all(rows.map((row) => this.hydrateWorker(row)));
+    return paginatedResponse(hydrated.map((row) => this.serializeWorker(row)), { page, per_page: perPage, total });
+  }
+
+  async getWorker(id: string) {
+    const tid = this.tenantContext.currentTenantId();
+    const rows = await this.db.client.select().from(payrollWorker)
+      .where(this.combine(eq(payrollWorker.id, id), tid ? eq(payrollWorker.tenantId, tid) : undefined))
+      .limit(1);
+    const row = rows[0];
+    if (!row) throw new NotFoundException('Payroll worker not found');
+    return this.serializeWorker(await this.hydrateWorker(row));
+  }
+
+  async createWorker(dto: UpsertPayrollWorkerDto, actorId?: string) {
+    const tid = this.tenantContext.currentTenantId();
+    return this.db.client.transaction(async (tx) => {
+      const created = await tx.insert(payrollWorker).values({ ...this.mapWorkerDto(dto), tenantId: tid ?? null }).returning();
+      const worker = created[0];
+      await this.syncWorkerChildrenTx(tx, worker.id, dto);
+      return this.serializeWorker(await this.hydrateWorker(worker));
+    });
+  }
+
+  async updateWorker(id: string, dto: UpsertPayrollWorkerDto, actorId?: string) {
+    const tid = this.tenantContext.currentTenantId();
+    const existingRows = await this.db.client.select().from(payrollWorker)
+      .where(this.combine(eq(payrollWorker.id, id), tid ? eq(payrollWorker.tenantId, tid) : undefined))
+      .limit(1);
+    const existing = existingRows[0];
+    if (!existing) throw new NotFoundException('Payroll worker not found');
+    return this.db.client.transaction(async (tx) => {
+      const updated = await tx.update(payrollWorker).set(this.mapWorkerDto(dto))
+        .where(this.combine(eq(payrollWorker.id, id), tid ? eq(payrollWorker.tenantId, tid) : undefined))
+        .returning();
+      const worker = updated[0];
+      await this.syncWorkerChildrenTx(tx, id, dto);
+      return this.serializeWorker(await this.hydrateWorker(worker));
+    });
+  }
+
+  async deleteWorker(id: string) {
+    const tid = this.tenantContext.currentTenantId();
+    const existingRows = await this.db.client.select().from(payrollWorker)
+      .where(this.combine(eq(payrollWorker.id, id), tid ? eq(payrollWorker.tenantId, tid) : undefined))
+      .limit(1);
+    const existing = existingRows[0];
+    if (!existing) throw new NotFoundException('Payroll worker not found');
+
+    // Prevent removal if worker is in an active (non-draft/non-rejected) run
+    const activeRunCounts = await this.db.client.select({ c: count() }).from(payrollRunItem)
+      .innerJoin(payrollRun, eq(payrollRun.id, payrollRunItem.runId))
+      .where(and(eq(payrollRunItem.workerId, id), not(inArray(payrollRun.status, ['draft', 'rejected']))));
+    const activeRunItems = activeRunCounts[0]?.c ?? 0;
+    if (activeRunItems > 0) {
+      throw new BadRequestException(
+        'Cannot remove worker — they are included in an active payroll run. Deactivate them instead.'
+      );
+    }
+
+    const usage = await Promise.all([
+      this.countTable(payrollRunItem, [eq(payrollRunItem.workerId, id)]),
+      this.countTable(projectTimesheetEntry, [eq(projectTimesheetEntry.workerId, id)]),
+      this.countTable(payrollLoan, [eq(payrollLoan.workerId, id)]),
+      this.countTable(payrollRunTimesheetAllocation, [eq(payrollRunTimesheetAllocation.workerId, id)]),
+      this.countTable(payrollPayslipDistribution, [eq(payrollPayslipDistribution.workerId, id)]),
+    ]);
+
+    const totalUsage = usage.reduce((sum, count) => sum + count, 0);
+    if (totalUsage > 0) {
+      await this.db.client.update(payrollWorker).set({ status: 'inactive' })
+        .where(this.combine(eq(payrollWorker.id, id), tid ? eq(payrollWorker.tenantId, tid) : undefined));
+      return { action: 'deactivated', reason: 'worker has payroll history and was marked inactive instead of deleted' };
+    }
+
+    await this.db.client.delete(payrollWorker)
+      .where(this.combine(eq(payrollWorker.id, id), tid ? eq(payrollWorker.tenantId, tid) : undefined));
+    return { action: 'deleted' };
+  }
+
+  async listLoans(query: Record<string, any>) {
+    const rows = await this.db.client.select().from(payrollLoan)
+      .where(this.combine(
+        query.worker_id ? eq(payrollLoan.workerId, String(query.worker_id)) : undefined,
+        query.status ? eq(payrollLoan.status, String(query.status)) : undefined,
+        query.loan_type ? eq(payrollLoan.loanType, String(query.loan_type)) : undefined,
+      ))
+      .orderBy(asc(payrollLoan.status), desc(payrollLoan.issuedDate));
+    const hydrated = await Promise.all(rows.map((row) => this.hydrateLoan(row)));
+    const items = hydrated.map((row) => this.serializeLoan(row));
+    return paginatedResponse(items, { page: 1, per_page: items.length, total: items.length });
+  }
+
+  async createLoan(dto: any) {
+    const created = await this.db.client.insert(payrollLoan).values({
+      workerId: dto.worker_id,
+      componentId: dto.component_id || null,
+      requestId: dto.request_id ? BigInt(String(dto.request_id)) : null,
+      loanType: dto.loan_type,
+      title: dto.title,
+      principalAmount: this.toScaleOrZero(dto.principal_amount),
+      outstandingAmount: this.toScaleOrZero(dto.principal_amount),
+      issuedDate: new Date(dto.issued_date),
+      startRecoveryDate: new Date(dto.start_recovery_date),
+      monthlyRecoveryAmount: dto.monthly_recovery_amount == null ? null : this.toScale(dto.monthly_recovery_amount),
+      recoveryRate: dto.recovery_rate == null ? null : this.toScale(dto.recovery_rate),
+      status: dto.status || 'active',
+      notes: dto.notes || null,
+    }).returning().then((r) => r[0]);
+    return this.serializeLoan(await this.hydrateLoan(created));
+  }
+
+  async updateLoan(id: string, dto: any) {
+    const existingRows = await this.db.client.select().from(payrollLoan).where(eq(payrollLoan.id, id)).limit(1);
+    const existing = existingRows[0];
+    if (!existing) throw new NotFoundException('Payroll loan not found');
+    const updated = await this.db.client.update(payrollLoan).set({
+      workerId: dto.worker_id,
+      componentId: dto.component_id || null,
+      requestId: dto.request_id ? BigInt(String(dto.request_id)) : null,
+      loanType: dto.loan_type,
+      title: dto.title,
+      principalAmount: dto.principal_amount == null ? undefined : this.toScale(dto.principal_amount),
+      issuedDate: new Date(dto.issued_date),
+      startRecoveryDate: new Date(dto.start_recovery_date),
+      monthlyRecoveryAmount: dto.monthly_recovery_amount == null ? null : this.toScale(dto.monthly_recovery_amount),
+      recoveryRate: dto.recovery_rate == null ? null : this.toScale(dto.recovery_rate),
+      status: dto.status || existing.status,
+      notes: dto.notes || null,
+    }).where(eq(payrollLoan.id, id)).returning().then((r) => r[0]);
+    return this.serializeLoan(await this.hydrateLoan(updated));
+  }
+
+  async logManualRepayment(id: string, amount: number, notes?: string) {
+    const existingRows = await this.db.client.select().from(payrollLoan).where(eq(payrollLoan.id, id)).limit(1);
+    const existing = existingRows[0];
+    if (!existing) throw new NotFoundException('Payroll loan not found');
+
+    const newOutstanding = Number(existing.outstandingAmount || 0) - amount;
+
+    const row = await this.db.client.transaction(async (tx) => {
+      await tx.insert(payrollLoanRepayment).values({
+        loanId: id,
+        amount: this.toScale(amount),
+        notes: notes || 'Manual repayment',
+      });
+      const updated = await tx.update(payrollLoan).set({
+        outstandingAmount: this.toScale(newOutstanding),
+        status: newOutstanding <= 0 ? 'completed' : existing.status,
+      }).where(eq(payrollLoan.id, id)).returning().then((r) => r[0]);
+      return this.hydrateLoan(updated);
+    });
+
+    return this.serializeLoan(row);
+  }
+
+  async listProjectTimesheets(query: Record<string, any>) {
+    const rows = await this.db.client.select().from(projectTimesheetEntry)
+      .where(this.combine(
+        query.worker_id ? eq(projectTimesheetEntry.workerId, String(query.worker_id)) : undefined,
+        query.status ? eq(projectTimesheetEntry.status, String(query.status)) : undefined,
+        query.project_id ? eq(projectTimesheetEntry.projectId, this.parseBigInt(String(query.project_id), 'project id')) : undefined,
+      ))
+      .orderBy(desc(projectTimesheetEntry.workDate), desc(projectTimesheetEntry.createdAt));
+    const hydrated = await Promise.all(rows.map((row) => this.hydrateProjectTimesheet(row)));
+    const items = hydrated.map((row) => this.serializeProjectTimesheet(row));
+    return paginatedResponse(items, { page: 1, per_page: items.length, total: items.length });
+  }
+
+  async createProjectTimesheet(dto: any, actorId?: string) {
+    const created = await this.db.client.insert(projectTimesheetEntry).values(this.mapProjectTimesheetDto(dto, actorId)).returning().then((r) => r[0]);
+    return this.serializeProjectTimesheet(await this.hydrateProjectTimesheet(created));
+  }
+
+  async updateProjectTimesheet(id: string, dto: any, actorId?: string) {
+    const existingRows = await this.db.client.select().from(projectTimesheetEntry).where(eq(projectTimesheetEntry.id, id)).limit(1);
+    const existing = existingRows[0];
+    if (!existing) throw new NotFoundException('Project timesheet entry not found');
+    const updated = await this.db.client.update(projectTimesheetEntry).set(this.mapProjectTimesheetDto(dto, actorId, true))
+      .where(eq(projectTimesheetEntry.id, id)).returning().then((r) => r[0]);
+    return this.serializeProjectTimesheet(await this.hydrateProjectTimesheet(updated));
+  }
+
+  async submitProjectTimesheet(id: string) {
+    const updated = await this.db.client.update(projectTimesheetEntry).set({ status: 'submitted' })
+      .where(eq(projectTimesheetEntry.id, id)).returning().then((r) => r[0]);
+    return this.serializeProjectTimesheet(await this.hydrateProjectTimesheet(updated));
+  }
+
+  async approveProjectTimesheet(id: string, actorId?: string) {
+    const updated = await this.db.client.update(projectTimesheetEntry).set({ status: 'approved', approvedBy: actorId ? toBigInt(actorId) : null, approvedAt: new Date() })
+      .where(eq(projectTimesheetEntry.id, id)).returning().then((r) => r[0]);
+    await this.syncApprovedTimesheetsToPayrollRun(updated.workerId, updated.workDate);
+    return this.serializeProjectTimesheet(await this.hydrateProjectTimesheet(updated));
+  }
+
+  async rejectProjectTimesheet(id: string) {
+    const existingRows = await this.db.client.select().from(projectTimesheetEntry).where(eq(projectTimesheetEntry.id, id)).limit(1);
+    const existing = existingRows[0];
+    if (!existing) throw new NotFoundException('Project timesheet entry not found');
+    const updated = await this.db.client.update(projectTimesheetEntry).set({ status: 'rejected' })
+      .where(eq(projectTimesheetEntry.id, id)).returning().then((r) => r[0]);
+    await this.syncApprovedTimesheetsToPayrollRun(updated.workerId, updated.workDate);
+    return this.serializeProjectTimesheet(await this.hydrateProjectTimesheet(updated));
+  }
+
+  async listComponents(query: Record<string, any>) {
+    const conds: Array<SQL | undefined> = [];
+    if (query.component_type) conds.push(eq(payrollComponent.componentType, String(query.component_type)));
+    if (query.is_active === 'true' || query.is_active === 'false') conds.push(eq(payrollComponent.isActive, query.is_active === 'true'));
+    const rows = await this.db.client.select().from(payrollComponent)
+      .where(this.combine(...conds))
+      .orderBy(asc(payrollComponent.sortOrder), asc(payrollComponent.name));
+    const items = await this.attachChartAccounts(rows as any[]);
+    return paginatedResponse(items.map((row) => this.serializeComponent(row)), { page: 1, per_page: items.length, total: items.length });
+  }
+
+  async createComponent(dto: UpsertPayrollComponentDto) {
+    const created = await this.db.client.insert(payrollComponent).values(this.mapComponentDto(dto)).returning();
+    const row = created[0];
+    return this.serializeComponent((await this.attachChartAccounts([row as any]))[0]);
+  }
+
+  async updateComponent(id: string, dto: UpsertPayrollComponentDto) {
+    const existing = await this.db.client.select().from(payrollComponent).where(eq(payrollComponent.id, id)).limit(1);
+    if (!existing[0]) throw new NotFoundException('Payroll component not found');
+    const updated = await this.db.client.update(payrollComponent)
+      .set(this.mapComponentDto(dto))
+      .where(eq(payrollComponent.id, id))
+      .returning();
+    const row = updated[0];
+    return this.serializeComponent((await this.attachChartAccounts([row as any]))[0]);
+  }
+
+  async deleteComponent(id: string) {
+    const existing = await this.db.client.select().from(payrollComponent).where(eq(payrollComponent.id, id)).limit(1);
+    if (!existing[0]) throw new NotFoundException('Payroll component not found');
+
+    const usage = await Promise.all([
+      this.countTable(payrollWorkerProfileComponent, [eq(payrollWorkerProfileComponent.componentId, id)]),
+      this.countTable(payrollRunItemLine, [eq(payrollRunItemLine.componentId, id)]),
+      this.countTable(payrollLoan, [eq(payrollLoan.componentId, id)]),
+      this.countTable(projectTimesheetEntry, [eq(projectTimesheetEntry.componentId, id)]),
+    ]);
+
+    const totalUsage = usage.reduce((sum, count) => sum + count, 0);
+    if (totalUsage > 0) {
+      const updated = await this.db.client.update(payrollComponent)
+        .set({ isActive: false })
+        .where(eq(payrollComponent.id, id))
+        .returning();
+      const row = updated[0];
+      return { action: 'deactivated', component: this.serializeComponent((await this.attachChartAccounts([row as any]))[0]), reason: 'component has payroll history and was deactivated instead of deleted' };
+    }
+
+    await this.db.client.delete(payrollComponent).where(eq(payrollComponent.id, id));
+    return { action: 'deleted' };
+  }
+
+  async listRuns(query: Record<string, any>) {
+    const page = Math.max(1, Number(query.page ?? 1));
+    const perPage = Math.min(100, Math.max(1, Number(query.per_page ?? 20)));
+    const conds: Array<SQL | undefined> = [this.tenantCond(payrollRun.tenantId)];
+    if (query.status_in) {
+      conds.push(inArray(payrollRun.status, String(query.status_in).split(',')));
+    } else if (query.status) {
+      conds.push(eq(payrollRun.status, String(query.status)));
+    }
+    if (query.year) conds.push(eq(payrollRun.year, Number(query.year)));
+    if (query.month) conds.push(eq(payrollRun.month, Number(query.month)));
+    if (query.organization_id) conds.push(eq(payrollRun.organizationId, toBigInt(String(query.organization_id))));
+    const runRows = await this.db.client.select().from(payrollRun)
+      .where(this.combine(...conds))
+      .orderBy(desc(payrollRun.year), desc(payrollRun.month))
+      .limit(perPage)
+      .offset((page - 1) * perPage);
+    const runIds = runRows.map((r) => r.id);
+    const preparedIds = Array.from(new Set(runRows.map((r) => r.preparedById).filter((v): v is bigint => v != null)));
+    const accountIds = Array.from(new Set(runRows.map((r) => r.paidFromAccountId).filter((v): v is string => v != null)));
+    const [preparers, accounts, runItems, total] = await Promise.all([
+      preparedIds.length ? this.db.client.select(this.profileSelect()).from(profile).where(inArray(profile.id, preparedIds)) : Promise.resolve([]),
+      accountIds.length ? this.db.client.select({ id: financeAccount.id, code: financeAccount.code, name: financeAccount.name }).from(financeAccount).where(inArray(financeAccount.id, accountIds)) : Promise.resolve([]),
+      runIds.length
+        ? this.db.client.select({ runId: payrollRunItem.runId, grossPay: payrollRunItem.grossPay, totalDeductions: payrollRunItem.totalDeductions, employerCostTotal: payrollRunItem.employerCostTotal, netPay: payrollRunItem.netPay }).from(payrollRunItem).where(inArray(payrollRunItem.runId, runIds))
+        : Promise.resolve([]),
+      this.countTable(payrollRun, conds),
+    ]);
+    const preparedMap = new Map(preparers.map((p) => [String(p.id), p]));
+    const accountMap = new Map(accounts.map((a) => [a.id, a]));
+    const itemsByRun = new Map<string, any[]>();
+    for (const item of runItems) {
+      const list = itemsByRun.get(item.runId) ?? [];
+      list.push(item);
+      itemsByRun.set(item.runId, list);
+    }
+    const items = runRows.map((r) => ({
+      ...r,
+      preparedBy: r.preparedById ? (preparedMap.get(String(r.preparedById)) ?? null) : null,
+      paidFromAccount: r.paidFromAccountId ? (accountMap.get(r.paidFromAccountId) ?? null) : null,
+      items: itemsByRun.get(r.id) ?? [],
+      _count: { items: (itemsByRun.get(r.id) ?? []).length },
+    }));
+    return paginatedResponse(items.map((row) => this.serializeRunSummary(row)), { page, per_page: perPage, total });
+  }
+
+  async getRun(id: string) {
+    const rows = await this.db.client.select().from(payrollRun)
+      .where(this.combine(eq(payrollRun.id, id), this.tenantCond(payrollRun.tenantId)))
+      .limit(1);
+    const row = rows[0];
+    if (!row) throw new NotFoundException('Payroll run not found');
+    return this.serializeRun(await this.hydrateRun(row));
+  }
+
+  async deleteRun(id: string) {
+    const rows = await this.db.client.select().from(payrollRun)
+      .where(this.combine(eq(payrollRun.id, id), this.tenantCond(payrollRun.tenantId)))
+      .limit(1);
+    const existing = rows[0];
+    if (!existing) throw new NotFoundException('Payroll run not found');
+    if (!['draft', 'prepared'].includes(existing.status)) {
+      throw new BadRequestException('Only draft or prepared payroll runs can be deleted');
+    }
+    const [postingCount, distributionCount] = await Promise.all([
+      this.countTable(payrollAccountingPosting, [eq(payrollAccountingPosting.runId, id)]),
+      this.countTable(payrollPayslipDistribution, [eq(payrollPayslipDistribution.runId, id)]),
+    ]);
+    if (postingCount || distributionCount) {
+      throw new BadRequestException('Cannot delete payroll run with payroll history or postings');
+    }
+
+    await this.db.client.transaction(async (tx) => {
+      const repayments = await tx.select().from(payrollLoanRepayment).where(eq(payrollLoanRepayment.runId, id));
+      await this.restoreLoanOutstandingTx(tx, repayments as any[]);
+      await tx.delete(payrollLoanRepayment).where(eq(payrollLoanRepayment.runId, id));
+
+      await tx.delete(payrollRun).where(eq(payrollRun.id, id));
+    });
+
+    return { action: 'deleted' };
+  }
+
+  async createRun(dto: CreatePayrollRunDto, actorId?: string) {
+    const tid = this.tenantContext.currentTenantId();
+    let row: any;
+    try {
+      const created = await this.db.client.insert(payrollRun).values({
+        name: dto.name,
+        year: dto.year,
+        month: dto.month,
+        periodStart: new Date(dto.period_start),
+        periodEnd: new Date(dto.period_end),
+        currency: dto.currency || 'NGN',
+        notes: dto.notes || null,
+        organizationId: dto.organization_id ? toBigInt(dto.organization_id) : null,
+        paidFromAccountId: dto.paid_from_account_id || null,
+        preparedById: actorId ? toBigInt(actorId) : null,
+        tenantId: tid ?? null,
+      }).returning();
+      row = created[0];
+    } catch (err: any) {
+      if (err?.code === '23505') {
+        throw new ConflictException('A payroll run already exists for this organization and period');
+      }
+      if (err?.code === '23503') {
+        throw new BadRequestException('Referenced account or organization not found');
+      }
+      throw err;
+    }
+    await this.recordRunEvent(row.id, 'created', actorId, `Created payroll run ${dto.name}`);
+    return this.getRun(row.id);
+  }
+
+  async updateRun(id: string, dto: CreatePayrollRunDto, actorId?: string) {
+    const existing = await this.findRunScoped(id);
+    if (!existing) throw new NotFoundException('Payroll run not found');
+    if (!['draft', 'prepared'].includes(existing.status)) {
+      throw new BadRequestException('Only draft or prepared runs can be edited');
+    }
+    await this.db.client.update(payrollRun).set({
+      name: dto.name,
+      year: dto.year,
+      month: dto.month,
+      periodStart: new Date(dto.period_start),
+      periodEnd: new Date(dto.period_end),
+      currency: dto.currency || existing.currency,
+      notes: dto.notes || null,
+      organizationId: dto.organization_id ? toBigInt(dto.organization_id) : null,
+      paidFromAccountId: dto.paid_from_account_id || null,
+      preparedById: actorId ? toBigInt(actorId) : existing.preparedById,
+    }).where(this.combine(eq(payrollRun.id, id), this.tenantCond(payrollRun.tenantId)));
+    await this.recordRunEvent(id, 'updated', actorId, `Updated payroll run ${dto.name}`);
+    return this.getRun(id);
+  }
+
+  async generateRun(id: string, actorId?: string) {
+    const run = await this.findRunScoped(id);
+    if (!run) throw new NotFoundException('Payroll run not found');
+    if (!['draft', 'prepared'].includes(run.status)) throw new BadRequestException('Run cannot be regenerated in its current status');
+
+    const tid = this.tenantContext.currentTenantId();
+    const workerRows = await this.db.client.select().from(payrollWorker)
+      .where(this.combine(
+        eq(payrollWorker.status, 'active'),
+        this.tenantCond(payrollWorker.tenantId),
+        or(isNull(payrollWorker.startDate), lte(payrollWorker.startDate, run.periodEnd)),
+        and(or(isNull(payrollWorker.endDate), gte(payrollWorker.endDate, run.periodStart))),
+        run.organizationId ? eq(payrollWorker.organizationId, run.organizationId) : undefined,
+      ))
+      .orderBy(asc(payrollWorker.fullName));
+    const workers = await Promise.all(workerRows.map((row) => this.hydrateWorker(row as any)));
+
+    return this.db.client.transaction(async (tx) => {
+      const oldRepayments = await tx.select().from(payrollLoanRepayment).where(eq(payrollLoanRepayment.runId, id));
+      await this.restoreLoanOutstandingTx(tx, oldRepayments as any[]);
+      await tx.delete(payrollLoanRepayment).where(eq(payrollLoanRepayment.runId, id));
+
+      await tx.delete(payrollRunItem).where(eq(payrollRunItem.runId, id));
+      const timesheetAllocations = await tx.select().from(payrollRunTimesheetAllocation)
+        .where(eq(payrollRunTimesheetAllocation.runId, id))
+        .orderBy(asc(payrollRunTimesheetAllocation.workerId), asc(payrollRunTimesheetAllocation.sortOrder));
+      const timesheetByWorker = new Map<string, any[]>();
+      for (const row of timesheetAllocations) {
+        const list = timesheetByWorker.get(row.workerId) || [];
+        list.push(row);
+        timesheetByWorker.set(row.workerId, list);
+      }
+      const componentCodes = ['basic_salary', 'paye_tax', 'pension_employee', 'pension_employer', 'withholding_tax', 'employer_paye_cover', 'salary_advance_recovery', 'loan_repayment'];
+      const payrollComponents = await this.ensureSystemPayrollComponentsTx(tx, componentCodes);
+      const componentMap = new Map<string, any>(payrollComponents.map((component) => [component.code, component]));
+      const componentById = new Map<string, any>(payrollComponents.map((component) => [component.id, component]));
+      const taxTableCache = new Map<string, any | null>();
+
+      for (const worker of workers) {
+        const profile = this.pickActiveProfile(worker.profiles, run.periodStart, run.periodEnd);
+        const lines: Array<{ componentId: string; lineType: string; amount: number; quantity?: number | null; rate?: number | null; notes?: string | null; affectsNetPay?: boolean }> = [];
+        const setting = await this.resolvePayrollSettingTx(tx, worker.organizationId ?? null);
+        const config = (setting.config || {}) as Record<string, any>;
+        const workerMeta = (worker.metadata || {}) as Record<string, any>;
+        const workerTimesheetAllocations = timesheetByWorker.get(worker.id) || [];
+        const workerLoans = await tx.select().from(payrollLoan)
+          .where(and(
+            eq(payrollLoan.workerId, worker.id),
+            eq(payrollLoan.status, 'active'),
+            lte(payrollLoan.startRecoveryDate, run.periodEnd),
+            gt(payrollLoan.outstandingAmount, 0),
+          ))
+          .orderBy(asc(payrollLoan.issuedDate));
+        const payBasis = worker.payBasis || 'monthly_fixed';
+        const allocationMode = worker.allocationMode || 'fixed';
+        const standardHoursPerDay = Number(worker.standardHoursPerDay || 8) || 8;
+        const hybridFixedPercent = Math.max(0, Math.min(100, Number(worker.hybridFixedPercent || 0)));
+        const basicSalaryComponent = componentMap.get('basic_salary');
+        const totalTimesheetHours = workerTimesheetAllocations.reduce((sum, row) => sum + Number(row.hours || 0), 0);
+        let baseEarningsAmount = 0;
+
+        if (profile?.baseAmount && Number(profile.baseAmount) > 0 && basicSalaryComponent && ['monthly_fixed', 'retainer', 'manual'].includes(payBasis)) {
+          baseEarningsAmount = Number(profile.baseAmount);
+          lines.push({
+            componentId: basicSalaryComponent.id,
+            lineType: 'earning',
+            amount: Number(profile.baseAmount),
+            notes: 'Base amount',
+            affectsNetPay: true,
+          });
+        }
+
+        if (profile?.baseAmount && Number(profile.baseAmount) > 0 && basicSalaryComponent && payBasis === 'hourly_timesheet') {
+          baseEarningsAmount = Number(profile.baseAmount) * totalTimesheetHours;
+          lines.push({
+            componentId: basicSalaryComponent.id,
+            lineType: 'earning',
+            amount: baseEarningsAmount,
+            quantity: totalTimesheetHours,
+            rate: Number(profile.baseAmount),
+            notes: 'Approved timesheet hours',
+            affectsNetPay: true,
+          });
+        }
+
+        if (profile?.baseAmount && Number(profile.baseAmount) > 0 && basicSalaryComponent && payBasis === 'daily_rate') {
+          const workDays = totalTimesheetHours > 0 ? totalTimesheetHours / standardHoursPerDay : 0;
+          baseEarningsAmount = Number(profile.baseAmount) * workDays;
+          lines.push({
+            componentId: basicSalaryComponent.id,
+            lineType: 'earning',
+            amount: baseEarningsAmount,
+            quantity: workDays,
+            rate: Number(profile.baseAmount),
+            notes: `Approved workdays at ${standardHoursPerDay}h/day`,
+            affectsNetPay: true,
+          });
+        }
+
+        const componentBaseAmount = baseEarningsAmount || Number(profile?.baseAmount || 0);
+        for (const row of profile?.components || []) {
+          if (!row.isEnabled) continue;
+          const component = row.component;
+          const amount = row.amount
+            ? Number(row.amount)
+            : row.rate && componentBaseAmount
+              ? componentBaseAmount * Number(row.rate)
+              : 0;
+          if (!amount) continue;
+          lines.push(...this.expandProfileComponentLines(component, amount, row.rate == null ? null : Number(row.rate), row.formula || null));
+        }
+
+        const grossPay = lines.filter((line) => line.lineType === 'earning').reduce((sum, line) => sum + Number(line.amount), 0);
+
+        const employeePensionRate = Number(workerMeta.pension_rate ?? config.employee_pension_rate ?? 0);
+        const employerPensionRate = Number(config.employer_pension_rate ?? 0);
+        const consultantWithholdingRate = Number(workerMeta.withholding_rate ?? config.consultant_withholding_rate ?? 0);
+        const consultantPensionRate = Number(workerMeta.consultant_pension_rate ?? config.consultant_pension_rate ?? 0);
+        const applyTax = workerMeta.apply_tax !== false;
+        const applyPension = workerMeta.apply_pension !== false;
+
+        if (worker.workerType === 'employee') {
+          const employeePensionComponent = componentMap.get('pension_employee');
+          if (employeePensionComponent && applyPension && employeePensionRate > 0 && grossPay > 0) {
+            lines.push({
+              componentId: employeePensionComponent.id,
+              lineType: 'deduction',
+              amount: grossPay * employeePensionRate,
+              rate: employeePensionRate,
+              notes: 'Auto employee pension',
+              affectsNetPay: true,
+            });
+          }
+          const taxComponent = componentMap.get('paye_tax');
+          const taxTable = await this.resolveEmployeeTaxTableTx(
+            tx,
+            {
+              workerTaxTableId: worker.taxTableId ?? null,
+              settingTaxTableId: setting.employeeTaxTableId ?? null,
+              organizationId: worker.organizationId ?? null,
+            },
+            taxTableCache
+          );
+          const payeResult = this.calculateEmployeePaye({
+            grossPay,
+            lines,
+            componentsById: componentById,
+            taxTable,
+            fallbackRate: Number(workerMeta.tax_rate ?? config.employee_tax_rate ?? 0),
+          });
+          if (taxComponent && applyTax && payeResult.taxAmount > 0 && grossPay > 0) {
+            if (workerMeta.employer_covers_paye) {
+              const employerTaxComponent = componentMap.get('employer_paye_cover') || taxComponent;
+              lines.push({
+                componentId: taxComponent.id,
+                lineType: 'deduction',
+                amount: payeResult.taxAmount,
+                rate: payeResult.appliedRate ?? null,
+                notes: payeResult.notes || 'PAYE settled by employer',
+                affectsNetPay: false,
+              });
+              lines.push({
+                componentId: employerTaxComponent.id,
+                lineType: 'employer_cost',
+                amount: payeResult.taxAmount,
+                rate: payeResult.appliedRate ?? null,
+                notes: 'Employer-covered PAYE',
+                affectsNetPay: false,
+              });
+            } else {
+              lines.push({
+                componentId: taxComponent.id,
+                lineType: 'deduction',
+                amount: payeResult.taxAmount,
+                rate: payeResult.appliedRate ?? null,
+                notes: payeResult.notes || 'Auto PAYE',
+                affectsNetPay: true,
+              });
+            }
+          }
+          const employerPensionComponent = componentMap.get('pension_employer');
+          if (employerPensionComponent && applyPension && employerPensionRate > 0 && grossPay > 0) {
+            lines.push({
+              componentId: employerPensionComponent.id,
+              lineType: 'employer_cost',
+              amount: grossPay * employerPensionRate,
+              rate: employerPensionRate,
+              notes: 'Auto employer pension',
+              affectsNetPay: false,
+            });
+          }
+        } else if (worker.workerType === 'consultant') {
+          const withholdingComponent = componentMap.get('withholding_tax');
+          if (withholdingComponent && applyTax && consultantWithholdingRate > 0 && grossPay > 0) {
+            lines.push({
+              componentId: withholdingComponent.id,
+              lineType: 'deduction',
+              amount: grossPay * consultantWithholdingRate,
+              rate: consultantWithholdingRate,
+              notes: 'Auto consultant withholding tax',
+              affectsNetPay: true,
+            });
+          }
+          const consultantPensionComponent = componentMap.get('pension_employee');
+          if (consultantPensionComponent && applyPension && consultantPensionRate > 0 && grossPay > 0) {
+            lines.push({
+              componentId: consultantPensionComponent.id,
+              lineType: 'deduction',
+              amount: grossPay * consultantPensionRate,
+              rate: consultantPensionRate,
+              notes: 'Auto consultant pension',
+              affectsNetPay: true,
+            });
+          }
+        }
+
+        for (const loan of workerLoans) {
+          const monthlyAmount = loan.monthlyRecoveryAmount == null
+            ? (loan.recoveryRate != null ? grossPay * Number(loan.recoveryRate) : 0)
+            : Number(loan.monthlyRecoveryAmount);
+          const recoveryAmount = Math.min(Number(loan.outstandingAmount || 0), Math.max(0, monthlyAmount));
+          if (!recoveryAmount) continue;
+          const recoveryCode = loan.loanType === 'salary_advance' ? 'salary_advance_recovery' : 'loan_repayment';
+          const recoveryComponent = componentMap.get(recoveryCode);
+          if (!recoveryComponent) continue;
+          lines.push({
+            componentId: recoveryComponent.id,
+            lineType: 'deduction',
+            amount: recoveryAmount,
+            notes: `${loan.loanType === 'salary_advance' ? 'Salary advance' : 'Loan'} recovery: ${loan.title}`,
+            affectsNetPay: true,
+          });
+        }
+
+        const totalDeductions = lines.filter((line) => line.lineType === 'deduction' && line.affectsNetPay !== false).reduce((sum, line) => sum + Number(line.amount), 0);
+        const employerCostTotal = lines.filter((line) => line.lineType === 'employer_cost').reduce((sum, line) => sum + Number(line.amount), 0);
+        const computedNetPay = grossPay - totalDeductions;
+        const actualNetPay = computedNetPay;
+        const netPay = actualNetPay;
+
+        const runItemRows = await tx.insert(payrollRunItem).values({
+          runId: id,
+          workerId: worker.id,
+          workerType: worker.workerType,
+          payBasis,
+          allocationSource: this.resolveAllocationSource(allocationMode, workerTimesheetAllocations.length),
+          organizationId: worker.organizationId,
+          teamId: worker.teamId,
+          projectId: worker.projectId,
+          fundId: worker.defaultFundId,
+          grantId: worker.defaultGrantId,
+          grossPay: this.toScale(grossPay),
+          totalDeductions: this.toScale(totalDeductions),
+          employerCostTotal: this.toScale(employerCostTotal),
+          computedNetPay: this.toScale(computedNetPay),
+          actualNetPay: this.toScale(actualNetPay),
+          netAdjustmentAmount: '0',
+          netPay: this.toScale(netPay),
+        }).returning();
+        const runItem = runItemRows[0];
+
+        if (lines.length) {
+          await tx.insert(payrollRunItemLine).values(lines.map((line) => ({
+            runItemId: runItem.id,
+            componentId: line.componentId,
+            lineType: line.lineType,
+            amount: this.toScale(line.amount),
+            quantity: line.quantity == null ? null : this.toScale(line.quantity),
+            rate: line.rate == null ? null : this.toScale(line.rate),
+            notes: line.notes ?? null,
+            metadata: line.affectsNetPay === false ? { affects_net_pay: false } : undefined,
+          })));
+        }
+
+        for (const loan of workerLoans) {
+          const repaymentCode = loan.loanType === 'salary_advance' ? 'salary_advance_recovery' : 'loan_repayment';
+          const repaymentLine = lines.find((line) => line.componentId === componentMap.get(repaymentCode)?.id && String(line.notes || '').includes(loan.title));
+          if (!repaymentLine) continue;
+          await tx.insert(payrollLoanRepayment).values({
+            loanId: loan.id,
+            runId: id,
+            runItemId: runItem.id,
+            amount: this.toScale(repaymentLine.amount),
+            status: 'posted',
+            notes: repaymentLine.notes || null,
+          });
+          await tx.update(payrollLoan)
+            .set({
+              outstandingAmount: this.toScale(Number(loan.outstandingAmount || 0) - Number(repaymentLine.amount || 0)),
+              status: Number(loan.outstandingAmount || 0) - Number(repaymentLine.amount || 0) <= 0.01 ? 'closed' : loan.status,
+            })
+            .where(eq(payrollLoan.id, loan.id));
+        }
+
+        const fixedAllocations = worker.allocations.length
+          ? worker.allocations.map((allocation) => ({
+              organizationId: allocation.organizationId,
+              teamId: allocation.teamId,
+              projectId: allocation.projectId,
+              fundId: allocation.fundId,
+              grantId: allocation.grantId,
+              allocationPercent: Number(allocation.allocationPercent || 0),
+              allocationAmount: allocation.allocationAmount,
+              sortOrder: allocation.sortOrder,
+            }))
+          : [{
+              organizationId: worker.organizationId,
+              teamId: worker.teamId,
+              projectId: worker.projectId,
+              fundId: worker.defaultFundId,
+              grantId: worker.defaultGrantId,
+              allocationPercent: 100,
+              allocationAmount: null,
+              sortOrder: 0,
+            }];
+
+        const timesheetDerivedAllocations = this.normalizeTimesheetAllocations(workerTimesheetAllocations);
+        const allocations = this.resolveAllocations({
+          allocationMode,
+          hybridFixedPercent,
+          fixedAllocations,
+          timesheetAllocations: timesheetDerivedAllocations,
+        });
+
+        if (allocations.length) {
+          await tx.insert(payrollRunItemAllocation).values(allocations.map((allocation) => ({
+            runItemId: runItem.id,
+            organizationId: allocation.organizationId ?? null,
+            teamId: allocation.teamId ?? null,
+            projectId: allocation.projectId ?? null,
+            fundId: allocation.fundId ?? null,
+            grantId: allocation.grantId ?? null,
+            allocationPercent: this.toScaleOrZero(allocation.allocationPercent),
+            allocationAmount: allocation.allocationAmount == null ? null : this.toScale(allocation.allocationAmount),
+            sortOrder: allocation.sortOrder,
+          })));
+        }
+      }
+
+      await tx.update(payrollRun).set({ status: 'prepared', preparedById: actorId ? toBigInt(actorId) : run.preparedById })
+        .where(eq(payrollRun.id, id));
+      await this.recordRunEventTx(tx, id, 'generated', actorId, 'Generated payroll run items', {
+        worker_count: workers.length,
+      });
+    });
+
+    return this.getRun(id);
+  }
+
+  async submitRun(id: string, actorId?: string) {
+    const run = await this.findRunScoped(id);
+    if (!run) throw new NotFoundException('Payroll run not found');
+    const itemCount = await this.countTable(this.db.client, [eq(payrollRunItem.runId, id)]);
+    if (itemCount === 0) {
+      throw new BadRequestException(
+        'This payroll run has no payroll items to submit. Add eligible payroll workers or pay profiles for this organization and period, then click Generate Items again.'
+      );
+    }
+    if (!['prepared', 'draft'].includes(run.status)) throw new BadRequestException('Run cannot be submitted in its current status');
+    await this.db.client.update(payrollRun)
+      .set({ status: 'under_review' })
+      .where(this.combine(eq(payrollRun.id, id), this.tenantCond(payrollRun.tenantId)));
+    await this.recordRunEvent(id, 'submitted', actorId, 'Submitted payroll run for review');
+    await this.notifyRunStakeholders(id, {
+      actorId,
+      category: 'approvals',
+      type: 'payroll.run.submitted',
+      title: `Payroll run submitted`,
+      message: `${run.name} is ready for review.`,
+      onlyPreparedBy: false,
+      link: `/finance/payroll/runs/${id}`,
+      includePermissionRecipients: ['payroll.approve'],
+      includeRoleRecipients: ['finance_manager', 'accountant'],
+    });
+    return this.getRun(id);
+  }
+
+  async reviewRun(id: string, dto: { note?: string }, actorId?: string) {
+    const run = await this.findRunScoped(id);
+    if (!run) throw new NotFoundException('Payroll run not found');
+    if (!['prepared', 'draft', 'rejected'].includes(run.status)) throw new BadRequestException('Run cannot be moved to review in its current status');
+    await this.db.client.update(payrollRun)
+      .set({
+        status: 'under_review',
+        reviewedById: actorId ? toBigInt(actorId) : null,
+        notes: this.appendRunNote(run.notes, 'Review', dto.note, actorId),
+      })
+      .where(this.combine(eq(payrollRun.id, id), this.tenantCond(payrollRun.tenantId)));
+    await this.recordRunEvent(id, 'reviewed', actorId, dto.note || 'Moved payroll run to review');
+    await this.notifyRunStakeholders(id, {
+      actorId,
+      category: 'run_updates',
+      type: 'payroll.run.reviewed',
+      title: `Payroll run in review`,
+      message: `${run.name} is now under review.`,
+      onlyPreparedBy: true,
+    });
+    return this.getRun(id);
+  }
+
+  async approveRun(id: string, dto: { note?: string }, actorId?: string) {
+    const run = await this.findRunScoped(id);
+    if (!run) throw new NotFoundException('Payroll run not found');
+    if (!['under_review', 'prepared'].includes(run.status)) throw new BadRequestException('Run cannot be approved in its current status');
+    await this.db.client.update(payrollRun)
+      .set({
+        status: 'approved',
+        approvedById: actorId ? toBigInt(actorId) : null,
+        notes: this.appendRunNote(run.notes, 'Approved', dto.note, actorId),
+      })
+      .where(this.combine(eq(payrollRun.id, id), this.tenantCond(payrollRun.tenantId)));
+    await this.recordRunEvent(id, 'approved', actorId, dto.note || 'Approved payroll run');
+    await this.notifyRunStakeholders(id, {
+      actorId,
+      category: 'approvals',
+      type: 'payroll.run.approved',
+      title: `Payroll run approved`,
+      message: `${run.name} has been approved and is ready for payment.`,
+      onlyPreparedBy: true,
+      link: `/admin/payroll/authorize/${id}`,
+      includePermissionRecipients: ['payroll.authorize'],
+      includeRoleRecipients: ['executive_director', 'coo'],
+    });
+    return this.getRun(id);
+  }
+
+  async authorizeRun(id: string, dto: { notes?: string }, userId: string) {
+    const run = await this.findRunScoped(id);
+    if (!run) throw new NotFoundException('Payroll run not found');
+    if (run.status !== 'approved') {
+      throw new BadRequestException(`Cannot authorize a run with status "${run.status}". Run must be approved first.`);
+    }
+    await this.db.client.update(payrollRun)
+      .set({
+        status: 'authorized',
+        authorizedAt: new Date(),
+        authorizedById: userId ? toBigInt(userId) : null,
+        notes: this.appendRunNote(run.notes, 'Authorized', dto.notes, userId),
+      })
+      .where(this.combine(eq(payrollRun.id, id), this.tenantCond(payrollRun.tenantId)));
+    await this.recordRunEvent(id, 'authorized', userId, dto.notes || 'Authorized payroll run');
+    await this.notifyRunStakeholders(id, {
+      actorId: userId,
+      category: 'approvals',
+      type: 'payroll.run.authorized',
+      title: `Payroll run authorized`,
+      message: `${run.name} has been authorized for payment.`,
+      onlyPreparedBy: true,
+    });
+    return this.getRun(id);
+  }
+
+  async rejectRun(id: string, dto: { note?: string }, actorId?: string) {
+    const run = await this.findRunScoped(id);
+    if (!run) throw new NotFoundException('Payroll run not found');
+    if (!['under_review', 'approved'].includes(run.status)) throw new BadRequestException('Run cannot be rejected in its current status');
+    await this.db.client.update(payrollRun)
+      .set({
+        status: 'rejected',
+        notes: this.appendRunNote(run.notes, 'Rejected', dto.note || 'Rejected for correction', actorId),
+      })
+      .where(this.combine(eq(payrollRun.id, id), this.tenantCond(payrollRun.tenantId)));
+    await this.recordRunEvent(id, 'rejected', actorId, dto.note || 'Rejected payroll run');
+    await this.notifyRunStakeholders(id, {
+      actorId,
+      category: 'run_updates',
+      type: 'payroll.run.rejected',
+      title: `Payroll run rejected`,
+      message: `${run.name} was rejected and needs correction.`,
+      onlyPreparedBy: true,
+    });
+    return this.getRun(id);
+  }
+
+  async reopenRun(id: string, dto: { note?: string }, actorId?: string) {
+    const run = await this.findRunScoped(id);
+    if (!run) throw new NotFoundException('Payroll run not found');
+    if (!['rejected', 'approved', 'prepared'].includes(run.status)) throw new BadRequestException('Run cannot be reopened in its current status');
+    const postingCount = await this.countTable(this.db.client, [eq(payrollAccountingPosting.runId, id)]);
+    if (postingCount > 0 || run.status === 'paid' || run.status === 'closed') {
+      throw new BadRequestException('Posted, paid, or closed payroll runs cannot be reopened');
+    }
+    await this.db.client.update(payrollRun)
+      .set({
+        status: 'draft',
+        notes: this.appendRunNote(run.notes, 'Reopened', dto.note, actorId),
+      })
+      .where(this.combine(eq(payrollRun.id, id), this.tenantCond(payrollRun.tenantId)));
+    await this.recordRunEvent(id, 'reopened', actorId, dto.note || 'Reopened payroll run');
+    return this.getRun(id);
+  }
+
+  async closeRun(id: string, dto: { note?: string }, actorId?: string) {
+    const run = await this.findRunScoped(id);
+    if (!run) throw new NotFoundException('Payroll run not found');
+    if (run.status !== 'paid') throw new BadRequestException('Only paid payroll runs can be closed');
+    await this.db.client.update(payrollRun)
+      .set({
+        status: 'closed',
+        notes: this.appendRunNote(run.notes, 'Closed', dto.note, actorId),
+      })
+      .where(this.combine(eq(payrollRun.id, id), this.tenantCond(payrollRun.tenantId)));
+    await this.recordRunEvent(id, 'closed', actorId, dto.note || 'Closed payroll run');
+    await this.notifyRunStakeholders(id, {
+      actorId,
+      category: 'run_updates',
+      type: 'payroll.run.closed',
+      title: `Payroll run closed`,
+      message: `${run.name} has been closed.`,
+      onlyPreparedBy: true,
+    });
+    return this.getRun(id);
+  }
+
+  async payRun(id: string, dto: PayPayrollRunDto, actorId?: string) {
+    const run = await this.hydrateRun(await this.findRunScoped(id));
+    if (!run) throw new NotFoundException('Payroll run not found');
+    if (run.status !== 'authorized') {
+      throw new BadRequestException(`Cannot pay a run with status "${run.status}". Run must be authorized by ED/COO first.`);
+    }
+
+    const paidFromAccountId = dto.paid_from_account_id || run.paidFromAccountId;
+    if (!paidFromAccountId) throw new BadRequestException('Select the account to pay payroll from');
+
+    await this.db.client.transaction(async (tx) => {
+      await tx.update(payrollRun)
+        .set({ status: 'payment_processing', paidFromAccountId })
+        .where(eq(payrollRun.id, id));
+
+      const period = await this.ensureReportingPeriodTx(tx, run.periodEnd, actorId);
+      const cashChartAccount = await this.resolveCashChartAccountTx(tx, paidFromAccountId, run.items[0]?.organizationId ?? null);
+      const setting = await this.resolvePayrollSettingTx(tx, run.items[0]?.organizationId ?? null);
+      const lines = this.buildPayrollJournalLines(run, setting.defaultExpenseAccountId, cashChartAccount);
+      if (lines.length) {
+        const journal = await this.createJournalEntryTx(tx, {
+          entryDate: run.periodEnd,
+          periodId: period.id,
+          sourceType: 'payroll_run',
+          sourceId: run.id,
+          memo: dto.note || `Payroll ${run.name}`,
+          currency: run.currency,
+          postedBy: actorId,
+          lines,
+        });
+        await tx.insert(payrollAccountingPosting).values({
+          runId: run.id,
+          journalEntryId: journal.id,
+          postedBy: actorId ? toBigInt(actorId) : null,
+        });
+      }
+
+      await tx.update(payrollRunItem)
+        .set({ paymentStatus: 'paid' })
+        .where(eq(payrollRunItem.runId, run.id));
+
+      await tx.update(payrollRun)
+        .set({ status: 'paid', paidAt: new Date(), paidFromAccountId })
+        .where(eq(payrollRun.id, run.id));
+      await this.recordRunEventTx(tx, run.id, 'paid', actorId, dto.note || 'Marked payroll run as paid', {
+        paid_from_account_id: paidFromAccountId,
+      });
+    });
+    await this.notifyRunStakeholders(id, {
+      actorId,
+      category: 'payments',
+      type: 'payroll.run.paid',
+      title: `Payroll run paid`,
+      message: `${run.name} has been posted as paid.`,
+      onlyPreparedBy: true,
+    });
+
+    return this.getRun(id);
+  }
+
+  async generateRunItemPayslip(runId: string, itemId: string) {
+    const run = await this.drizzle.payrollRun.findFirst({
+      where: { id: runId, ...this.tenantWhere() },
+      include: {
+        items: {
+          where: { id: itemId },
+          include: {
+            worker: true,
+            organization: { select: { id: true, name: true } },
+            lines: { include: { component: true }, orderBy: { createdAt: 'asc' } },
+          }
+        }
+      }
+    });
+    if (!run) throw new NotFoundException('Payroll run not found');
+    const item = run.items[0];
+    if (!item) throw new NotFoundException('Payroll run item not found');
+
+    const earnings = item.lines.filter((line) => line.lineType === 'earning').map((line) => ({
+      label: line.component.name,
+      amount: Number(line.amount || 0),
+    }));
+    const deductions = item.lines.filter((line) => line.lineType === 'deduction').map((line) => ({
+      label: line.component.name,
+      amount: Number(line.amount || 0),
+    }));
+    const employerCosts = item.lines.filter((line) => line.lineType === 'employer_cost').map((line) => ({
+      label: line.component.name,
+      amount: Number(line.amount || 0),
+    }));
+
+    return this.generatePayslipTemplate({
+      worker_name: item.worker.fullName,
+      worker_type: item.workerType,
+      organization_name: item.organization?.name || undefined,
+      period_label: `${run.name} (${run.month}/${run.year})`,
+      currency: run.currency,
+      earnings,
+      deductions,
+      employer_costs: employerCosts,
+      note: item.paymentReference ? `Payment reference: ${item.paymentReference}` : undefined,
+    });
+  }
+
+  async generateBankSchedule(runId: string) {
+    const run = await this.drizzle.payrollRun.findFirst({
+      where: { id: runId, ...this.tenantWhere() },
+      include: {
+        items: {
+          include: {
+            worker: true,
+            organization: { select: { id: true, name: true } },
+          },
+          orderBy: { worker: { fullName: 'asc' } }
+        }
+      }
+    });
+    if (!run) throw new NotFoundException('Payroll run not found');
+
+    const rows = [
+      ['Worker Name', 'Worker Type', 'Organization', 'Bank Name', 'Account Name', 'Account Number', 'Net Pay', 'Currency', 'Payment Status', 'Payment Reference'],
+      ...run.items.map((item) => [
+        item.worker.fullName,
+        item.workerType,
+        item.organization?.name || '',
+        item.worker.bankName || '',
+        item.worker.bankAccountName || '',
+        item.worker.bankAccountNumber || '',
+        Number(item.netPay || 0).toFixed(2),
+        run.currency,
+        item.paymentStatus,
+        item.paymentReference || '',
+      ]),
+    ];
+
+    const csv = rows
+      .map((row) =>
+        row
+          .map((value) => `"${String(value ?? '').replace(/"/g, '""')}"`)
+          .join(',')
+      )
+      .join('\n');
+
+    return {
+      file_name: `${this.safeFileName(run.name)}-bank-schedule.csv`,
+      mime_type: 'text/csv',
+      content_base64: Buffer.from(csv, 'utf8').toString('base64'),
+    };
+  }
+
+  async monthlyBreakdown(id: string) {
+    const run = await this.drizzle.payrollRun.findFirst({
+      where: { id, ...this.tenantWhere() },
+      include: {
+        items: {
+          include: {
+            lines: {
+              include: { component: true }
+            },
+            worker: true
+          }
+        }
+      }
+    });
+    if (!run) throw new NotFoundException('Payroll run not found');
+
+    const rows = (run.items ?? []).map((item) => {
+      const earnings: any[] = [];
+      const deductions: any[] = [];
+      const employerCosts: any[] = [];
+      for (const line of item.lines ?? []) {
+        const comp = line.component;
+        if (!comp) continue;
+        const entry = { label: comp.name, amount: Number(line.amount || 0) };
+        if (comp.componentType === 'earning') earnings.push(entry);
+        else if (comp.componentType === 'deduction') deductions.push(entry);
+        else if (comp.componentType === 'employer_cost') employerCosts.push(entry);
+      }
+      return {
+        worker_name: item.worker?.fullName ?? (item as any).workerName ?? '',
+        worker_type: item.workerType ?? '',
+        staff_code: item.worker?.staffCode ?? '',
+        gross_pay: Number(item.grossPay || 0),
+        total_deductions: Number(item.totalDeductions || 0),
+        net_pay: Number(item.netPay || 0),
+        earnings,
+        deductions,
+        employer_costs: employerCosts,
+      };
+    });
+
+    const earningLabels = [...new Set(rows.flatMap(r => r.earnings.map(e => e.label)))];
+    const deductionLabels = [...new Set(rows.flatMap(r => r.deductions.map(d => d.label)))];
+    const employerCostLabels = [...new Set(rows.flatMap(r => r.employer_costs.map(c => c.label)))];
+
+    const breakdown = rows.map(r => {
+      const row: Record<string, any> = {
+        name: r.worker_name,
+        type: r.worker_type,
+        staff_code: r.staff_code,
+        gross_pay: r.gross_pay,
+        total_deductions: r.total_deductions,
+        net_pay: r.net_pay,
+      };
+      for (const label of earningLabels) row[`earning_${label}`] = r.earnings.find(e => e.label === label)?.amount ?? 0;
+      for (const label of deductionLabels) row[`deduction_${label}`] = r.deductions.find(d => d.label === label)?.amount ?? 0;
+      for (const label of employerCostLabels) row[`employer_${label}`] = r.employer_costs.find(c => c.label === label)?.amount ?? 0;
+      return row;
+    });
+
+    const headers = Object.keys(breakdown[0] ?? {});
+    const csv = [
+      headers.join(','),
+      ...breakdown.map(row => headers.map(h => JSON.stringify(row[h] ?? '')).join(','))
+    ].join('\n');
+
+    const fileName = `payroll-breakdown-${run.year ?? ''}-${String(run.month ?? '').padStart(2, '0')}.csv`;
+    return { file_name: fileName, mime_type: 'text/csv', content_base64: Buffer.from(csv).toString('base64') };
+  }
+
+  async generateRunPayslipsPackage(runId: string) {
+    const run = await this.drizzle.payrollRun.findFirst({
+      where: { id: runId, ...this.tenantWhere() },
+      include: this.runInclude()
+    });
+    if (!run) throw new NotFoundException('Payroll run not found');
+
+    const zip = new JSZip();
+    const folder = zip.folder(this.safeFileName(run.name));
+    if (!folder) throw new BadRequestException('Unable to initialize payslip package');
+
+    for (const item of run.items || []) {
+      const payslip = await this.generateRunItemPayslip(runId, item.id);
+      folder.file(payslip.file_name, Buffer.from(payslip.content_base64, 'base64'));
+    }
+
+    const bankSchedule = await this.generateBankSchedule(runId);
+    folder.file(bankSchedule.file_name, Buffer.from(bankSchedule.content_base64, 'base64'));
+
+    const manifest = [
+      `Payroll Run: ${run.name}`,
+      `Period: ${run.month}/${run.year}`,
+      `Status: ${run.status}`,
+      `Workers: ${run.items?.length || 0}`,
+      '',
+      ...(run.items || []).map((item) => `${item.worker?.fullName || 'Worker'} - ${this.formatCurrency(Number(item.netPay || 0), run.currency)}`)
+    ].join('\n');
+    folder.file('README.txt', manifest);
+
+    const content = await zip.generateAsync({ type: 'nodebuffer' });
+    return {
+      file_name: `${this.safeFileName(run.name)}-payslips.zip`,
+      mime_type: 'application/zip',
+      content_base64: content.toString('base64'),
+    };
+  }
+
+  async generateRunPayslipsPackageToAsset(runId: string, actorId?: string) {
+    const pkg = await this.generateRunPayslipsPackage(runId);
+    const stored = await this.storageService.storeGeneratedFile(actorId, pkg);
+    return {
+      file_asset_id: stored.file_asset_id,
+      file_name: stored.file_name,
+      mime_type: stored.mime_type,
+      size: stored.size,
+    };
+  }
+
+  async distributeRunPayslips(runId: string, actorId?: string) {
+    const run = await this.drizzle.payrollRun.findFirst({
+      where: { id: runId, ...this.tenantWhere() },
+      include: this.runInclude()
+    });
+    if (!run) throw new NotFoundException('Payroll run not found');
+
+    const eligibleStatuses = ['approved', 'paid', 'closed'];
+    if (!eligibleStatuses.includes(run.status)) {
+      throw new BadRequestException('Only approved, paid, or closed payroll runs can be distributed');
+    }
+    if (!this.mailService.canSend()) {
+      throw new BadRequestException('Email delivery is not configured');
+    }
+
+    let sent = 0;
+    let skipped = 0;
+    const skippedWorkers: string[] = [];
+    let failed = 0;
+    const failedWorkers: Array<{ worker: string; error: string }> = [];
+
+    for (const item of run.items || []) {
+      const workerEmail = item.worker?.email?.trim();
+      if (!workerEmail) {
+        skipped += 1;
+        skippedWorkers.push(item.worker?.fullName || item.id);
+        await this.drizzle.payrollPayslipDistribution.create({
+          data: {
+            runId: run.id,
+            runItemId: item.id,
+            workerId: item.workerId,
+            recipientEmail: '',
+            status: 'skipped',
+            errorMessage: 'Worker has no email address',
+            sentBy: actorId ? toBigInt(actorId) : null,
+            metadata: { worker_name: item.worker?.fullName || null } as Drizzle.InputJsonValue,
+          }
+        });
+        continue;
+      }
+      try {
+        const payslip = await this.generateRunItemPayslip(run.id, item.id);
+        await this.mailService.send({
+          to: workerEmail,
+          subject: `Payslip - ${run.name}`,
+          text: `Dear ${item.worker?.fullName || 'Worker'},\n\nYour payslip for ${run.name} is attached.\n\nRegards,\nStanforte Edge Payroll`,
+          threadKey: `payroll-run-${run.id}`,
+          userId: actorId,
+          notifiableType: 'payroll_run',
+          notifiableId: run.id,
+          attachments: [
+            {
+              filename: payslip.file_name,
+              content: Buffer.from(payslip.content_base64, 'base64'),
+              contentType: payslip.mime_type,
+            }
+          ]
+        });
+        await this.drizzle.payrollPayslipDistribution.create({
+          data: {
+            runId: run.id,
+            runItemId: item.id,
+            workerId: item.workerId,
+            recipientEmail: workerEmail,
+            status: 'sent',
+            sentBy: actorId ? toBigInt(actorId) : null,
+            sentAt: new Date(),
+            metadata: { file_name: payslip.file_name } as Drizzle.InputJsonValue,
+          }
+        });
+        if (item.worker?.profileId) {
+          await this.createPayrollNotification(item.worker.profileId.toString(), 'payslips', {
+            type: 'payroll.payslip.sent',
+            title: 'Payslip available',
+            message: `Your payslip for ${run.name} is available.`,
+            link: `/app/profile/payslips?run_id=${run.id}&item_id=${item.id}`,
+            notifiableType: 'payroll_run',
+            data: {
+              run_id: run.id,
+              run_name: run.name,
+              item_id: item.id,
+            } as Drizzle.InputJsonValue,
+          });
+        }
+        sent += 1;
+      } catch (error: any) {
+        const message = error?.message || 'Unable to send payslip';
+        failed += 1;
+        failedWorkers.push({ worker: item.worker?.fullName || workerEmail, error: message });
+        await this.drizzle.payrollPayslipDistribution.create({
+          data: {
+            runId: run.id,
+            runItemId: item.id,
+            workerId: item.workerId,
+            recipientEmail: workerEmail,
+            status: 'failed',
+            errorMessage: message,
+            sentBy: actorId ? toBigInt(actorId) : null,
+            metadata: { worker_name: item.worker?.fullName || null } as Drizzle.InputJsonValue,
+          }
+        });
+      }
+    }
+
+    const summaryText = `sent=${sent}, skipped=${skipped}, failed=${failed}${skippedWorkers.length ? ` [skipped: ${skippedWorkers.join(', ')}]` : ''}${failedWorkers.length ? ` [failed: ${failedWorkers.map((row) => row.worker).join(', ')}]` : ''}`;
+    const note = this.appendRunNote(run.notes, 'Payslips Distributed', summaryText, actorId);
+    await this.drizzle.payrollRun.update({
+      where: { id: run.id },
+      data: { notes: note }
+    });
+    await this.recordRunEvent(run.id, 'payslips_distributed', actorId, summaryText, {
+      sent,
+      skipped,
+      failed,
+      skipped_workers: skippedWorkers,
+      failed_workers: failedWorkers,
+    });
+    if (skipped > 0 || failed > 0) {
+      await this.notifyRunStakeholders(run.id, {
+        actorId,
+        category: 'delivery_issues',
+        type: 'payroll.payslips.delivery_issue',
+        title: `Payslip delivery issues`,
+        message: `${run.name} distribution completed with ${failed} failed and ${skipped} skipped.`,
+        onlyPreparedBy: true,
+        data: {
+          sent,
+          skipped,
+          failed,
+          skipped_workers: skippedWorkers,
+          failed_workers: failedWorkers,
+        },
+      });
+    }
+
+    return {
+      success: true,
+      sent,
+      skipped,
+      failed,
+      skipped_workers: skippedWorkers,
+      failed_workers: failedWorkers,
+    };
+  }
+
+  async reportsOverview(query: Record<string, any>) {
+    const year = Number(query.year || new Date().getFullYear());
+    const orgFilter = query.organization_id ? { organizationId: toBigInt(String(query.organization_id)) } : {};
+    const [runs, workers] = await this.drizzle.$transaction([
+      this.drizzle.payrollRun.findMany({
+        where: { year, ...orgFilter, ...this.tenantWhere() },
+        include: {
+          items: {
+            include: {
+              worker: { select: { workerType: true } },
+              organization: { select: { id: true, name: true } },
+              fund: { select: { id: true, code: true, name: true } },
+              grant: { select: { id: true, code: true, name: true } },
+            }
+          }
+        },
+        orderBy: [{ year: 'asc' }, { month: 'asc' }]
+      }),
+      this.drizzle.payrollWorker.findMany({
+        where: { status: 'active', ...orgFilter, ...this.tenantWhere() },
+        select: { workerType: true, organizationId: true }
+      })
+    ]);
+
+    const monthly = Array.from({ length: 12 }, (_, index) => ({
+      month: index + 1,
+      gross: 0,
+      deductions: 0,
+      net: 0,
+      employer_cost: 0,
+      worker_count: 0,
+    }));
+    const workerTypeTotals = new Map<string, { gross: number; net: number; count: number }>();
+    const organizationTotals = new Map<string, { label: string; gross: number; net: number }>();
+    const fundTotals = new Map<string, { label: string; gross: number; net: number }>();
+    const grantTotals = new Map<string, { label: string; gross: number; net: number }>();
+    const paymentStatusCounts = new Map<string, number>();
+
+    for (const run of runs) {
+      const bucket = monthly[run.month - 1];
+      for (const item of run.items || []) {
+        const gross = Number(item.grossPay || 0);
+        const deductions = Number(item.totalDeductions || 0);
+        const net = Number(item.netPay || 0);
+        const employerCost = Number(item.employerCostTotal || 0);
+        bucket.gross += gross;
+        bucket.deductions += deductions;
+        bucket.net += net;
+        bucket.employer_cost += employerCost;
+        bucket.worker_count += 1;
+
+        const workerType = item.worker?.workerType || 'unknown';
+        const typeEntry = workerTypeTotals.get(workerType) || { gross: 0, net: 0, count: 0 };
+        typeEntry.gross += gross;
+        typeEntry.net += net;
+        typeEntry.count += 1;
+        workerTypeTotals.set(workerType, typeEntry);
+
+        const orgKey = item.organizationId?.toString() || 'unassigned';
+        const orgEntry = organizationTotals.get(orgKey) || { label: item.organization?.name || 'Unassigned', gross: 0, net: 0 };
+        orgEntry.gross += gross;
+        orgEntry.net += net;
+        organizationTotals.set(orgKey, orgEntry);
+
+        const fundKey = item.fundId || 'unassigned';
+        const fundEntry = fundTotals.get(fundKey) || { label: item.fund?.name || item.fund?.code || 'Unassigned', gross: 0, net: 0 };
+        fundEntry.gross += gross;
+        fundEntry.net += net;
+        fundTotals.set(fundKey, fundEntry);
+
+        const grantKey = item.grantId || 'unassigned';
+        const grantEntry = grantTotals.get(grantKey) || { label: item.grant?.name || item.grant?.code || 'Unassigned', gross: 0, net: 0 };
+        grantEntry.gross += gross;
+        grantEntry.net += net;
+        grantTotals.set(grantKey, grantEntry);
+
+        paymentStatusCounts.set(item.paymentStatus, (paymentStatusCounts.get(item.paymentStatus) || 0) + 1);
+      }
+    }
+
+    const summary = monthly.reduce((acc, row) => {
+      acc.gross += row.gross;
+      acc.deductions += row.deductions;
+      acc.net += row.net;
+      acc.employer_cost += row.employer_cost;
+      acc.worker_count += row.worker_count;
+      return acc;
+    }, { gross: 0, deductions: 0, net: 0, employer_cost: 0, worker_count: 0 });
+
+    return {
+      summary,
+      active_workers: {
+        total: workers.length,
+        employees: workers.filter((worker) => worker.workerType === 'employee').length,
+        consultants: workers.filter((worker) => worker.workerType === 'consultant').length,
+      },
+      monthly,
+      worker_type_totals: Array.from(workerTypeTotals.entries()).map(([worker_type, totals]) => ({ worker_type, ...totals })),
+      organization_totals: Array.from(organizationTotals.values()).sort((a, b) => b.net - a.net),
+      fund_totals: Array.from(fundTotals.values()).sort((a, b) => b.net - a.net),
+      grant_totals: Array.from(grantTotals.values()).sort((a, b) => b.net - a.net),
+      payment_status_counts: Array.from(paymentStatusCounts.entries()).map(([status, count]) => ({ status, count })),
+      runs: runs.map((run) => this.serializeRunSummary(run)),
+    };
+  }
+
+  async updateRunItem(runId: string, itemId: string, dto: UpdatePayrollRunItemDto, actorId?: string) {
+    const run = await this.findRunScoped(runId);
+    if (!run) throw new NotFoundException('Payroll run not found');
+    const item = await this.drizzle.payrollRunItem.findFirst({ where: { id: itemId, runId }, include: { run: { include: { postings: true } } } });
+    if (!item) throw new NotFoundException('Payroll run item not found');
+    if (['paid', 'closed'].includes(item.run.status) || item.run.postings.length > 0) {
+      throw new BadRequestException('Paid, closed, or posted payroll runs cannot be edited');
+    }
+    const computedNetPay = dto.net_pay ?? Number(item.computedNetPay || item.netPay || 0);
+    const actualNetPay = dto.actual_net_pay ?? dto.net_pay ?? Number(item.actualNetPay || item.netPay || 0);
+    await this.drizzle.payrollRunItem.update({
+      where: { id: itemId },
+      data: {
+        grossPay: dto.gross_pay ?? undefined,
+        totalDeductions: dto.total_deductions ?? undefined,
+        employerCostTotal: dto.employer_cost_total ?? undefined,
+        computedNetPay,
+        actualNetPay,
+        netAdjustmentAmount: actualNetPay - computedNetPay,
+        netAdjustmentReason: dto.net_adjustment_reason ?? undefined,
+        netPay: actualNetPay,
+        paymentStatus: dto.payment_status ?? undefined,
+        paymentReference: dto.payment_reference ?? undefined,
+      }
+    });
+    await this.recordRunEvent(runId, 'item_updated', actorId, `Updated payroll run item ${itemId}`, {
+      item_id: itemId,
+      payment_status: dto.payment_status ?? null,
+      actual_net_pay: actualNetPay,
+    });
+    return this.getRun(runId);
+  }
+
+  async updateRunItemAllocations(runId: string, itemId: string, dto: UpdatePayrollRunAllocationsDto, actorId?: string) {
+    const run = await this.findRunScoped(runId);
+    if (!run) throw new NotFoundException('Payroll run not found');
+    const item = await this.drizzle.payrollRunItem.findFirst({ where: { id: itemId, runId }, include: { run: { include: { postings: true } } } });
+    if (!item) throw new NotFoundException('Payroll run item not found');
+    if (['paid', 'closed'].includes(item.run.status) || item.run.postings.length > 0) {
+      throw new BadRequestException('Paid, closed, or posted payroll runs cannot be edited');
+    }
+    const totalPercent = dto.allocations.reduce((sum, row) => sum + Number(row.allocation_percent || 0), 0);
+    if (Math.abs(totalPercent - 100) > 0.01) throw new BadRequestException('Allocation percent must total 100');
+    await this.drizzle.$transaction(async (tx) => {
+      await tx.payrollRunItemAllocation.deleteMany({ where: { runItemId: itemId } });
+      if (dto.allocations.length) {
+        await tx.payrollRunItemAllocation.createMany({
+          data: dto.allocations.map((row, index) => ({
+            runItemId: itemId,
+            organizationId: row.organization_id ? this.parseBigInt(row.organization_id, 'organization id') : null,
+            teamId: row.team_id ? this.parseBigInt(row.team_id, 'team id') : null,
+            projectId: row.project_id ? this.parseBigInt(row.project_id, 'project id') : null,
+            fundId: row.fund_id || null,
+            grantId: row.grant_id || null,
+            allocationPercent: row.allocation_percent,
+            allocationAmount: row.allocation_amount ?? null,
+            sortOrder: index,
+          }))
+        });
+      }
+      await tx.payrollRunItem.update({
+        where: { id: itemId },
+        data: { allocationSource: 'manual_override' }
+      });
+      await this.recordRunEventTx(tx, runId, 'allocations_updated', actorId, `Updated allocations for payroll run item ${itemId}`, {
+        item_id: itemId,
+        allocation_count: dto.allocations.length,
+      });
+    });
+    return this.getRun(runId);
+  }
+
+  async updateRunWorkerTimesheetAllocations(runId: string, workerId: string, dto: UpdatePayrollRunTimesheetAllocationsDto, actorId?: string) {
+    const run = await this.drizzle.payrollRun.findFirst({ where: { id: runId, ...this.tenantWhere() }, include: { postings: true } });
+    if (!run) throw new NotFoundException('Payroll run not found');
+    if (['paid', 'closed'].includes(run.status) || run.postings.length > 0) {
+      throw new BadRequestException('Paid, closed, or posted payroll runs cannot be edited');
+    }
+    const worker = await this.drizzle.payrollWorker.findFirst({ where: { id: workerId, ...this.tenantWhere() } });
+    if (!worker) throw new NotFoundException('Payroll worker not found');
+
+    const normalized = this.normalizeTimesheetInputRows(dto.allocations);
+    await this.drizzle.$transaction(async (tx) => {
+      await tx.payrollRunTimesheetAllocation.deleteMany({ where: { runId, workerId } });
+      if (normalized.length) {
+        await tx.payrollRunTimesheetAllocation.createMany({
+          data: normalized.map((row, index) => ({
+            runId,
+            workerId,
+            organizationId: row.organization_id ? this.parseBigInt(row.organization_id, 'organization id') : null,
+            teamId: row.team_id ? this.parseBigInt(row.team_id, 'team id') : null,
+            projectId: row.project_id ? this.parseBigInt(row.project_id, 'project id') : null,
+            fundId: row.fund_id || null,
+            grantId: row.grant_id || null,
+            hours: row.hours ?? 0,
+            allocationPercent: row.allocation_percent ?? 0,
+            source: row.source || 'manual',
+            notes: row.notes || null,
+            sortOrder: index,
+            approvedAt: new Date(),
+          })),
+        });
+      }
+      await this.recordRunEventTx(tx, runId, 'timesheet_allocations_updated', actorId, `Updated timesheet allocations for worker ${worker.fullName}`, {
+        worker_id: workerId,
+        allocation_count: normalized.length,
+      });
+    });
+
+    return this.getRun(runId);
+  }
+
+  async validateImport(dto: PayrollImportDto) {
+    return this.analyzeImport(dto);
+  }
+
+  async listImportJobs(query: Record<string, any>) {
+    const page = Math.max(1, Number(query.page ?? 1));
+    const perPage = Math.min(50, Math.max(1, Number(query.per_page ?? 10)));
+    const where: Drizzle.PayrollImportJobWhereInput = {};
+    if (query.status) where.status = String(query.status);
+
+    const [rows, total] = await this.drizzle.$transaction([
+      this.drizzle.payrollImportJob.findMany({
+        where,
+        include: {
+          uploadedByUser: { select: { id: true, firstName: true, lastName: true, email: true } },
+          retriedByUser: { select: { id: true, firstName: true, lastName: true, email: true } },
+          retryOfJob: { select: { id: true, fileName: true } },
+          _count: { select: { rows: true } },
+        },
+        orderBy: [{ createdAt: 'desc' }],
+        skip: (page - 1) * perPage,
+        take: perPage,
+      }),
+      this.drizzle.payrollImportJob.count({ where }),
+    ]);
+
+    return paginatedResponse(rows.map((row) => this.serializeImportJobSummary(row)), { page, per_page: perPage, total });
+  }
+
+  async getImportJob(id: string) {
+    const job = await this.drizzle.payrollImportJob.findUnique({
+      where: { id },
+      include: {
+        uploadedByUser: { select: { id: true, firstName: true, lastName: true, email: true } },
+        retriedByUser: { select: { id: true, firstName: true, lastName: true, email: true } },
+        retryOfJob: { select: { id: true, fileName: true } },
+        rows: { orderBy: [{ createdAt: 'asc' }] },
+      }
+    });
+    if (!job) throw new NotFoundException('Payroll import job not found');
+    return this.serializeImportJob(job);
+  }
+
+  async commitImport(dto: PayrollImportDto, actorId?: string) {
+    const analysis = await this.analyzeImport(dto);
+    if (analysis.summary.issue_count > 0) {
+      throw new BadRequestException('Fix payroll import issues before committing');
+    }
+
+    return this.executeImportAnalysis(analysis, dto.update_existing === true, actorId);
+  }
+
+  async retryFailedImport(id: string, actorId?: string) {
+    const sourceJob = await this.drizzle.payrollImportJob.findUnique({
+      where: { id },
+      include: { rows: { where: { status: 'error' }, orderBy: [{ createdAt: 'asc' }] } }
+    });
+    if (!sourceJob) throw new NotFoundException('Payroll import job not found');
+    if (!sourceJob.rows.length) {
+      throw new BadRequestException('There are no failed payroll import rows to retry');
+    }
+
+    const payload: PayrollImportDto = { update_existing: true, runs: [], workers: [], lines: [], allocations: [], payments: [] };
+    for (const row of sourceJob.rows) {
+      const parsed = row.payload as Record<string, any>;
+      if (row.sheetName === 'Runs') payload.runs?.push(parsed);
+      if (row.sheetName === 'Workers') payload.workers?.push(parsed);
+      if (row.sheetName === 'RunItems') {
+        const lines = Array.isArray(parsed.lines) ? parsed.lines : [];
+        const allocations = Array.isArray(parsed.allocations) ? parsed.allocations : [];
+        payload.lines?.push(...lines);
+        payload.allocations?.push(...allocations);
+      }
+      if (row.sheetName === 'Payments') payload.payments?.push(parsed);
+    }
+
+    const analysis = await this.analyzeImport(payload);
+    if (analysis.summary.issue_count > 0) {
+      throw new BadRequestException('Retry payload still has validation issues');
+    }
+    return this.executeImportAnalysis(analysis, true, actorId, {
+      fileName: `${sourceJob.fileName.replace(/\.xlsx?$/i, '')}-retry.xlsx`,
+      retryOfJobId: sourceJob.id,
+      retriedBy: actorId ? toBigInt(actorId) : null,
+    });
+  }
+
+  async generatePayslipTemplate(dto: GeneratePayrollPayslipTemplateDto) {
+    const currency = dto.currency || 'NGN';
+    const earnings = dto.earnings || [];
+    const deductions = dto.deductions || [];
+    const employerCosts = dto.employer_costs || [];
+    const gross = earnings.reduce((sum, line) => sum + Number(line.amount || 0), 0);
+    const totalDeductions = deductions.reduce((sum, line) => sum + Number(line.amount || 0), 0);
+    const totalEmployerCost = employerCosts.reduce((sum, line) => sum + Number(line.amount || 0), 0);
+    const net = gross - totalDeductions;
+    const logoDataUri = this.getPdfLogoDataUri();
+
+    const renderRows = (items: Array<{ label: string; amount: number }>) =>
+      items
+        .map(
+          (line, index) =>
+            `<tr><td>${index + 1}</td><td>${this.escapeHtml(line.label)}</td><td style="text-align:right;">${this.formatCurrency(line.amount, currency)}</td></tr>`
+        )
+        .join('');
+
+    const earningsRows = earnings.length
+      ? renderRows(earnings)
+      : '<tr><td colspan="3" class="muted">No earnings recorded.</td></tr>';
+    const deductionRows = deductions.length
+      ? renderRows(deductions)
+      : '<tr><td colspan="3" class="muted">No deductions recorded.</td></tr>';
+    const employerRows = employerCosts.length
+      ? renderRows(employerCosts)
+      : '<tr><td colspan="3" class="muted">No employer costs recorded.</td></tr>';
+
+    const html = `<!doctype html><html><head><meta charset="utf-8" />
+      <style>
+        @page { size: A4; margin: 10mm; }
+        body { font-family: Arial, sans-serif; font-size: 12px; color: #111; margin: 0; }
+        .card { border: 1px solid #000; border-radius: 6px; margin-bottom: 14px; }
+        .rowpad { padding: 12px; border-bottom: 1px solid #000; }
+        .rowpad:last-child { border-bottom: 0; }
+        .header-row { display: flex; justify-content: space-between; align-items: flex-start; }
+        .title { font-size: 24px; font-weight: 700; text-align: right; }
+        .status { font-size: 12px; text-align: right; color: #334155; margin-top: 4px; }
+        .two-col { display: table; width: 100%; }
+        .two-col > div { display: table-cell; width: 50%; vertical-align: top; padding: 12px; }
+        .two-col > div:first-child { border-right: 1px solid #000; }
+        .detail-list div { margin-bottom: 5px; }
+        .tbl { width: 100%; border-collapse: collapse; }
+        .tbl th, .tbl td { border: 1px solid #000; padding: 7px; text-align: left; }
+        .tbl th { background: #f3f4f6; }
+        .muted { color: #475569; font-size: 11px; }
+      </style>
+      </head><body>
+      <div class="card">
+        <div class="rowpad">
+          <div class="header-row">
+            <div>${logoDataUri ? `<img src="${logoDataUri}" alt="Logo" style="height:42px;" />` : '<strong>Stanforte Edge</strong>'}</div>
+            <div>
+              <div class="title">Payslip</div>
+              <div class="status">${this.escapeHtml(dto.period_label || 'Manual template')}</div>
+            </div>
+          </div>
+        </div>
+        <div class="two-col">
+          <div>
+            <h3 style="margin:0 0 8px;">Employee Details</h3>
+            <div class="detail-list">
+              <div><strong>Name:</strong> ${this.escapeHtml(dto.worker_name)}</div>
+              <div><strong>Role:</strong> ${this.escapeHtml(dto.worker_type || 'Staff')}</div>
+              <div><strong>Organization:</strong> ${this.escapeHtml(dto.organization_name || '-')}</div>
+            </div>
+          </div>
+          <div>
+            <h3 style="margin:0 0 8px;">Payroll Summary</h3>
+            <div class="detail-list">
+              <div><strong>Gross Pay:</strong> ${this.formatCurrency(gross, currency)}</div>
+              <div><strong>Total Deductions:</strong> ${this.formatCurrency(totalDeductions, currency)}</div>
+              <div><strong>Net Pay:</strong> ${this.formatCurrency(net, currency)}</div>
+              ${employerCosts.length ? `<div><strong>Employer Cost:</strong> ${this.formatCurrency(totalEmployerCost, currency)}</div>` : ''}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="rowpad">
+          <h3 style="margin:0 0 8px;">Earnings</h3>
+          <table class="tbl">
+            <thead><tr><th style="width:56px;">S/N</th><th>Component</th><th style="width:160px; text-align:right;">Amount</th></tr></thead>
+            <tbody>${earningsRows}</tbody>
+          </table>
+        </div>
+        <div class="rowpad">
+          <h3 style="margin:0 0 8px;">Deductions</h3>
+          <table class="tbl">
+            <thead><tr><th style="width:56px;">S/N</th><th>Component</th><th style="width:160px; text-align:right;">Amount</th></tr></thead>
+            <tbody>${deductionRows}</tbody>
+          </table>
+        </div>
+        <div class="rowpad">
+          <h3 style="margin:0 0 8px;">Employer Costs</h3>
+          <table class="tbl">
+            <thead><tr><th style="width:56px;">S/N</th><th>Component</th><th style="width:160px; text-align:right;">Amount</th></tr></thead>
+            <tbody>${employerRows}</tbody>
+          </table>
+        </div>
+      </div>
+      ${dto.note ? `<div class="card"><div class="rowpad"><strong>Note:</strong> ${this.escapeHtml(dto.note)}</div></div>` : ''}
+      </body></html>`;
+
+    const content = await this.pdfService.renderPdfFromHtml(html, [
+      'PAYSLIP',
+      `Employee: ${dto.worker_name}`,
+      `Net Pay: ${this.formatCurrency(net, currency)}`,
+    ]);
+    return {
+      file_name: `${this.safeFileName(dto.worker_name || 'manual')}-payslip-template.pdf`,
+      mime_type: 'application/pdf',
+      content_base64: Buffer.from(content).toString('base64'),
+    };
+  }
+
+  async generateSummaryTemplate(dto: GeneratePayrollSummaryTemplateDto) {
+    const currency = dto.currency || 'NGN';
+    const gross = dto.workers.reduce((sum, worker) => sum + Number(worker.gross_pay || 0), 0);
+    const deductions = dto.workers.reduce((sum, worker) => sum + Number(worker.total_deductions || 0), 0);
+    const net = dto.workers.reduce((sum, worker) => sum + Number(worker.net_pay || 0), 0);
+
+    const doc = await PDFDocument.create();
+    const page = doc.addPage([595.28, 841.89]);
+    const font = await doc.embedFont(StandardFonts.Helvetica);
+    const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
+
+    let y = 800;
+    page.drawText(dto.title || 'Payroll Summary Template', { x: 40, y, size: 20, font: fontBold });
+    y -= 20;
+    page.drawText(`Period: ${dto.period_label || 'Manual template'}`, { x: 40, y, size: 10, font, color: rgb(0.35, 0.35, 0.35) });
+    y -= 28;
+
+    page.drawText('Worker', { x: 40, y, size: 10, font: fontBold });
+    page.drawText('Gross', { x: 250, y, size: 10, font: fontBold });
+    page.drawText('Deductions', { x: 360, y, size: 10, font: fontBold });
+    page.drawText('Net', { x: 490, y, size: 10, font: fontBold });
+    y -= 14;
+
+    for (const worker of dto.workers) {
+      page.drawText(worker.worker_name, { x: 40, y, size: 9, font });
+      page.drawText(this.formatCurrency(worker.gross_pay, currency), { x: 250, y, size: 9, font });
+      page.drawText(this.formatCurrency(worker.total_deductions, currency), { x: 360, y, size: 9, font });
+      page.drawText(this.formatCurrency(worker.net_pay, currency), { x: 490, y, size: 9, font });
+      y -= 14;
+      if (y < 80) break;
+    }
+
+    y -= 10;
+    page.drawLine({ start: { x: 40, y }, end: { x: 555, y }, thickness: 1, color: rgb(0.8, 0.8, 0.8) });
+    y -= 18;
+    page.drawText(`Gross Total: ${this.formatCurrency(gross, currency)}`, { x: 40, y, size: 11, font: fontBold });
+    y -= 16;
+    page.drawText(`Deductions Total: ${this.formatCurrency(deductions, currency)}`, { x: 40, y, size: 11, font: fontBold });
+    y -= 16;
+    page.drawText(`Net Total: ${this.formatCurrency(net, currency)}`, { x: 40, y, size: 12, font: fontBold });
+
+    if (dto.note) {
+      y -= 28;
+      page.drawText('Note', { x: 40, y, size: 11, font: fontBold });
+      y -= 16;
+      page.drawText(dto.note, { x: 40, y, size: 10, font, maxWidth: 500, lineHeight: 13 });
+    }
+
+    const content = await doc.save();
+    return {
+      file_name: `${this.safeFileName(dto.title || 'payroll-summary')}.pdf`,
+      mime_type: 'application/pdf',
+      content_base64: Buffer.from(content).toString('base64'),
+    };
+  }
+
+  private escapeHtml(value: unknown): string {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  private getPdfLogoDataUri(): string | null {
+    const explicit = process.env.PDF_LOGO_PATH;
+    const candidates = [
+      explicit,
+      resolve(process.cwd(), 'public/branding/logo.png'),
+      resolve(process.cwd(), '../PWA/public/logo/logo.png'),
+      resolve(process.cwd(), 'public/logo/logo.png')
+    ].filter((v): v is string => Boolean(v));
+
+    for (const path of candidates) {
+      if (!existsSync(path)) continue;
+      try {
+        const ext = extname(path).toLowerCase();
+        const mime = ext === '.svg' ? 'image/svg+xml' : ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg' : 'image/png';
+        const data = readFileSync(path);
+        return `data:${mime};base64,${data.toString('base64')}`;
+      } catch {
+        continue;
+      }
+    }
+    return null;
+  }
+
+
+  private async executeImportAnalysis(
+    analysis: Awaited<ReturnType<PayrollService['analyzeImport']>>,
+    updateExisting: boolean,
+    actorId?: string,
+    options?: { fileName?: string; retryOfJobId?: string; retriedBy?: bigint | null }
+  ) {
+    const fileName = options?.fileName || `payroll-import-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    const job = await this.drizzle.payrollImportJob.create({
+      data: {
+        fileName,
+        status: 'processing',
+        updateExisting,
+        uploadedBy: actorId ? toBigInt(actorId) : null,
+        retriedBy: options?.retriedBy ?? null,
+        retryOfJobId: options?.retryOfJobId ?? null,
+        summary: {
+          ...analysis.summary,
+          status_counts: { pending: analysis.workers.length + analysis.runs.length + analysis.lineGroups.length + analysis.payments.length }
+        } as Drizzle.InputJsonValue,
+      }
+    });
+
+    const workerMap = new Map<string, any>();
+    const runMap = new Map<string, any>();
+    const itemMap = new Map<string, { itemId: string; runId: string }>();
+    const rowResults: Array<{ sheetName: string; rowNumber?: number; rowKey: string; action: string; status: string; errorMessage?: string | null; payload: Drizzle.InputJsonValue; linkedRunId?: string | null; linkedRunItemId?: string | null }> = [];
+    const statusCounts = { success: 0, error: 0, skipped: 0 };
+
+    for (const row of analysis.workers) {
+      try {
+        const worker = await this.drizzle.$transaction((tx) => this.upsertImportedWorkerTx(tx, row));
+        workerMap.set(row.worker_ref, worker);
+        rowResults.push({ sheetName: 'Workers', rowNumber: row.row_number, rowKey: row.worker_ref, action: 'upsert', status: 'success', payload: row as Drizzle.InputJsonValue });
+        statusCounts.success += 1;
+      } catch (error: any) {
+        rowResults.push({ sheetName: 'Workers', rowNumber: row.row_number, rowKey: row.worker_ref, action: 'upsert', status: 'error', errorMessage: error?.message || 'Unable to import worker', payload: row as Drizzle.InputJsonValue });
+        statusCounts.error += 1;
+      }
+    }
+
+    for (const row of analysis.runs) {
+      try {
+        const run = await this.drizzle.$transaction((tx) => this.upsertImportedRunTx(tx, row, updateExisting, actorId));
+        runMap.set(row.run_name, run);
+        rowResults.push({ sheetName: 'Runs', rowNumber: row.row_number, rowKey: row.run_name, action: updateExisting ? 'upsert' : 'create', status: 'success', payload: row as Drizzle.InputJsonValue, linkedRunId: run.id });
+        statusCounts.success += 1;
+      } catch (error: any) {
+        rowResults.push({ sheetName: 'Runs', rowNumber: row.row_number, rowKey: row.run_name, action: updateExisting ? 'upsert' : 'create', status: 'error', errorMessage: error?.message || 'Unable to import run', payload: row as Drizzle.InputJsonValue });
+        statusCounts.error += 1;
+      }
+    }
+
+    for (const grouped of analysis.lineGroups) {
+      const key = `${grouped.run_name}::${grouped.worker_ref}`;
+      const run = runMap.get(grouped.run_name) || (await this.drizzle.payrollRun.findFirst({ where: { ...this.tenantWhere(), OR: [{ name: grouped.run_name }, { AND: [{ year: analysis.runs.find((row) => row.run_name === grouped.run_name)?.year ?? -1 }, { month: analysis.runs.find((row) => row.run_name === grouped.run_name)?.month ?? -1 }] }] } }));
+      const worker = workerMap.get(grouped.worker_ref) || await this.findImportedWorker(grouped.worker_ref, analysis.workers);
+      const payload = { run_name: grouped.run_name, worker_ref: grouped.worker_ref, lines: grouped.lines, allocations: analysis.allocationsByKey.get(key) ?? [] } as Drizzle.InputJsonValue;
+      if (!run || !worker) {
+        rowResults.push({ sheetName: 'RunItems', rowNumber: grouped.lines[0]?.row_number, rowKey: key, action: 'upsert', status: 'error', errorMessage: 'Referenced payroll run or worker is unavailable', payload });
+        statusCounts.error += 1;
+        continue;
+      }
+      try {
+        const allocationRows = analysis.allocationsByKey.get(key) ?? [];
+        const item = await this.drizzle.$transaction((tx) => this.createImportedRunItemTx(tx, run.id, worker, grouped, allocationRows, updateExisting));
+        itemMap.set(key, { itemId: item.id, runId: run.id });
+        rowResults.push({ sheetName: 'RunItems', rowNumber: grouped.lines[0]?.row_number, rowKey: key, action: 'upsert', status: 'success', payload, linkedRunId: run.id, linkedRunItemId: item.id });
+        statusCounts.success += 1;
+      } catch (error: any) {
+        rowResults.push({ sheetName: 'RunItems', rowNumber: grouped.lines[0]?.row_number, rowKey: key, action: 'upsert', status: 'error', errorMessage: error?.message || 'Unable to import run item', payload, linkedRunId: run.id });
+        statusCounts.error += 1;
+      }
+    }
+
+    for (const payment of analysis.payments) {
+      const key = `${payment.run_name}::${payment.worker_ref}`;
+      const target = itemMap.get(key) || await this.findImportedItem(key, analysis, workerMap, runMap);
+      if (!target) {
+        rowResults.push({ sheetName: 'Payments', rowNumber: payment.row_number, rowKey: key, action: 'update', status: 'error', errorMessage: 'Referenced payroll run item is unavailable', payload: payment as Drizzle.InputJsonValue });
+        statusCounts.error += 1;
+        continue;
+      }
+      try {
+        await this.drizzle.payrollRunItem.update({
+          where: { id: target.itemId },
+          data: {
+            paymentStatus: payment.payment_status || 'pending',
+            paymentReference: payment.payment_reference || null,
+          }
+        });
+        rowResults.push({ sheetName: 'Payments', rowNumber: payment.row_number, rowKey: key, action: 'update', status: 'success', payload: payment as Drizzle.InputJsonValue, linkedRunId: target.runId, linkedRunItemId: target.itemId });
+        statusCounts.success += 1;
+      } catch (error: any) {
+        rowResults.push({ sheetName: 'Payments', rowNumber: payment.row_number, rowKey: key, action: 'update', status: 'error', errorMessage: error?.message || 'Unable to update payment status', payload: payment as Drizzle.InputJsonValue, linkedRunId: target.runId, linkedRunItemId: target.itemId });
+        statusCounts.error += 1;
+      }
+    }
+
+    const successfulRunIds = Array.from(new Set(rowResults.filter((row) => row.linkedRunId && row.status === 'success').map((row) => row.linkedRunId!)));
+    for (const runId of successfulRunIds) {
+      const run = await this.drizzle.payrollRun.findFirst({ where: { id: runId, ...this.tenantWhere() }, include: { items: true } });
+      if (!run) continue;
+      const matchingSource = analysis.runs.find((row) => run.name === row.run_name || (run.year === row.year && run.month === row.month));
+      const nextStatus = matchingSource?.status || (run.items.some((item) => item.paymentStatus === 'paid') ? 'paid' : 'prepared');
+      await this.drizzle.payrollRun.update({ where: { id: runId }, data: { status: nextStatus } });
+    }
+
+    if (rowResults.length) {
+      await this.drizzle.payrollImportRow.createMany({
+        data: rowResults.map((row) => ({
+          jobId: job.id,
+          sheetName: row.sheetName,
+          rowNumber: row.rowNumber ?? null,
+          rowKey: row.rowKey,
+          action: row.action,
+          status: row.status,
+          errorMessage: row.errorMessage ?? null,
+          payload: row.payload,
+          linkedRunId: row.linkedRunId ?? null,
+          linkedRunItemId: row.linkedRunItemId ?? null,
+        }))
+      });
+    }
+
+    const completedJob = await this.drizzle.payrollImportJob.update({
+      where: { id: job.id },
+      data: {
+        status: statusCounts.error > 0 ? (statusCounts.success > 0 ? 'partial' : 'failed') : 'completed',
+        completedAt: new Date(),
+        summary: {
+          ...analysis.summary,
+          processed_workers: analysis.workers.length,
+          processed_runs: analysis.runs.length,
+          processed_run_items: analysis.lineGroups.length,
+          processed_payments: analysis.payments.length,
+          status_counts: statusCounts,
+        } as Drizzle.InputJsonValue,
+      },
+      include: {
+        uploadedByUser: { select: { id: true, firstName: true, lastName: true, email: true } },
+        retriedByUser: { select: { id: true, firstName: true, lastName: true, email: true } },
+        retryOfJob: { select: { id: true, fileName: true } },
+        rows: { orderBy: [{ createdAt: 'asc' }] },
+      }
+    });
+
+    if (actorId && ['partial', 'failed'].includes(completedJob.status)) {
+      await this.createPayrollNotification(actorId, 'import_issues', {
+        type: 'payroll.import.issue',
+        title: completedJob.status === 'failed' ? 'Payroll import failed' : 'Payroll import completed with issues',
+        message: `${completedJob.fileName} finished with status ${completedJob.status}.`,
+        link: `/app/finance/payroll/import?job_id=${completedJob.id}`,
+        notifiableType: 'payroll_import_job',
+        data: {
+          job_id: completedJob.id,
+          status: completedJob.status,
+          summary: completedJob.summary || {},
+        } as Drizzle.InputJsonValue,
+      });
+    }
+
+    return this.serializeImportJob(completedJob);
+  }
+
+  private mapWorkerDto(dto: UpsertPayrollWorkerDto) {
+    return {
+      profileId: dto.profile_id ? this.parseBigInt(dto.profile_id, 'profile id') : null,
+      organizationId: dto.organization_id ? this.parseBigInt(dto.organization_id, 'organization id') : null,
+      teamId: dto.team_id ? this.parseBigInt(dto.team_id, 'team id') : null,
+      projectId: dto.project_id ? this.parseBigInt(dto.project_id, 'project id') : null,
+      defaultFundId: dto.default_fund_id || null,
+      defaultGrantId: dto.default_grant_id || null,
+      taxTableId: dto.tax_table_id || null,
+      workerType: dto.worker_type,
+      payBasis: dto.pay_basis || 'monthly_fixed',
+      allocationMode: dto.allocation_mode || 'fixed',
+      hybridFixedPercent: this.toScaleOrZero(dto.hybrid_fixed_percent),
+      standardHoursPerDay: this.toScaleOrZero(dto.standard_hours_per_day),
+      fullName: dto.full_name,
+      email: dto.email || null,
+      staffCode: dto.staff_code || null,
+      currency: dto.currency || 'NGN',
+      status: dto.status || 'active',
+      bankName: dto.bank_name || null,
+      bankAccountName: dto.bank_account_name || null,
+      bankAccountNumber: dto.bank_account_number || null,
+      taxIdentifier: dto.tax_identifier || null,
+      pensionIdentifier: dto.pension_identifier || null,
+      startDate: dto.start_date ? new Date(dto.start_date) : null,
+      endDate: dto.end_date ? new Date(dto.end_date) : null,
+      notes: dto.notes || null,
+      metadata: dto.metadata || {},
+    };
+  }
+
+  private async syncWorkerChildrenTx(tx: any, workerId: string, dto: UpsertPayrollWorkerDto) {
+    if (dto.profile) {
+      const effectiveFrom = new Date(dto.profile.effective_from);
+      const existingProfiles = await tx.select().from(payrollWorkerProfile)
+        .where(and(eq(payrollWorkerProfile.workerId, workerId), eq(payrollWorkerProfile.effectiveFrom, effectiveFrom)))
+        .orderBy(desc(payrollWorkerProfile.createdAt))
+        .limit(1);
+      const existingProfile = existingProfiles[0];
+
+      if (existingProfile) {
+        await tx.delete(payrollWorkerProfileComponent).where(eq(payrollWorkerProfileComponent.profileId, existingProfile.id));
+        await tx.update(payrollWorkerProfile).set({
+          payFrequency: dto.profile.pay_frequency || 'monthly',
+          baseAmount: this.toScaleOrZero(dto.profile.base_amount),
+          paymentMode: dto.profile.payment_mode || null,
+          effectiveFrom,
+          effectiveTo: dto.profile.effective_to ? new Date(dto.profile.effective_to) : null,
+        }).where(eq(payrollWorkerProfile.id, existingProfile.id));
+        if (dto.profile.components?.length) {
+          await tx.insert(payrollWorkerProfileComponent).values(dto.profile.components.map((row) => ({
+            profileId: existingProfile.id,
+            componentId: row.component_id,
+            amount: row.amount == null ? null : this.toScale(row.amount),
+            rate: row.rate == null ? null : this.toScale(row.rate),
+            formula: row.formula || null,
+            isEnabled: row.is_enabled ?? true,
+          })));
+        }
+      } else {
+        const createdProfile = await tx.insert(payrollWorkerProfile).values({
+          workerId,
+          payFrequency: dto.profile.pay_frequency || 'monthly',
+          baseAmount: this.toScaleOrZero(dto.profile.base_amount),
+          paymentMode: dto.profile.payment_mode || null,
+          effectiveFrom,
+          effectiveTo: dto.profile.effective_to ? new Date(dto.profile.effective_to) : null,
+        }).returning().then((r) => r[0]);
+        if (dto.profile.components?.length) {
+          await tx.insert(payrollWorkerProfileComponent).values(dto.profile.components.map((row) => ({
+            profileId: createdProfile.id,
+            componentId: row.component_id,
+            amount: row.amount == null ? null : this.toScale(row.amount),
+            rate: row.rate == null ? null : this.toScale(row.rate),
+            formula: row.formula || null,
+            isEnabled: row.is_enabled ?? true,
+          })));
+        }
+      }
+    }
+
+    if (dto.allocations) {
+      await tx.delete(payrollWorkerAllocation).where(eq(payrollWorkerAllocation.workerId, workerId));
+      if (dto.allocations.length) {
+        const totalPercent = dto.allocations.reduce((sum, row) => sum + Number(row.allocation_percent ?? 0), 0);
+        if (Math.abs(totalPercent - 100) > 0.01) throw new BadRequestException('Worker allocations must total 100');
+        await tx.insert(payrollWorkerAllocation).values(dto.allocations.map((row, index) => ({
+          workerId,
+          organizationId: row.organization_id ? this.parseBigInt(row.organization_id, 'organization id') : null,
+          teamId: row.team_id ? this.parseBigInt(row.team_id, 'team id') : null,
+          projectId: row.project_id ? this.parseBigInt(row.project_id, 'project id') : null,
+          fundId: row.fund_id || null,
+          grantId: row.grant_id || null,
+          allocationPercent: this.toScaleOrZero(row.allocation_percent ?? 100),
+          allocationAmount: row.allocation_amount == null ? null : this.toScale(row.allocation_amount),
+          sortOrder: index,
+        })));
+      }
+    }
+  }
+
+  private mapComponentDto(dto: UpsertPayrollComponentDto) {
+    return {
+      chartAccountId: dto.chart_account_id || null,
+      code: dto.code.trim().toLowerCase(),
+      name: dto.name,
+      componentType: dto.component_type,
+      calculationType: dto.calculation_type || 'fixed',
+      paidBy: dto.paid_by || 'employee',
+      employerSharePercent: this.toScaleOrZero(dto.employer_share_percent),
+      isTaxable: dto.is_taxable ?? false,
+      affectsNetPay: dto.affects_net_pay ?? true,
+      isStatutory: dto.is_statutory ?? false,
+      isActive: dto.is_active ?? true,
+    };
+  }
+
+  private profileSelect() {
+    return {
+      id: profile.id,
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      email: profile.email,
+      username: profile.username,
+    };
+  }
+
+  private async attachDimensions(rows: any[]) {
+    if (!rows.length) return rows;
+    const orgIds = Array.from(new Set(rows.map((r) => r.organizationId).filter((v): v is bigint => v != null)));
+    const fundIds = Array.from(new Set(rows.map((r) => r.fundId).filter((v): v is string => v != null)));
+    const grantIds = Array.from(new Set(rows.map((r) => r.grantId).filter((v): v is string => v != null)));
+    const [orgs, funds, grants] = await Promise.all([
+      orgIds.length ? this.db.client.select({ id: organization.id, name: organization.name }).from(organization).where(inArray(organization.id, orgIds)) : Promise.resolve([]),
+      fundIds.length ? this.db.client.select({ id: financeFund.id, code: financeFund.code, name: financeFund.name }).from(financeFund).where(inArray(financeFund.id, fundIds)) : Promise.resolve([]),
+      grantIds.length ? this.db.client.select({ id: financeGrant.id, code: financeGrant.code, name: financeGrant.name }).from(financeGrant).where(inArray(financeGrant.id, grantIds)) : Promise.resolve([]),
+    ]);
+    const orgMap = new Map(orgs.map((o) => [String(o.id), o]));
+    const fundMap = new Map(funds.map((f) => [String(f.id), f]));
+    const grantMap = new Map(grants.map((g) => [String(g.id), g]));
+    return rows.map((r) => ({
+      ...r,
+      organization: r.organizationId != null ? orgMap.get(String(r.organizationId)) ?? null : null,
+      fund: r.fundId != null ? fundMap.get(String(r.fundId)) ?? null : null,
+      grant: r.grantId != null ? grantMap.get(String(r.grantId)) ?? null : null,
+    }));
+  }
+
+  private async attachChartAccounts(rows: any[]) {
+    if (!rows.length) return rows;
+    const chartAccountIds = Array.from(new Set(rows.map((r) => r.chartAccountId).filter((v): v is string => v != null)));
+    const accounts = chartAccountIds.length
+      ? await this.db.client.select({ id: financeChartAccount.id, code: financeChartAccount.code, name: financeChartAccount.name }).from(financeChartAccount).where(inArray(financeChartAccount.id, chartAccountIds))
+      : ([] as any[]);
+    const accountMap = new Map(accounts.map((a) => [a.id, a]));
+    return rows.map((r) => ({ ...r, chartAccount: r.chartAccountId ? (accountMap.get(r.chartAccountId) ?? null) : null }));
+  }
+
+  private async attachComponentDetails(rows: any[]) {
+    if (!rows.length) return rows;
+    const componentIds = Array.from(new Set(rows.map((r) => r.componentId).filter((v): v is string => v != null)));
+    const components = componentIds.length
+      ? await this.db.client.select().from(payrollComponent).where(inArray(payrollComponent.id, componentIds))
+      : ([] as any[]);
+    const componentMap = new Map(components.map((c) => [c.id, c]));
+    const chartAccountIds = Array.from(new Set(components.map((c) => c.chartAccountId).filter((v): v is string => v != null)));
+    const accounts = chartAccountIds.length
+      ? await this.db.client.select({ id: financeChartAccount.id, code: financeChartAccount.code, name: financeChartAccount.name }).from(financeChartAccount).where(inArray(financeChartAccount.id, chartAccountIds))
+      : ([] as any[]);
+    const accountMap = new Map(accounts.map((a) => [a.id, a]));
+    return rows.map((r) => {
+      const component = componentMap.get(r.componentId);
+      if (!component) return r;
+      return { ...r, component: { ...component, chartAccount: component.chartAccountId ? (accountMap.get(component.chartAccountId) ?? null) : null } };
+    });
+  }
+
+  private async hydrateWorker(row: any): Promise<any> {
+    if (!row) return row;
+    const [profileRow, organizationRow, defaultFund, defaultGrant, taxTable, profiles, allocationsRows, timesheetRows] = await Promise.all([
+      row.profileId ? this.db.client.select(this.profileSelect()).from(profile).where(eq(profile.id, row.profileId)).limit(1).then((r) => r[0]) : Promise.resolve(null),
+      row.organizationId ? this.db.client.select({ id: organization.id, name: organization.name }).from(organization).where(eq(organization.id, row.organizationId)).limit(1).then((r) => r[0]) : Promise.resolve(null),
+      row.defaultFundId ? this.db.client.select({ id: financeFund.id, code: financeFund.code, name: financeFund.name }).from(financeFund).where(eq(financeFund.id, row.defaultFundId)).limit(1).then((r) => r[0]) : Promise.resolve(null),
+      row.defaultGrantId ? this.db.client.select({ id: financeGrant.id, code: financeGrant.code, name: financeGrant.name }).from(financeGrant).where(eq(financeGrant.id, row.defaultGrantId)).limit(1).then((r) => r[0]) : Promise.resolve(null),
+      row.taxTableId ? this.hydrateTaxTable(row.taxTableId) : Promise.resolve(null),
+      this.db.client.select().from(payrollWorkerProfile).where(eq(payrollWorkerProfile.workerId, row.id)).orderBy(desc(payrollWorkerProfile.effectiveFrom), desc(payrollWorkerProfile.createdAt)),
+      this.db.client.select().from(payrollWorkerAllocation).where(eq(payrollWorkerAllocation.workerId, row.id)).orderBy(asc(payrollWorkerAllocation.sortOrder)),
+      this.db.client.select().from(payrollRunTimesheetAllocation).where(eq(payrollRunTimesheetAllocation.workerId, row.id)).orderBy(desc(payrollRunTimesheetAllocation.approvedAt), asc(payrollRunTimesheetAllocation.sortOrder)),
+    ]);
+
+    const profileIds = profiles.map((p) => p.id);
+    const profileComponents = profileIds.length
+      ? await this.db.client.select().from(payrollWorkerProfileComponent).where(inArray(payrollWorkerProfileComponent.profileId, profileIds))
+      : ([] as any[]);
+    const componentsByProfile = new Map<string, any[]>();
+    for (const pc of profileComponents) {
+      const list = componentsByProfile.get(pc.profileId) ?? [];
+      list.push(pc);
+      componentsByProfile.set(pc.profileId, list);
+    }
+
+    const [allocations, timesheetAllocations] = await Promise.all([
+      this.attachDimensions(allocationsRows),
+      this.attachDimensions(timesheetRows),
+    ]);
+
+    const hydratedProfiles = (await Promise.all(
+      profiles.map(async (p) => ({
+        ...p,
+        components: await this.attachComponentDetails(componentsByProfile.get(p.id) ?? []),
+      })),
+    )) as any[];
+
+    return {
+      ...row,
+      profile: profileRow,
+      organization: organizationRow,
+      defaultFund,
+      defaultGrant,
+      taxTable,
+      profiles: hydratedProfiles,
+      allocations,
+      timesheetAllocations,
+    };
+  }
+
+  private async hydrateRun(row: any): Promise<any> {
+    if (!row) return row;
+    const [organizationRow, paidFromAccount, preparedBy, reviewedBy, approvedBy, postings, events, distributionRows, timesheetRows, itemRows] = await Promise.all([
+      row.organizationId ? this.db.client.select({ id: organization.id, name: organization.name }).from(organization).where(eq(organization.id, row.organizationId)).limit(1).then((r) => r[0]) : Promise.resolve(null),
+      row.paidFromAccountId ? this.db.client.select({ id: financeAccount.id, code: financeAccount.code, name: financeAccount.name }).from(financeAccount).where(eq(financeAccount.id, row.paidFromAccountId)).limit(1).then((r) => r[0]) : Promise.resolve(null),
+      row.preparedById ? this.db.client.select(this.profileSelect()).from(profile).where(eq(profile.id, row.preparedById)).limit(1).then((r) => r[0]) : Promise.resolve(null),
+      row.reviewedById ? this.db.client.select(this.profileSelect()).from(profile).where(eq(profile.id, row.reviewedById)).limit(1).then((r) => r[0]) : Promise.resolve(null),
+      row.approvedById ? this.db.client.select(this.profileSelect()).from(profile).where(eq(profile.id, row.approvedById)).limit(1).then((r) => r[0]) : Promise.resolve(null),
+      this.db.client.select().from(payrollAccountingPosting).where(eq(payrollAccountingPosting.runId, row.id)),
+      this.db.client.select().from(payrollRunEvent).where(eq(payrollRunEvent.runId, row.id)).orderBy(desc(payrollRunEvent.createdAt)),
+      this.db.client.select().from(payrollPayslipDistribution).where(eq(payrollPayslipDistribution.runId, row.id)).orderBy(desc(payrollPayslipDistribution.createdAt)),
+      this.db.client.select().from(payrollRunTimesheetAllocation).where(eq(payrollRunTimesheetAllocation.runId, row.id)).orderBy(asc(payrollRunTimesheetAllocation.workerId), asc(payrollRunTimesheetAllocation.sortOrder)),
+      this.db.client.select().from(payrollRunItem).where(eq(payrollRunItem.runId, row.id)),
+    ]);
+
+    const journalEntryIds = Array.from(new Set(postings.map((p) => p.journalEntryId)));
+    const eventActorIds = Array.from(new Set(events.map((e) => e.actorId).filter((v): v is bigint => v != null)));
+    const distWorkerIds = Array.from(new Set(distributionRows.map((d) => d.workerId).filter((v): v is string => v != null)));
+    const distSenderIds = Array.from(new Set(distributionRows.map((d) => d.sentBy).filter((v): v is bigint => v != null)));
+    const distRunItemIds = Array.from(new Set(distributionRows.map((d) => d.runItemId).filter((v): v is string => v != null)));
+    const itemWorkerIds = Array.from(new Set(itemRows.map((i) => i.workerId)));
+
+    const [journalEntries, eventActors, distWorkers, distSenders, distRunItems, itemWorkers, timesheetAllocations, items, itemLineRows, itemAllocationRows] = await Promise.all([
+      journalEntryIds.length ? this.db.client.select({ id: financeJournalEntry.id, entryNo: financeJournalEntry.entryNo, entryDate: financeJournalEntry.entryDate }).from(financeJournalEntry).where(inArray(financeJournalEntry.id, journalEntryIds)) : Promise.resolve([]),
+      eventActorIds.length ? this.db.client.select(this.profileSelect()).from(profile).where(inArray(profile.id, eventActorIds)) : Promise.resolve([]),
+      distWorkerIds.length ? this.db.client.select({ id: payrollWorker.id, fullName: payrollWorker.fullName, email: payrollWorker.email, workerType: payrollWorker.workerType }).from(payrollWorker).where(inArray(payrollWorker.id, distWorkerIds)) : Promise.resolve([]),
+      distSenderIds.length ? this.db.client.select(this.profileSelect()).from(profile).where(inArray(profile.id, distSenderIds)) : Promise.resolve([]),
+      distRunItemIds.length ? this.db.client.select({ id: payrollRunItem.id, paymentStatus: payrollRunItem.paymentStatus }).from(payrollRunItem).where(inArray(payrollRunItem.id, distRunItemIds)) : Promise.resolve([]),
+      itemWorkerIds.length ? this.db.client.select({ id: payrollWorker.id, profileId: payrollWorker.profileId, fullName: payrollWorker.fullName, workerType: payrollWorker.workerType, email: payrollWorker.email, staffCode: payrollWorker.staffCode }).from(payrollWorker).where(inArray(payrollWorker.id, itemWorkerIds)) : Promise.resolve([]),
+      this.attachDimensions(timesheetRows),
+      this.attachDimensions(itemRows),
+      itemRows.length ? this.db.client.select().from(payrollRunItemLine).where(inArray(payrollRunItemLine.runItemId, itemRows.map((i) => i.id))).orderBy(asc(payrollRunItemLine.createdAt)) : Promise.resolve([]),
+      itemRows.length ? this.db.client.select().from(payrollRunItemAllocation).where(inArray(payrollRunItemAllocation.runItemId, itemRows.map((i) => i.id))).orderBy(asc(payrollRunItemAllocation.sortOrder)) : Promise.resolve([]),
+    ]);
+
+    const journalMap = new Map(journalEntries.map((j) => [j.id, j]));
+    const actorMap = new Map(eventActors.map((a) => [String(a.id), a]));
+    const distWorkerMap = new Map(distWorkers.map((w) => [w.id, w]));
+    const distSenderMap = new Map(distSenders.map((s) => [String(s.id), s]));
+    const distRunItemMap = new Map(distRunItems.map((i) => [i.id, i]));
+    const itemWorkerMap = new Map(itemWorkers.map((w) => [w.id, w]));
+    const linesByItem = new Map<string, any[]>();
+    for (const line of await this.attachComponentDetails(itemLineRows)) {
+      const list = linesByItem.get(line.runItemId) ?? [];
+      list.push(line);
+      linesByItem.set(line.runItemId, list);
+    }
+    const allocsByItem = new Map<string, any[]>();
+    for (const alloc of itemAllocationRows) {
+      const list = allocsByItem.get(alloc.runItemId) ?? [];
+      list.push(alloc);
+      allocsByItem.set(alloc.runItemId, list);
+    }
+
+    return {
+      ...row,
+      organization: organizationRow,
+      paidFromAccount,
+      preparedBy,
+      reviewedBy,
+      approvedBy,
+      postings: postings.map((p) => ({ ...p, journalEntry: journalMap.get(p.journalEntryId) ?? null })),
+      events: events.map((e) => ({ ...e, actor: e.actorId ? (actorMap.get(String(e.actorId)) ?? null) : null })),
+      payslipDistributions: distributionRows.map((d) => ({
+        ...d,
+        worker: d.workerId ? (distWorkerMap.get(d.workerId) ?? null) : null,
+        sentByUser: d.sentBy ? (distSenderMap.get(String(d.sentBy)) ?? null) : null,
+        runItem: d.runItemId ? (distRunItemMap.get(d.runItemId) ?? null) : null,
+      })),
+      timesheetAllocations,
+      items: items
+        .map((item) => ({
+          ...item,
+          worker: item.workerId ? (itemWorkerMap.get(item.workerId) ?? null) : null,
+          lines: linesByItem.get(item.id) ?? [],
+          allocations: allocsByItem.get(item.id) ?? [],
+        }))
+        .sort((a, b) => (a.worker?.fullName ?? '').localeCompare(b.worker?.fullName ?? '')),
+    };
+  }
+
+  private serializeWorker(row: any) {
+    return {
+      id: row.id,
+      profile_id: row.profileId?.toString() ?? null,
+      profile: row.profile
+        ? {
+            id: row.profile.id.toString(),
+            full_name: [row.profile.firstName, row.profile.lastName].filter(Boolean).join(' ') || row.profile.username || row.profile.email,
+            email: row.profile.email,
+          }
+        : null,
+      organization_id: row.organizationId?.toString() ?? null,
+      organization: row.organization ? { id: row.organization.id.toString(), name: row.organization.name } : null,
+      team_id: row.teamId?.toString() ?? null,
+      project_id: row.projectId?.toString() ?? null,
+      default_fund_id: row.defaultFundId ?? null,
+      default_fund: row.defaultFund,
+      default_grant_id: row.defaultGrantId ?? null,
+      default_grant: row.defaultGrant,
+      tax_table_id: row.taxTableId ?? null,
+      tax_table: row.taxTable ? this.serializeTaxTable(row.taxTable) : null,
+      worker_type: row.workerType,
+      pay_basis: row.payBasis,
+      allocation_mode: row.allocationMode,
+      hybrid_fixed_percent: Number(row.hybridFixedPercent || 0),
+      standard_hours_per_day: Number(row.standardHoursPerDay || 8),
+      full_name: row.fullName,
+      email: row.email,
+      staff_code: row.staffCode,
+      currency: row.currency,
+      status: row.status,
+      bank_name: row.bankName,
+      bank_account_name: row.bankAccountName,
+      bank_account_number: row.bankAccountNumber,
+      tax_identifier: row.taxIdentifier,
+      pension_identifier: row.pensionIdentifier,
+      start_date: row.startDate,
+      end_date: row.endDate,
+      notes: row.notes,
+      metadata: row.metadata || {},
+      profiles: (row.profiles || []).map((profile: any) => ({
+        id: profile.id,
+        pay_frequency: profile.payFrequency,
+        base_amount: Number(profile.baseAmount || 0),
+        payment_mode: profile.paymentMode,
+        effective_from: profile.effectiveFrom,
+        effective_to: profile.effectiveTo,
+        components: (profile.components || []).map((componentRow: any) => ({
+          id: componentRow.id,
+          component_id: componentRow.componentId,
+          component: this.serializeComponent(componentRow.component),
+          amount: Number(componentRow.amount || 0),
+          rate: componentRow.rate == null ? null : Number(componentRow.rate),
+          formula: componentRow.formula,
+          is_enabled: componentRow.isEnabled,
+        }))
+      })),
+      allocations: (row.allocations || []).map((allocation: any) => ({
+        id: allocation.id,
+        organization_id: allocation.organizationId?.toString() ?? null,
+        organization: allocation.organization ? { id: allocation.organization.id.toString(), name: allocation.organization.name } : null,
+        team_id: allocation.teamId?.toString() ?? null,
+        project_id: allocation.projectId?.toString() ?? null,
+        fund_id: allocation.fundId ?? null,
+        fund: allocation.fund,
+        grant_id: allocation.grantId ?? null,
+        grant: allocation.grant,
+        allocation_percent: Number(allocation.allocationPercent || 0),
+        allocation_amount: allocation.allocationAmount == null ? null : Number(allocation.allocationAmount),
+      })),
+      timesheet_allocations: (row.timesheetAllocations || []).map((allocation: any) => ({
+        id: allocation.id,
+        organization_id: allocation.organizationId?.toString() ?? null,
+        organization: allocation.organization ? { id: allocation.organization.id.toString(), name: allocation.organization.name } : null,
+        team_id: allocation.teamId?.toString() ?? null,
+        project_id: allocation.projectId?.toString() ?? null,
+        fund_id: allocation.fundId ?? null,
+        fund: allocation.fund,
+        grant_id: allocation.grantId ?? null,
+        grant: allocation.grant,
+        hours: Number(allocation.hours || 0),
+        allocation_percent: Number(allocation.allocationPercent || 0),
+        source: allocation.source,
+        notes: allocation.notes,
+        approved_at: allocation.approvedAt,
+      })),
+      created_at: row.createdAt,
+      updated_at: row.updatedAt,
+    };
+  }
+
+  private serializeComponent(row: any) {
+    return {
+      id: row.id,
+      chart_account_id: row.chartAccountId ?? null,
+      chart_account: row.chartAccount
+        ? { id: row.chartAccount.id, code: row.chartAccount.code, name: row.chartAccount.name }
+        : null,
+      code: row.code,
+      name: row.name,
+      component_type: row.componentType,
+      calculation_type: row.calculationType,
+      paid_by: row.paidBy,
+      employer_share_percent: Number(row.employerSharePercent || 0),
+      is_taxable: row.isTaxable,
+      affects_net_pay: row.affectsNetPay,
+      is_statutory: row.isStatutory,
+      is_active: row.isActive,
+      sort_order: row.sortOrder,
+      created_at: row.createdAt,
+      updated_at: row.updatedAt,
+    };
+  }
+
+  private serializeSetting(row: any) {
+    return {
+      id: row.id,
+      organization_id: row.organizationId?.toString() ?? null,
+      organization: row.organization ? { id: row.organization.id.toString(), name: row.organization.name } : null,
+      default_expense_account_id: row.defaultExpenseAccountId ?? null,
+      default_expense_account: row.defaultExpenseAccount,
+      default_cash_account_id: row.defaultCashAccountId ?? null,
+      default_cash_account: row.defaultCashAccount,
+      employee_tax_table_id: row.employeeTaxTableId ?? null,
+      employee_tax_table: row.employeeTaxTable ? this.serializeTaxTable(row.employeeTaxTable) : null,
+      config: row.config || {},
+      updated_at: row.updatedAt,
+    };
+  }
+
+  private serializeRunSummary(row: any) {
+    const totals = (row.items || []).reduce(
+      (acc: any, item: any) => {
+        acc.gross += Number(item.grossPay || 0);
+        acc.deductions += Number(item.totalDeductions || 0);
+        acc.employer_cost += Number(item.employerCostTotal || 0);
+        acc.net += Number(item.netPay || 0);
+        return acc;
+      },
+      { gross: 0, deductions: 0, employer_cost: 0, net: 0 }
+    );
+    return {
+      id: row.id,
+      name: row.name,
+      year: row.year,
+      month: row.month,
+      period_start: row.periodStart,
+      period_end: row.periodEnd,
+      status: row.status,
+      currency: row.currency,
+      organization_id: row.organizationId?.toString() ?? null,
+      organization: row.organization ? { id: row.organization.id.toString(), name: row.organization.name } : null,
+      paid_from_account: row.paidFromAccount || null,
+      prepared_by: row.preparedBy
+        ? { id: row.preparedBy.id.toString(), name: [row.preparedBy.firstName, row.preparedBy.lastName].filter(Boolean).join(' ') || row.preparedBy.email }
+        : null,
+      item_count: row._count?.items ?? row.items?.length ?? 0,
+      totals,
+      paid_at: row.paidAt,
+      created_at: row.createdAt,
+      updated_at: row.updatedAt,
+    };
+  }
+
+  private serializeRun(row: any) {
+    return {
+      ...this.serializeRunSummary(row),
+      notes: row.notes,
+      reviewed_by: row.reviewedBy
+        ? { id: row.reviewedBy.id.toString(), name: [row.reviewedBy.firstName, row.reviewedBy.lastName].filter(Boolean).join(' ') || row.reviewedBy.email }
+        : null,
+      approved_by: row.approvedBy
+        ? { id: row.approvedBy.id.toString(), name: [row.approvedBy.firstName, row.approvedBy.lastName].filter(Boolean).join(' ') || row.approvedBy.email }
+        : null,
+      postings: (row.postings || []).map((posting: any) => ({
+        id: posting.id,
+        journal_entry: posting.journalEntry,
+        posted_at: posting.postedAt,
+      })),
+      events: (row.events || []).map((event: any) => ({
+        id: event.id,
+        event_type: event.eventType,
+        note: event.note,
+        metadata: event.metadata || {},
+        created_at: event.createdAt,
+        actor: event.actor
+          ? {
+              id: event.actor.id.toString(),
+              name: [event.actor.firstName, event.actor.lastName].filter(Boolean).join(' ') || event.actor.username || event.actor.email,
+              email: event.actor.email,
+            }
+          : null,
+      })),
+      payslip_distributions: (row.payslipDistributions || []).map((distribution: any) => ({
+        id: distribution.id,
+        run_item_id: distribution.runItemId ?? null,
+        worker_id: distribution.workerId ?? null,
+        worker: distribution.worker
+          ? {
+              id: distribution.worker.id,
+              full_name: distribution.worker.fullName,
+              email: distribution.worker.email,
+              worker_type: distribution.worker.workerType,
+            }
+          : null,
+        recipient_email: distribution.recipientEmail,
+        status: distribution.status,
+        error_message: distribution.errorMessage,
+        sent_at: distribution.sentAt,
+        metadata: distribution.metadata || {},
+        sent_by: distribution.sentByUser
+          ? {
+              id: distribution.sentByUser.id.toString(),
+              name: [distribution.sentByUser.firstName, distribution.sentByUser.lastName].filter(Boolean).join(' ') || distribution.sentByUser.username || distribution.sentByUser.email,
+              email: distribution.sentByUser.email,
+            }
+          : null,
+      })),
+      items: (row.items || []).map((item: any) => ({
+        id: item.id,
+        worker_id: item.workerId,
+        worker: item.worker,
+        organization_id: item.organizationId?.toString() ?? null,
+        organization: item.organization,
+        team_id: item.teamId?.toString() ?? null,
+        project_id: item.projectId?.toString() ?? null,
+        fund_id: item.fundId ?? null,
+        fund: item.fund,
+        grant_id: item.grantId ?? null,
+        grant: item.grant,
+        worker_type: item.workerType,
+        pay_basis: item.payBasis,
+        allocation_source: item.allocationSource,
+        gross_pay: Number(item.grossPay || 0),
+        total_deductions: Number(item.totalDeductions || 0),
+        employer_cost_total: Number(item.employerCostTotal || 0),
+        computed_net_pay: Number(item.computedNetPay || 0),
+        actual_net_pay: Number(item.actualNetPay || 0),
+        net_adjustment_amount: Number(item.netAdjustmentAmount || 0),
+        net_adjustment_reason: item.netAdjustmentReason,
+        net_pay: Number(item.netPay || 0),
+        payment_status: item.paymentStatus,
+        payment_reference: item.paymentReference,
+        lines: (item.lines || []).map((line: any) => ({
+          id: line.id,
+          component_id: line.componentId,
+          component: this.serializeComponent(line.component),
+          line_type: line.lineType,
+          amount: Number(line.amount || 0),
+          quantity: line.quantity == null ? null : Number(line.quantity),
+          rate: line.rate == null ? null : Number(line.rate),
+          notes: line.notes,
+        })),
+        allocations: (item.allocations || []).map((allocation: any) => ({
+          id: allocation.id,
+          organization_id: allocation.organizationId?.toString() ?? null,
+          organization: allocation.organization,
+          team_id: allocation.teamId?.toString() ?? null,
+          project_id: allocation.projectId?.toString() ?? null,
+          fund_id: allocation.fundId ?? null,
+          fund: allocation.fund,
+          grant_id: allocation.grantId ?? null,
+          grant: allocation.grant,
+          allocation_percent: Number(allocation.allocationPercent || 0),
+          allocation_amount: allocation.allocationAmount == null ? null : Number(allocation.allocationAmount),
+        })),
+        timesheet_allocations: (row.timesheetAllocations || [])
+          .filter((allocation: any) => allocation.workerId === item.workerId)
+          .map((allocation: any) => ({
+            id: allocation.id,
+            organization_id: allocation.organizationId?.toString() ?? null,
+            organization: allocation.organization ? { id: allocation.organization.id.toString(), name: allocation.organization.name } : null,
+            team_id: allocation.teamId?.toString() ?? null,
+            project_id: allocation.projectId?.toString() ?? null,
+            fund_id: allocation.fundId ?? null,
+            fund: allocation.fund,
+            grant_id: allocation.grantId ?? null,
+            grant: allocation.grant,
+            hours: Number(allocation.hours || 0),
+            allocation_percent: Number(allocation.allocationPercent || 0),
+            source: allocation.source,
+            notes: allocation.notes,
+            approved_at: allocation.approvedAt,
+          }))
+      }))
+    };
+  }
+
+  private serializeLoan(row: any) {
+    return {
+      id: row.id,
+      worker_id: row.workerId,
+      worker: row.worker
+        ? { id: row.worker.id, full_name: row.worker.fullName, worker_type: row.worker.workerType, email: row.worker.email }
+        : null,
+      component_id: row.componentId ?? null,
+      component: row.component || null,
+      request_id: row.requestId ? String(row.requestId) : null,
+      loan_type: row.loanType,
+      title: row.title,
+      principal_amount: Number(row.principalAmount || 0),
+      outstanding_amount: Number(row.outstandingAmount || 0),
+      issued_date: row.issuedDate,
+      start_recovery_date: row.startRecoveryDate,
+      monthly_recovery_amount: row.monthlyRecoveryAmount == null ? null : Number(row.monthlyRecoveryAmount),
+      recovery_rate: row.recoveryRate == null ? null : Number(row.recoveryRate),
+      status: row.status,
+      notes: row.notes,
+      repayments: (row.repayments || []).map((repayment: any) => ({
+        id: repayment.id,
+        run_id: repayment.runId ?? null,
+        run_item_id: repayment.runItemId ?? null,
+        amount: Number(repayment.amount || 0),
+        status: repayment.status,
+        notes: repayment.notes,
+        created_at: repayment.createdAt,
+      })),
+      created_at: row.createdAt,
+      updated_at: row.updatedAt,
+    };
+  }
+
+  private serializeTaxTable(row: any) {
+    return {
+      id: row.id,
+      organization_id: row.organizationId?.toString() ?? null,
+      name: row.name,
+      code: row.code,
+      worker_type: row.workerType,
+      periodicity: row.periodicity,
+      status: row.status,
+      effective_from: row.effectiveFrom,
+      effective_to: row.effectiveTo,
+      fixed_relief_amount: Number(row.fixedReliefAmount || 0),
+      gross_relief_rate: Number(row.grossReliefRate || 0),
+      minimum_relief_amount: Number(row.minimumReliefAmount || 0),
+      pension_relief_enabled: row.pensionReliefEnabled !== false,
+      bands: (row.bands || []).map((band: any) => ({
+        id: band.id,
+        lower_bound: Number(band.lowerBound || 0),
+        upper_bound: band.upperBound == null ? null : Number(band.upperBound),
+        rate: Number(band.rate || 0),
+        sort_order: band.sortOrder,
+      })),
+      created_at: row.createdAt,
+      updated_at: row.updatedAt,
+    };
+  }
+
+  private serializeProjectTimesheet(row: any) {
+    return {
+      id: row.id,
+      worker_id: row.workerId,
+      worker: row.worker
+        ? { id: row.worker.id, full_name: row.worker.fullName, worker_type: row.worker.workerType, email: row.worker.email }
+        : null,
+      component_id: row.componentId ?? null,
+      component: row.component || null,
+      organization_id: row.organizationId?.toString() ?? null,
+      organization: row.organization ? { id: row.organization.id.toString(), name: row.organization.name } : null,
+      team_id: row.teamId?.toString() ?? null,
+      project_id: row.projectId?.toString() ?? null,
+      fund_id: row.fundId ?? null,
+      fund: row.fund || null,
+      grant_id: row.grantId ?? null,
+      grant: row.grant || null,
+      synced_run_id: row.syncedRunId ?? null,
+      synced_run: row.syncedRun || null,
+      work_date: row.workDate,
+      hours: Number(row.hours || 0),
+      description: row.description,
+      status: row.status,
+      approved_at: row.approvedAt,
+      created_at: row.createdAt,
+      updated_at: row.updatedAt,
+    };
+  }
+
+  private mapTaxTableDto(dto: UpsertPayrollTaxTableDto) {
+    return {
+      organizationId: dto.organization_id ? this.parseBigInt(dto.organization_id, 'organization id') : null,
+      name: dto.name,
+      code: dto.code.trim().toLowerCase(),
+      workerType: dto.worker_type || 'employee',
+      periodicity: dto.periodicity || 'monthly',
+      status: dto.status || 'active',
+      effectiveFrom: new Date(dto.effective_from),
+      effectiveTo: dto.effective_to ? new Date(dto.effective_to) : null,
+      fixedReliefAmount: this.toScaleOrZero(dto.fixed_relief_amount),
+      grossReliefRate: this.toScaleOrZero(dto.gross_relief_rate),
+      minimumReliefAmount: this.toScaleOrZero(dto.minimum_relief_amount),
+      pensionReliefEnabled: dto.pension_relief_enabled ?? true,
+    };
+  }
+
+  private mapTaxBandDtos(rows: Array<{ lower_bound?: number; upper_bound?: number | null; rate: number; sort_order?: number }>) {
+    return rows
+      .map((row, index) => ({
+        lowerBound: this.toScaleOrZero(row.lower_bound),
+        upperBound: row.upper_bound == null ? null : this.toScale(row.upper_bound),
+        rate: this.toScaleOrZero(row.rate),
+        sortOrder: row.sort_order ?? index,
+      }))
+      .sort((a, b) => a.sortOrder - b.sortOrder || Number(a.lowerBound) - Number(b.lowerBound));
+  }
+
+  private async resolveWorkerForUser(userId: string) {
+    const worker = await this.db.client.select({ id: payrollWorker.id, fullName: payrollWorker.fullName, workerType: payrollWorker.workerType })
+      .from(payrollWorker)
+      .where(eq(payrollWorker.profileId, toBigInt(userId)))
+      .limit(1)
+      .then((r) => r[0]);
+    if (!worker) throw new NotFoundException('Payroll worker profile not found for this user');
+    return worker;
+  }
+
+  private async resolveEmployeeTaxTableTx(
+    tx: any,
+    input: { workerTaxTableId?: string | null; settingTaxTableId?: string | null; organizationId?: bigint | null },
+    cache?: Map<string, any | null>
+  ) {
+    const lookupById = async (id: string | null | undefined) => {
+      if (!id) return null;
+      if (cache?.has(id)) return cache.get(id) ?? null;
+      const base = await tx.select().from(payrollTaxTable).where(eq(payrollTaxTable.id, id)).limit(1).then((r) => r[0]);
+      const row = base ? await this.hydrateTaxTable(base.id) : null;
+      cache?.set(id, row ?? null);
+      return row;
+    };
+
+    const direct = (await lookupById(input.workerTaxTableId)) || (await lookupById(input.settingTaxTableId));
+    if (direct) return direct;
+
+    const today = new Date();
+    const row = await tx.select().from(payrollTaxTable)
+      .where(and(
+        eq(payrollTaxTable.status, 'active'),
+        inArray(payrollTaxTable.workerType, ['employee', 'all']),
+        input.organizationId
+          ? or(eq(payrollTaxTable.organizationId, input.organizationId), isNull(payrollTaxTable.organizationId))
+          : isNull(payrollTaxTable.organizationId),
+        lte(payrollTaxTable.effectiveFrom, today),
+        or(isNull(payrollTaxTable.effectiveTo), gte(payrollTaxTable.effectiveTo, today)),
+      ))
+      .orderBy(desc(payrollTaxTable.organizationId), desc(payrollTaxTable.effectiveFrom))
+      .limit(1)
+      .then((r) => r[0]);
+    if (row && cache) cache.set(row.id, row);
+    return row;
+  }
+
+  private calculateEmployeePaye(input: {
+    grossPay: number;
+    lines: Array<{ componentId: string; lineType: string; amount: Decimal; affectsNetPay?: boolean }>;
+    componentsById: Map<string, any>;
+    taxTable: any | null;
+    fallbackRate: number;
+  }) {
+    const taxableGross = input.lines
+      .filter((line) => line.lineType === 'earning' && input.componentsById.get(line.componentId)?.isTaxable !== false)
+      .reduce((sum, line) => sum + Number(line.amount || 0), 0);
+    const pensionRelief = input.taxTable?.pensionReliefEnabled
+      ? input.lines
+          .filter((line) => line.lineType === 'deduction' && input.componentsById.get(line.componentId)?.code === 'pension_employee')
+          .reduce((sum, line) => sum + Number(line.amount || 0), 0)
+      : 0;
+
+    if (input.taxTable?.bands?.length) {
+      const periodicityFactor = input.taxTable.periodicity === 'annual' ? 12 : 1;
+      const taxableBase = taxableGross * periodicityFactor;
+      const fixedRelief = Number(input.taxTable.fixedReliefAmount || 0);
+      const percentageRelief = taxableBase * Number(input.taxTable.grossReliefRate || 0);
+      const minimumRelief = Number(input.taxTable.minimumReliefAmount || 0);
+      const relief = Math.max(minimumRelief, fixedRelief + percentageRelief);
+      const chargeableIncome = Math.max(0, taxableBase - relief - pensionRelief * periodicityFactor);
+      const taxBase = this.applyProgressiveTax(chargeableIncome, input.taxTable.bands || []);
+      const monthlyTax = periodicityFactor === 12 ? taxBase / 12 : taxBase;
+      const appliedRate = taxableGross > 0 ? monthlyTax / taxableGross : null;
+      return {
+        taxAmount: Math.max(0, monthlyTax),
+        appliedRate,
+        notes: `PAYE via ${input.taxTable.name}`,
+      };
+    }
+
+    if (input.fallbackRate > 0 && input.grossPay > 0) {
+      return {
+        taxAmount: input.grossPay * input.fallbackRate,
+        appliedRate: input.fallbackRate,
+        notes: 'Auto PAYE (legacy rate)',
+      };
+    }
+
+    return { taxAmount: 0, appliedRate: null, notes: null };
+  }
+
+  private applyProgressiveTax(amount: number, bands: Array<{ lowerBound?: string | number; upperBound?: string | number | null; rate?: string | number }>) {
+    if (!amount || amount <= 0) return 0;
+    let total = 0;
+    const normalized = bands
+      .map((band) => ({
+        lower: Number(band.lowerBound || 0),
+        upper: band.upperBound == null ? null : Number(band.upperBound),
+        rate: Number(band.rate || 0),
+      }))
+      .sort((a, b) => a.lower - b.lower);
+
+    for (const band of normalized) {
+      if (amount <= band.lower) continue;
+      const upper = band.upper ?? amount;
+      const taxableInBand = Math.max(0, Math.min(amount, upper) - band.lower);
+      if (taxableInBand <= 0) continue;
+      total += taxableInBand * band.rate;
+      if (band.upper != null && amount <= band.upper) break;
+    }
+
+    return total;
+  }
+
+  private pickActiveProfile(profiles: any[], periodStart: Date, periodEnd: Date) {
+    return profiles.find((profile) => {
+      const startsOk = !profile.effectiveFrom || profile.effectiveFrom <= periodEnd;
+      const endsOk = !profile.effectiveTo || profile.effectiveTo >= periodStart;
+      return startsOk && endsOk;
+    }) || null;
+  }
+
+  private mapProjectTimesheetDto(dto: any, actorId?: string, preserveCreator = false) {
+    return {
+      workerId: dto.worker_id,
+      componentId: dto.component_id || null,
+      organizationId: dto.organization_id ? this.parseBigInt(dto.organization_id, 'organization id') : null,
+      teamId: dto.team_id ? this.parseBigInt(dto.team_id, 'team id') : null,
+      projectId: dto.project_id ? this.parseBigInt(dto.project_id, 'project id') : null,
+      fundId: dto.fund_id || null,
+      grantId: dto.grant_id || null,
+      workDate: new Date(dto.work_date),
+      hours: this.toScaleOrZero(dto.hours),
+      description: dto.description || null,
+      status: dto.status || 'draft',
+      createdBy: preserveCreator ? undefined : (actorId ? toBigInt(actorId) : undefined),
+    };
+  }
+
+  private async syncApprovedTimesheetsToPayrollRun(workerId: string, workDate: Date) {
+    const month = workDate.getUTCMonth() + 1;
+    const year = workDate.getUTCFullYear();
+    const periodStart = new Date(Date.UTC(year, month - 1, 1));
+    const periodEnd = new Date(Date.UTC(year, month, 0));
+    const runs = await this.db.client
+      .select()
+      .from(payrollRun)
+      .where(and(eq(payrollRun.year, year), eq(payrollRun.month, month), this.tenantCond(payrollRun.tenantId)))
+      .limit(1);
+    const run = runs[0] ?? null;
+    if (!run) return null;
+    if (['approved', 'authorized', 'paid', 'closed'].includes(run.status)) return null;
+    const approvedRows = await this.drizzle.projectTimesheetEntry.findMany({
+      where: {
+        workerId,
+        status: 'approved',
+        workDate: { gte: periodStart, lte: periodEnd },
+      },
+      orderBy: [{ workDate: 'asc' }, { createdAt: 'asc' }]
+    });
+    const totalHours = approvedRows.reduce((sum, row) => sum + Number(row.hours || 0), 0);
+    await this.drizzle.$transaction(async (tx) => {
+      await tx.payrollRunTimesheetAllocation.deleteMany({ where: { runId: run.id, workerId } });
+      if (approvedRows.length) {
+        await tx.payrollRunTimesheetAllocation.createMany({
+          data: approvedRows.map((row, index) => ({
+            runId: run.id,
+            workerId,
+            organizationId: row.organizationId,
+            teamId: row.teamId,
+            projectId: row.projectId,
+            fundId: row.fundId,
+            grantId: row.grantId,
+            hours: row.hours,
+            allocationPercent: totalHours > 0 ? (Number(row.hours || 0) / totalHours) * 100 : 0,
+            source: 'timesheet',
+            notes: row.description,
+            sortOrder: index,
+            approvedAt: row.approvedAt ?? new Date(),
+          }))
+        });
+      }
+      await tx.projectTimesheetEntry.updateMany({
+        where: { id: { in: approvedRows.map((row) => row.id) } },
+        data: { syncedRunId: run.id }
+      });
+    });
+    return run.id;
+  }
+
+  private async resolvePayrollSettingTx(tx: TxClient, organizationId: bigint | null) {
+    const scoped = organizationId
+      ? await tx.select().from(payrollSetting).where(eq(payrollSetting.organizationId, organizationId)).limit(1)
+      : [];
+    const row = scoped[0] ?? (await tx.select().from(payrollSetting).where(isNull(payrollSetting.organizationId)).limit(1))[0] ?? null;
+    return row || { defaultExpenseAccountId: null, defaultCashAccountId: null, employeeTaxTableId: null, config: {} };
+  }
+
+  private async resolveCashChartAccountTx(tx: TxClient, financeAccountId: string, organizationId: bigint | null) {
+    const rows = await tx.select({ id: financeChartAccount.id }).from(financeChartAccount).where(eq(financeChartAccount.financeAccountId, financeAccountId)).limit(1);
+    const chartAccount = rows[0];
+    if (!chartAccount) throw new BadRequestException('Selected payment account has no linked chart account');
+    return chartAccount.id;
+  }
+
+  private buildPayrollJournalLines(run: any, defaultExpenseAccountId: string | null, cashChartAccountId: string) {
+    const bucket = new Map<string, { chartAccountId: string; organizationId: bigint | null; teamId: bigint | null; fundId: string | null; grantId: string | null; debit: number; credit: number; description?: string }>();
+    const addLine = (line: { chartAccountId: string; organizationId?: bigint | null; teamId?: bigint | null; fundId?: string | null; grantId?: string | null; debit?: number; credit?: number; description?: string }) => {
+      const key = [line.chartAccountId, line.organizationId ?? '', line.teamId ?? '', line.fundId ?? '', line.grantId ?? ''].join('|');
+      const existing = bucket.get(key) || {
+        chartAccountId: line.chartAccountId,
+        organizationId: line.organizationId ?? null,
+        teamId: line.teamId ?? null,
+        fundId: line.fundId ?? null,
+        grantId: line.grantId ?? null,
+        debit: 0,
+        credit: 0,
+        description: line.description,
+      };
+      existing.debit += Number(line.debit || 0);
+      existing.credit += Number(line.credit || 0);
+      bucket.set(key, existing);
+    };
+
+    for (const item of run.items) {
+      const allocations = item.allocations?.length ? item.allocations : [{ organizationId: item.organizationId, teamId: item.teamId, fundId: item.fundId, grantId: item.grantId, allocationPercent: 100 }];
+      for (const line of item.lines) {
+          const accountId = line.component.chartAccountId || defaultExpenseAccountId;
+        if (!accountId) continue;
+        for (const allocation of allocations) {
+          const factor = Number(allocation.allocationPercent || 0) / 100;
+          const amount = Number(line.amount || 0) * factor;
+          if (!amount) continue;
+          if (line.line_type === 'deduction') {
+            addLine({
+              chartAccountId: accountId,
+              organizationId: allocation.organizationId ?? null,
+              teamId: allocation.teamId ?? null,
+              fundId: allocation.fundId ?? null,
+              grantId: allocation.grantId ?? null,
+              credit: amount,
+              description: `${run.name} deduction`
+            });
+          } else {
+            addLine({
+              chartAccountId: accountId,
+              organizationId: allocation.organizationId ?? null,
+              teamId: allocation.teamId ?? null,
+              fundId: allocation.fundId ?? null,
+              grantId: allocation.grantId ?? null,
+              debit: amount,
+              description: `${run.name} expense`
+            });
+          }
+        }
+      }
+      for (const allocation of allocations) {
+        const factor = Number(allocation.allocationPercent || 0) / 100;
+        const amount = Number(item.actualNetPay || item.netPay || 0) * factor;
+        if (!amount) continue;
+        addLine({
+          chartAccountId: cashChartAccountId,
+          organizationId: allocation.organizationId ?? null,
+          teamId: allocation.teamId ?? null,
+          fundId: allocation.fundId ?? null,
+          grantId: allocation.grantId ?? null,
+          credit: amount,
+          description: `${run.name} cash`
+        });
+      }
+    }
+
+    const lines = Array.from(bucket.values()).filter((line) => Math.abs(line.debit) > 0.001 || Math.abs(line.credit) > 0.001);
+    const totalDebit = lines.reduce((sum, line) => sum + line.debit, 0);
+    const totalCredit = lines.reduce((sum, line) => sum + line.credit, 0);
+    if (Math.abs(totalDebit - totalCredit) > 0.01) {
+      throw new BadRequestException('Payroll journal is not balanced. Check payroll component account mappings and deductions.');
+    }
+    return lines;
+  }
+
+  private async ensureReportingPeriodTx(tx: TxClient, date: Date, actorId?: string) {
+    const tid = this.tenantContext.currentTenantId();
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const quarter = Math.floor((month - 1) / 3) + 1;
+    const existingRows = await tx.select().from(financeReportingPeriod).where(and(eq(financeReportingPeriod.year, year), eq(financeReportingPeriod.month, month))).limit(1);
+    if (existingRows[0]) return existingRows[0];
+    const startDate = new Date(Date.UTC(year, month - 1, 1));
+    const endDate = new Date(Date.UTC(year, month, 0));
+    const created = await tx.insert(financeReportingPeriod).values({
+      tenantId: tid ?? null,
+      year,
+      month,
+      quarter,
+      label: `${year}-${String(month).padStart(2, '0')}`,
+      startDate,
+      endDate,
+      status: 'open',
+      createdBy: actorId ? toBigInt(actorId) : null,
+    }).returning();
+    return created[0];
+  }
+
+  private async createJournalEntryTx(
+    tx: TxClient,
+    input: {
+      entryDate: Date;
+      periodId: string;
+      sourceType: string;
+      sourceId: string;
+      memo: string;
+      currency: string;
+      postedBy?: string;
+      lines: Array<{ chartAccountId: string; organizationId?: bigint | null; teamId?: bigint | null; fundId?: string | null; grantId?: string | null; debit: number; credit: number; description?: string }>;
+    }
+  ) {
+    const tid = this.tenantContext.currentTenantId();
+    const totalDebit = input.lines.reduce((sum, line) => sum + Number(line.debit || 0), 0);
+    const totalCredit = input.lines.reduce((sum, line) => sum + Number(line.credit || 0), 0);
+    if (Math.abs(totalDebit - totalCredit) > 0.001) {
+      throw new BadRequestException('Journal entry is not balanced');
+    }
+    const entryNo = await this.nextSequenceValueTx(tx, 'JE', input.entryDate);
+    const entryRows = await tx.insert(financeJournalEntry).values({
+      tenantId: tid ?? null,
+      entryNo,
+      entryDate: input.entryDate,
+      periodId: input.periodId,
+      sourceType: input.sourceType,
+      sourceId: input.sourceId,
+      memo: input.memo,
+      status: 'posted',
+      currency: input.currency,
+      totalDebit: this.toScale(totalDebit),
+      totalCredit: this.toScale(totalCredit),
+      postedBy: input.postedBy ? toBigInt(input.postedBy) : null,
+    }).returning();
+    const entry = entryRows[0];
+    if (input.lines.length) {
+      await tx.insert(financeJournalLine).values(input.lines.map((line) => ({
+        tenantId: tid ?? null,
+        journalEntryId: entry.id,
+        chartAccountId: line.chartAccountId,
+        organizationId: line.organizationId ?? null,
+        teamId: line.teamId ?? null,
+        fundId: line.fundId ?? null,
+        grantId: line.grantId ?? null,
+        debit: this.toScale(line.debit),
+        credit: this.toScale(line.credit),
+        description: line.description ?? null,
+      })));
+    }
+    return entry;
+  }
+
+  private async nextSequenceValueTx(tx: TxClient, prefix: string, date: Date) {
+    const year = date.getFullYear();
+    const rows = await tx.select({ c: count() }).from(financeJournalEntry).where(like(financeJournalEntry.entryNo, `${prefix}/${year}/%`));
+    return `${prefix}/${year}/${String((rows[0]?.c ?? 0) + 1).padStart(4, '0')}`;
+  }
+
+  private resolveAllocationSource(allocationMode: string, timesheetRowCount: number) {
+    if (allocationMode === 'timesheet') return timesheetRowCount > 0 ? 'timesheet' : 'fixed';
+    if (allocationMode === 'hybrid') return timesheetRowCount > 0 ? 'hybrid' : 'fixed';
+    return 'fixed';
+  }
+
+  private async ensureSystemPayrollComponentsTx(tx: TxClient, codes: string[]) {
+    const existing = await tx.select().from(payrollComponent).where(and(inArray(payrollComponent.code, codes), eq(payrollComponent.isActive, true)));
+    const existingCodes = new Set(existing.map((row) => row.code));
+    const definitions: Record<string, Partial<NewPayrollComponent>> = {
+      basic_salary: { name: 'Basic Salary', componentType: 'earning', calculationType: 'fixed', paidBy: 'employer', isTaxable: true, affectsNetPay: true, isStatutory: false, isActive: true },
+      paye_tax: { name: 'PAYE Tax', componentType: 'deduction', calculationType: 'percentage', paidBy: 'employee', isTaxable: false, affectsNetPay: true, isStatutory: true, isActive: true },
+      pension_employee: { name: 'Employee Pension', componentType: 'deduction', calculationType: 'percentage', paidBy: 'employee', isTaxable: false, affectsNetPay: true, isStatutory: true, isActive: true },
+      pension_employer: { name: 'Employer Pension', componentType: 'employer_cost', calculationType: 'percentage', paidBy: 'employer', isTaxable: false, affectsNetPay: false, isStatutory: true, isActive: true },
+      withholding_tax: { name: 'Withholding Tax', componentType: 'deduction', calculationType: 'percentage', paidBy: 'employee', isTaxable: false, affectsNetPay: true, isStatutory: true, isActive: true },
+      employer_paye_cover: { name: 'Employer PAYE Cover', componentType: 'employer_cost', calculationType: 'percentage', paidBy: 'employer', isTaxable: false, affectsNetPay: false, isStatutory: true, isActive: true },
+      salary_advance_recovery: { name: 'Salary Advance Recovery', componentType: 'deduction', calculationType: 'fixed', paidBy: 'employee', isTaxable: false, affectsNetPay: true, isStatutory: false, isActive: true },
+      loan_repayment: { name: 'Loan Repayment', componentType: 'deduction', calculationType: 'fixed', paidBy: 'employee', isTaxable: false, affectsNetPay: true, isStatutory: false, isActive: true },
+    };
+    for (const code of codes) {
+      if (existingCodes.has(code) || !definitions[code]) continue;
+      const createdRows = await tx.insert(payrollComponent).values({
+        code,
+        ...definitions[code],
+      } as NewPayrollComponent).returning();
+      existing.push(createdRows[0]);
+    }
+    return existing;
+  }
+
+  private expandProfileComponentLines(component: any, amount: number, rate: number | null, notes: string | null) {
+    const lineRate = rate == null ? null : new Drizzle.Decimal(rate);
+    const employerSharePercent = Math.max(0, Math.min(100, Number(component.employerSharePercent || 0)));
+    if (component.componentType === 'earning' || component.componentType === 'employer_cost') {
+      return [{
+        componentId: component.id,
+        lineType: component.componentType,
+        amount: new Drizzle.Decimal(amount),
+        rate: lineRate,
+        notes,
+        affectsNetPay: component.componentType === 'earning' ? true : false,
+      }];
+    }
+    if (component.paidBy === 'employer') {
+      return [{
+        componentId: component.id,
+        lineType: 'employer_cost',
+        amount: new Drizzle.Decimal(amount),
+        rate: lineRate,
+        notes,
+        affectsNetPay: false,
+      }];
+    }
+    if (component.paidBy === 'shared' && employerSharePercent > 0) {
+      const employerAmount = amount * (employerSharePercent / 100);
+      const employeeAmount = amount - employerAmount;
+      return [
+        ...(employeeAmount > 0 ? [{
+          componentId: component.id,
+          lineType: 'deduction',
+          amount: new Drizzle.Decimal(employeeAmount),
+          rate: lineRate,
+          notes: notes || 'Employee share',
+          affectsNetPay: true,
+        }] : []),
+        ...(employerAmount > 0 ? [{
+          componentId: component.id,
+          lineType: 'employer_cost',
+          amount: new Drizzle.Decimal(employerAmount),
+          rate: lineRate,
+          notes: notes || 'Employer share',
+          affectsNetPay: false,
+        }] : []),
+      ];
+    }
+    return [{
+      componentId: component.id,
+      lineType: 'deduction',
+      amount: new Drizzle.Decimal(amount),
+      rate: lineRate,
+      notes,
+      affectsNetPay: component.affectsNetPay !== false,
+    }];
+  }
+
+  private normalizeTimesheetAllocations(rows: any[]) {
+    if (!rows.length) return [];
+    const totalPercent = rows.reduce((sum, row) => sum + Number(row.allocationPercent || 0), 0);
+    const totalHours = rows.reduce((sum, row) => sum + Number(row.hours || 0), 0);
+    return rows
+      .map((row) => {
+        const percent = totalPercent > 0
+          ? Number(row.allocationPercent || 0)
+          : totalHours > 0
+            ? (Number(row.hours || 0) / totalHours) * 100
+            : 0;
+        return {
+          organizationId: row.organizationId ?? null,
+          teamId: row.teamId ?? null,
+          projectId: row.projectId ?? null,
+          fundId: row.fundId ?? null,
+          grantId: row.grantId ?? null,
+          allocationPercent: new Drizzle.Decimal(percent),
+          allocationAmount: null,
+          sortOrder: row.sortOrder ?? 0,
+          hours: Number(row.hours || 0),
+        };
+      })
+      .filter((row) => Number(row.allocationPercent) > 0);
+  }
+
+  private resolveAllocations(input: {
+    allocationMode: string;
+    hybridFixedPercent: number;
+    fixedAllocations: Array<{ organizationId: bigint | null; teamId: bigint | null; projectId: bigint | null; fundId: string | null; grantId: string | null; allocationPercent: number; allocationAmount?: Drizzle.Decimal | null; sortOrder: number }>;
+    timesheetAllocations: Array<{ organizationId: bigint | null; teamId: bigint | null; projectId: bigint | null; fundId: string | null; grantId: string | null; allocationPercent: Drizzle.Decimal; allocationAmount?: Drizzle.Decimal | null; sortOrder: number; hours?: number }>;
+  }) {
+    const timesheetRows = input.timesheetAllocations.length ? input.timesheetAllocations : [];
+    if (input.allocationMode === 'timesheet' && timesheetRows.length) {
+      return timesheetRows.map((row, index) => ({ ...row, sortOrder: index }));
+    }
+    if (input.allocationMode !== 'hybrid' || !timesheetRows.length) {
+      return input.fixedAllocations.map((row, index) => ({
+        ...row,
+        allocationPercent: new Drizzle.Decimal(Number(row.allocationPercent || 0)),
+        sortOrder: index,
+      }));
+    }
+
+    const fixedWeight = Math.max(0, Math.min(100, input.hybridFixedPercent)) / 100;
+    const timesheetWeight = 1 - fixedWeight;
+    const bucket = new Map<string, { organizationId: bigint | null; teamId: bigint | null; projectId: bigint | null; fundId: string | null; grantId: string | null; allocationPercent: number }>();
+    const add = (row: { organizationId: bigint | null; teamId: bigint | null; projectId: bigint | null; fundId: string | null; grantId: string | null }, percent: number) => {
+      const key = [row.organizationId ?? '', row.teamId ?? '', row.projectId ?? '', row.fundId ?? '', row.grantId ?? ''].join('|');
+      const existing = bucket.get(key) || { ...row, allocationPercent: 0 };
+      existing.allocationPercent += percent;
+      bucket.set(key, existing);
+    };
+    for (const row of input.fixedAllocations) add(row, Number(row.allocationPercent || 0) * fixedWeight);
+    for (const row of timesheetRows) add(row, Number(row.allocationPercent || 0) * timesheetWeight);
+    return Array.from(bucket.values())
+      .filter((row) => row.allocationPercent > 0)
+      .map((row, index) => ({
+        ...row,
+        allocationPercent: new Drizzle.Decimal(row.allocationPercent),
+        allocationAmount: null,
+        sortOrder: index,
+      }));
+  }
+
+  private normalizeTimesheetInputRows(rows: UpdatePayrollRunTimesheetAllocationsDto['allocations']) {
+    const totalPercent = rows.reduce((sum, row) => sum + Number(row.allocation_percent || 0), 0);
+    const totalHours = rows.reduce((sum, row) => sum + Number(row.hours || 0), 0);
+    return rows.map((row) => ({
+      ...row,
+      allocation_percent: totalPercent > 0
+        ? Number(row.allocation_percent || 0)
+        : totalHours > 0
+          ? (Number(row.hours || 0) / totalHours) * 100
+          : 0,
+    })).filter((row) => Number(row.allocation_percent || 0) > 0 || Number(row.hours || 0) > 0);
+  }
+
+  private async analyzeImport(dto: PayrollImportDto) {
+    const runs = (dto.runs || []).map((row, index) => ({
+      ...row,
+      row_number: index + 2,
+      run_name: String(row.run_name || '').trim(),
+      currency: String(row.currency || 'NGN').trim() || 'NGN',
+      status: String(row.status || 'prepared').trim() || 'prepared',
+    }));
+    const workers = (dto.workers || []).map((row, index) => ({
+      ...row,
+      row_number: index + 2,
+      worker_ref: String(row.worker_ref || '').trim(),
+      full_name: String(row.full_name || '').trim(),
+      worker_type: String(row.worker_type || 'employee').trim() || 'employee',
+      email: String(row.email || '').trim(),
+      staff_code: String(row.staff_code || '').trim(),
+    }));
+    const lines = (dto.lines || []).map((row, index) => ({
+      ...row,
+      row_number: index + 2,
+      run_name: String(row.run_name || '').trim(),
+      worker_ref: String(row.worker_ref || '').trim(),
+      component_code: String(row.component_code || '').trim().toLowerCase(),
+      amount: Number(row.amount || 0),
+      notes: String(row.notes || '').trim(),
+    }));
+    const allocations = (dto.allocations || []).map((row, index) => ({
+      ...row,
+      row_number: index + 2,
+      run_name: String(row.run_name || '').trim(),
+      worker_ref: String(row.worker_ref || '').trim(),
+      allocation_percent: Number(row.allocation_percent || 0),
+    }));
+    const payments = (dto.payments || []).map((row, index) => ({
+      ...row,
+      row_number: index + 2,
+      run_name: String(row.run_name || '').trim(),
+      worker_ref: String(row.worker_ref || '').trim(),
+      payment_status: String(row.payment_status || 'pending').trim() || 'pending',
+      payment_reference: String(row.payment_reference || '').trim(),
+    }));
+
+    const issues: Array<{ sheet: string; row_number: number; key: string; issues: string[] }> = [];
+    const runNames = new Set(runs.map((row) => row.run_name).filter(Boolean));
+    const workerRefs = new Set(workers.map((row) => row.worker_ref).filter(Boolean));
+    const componentCodes = Array.from(new Set(lines.map((row) => row.component_code).filter(Boolean)));
+
+    const components = componentCodes.length
+      ? await this.drizzle.payrollComponent.findMany({ where: { code: { in: componentCodes } } })
+      : [];
+    const componentSet = new Set(components.map((row) => row.code));
+
+    const runRows = new Map<string, typeof runs[number]>();
+    for (const row of runs) {
+      const rowIssues: string[] = [];
+      if (!row.run_name) rowIssues.push('run_name is required');
+      if (!row.year) rowIssues.push('year is required');
+      if (!row.month) rowIssues.push('month is required');
+      if (!row.period_start) rowIssues.push('period_start is required');
+      if (!row.period_end) rowIssues.push('period_end is required');
+      if (runRows.has(row.run_name)) rowIssues.push('run_name must be unique');
+      const existing = row.year && row.month ? await this.drizzle.payrollRun.findFirst({ where: { year: row.year, month: row.month, ...this.tenantWhere() } }) : null;
+      if (existing && dto.update_existing !== true) rowIssues.push(`run already exists for ${row.month}/${row.year}`);
+      if (existing && existing.status === 'paid') rowIssues.push('existing paid runs cannot be overwritten');
+      if (row.paid_from_account) {
+        const account = await this.resolveFinanceAccountLookup(this.drizzle, row.paid_from_account);
+        if (!account) rowIssues.push(`payment account not found: ${row.paid_from_account}`);
+      }
+      runRows.set(row.run_name, row);
+      if (rowIssues.length) issues.push({ sheet: 'Runs', row_number: row.row_number, key: row.run_name || `row-${row.row_number}`, issues: rowIssues });
+    }
+
+    for (const row of workers) {
+      const rowIssues: string[] = [];
+      if (!row.worker_ref) rowIssues.push('worker_ref is required');
+      if (!row.full_name) rowIssues.push('full_name is required');
+      if (!['employee', 'consultant'].includes(row.worker_type)) rowIssues.push('worker_type must be employee or consultant');
+      if (workerRefs.size !== workers.length) {
+        const matches = workers.filter((entry) => entry.worker_ref === row.worker_ref);
+        if (matches.length > 1) rowIssues.push('worker_ref must be unique');
+      }
+      if (row.organization) {
+        const orgId = await this.resolveOrganizationLookup(this.drizzle, row.organization);
+        if (!orgId) rowIssues.push(`organization not found: ${row.organization}`);
+      }
+      if (row.team) {
+        const teamId = await this.resolveTeamLookup(this.drizzle, row.team);
+        if (!teamId) rowIssues.push(`team not found: ${row.team}`);
+      }
+      if (row.fund) {
+        const fundId = await this.resolveFundLookup(this.drizzle, row.fund);
+        if (!fundId) rowIssues.push(`fund not found: ${row.fund}`);
+      }
+      if (row.grant) {
+        const grantId = await this.resolveGrantLookup(this.drizzle, row.grant);
+        if (!grantId) rowIssues.push(`grant not found: ${row.grant}`);
+      }
+      if (row.profile_id && !await this.drizzle.profile.findUnique({ where: { id: this.parseBigInt(row.profile_id, 'profile id') } })) {
+        rowIssues.push(`profile not found: ${row.profile_id}`);
+      }
+      if (rowIssues.length) issues.push({ sheet: 'Workers', row_number: row.row_number, key: row.worker_ref || `row-${row.row_number}`, issues: rowIssues });
+    }
+
+    for (const row of lines) {
+      const rowIssues: string[] = [];
+      if (!row.run_name) rowIssues.push('run_name is required');
+      if (!row.worker_ref) rowIssues.push('worker_ref is required');
+      if (!row.component_code) rowIssues.push('component_code is required');
+      if (!Number.isFinite(row.amount)) rowIssues.push('amount must be numeric');
+      if (row.run_name && !runNames.has(row.run_name)) rowIssues.push(`unknown run_name: ${row.run_name}`);
+      if (row.worker_ref && !workerRefs.has(row.worker_ref)) rowIssues.push(`unknown worker_ref: ${row.worker_ref}`);
+      if (row.component_code && !componentSet.has(row.component_code)) rowIssues.push(`unknown component_code: ${row.component_code}`);
+      if (rowIssues.length) issues.push({ sheet: 'Lines', row_number: row.row_number, key: `${row.run_name}/${row.worker_ref}`, issues: rowIssues });
+    }
+
+    for (const row of allocations) {
+      const rowIssues: string[] = [];
+      if (!row.run_name) rowIssues.push('run_name is required');
+      if (!row.worker_ref) rowIssues.push('worker_ref is required');
+      if (row.run_name && !runNames.has(row.run_name)) rowIssues.push(`unknown run_name: ${row.run_name}`);
+      if (row.worker_ref && !workerRefs.has(row.worker_ref)) rowIssues.push(`unknown worker_ref: ${row.worker_ref}`);
+      if (row.organization) {
+        const orgId = await this.resolveOrganizationLookup(this.drizzle, row.organization);
+        if (!orgId) rowIssues.push(`organization not found: ${row.organization}`);
+      }
+      if (row.team) {
+        const teamId = await this.resolveTeamLookup(this.drizzle, row.team);
+        if (!teamId) rowIssues.push(`team not found: ${row.team}`);
+      }
+      if (row.fund) {
+        const fundId = await this.resolveFundLookup(this.drizzle, row.fund);
+        if (!fundId) rowIssues.push(`fund not found: ${row.fund}`);
+      }
+      if (row.grant) {
+        const grantId = await this.resolveGrantLookup(this.drizzle, row.grant);
+        if (!grantId) rowIssues.push(`grant not found: ${row.grant}`);
+      }
+      if (row.allocation_percent <= 0) rowIssues.push('allocation_percent must be greater than zero');
+      if (rowIssues.length) issues.push({ sheet: 'Allocations', row_number: row.row_number, key: `${row.run_name}/${row.worker_ref}`, issues: rowIssues });
+    }
+
+    const allocationTotals = new Map<string, number>();
+    for (const row of allocations) {
+      const key = `${row.run_name}::${row.worker_ref}`;
+      allocationTotals.set(key, (allocationTotals.get(key) || 0) + Number(row.allocation_percent || 0));
+    }
+    for (const [key, total] of allocationTotals) {
+      if (Math.abs(total - 100) > 0.01) {
+        issues.push({ sheet: 'Allocations', row_number: 0, key, issues: ['allocation_percent must total 100 for each run and worker'] });
+      }
+    }
+
+    for (const row of payments) {
+      const rowIssues: string[] = [];
+      if (!row.run_name) rowIssues.push('run_name is required');
+      if (!row.worker_ref) rowIssues.push('worker_ref is required');
+      if (row.run_name && !runNames.has(row.run_name)) rowIssues.push(`unknown run_name: ${row.run_name}`);
+      if (row.worker_ref && !workerRefs.has(row.worker_ref)) rowIssues.push(`unknown worker_ref: ${row.worker_ref}`);
+      if (rowIssues.length) issues.push({ sheet: 'Payments', row_number: row.row_number, key: `${row.run_name}/${row.worker_ref}`, issues: rowIssues });
+    }
+
+    const lineGroups = Array.from(
+      lines.reduce((map, row) => {
+        const key = `${row.run_name}::${row.worker_ref}`;
+        const existing = map.get(key) || { run_name: row.run_name, worker_ref: row.worker_ref, lines: [] as typeof lines };
+        existing.lines.push(row);
+        map.set(key, existing);
+        return map;
+      }, new Map<string, { run_name: string; worker_ref: string; lines: typeof lines }>())
+    ).map(([, value]) => value);
+
+    const allocationsByKey = allocations.reduce((map, row) => {
+      const key = `${row.run_name}::${row.worker_ref}`;
+      const existing = map.get(key) || [];
+      existing.push(row);
+      map.set(key, existing);
+      return map;
+    }, new Map<string, typeof allocations>());
+
+    return {
+      summary: {
+        runs: runs.length,
+        workers: workers.length,
+        lines: lines.length,
+        allocations: allocations.length,
+        payments: payments.length,
+        issue_count: issues.reduce((sum, row) => sum + row.issues.length, 0),
+        ready: issues.length === 0,
+      },
+      issues,
+      runs,
+      workers,
+      lines,
+      allocations,
+      payments,
+      lineGroups,
+      allocationsByKey,
+    };
+  }
+
+  private async upsertImportedWorkerTx(tx: Drizzle.TransactionClient, row: any) {
+    const profileId = row.profile_id ? this.parseBigInt(row.profile_id, 'profile id') : null;
+    const organizationId = row.organization ? await this.resolveOrganizationLookup(tx, row.organization) : null;
+    const teamId = row.team ? await this.resolveTeamLookup(tx, row.team) : null;
+    const fundId = row.fund ? await this.resolveFundLookup(tx, row.fund) : null;
+    const grantId = row.grant ? await this.resolveGrantLookup(tx, row.grant) : null;
+
+    const existing =
+      (profileId ? await tx.payrollWorker.findFirst({ where: { profileId } }) : null) ||
+      (row.staff_code ? await tx.payrollWorker.findFirst({ where: { staffCode: row.staff_code } }) : null) ||
+      (row.email ? await tx.payrollWorker.findFirst({ where: { email: row.email, fullName: row.full_name } }) : null);
+
+    const payload = {
+      profileId,
+      organizationId,
+      teamId,
+      projectId: row.project_id ? this.parseBigInt(row.project_id, 'project id') : null,
+      defaultFundId: fundId,
+      defaultGrantId: grantId,
+      workerType: row.worker_type || 'employee',
+      fullName: row.full_name,
+      email: row.email || null,
+      staffCode: row.staff_code || null,
+      currency: 'NGN',
+      status: 'active',
+      bankName: row.bank_name || null,
+      bankAccountName: row.bank_account_name || null,
+      bankAccountNumber: row.bank_account_number || null,
+    };
+
+    const worker = existing
+      ? await tx.payrollWorker.update({ where: { id: existing.id }, data: payload })
+      : await tx.payrollWorker.create({ data: payload });
+
+    if (row.effective_from || Number(row.base_amount || 0) > 0) {
+      await tx.payrollWorkerProfile.create({
+        data: {
+          workerId: worker.id,
+          effectiveFrom: new Date(row.effective_from || new Date().toISOString().slice(0, 10)),
+          baseAmount: Number(row.base_amount || 0),
+          payFrequency: 'monthly',
+          paymentMode: 'bank_transfer',
+        }
+      });
+    }
+
+    return worker;
+  }
+
+  private async upsertImportedRunTx(tx: Drizzle.TransactionClient, row: any, updateExisting: boolean, actorId?: string) {
+    const paidFromAccount = row.paid_from_account ? await this.resolveFinanceAccountLookup(tx, row.paid_from_account) : null;
+    const existing = await tx.payrollRun.findFirst({ where: { year: row.year, month: row.month }, include: { postings: true } });
+    if (existing) {
+      if (!updateExisting) return existing;
+      if (existing.postings.length > 0 || existing.status === 'paid') {
+        throw new BadRequestException(`Payroll run ${row.run_name} cannot be overwritten because it is already posted or paid`);
+      }
+      await tx.payrollRunItem.deleteMany({ where: { runId: existing.id } });
+      return tx.payrollRun.update({
+        where: { id: existing.id },
+        data: {
+          name: row.run_name,
+          periodStart: new Date(row.period_start),
+          periodEnd: new Date(row.period_end),
+          currency: row.currency || 'NGN',
+          status: 'draft',
+          notes: row.notes || null,
+          paidFromAccountId: paidFromAccount?.id || null,
+          preparedById: actorId ? toBigInt(actorId) : existing.preparedById,
+        }
+      });
+    }
+    return tx.payrollRun.create({
+      data: {
+        name: row.run_name,
+        year: row.year,
+        month: row.month,
+        periodStart: new Date(row.period_start),
+        periodEnd: new Date(row.period_end),
+        currency: row.currency || 'NGN',
+        status: 'draft',
+        notes: row.notes || null,
+        paidFromAccountId: paidFromAccount?.id || null,
+        preparedById: actorId ? toBigInt(actorId) : null,
+      }
+    });
+  }
+
+  private async createImportedRunItemTx(
+    tx: Drizzle.TransactionClient,
+    runId: string,
+    worker: any,
+    grouped: { run_name: string; worker_ref: string; lines: any[] },
+    allocationRows: any[],
+    updateExisting = false
+  ) {
+    const componentCodes = grouped.lines.map((line) => line.component_code);
+    const components = await tx.payrollComponent.findMany({ where: { code: { in: componentCodes } } });
+        const componentMap = new Map<string, any>(components.map((row) => [row.code, row]));
+
+    const typedLines = grouped.lines.map((line) => {
+      const component = componentMap.get(line.component_code);
+      return {
+        componentId: component!.id,
+        lineType: component!.componentType,
+        amount: new Drizzle.Decimal(Number(line.amount || 0)),
+        notes: line.notes || null,
+      };
+    });
+
+    const grossPay = typedLines.filter((line) => line.lineType === 'earning').reduce((sum, line) => sum + Number(line.amount), 0);
+    const totalDeductions = typedLines.filter((line) => line.lineType === 'deduction').reduce((sum, line) => sum + Number(line.amount), 0);
+    const employerCostTotal = typedLines.filter((line) => line.lineType === 'employer_cost').reduce((sum, line) => sum + Number(line.amount), 0);
+    const netPay = grossPay - totalDeductions;
+
+    const existing = await tx.payrollRunItem.findFirst({ where: { runId, workerId: worker.id } });
+    let item;
+    if (existing) {
+      if (!updateExisting) {
+        throw new BadRequestException(`Payroll run item already exists for ${grouped.worker_ref}`);
+      }
+      await tx.payrollRunItemLine.deleteMany({ where: { runItemId: existing.id } });
+      await tx.payrollRunItemAllocation.deleteMany({ where: { runItemId: existing.id } });
+      item = await tx.payrollRunItem.update({
+        where: { id: existing.id },
+        data: {
+          workerType: worker.workerType,
+          organizationId: worker.organizationId,
+          teamId: worker.teamId,
+          projectId: worker.projectId,
+          fundId: worker.defaultFundId,
+          grantId: worker.defaultGrantId,
+          grossPay,
+          totalDeductions,
+          employerCostTotal,
+          netPay,
+        }
+      });
+    } else {
+      item = await tx.payrollRunItem.create({
+        data: {
+          runId,
+          workerId: worker.id,
+          workerType: worker.workerType,
+          organizationId: worker.organizationId,
+          teamId: worker.teamId,
+          projectId: worker.projectId,
+          fundId: worker.defaultFundId,
+          grantId: worker.defaultGrantId,
+          grossPay,
+          totalDeductions,
+          employerCostTotal,
+          netPay,
+        }
+      });
+    }
+
+    if (typedLines.length) {
+      await tx.payrollRunItemLine.createMany({
+        data: typedLines.map((line) => ({
+          runItemId: item.id,
+          componentId: line.componentId,
+          lineType: line.lineType,
+          amount: line.amount,
+          notes: line.notes,
+        }))
+      });
+    }
+
+    const normalizedAllocations = allocationRows.length
+      ? await Promise.all(
+          allocationRows.map(async (row: any, index: number) => ({
+            organizationId: row.organization ? await this.resolveOrganizationLookup(tx, row.organization) : null,
+            teamId: row.team ? await this.resolveTeamLookup(tx, row.team) : null,
+            projectId: row.project_id ? this.parseBigInt(row.project_id, 'project id') : null,
+            fundId: row.fund ? await this.resolveFundLookup(tx, row.fund) : null,
+            grantId: row.grant ? await this.resolveGrantLookup(tx, row.grant) : null,
+            allocationPercent: Number(row.allocation_percent || 0),
+            sortOrder: index,
+          }))
+        )
+      : [{
+          organizationId: worker.organizationId,
+          teamId: worker.teamId,
+          projectId: worker.projectId,
+          fundId: worker.defaultFundId,
+          grantId: worker.defaultGrantId,
+          allocationPercent: 100,
+          sortOrder: 0,
+        }];
+
+    await tx.payrollRunItemAllocation.createMany({
+      data: normalizedAllocations.map((allocation) => ({
+        runItemId: item.id,
+        organizationId: allocation.organizationId,
+        teamId: allocation.teamId,
+        projectId: allocation.projectId,
+        fundId: allocation.fundId,
+        grantId: allocation.grantId,
+        allocationPercent: allocation.allocationPercent,
+        sortOrder: allocation.sortOrder,
+      }))
+    });
+
+    return item;
+  }
+
+  private async findImportedWorker(workerRef: string, workers: any[]) {
+    const row = workers.find((entry) => entry.worker_ref === workerRef);
+    if (!row) return null;
+    const profileId = row.profile_id ? this.parseBigInt(row.profile_id, 'profile id') : null;
+    return (
+      (profileId ? await this.drizzle.payrollWorker.findFirst({ where: { profileId, ...this.tenantWhere() } }) : null) ||
+      (row.staff_code ? await this.drizzle.payrollWorker.findFirst({ where: { staffCode: row.staff_code, ...this.tenantWhere() } }) : null) ||
+      (row.email ? await this.drizzle.payrollWorker.findFirst({ where: { email: row.email, fullName: row.full_name, ...this.tenantWhere() } }) : null)
+    );
+  }
+
+  private async findImportedItem(
+    key: string,
+    analysis: Awaited<ReturnType<PayrollService['analyzeImport']>>,
+    workerMap: Map<string, any>,
+    runMap: Map<string, any>
+  ) {
+    const [runName, workerRef] = key.split('::');
+    const run = runMap.get(runName) || await this.drizzle.payrollRun.findFirst({ where: { name: runName, ...this.tenantWhere() } });
+    const worker = workerMap.get(workerRef) || await this.findImportedWorker(workerRef, analysis.workers);
+    if (!run || !worker) return null;
+    const item = await this.drizzle.payrollRunItem.findFirst({ where: { runId: run.id, workerId: worker.id } });
+    return item ? { itemId: item.id, runId: run.id } : null;
+  }
+
+  private async resolveOrganizationLookup(client: Drizzle.TransactionClient | RepositoryService, value: string) {
+    const trimmed = String(value || '').trim();
+    if (!trimmed) return null;
+    if (/^\d+$/.test(trimmed)) {
+      const exact = await client.organization.findUnique({ where: { id: BigInt(trimmed) } });
+      if (exact) return exact.id;
+    }
+    const match = await client.organization.findFirst({ where: { OR: [{ name: { equals: trimmed, mode: 'insensitive' } }, { code: { equals: trimmed, mode: 'insensitive' } }] } });
+    return match?.id ?? null;
+  }
+
+  private async resolveTeamLookup(client: Drizzle.TransactionClient | RepositoryService, value: string) {
+    const trimmed = String(value || '').trim();
+    if (!trimmed) return null;
+    if (/^\d+$/.test(trimmed)) {
+      const exact = await client.group.findUnique({ where: { id: BigInt(trimmed) } });
+      if (exact) return exact.id;
+    }
+    const match = await client.group.findFirst({ where: { name: { equals: trimmed, mode: 'insensitive' } } });
+    return match?.id ?? null;
+  }
+
+  private async resolveFundLookup(client: Drizzle.TransactionClient | RepositoryService, value: string) {
+    const trimmed = String(value || '').trim();
+    if (!trimmed) return null;
+    const match = await client.financeFund.findFirst({
+      where: {
+        OR: [{ id: trimmed }, { name: { equals: trimmed, mode: 'insensitive' } }, { code: { equals: trimmed, mode: 'insensitive' } }]
+      }
+    });
+    return match?.id ?? null;
+  }
+
+  private async resolveGrantLookup(client: Drizzle.TransactionClient | RepositoryService, value: string) {
+    const trimmed = String(value || '').trim();
+    if (!trimmed) return null;
+    const match = await client.financeGrant.findFirst({
+      where: {
+        OR: [{ id: trimmed }, { name: { equals: trimmed, mode: 'insensitive' } }, { code: { equals: trimmed, mode: 'insensitive' } }]
+      }
+    });
+    return match?.id ?? null;
+  }
+
+  private async resolveFinanceAccountLookup(client: Drizzle.TransactionClient | RepositoryService, value: string) {
+    const trimmed = String(value || '').trim();
+    if (!trimmed) return null;
+    const match = await client.financeAccount.findFirst({
+      where: {
+        OR: [{ id: trimmed }, { name: { equals: trimmed, mode: 'insensitive' } }, { code: { equals: trimmed, mode: 'insensitive' } }]
+      }
+    });
+    return match;
+  }
+
+  private formatCurrency(amount: number, currency: string) {
+    return `${currency} ${Number(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+
+  private safeFileName(value: string) {
+    return String(value || 'document').replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'document';
+  }
+
+  private appendRunNote(existing: string | null | undefined, action: string, note?: string, actorId?: string) {
+    const stamp = new Date().toISOString();
+    const line = `[${stamp}] ${action}${actorId ? ` by ${actorId}` : ''}${note ? `: ${note}` : ''}`;
+    return [existing, line].filter(Boolean).join('\n');
+  }
+
+  private async notifyRunStakeholders(
+    runId: string,
+    input: {
+      actorId?: string;
+      type: string;
+      title: string;
+      message: string;
+      onlyPreparedBy?: boolean;
+      category?: string;
+      link?: string;
+      data?: Record<string, any>;
+      includePermissionRecipients?: string[];
+      includeRoleRecipients?: string[];
+    }
+  ) {
+    const run = await this.drizzle.payrollRun.findFirst({
+      where: { id: runId, ...this.tenantWhere() },
+      select: {
+        id: true,
+        name: true,
+        preparedById: true,
+        reviewedById: true,
+        approvedById: true,
+      }
+    });
+    if (!run) return;
+
+    const actor = input.actorId ? toBigInt(input.actorId) : null;
+    const recipients = new Set<string>();
+    if (run.preparedById) recipients.add(run.preparedById.toString());
+    if (!input.onlyPreparedBy) {
+      if (run.reviewedById) recipients.add(run.reviewedById.toString());
+      if (run.approvedById) recipients.add(run.approvedById.toString());
+    }
+    if (actor) recipients.delete(actor.toString());
+
+    await Promise.all(
+      Array.from(recipients).map((userId) =>
+        this.createPayrollNotification(userId, input.category || 'run_updates', {
+          type: input.type,
+          title: input.title,
+          message: input.message,
+          link: input.link || `/finance/payroll/runs/${run.id}`,
+          notifiableType: 'payroll_run',
+          data: {
+            run_id: run.id,
+            run_name: run.name,
+            ...(input.data || {}),
+          } as Drizzle.InputJsonValue,
+        })
+      )
+    );
+  }
+
+  private async createPayrollNotification(
+    userId: string,
+    category: string,
+    input: {
+      type: string;
+      title: string;
+      message: string;
+      link?: string;
+      notifiableType?: string;
+      data?: Drizzle.InputJsonValue;
+    }
+  ) {
+    const sentVia = await this.resolveNotificationChannels(userId, category);
+    if (!sentVia.length) return null;
+    return this.notificationsService.create({
+      userId,
+      type: input.type,
+      title: input.title,
+      message: input.message,
+      link: input.link,
+      notifiableType: input.notifiableType,
+      data: input.data,
+      sentVia,
+    });
+  }
+
+  private async resolveNotificationChannels(userId: string, category: string) {
+    const row = await this.drizzle.payrollNotificationPreference.findUnique({
+      where: { userId: toBigInt(userId) }
+    });
+    const config = this.normalizeNotificationPreferenceConfig((row?.config || {}) as Record<string, any>);
+    const categoryConfig = config[category] || { in_app: true, email: false };
+    const sentVia: string[] = [];
+    if (categoryConfig.in_app !== false) sentVia.push('in-app');
+    if (categoryConfig.email === true) sentVia.push('email');
+    return sentVia;
+  }
+
+  private normalizeNotificationPreferenceConfig(payload: Record<string, any>) {
+    const base = {
+      run_updates: { in_app: true, email: false },
+      approvals: { in_app: true, email: false },
+      payments: { in_app: true, email: false },
+      delivery_issues: { in_app: true, email: false },
+      import_issues: { in_app: true, email: false },
+      payslips: { in_app: true, email: false },
+    } as Record<string, { in_app: boolean; email: boolean }>;
+
+    for (const key of Object.keys(base)) {
+      const row = payload?.[key] || {};
+      base[key] = {
+        in_app: row.in_app !== false,
+        email: row.email === true,
+      };
+    }
+    return base;
+  }
+
+  private serializeNotificationPreferences(row: any) {
+    return {
+      config: this.normalizeNotificationPreferenceConfig((row?.config || {}) as Record<string, any>),
+      updated_at: row?.updatedAt || null,
+    };
+  }
+
+  private async recordRunEvent(
+    runId: string,
+    eventType: string,
+    actorId?: string,
+    note?: string,
+    metadata?: Record<string, any>
+  ) {
+    await this.drizzle.payrollRunEvent.create({
+      data: {
+        runId,
+        actorId: actorId ? toBigInt(actorId) : null,
+        eventType,
+        note: note || null,
+        metadata: (metadata || {}) as Drizzle.InputJsonValue,
+      }
+    });
+  }
+
+  private async recordRunEventTx(
+    tx: Drizzle.TransactionClient,
+    runId: string,
+    eventType: string,
+    actorId?: string,
+    note?: string,
+    metadata?: Record<string, any>
+  ) {
+    await tx.payrollRunEvent.create({
+      data: {
+        runId,
+        actorId: actorId ? toBigInt(actorId) : null,
+        eventType,
+        note: note || null,
+        metadata: (metadata || {}) as Drizzle.InputJsonValue,
+      }
+    });
+  }
+
+  private serializeImportJobSummary(row: any) {
+    return {
+      id: row.id,
+      file_name: row.fileName,
+      status: row.status,
+      update_existing: row.updateExisting,
+      summary: row.summary || null,
+      row_count: row._count?.rows ?? 0,
+      created_at: row.createdAt,
+      completed_at: row.completedAt,
+      uploaded_by: row.uploadedByUser
+        ? { id: String(row.uploadedByUser.id), name: [row.uploadedByUser.firstName, row.uploadedByUser.lastName].filter(Boolean).join(' ') || row.uploadedByUser.email, email: row.uploadedByUser.email }
+        : null,
+      retried_by: row.retriedByUser
+        ? { id: String(row.retriedByUser.id), name: [row.retriedByUser.firstName, row.retriedByUser.lastName].filter(Boolean).join(' ') || row.retriedByUser.email, email: row.retriedByUser.email }
+        : null,
+      retry_of_job: row.retryOfJob ? { id: row.retryOfJob.id, file_name: row.retryOfJob.fileName } : null,
+    };
+  }
+
+  private serializeImportJob(row: any) {
+    return {
+      ...this.serializeImportJobSummary(row),
+      rows: (row.rows || []).map((jobRow: any) => ({
+        id: jobRow.id,
+        sheet_name: jobRow.sheetName,
+        row_number: jobRow.rowNumber,
+        row_key: jobRow.rowKey,
+        action: jobRow.action,
+        status: jobRow.status,
+        error_message: jobRow.errorMessage,
+        payload: jobRow.payload,
+        linked_run_id: jobRow.linkedRunId,
+        linked_run_item_id: jobRow.linkedRunItemId,
+        created_at: jobRow.createdAt,
+      }))
+    };
+  }
+
+  private parseBigInt(value: string | number | bigint, label: string) {
+    try {
+      return BigInt(value);
+    } catch {
+      throw new BadRequestException(`Invalid ${label}`);
+    }
+  }
+}
+
+
