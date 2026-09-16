@@ -21,7 +21,7 @@ import { RequestRemittancesQueryDto, StatutoryDeductionsQueryDto, RemitStatutory
 import { PdfService } from '$common/pdf/pdf.service';
 import { fileAsset } from '$modules/storage/model';
 import { profile } from '$modules/identity/users/model';
-import { requestInstance } from '$modules/requests/requests/model';
+import { requestInstance } from '$modules/hrm/requests/model';
 import {
   financeAccount,
   financeChartAccount,

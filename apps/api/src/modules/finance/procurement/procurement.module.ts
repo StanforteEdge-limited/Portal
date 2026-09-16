@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ProcurementController } from './procurement.controller';
 import { ProcurementService } from './procurement.service';
-import { WorkflowModule } from '$modules/requests/workflow/workflow.module';
-import { NotificationsModule } from '$modules/notifications/notifications.module';
+import { WorkflowModule } from '$modules/hrm/workflow/workflow.module';
+import { NotificationsModule } from '$modules/hrm/notifications/notifications.module';
 import { MailModule } from '$common/mail/mail.module';
 import { PdfModule } from '$common/pdf/pdf.module';
 import { StorageModule } from '$modules/storage/storage.module';

@@ -3,9 +3,9 @@ import { eq } from 'drizzle-orm';
 import { DbService } from '$common/db/db.service';
 import { PdfService } from '$common/pdf/pdf.service';
 import { MailQueueService } from '$common/mail/mail-queue.service';
-import { DocumentGeneratorService } from '$common/documents/document-generator.service';
+import { DocumentGeneratorService } from '$common/document-generation/document-generator.service';
 import { profile } from '$modules/identity/users/model';
-import { organization } from '$modules/directory/organizations/model';
+import { organization } from '$modules/hrm/organizations/model';
 import { financeContact } from '$modules/finance/finance/model';
 import { procurementOrder } from '$modules/finance/procurement/model';
 

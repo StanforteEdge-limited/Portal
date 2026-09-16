@@ -2,8 +2,8 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { SQL, and, asc, count, desc, eq, inArray, notExists, or } from 'drizzle-orm';
 import { DbService } from '$common/db/db.service';
 import { TenantContextService } from '$common/auth/tenant-context.service';
-import { WorkflowService } from '$modules/requests/workflow/workflow.service';
-import { NotificationsService } from '$modules/notifications/notifications.service';
+import { WorkflowService } from '$modules/hrm/workflow/workflow.service';
+import { NotificationsService } from '$modules/hrm/notifications/notifications.service';
 import { MailService } from '$common/mail/mail.service';
 import { MailQueueService } from '$common/mail/mail-queue.service';
 import { ProcurementDocumentFacadeService } from '$modules/finance/procurement/documents/procurement-document-facade.service';
@@ -18,7 +18,7 @@ import { procurementAttachment, procurementCase, procurementGRN, procurementOrde
 import { fileAsset } from '$modules/storage/model';
 import { financeContact, financeContactPerson } from '$modules/finance/finance/model';
 import { profile } from '$modules/identity/users/model';
-import { requestInstance, requestType } from '$modules/requests/requests/model';
+import { requestInstance, requestType } from '$modules/hrm/requests/model';
 import { permission, role, rolePermission, userRole } from '$modules/identity/rbac/model';
 
 @Injectable()

@@ -1,4 +1,4 @@
-import { WorkflowService } from '$modules/requests/workflow/workflow.service';
+import { WorkflowService } from '$modules/hrm/workflow/workflow.service';
 
 describe('WorkflowService.startForEntity', () => {
   let service: WorkflowService;
