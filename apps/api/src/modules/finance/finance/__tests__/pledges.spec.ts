@@ -20,7 +20,7 @@ describe('FinanceService — pledge CRUD', () => {
     $transaction: jest.fn(async (cb: any) => cb(drizzle)),
   };
 
-  const service = new FinanceService(drizzle, {} as any, {} as any, {} as any);
+  const service = new FinanceService({ client: { query: drizzle, transaction: drizzle.$transaction, execute: drizzle.$executeRaw } } as any, {} as any, {} as any, {} as any);
 
   beforeEach(() => jest.clearAllMocks());
 
@@ -74,7 +74,7 @@ describe('FinanceService — income pledge recompute', () => {
     $transaction: jest.fn(async (cb: any) => cb(drizzle)),
   };
 
-  const service = new FinanceService(drizzle, {} as any, {} as any, {} as any);
+  const service = new FinanceService({ client: { query: drizzle, transaction: drizzle.$transaction, execute: drizzle.$executeRaw } } as any, {} as any, {} as any, {} as any);
 
   beforeEach(() => jest.clearAllMocks());
 
@@ -97,3 +97,4 @@ describe('FinanceService — income pledge recompute', () => {
     }));
   });
 });
+

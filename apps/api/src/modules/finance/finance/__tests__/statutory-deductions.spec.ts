@@ -1,6 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { DeductionService } from '$modules/finance/finance/deduction.service';
-import { RepositoryService } from '$common/db/repository.service';
+import { DbService } from '$common/db/db.service';
+import { TenantContextService } from '$common/auth/tenant-context.service';
+import { PdfService } from '$common/pdf/pdf.service';
 import { StatutoryDeductionsQueryDto, RemitStatutoryDeductionsDto } from '$modules/finance/finance/dto/statutory-deductions.dto';
 
 const mockDeductions = [
@@ -37,7 +39,7 @@ describe('DeductionService — listRequestDeductions', () => {
       },
     };
     const module: TestingModule = await Test.createTestingModule({
-      providers: [DeductionService, { provide: RepositoryService, useValue: drizzle }],
+      providers: [DeductionService, { provide: DbService, useValue: { client: drizzle } }, { provide: TenantContextService, useValue: { currentTenantId: jest.fn(() => null) } }, { provide: PdfService, useValue: {} }],
     }).compile();
     service = module.get<DeductionService>(DeductionService);
   });
@@ -68,7 +70,7 @@ describe('DeductionService — batchRemitDeductions', () => {
       },
     };
     const module: TestingModule = await Test.createTestingModule({
-      providers: [DeductionService, { provide: RepositoryService, useValue: drizzle }],
+      providers: [DeductionService, { provide: DbService, useValue: { client: drizzle } }, { provide: TenantContextService, useValue: { currentTenantId: jest.fn(() => null) } }, { provide: PdfService, useValue: {} }],
     }).compile();
     service = module.get<DeductionService>(DeductionService);
   });
@@ -97,3 +99,4 @@ describe('DeductionService — batchRemitDeductions', () => {
     ).rejects.toThrow();
   });
 });
+

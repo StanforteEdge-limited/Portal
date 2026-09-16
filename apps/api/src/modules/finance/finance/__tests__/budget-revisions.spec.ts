@@ -14,7 +14,7 @@ describe('FinanceService budget revisions', () => {
     $transaction: jest.fn(async (callback: any) => callback(drizzle)),
   };
 
-  const service = new FinanceService(drizzle, {} as any, {} as any, {} as any);
+  const service = new FinanceService({ client: { query: drizzle, transaction: drizzle.$transaction, execute: drizzle.$executeRaw } } as any, {} as any, {} as any, {} as any);
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -169,3 +169,4 @@ describe('FinanceService budget revisions', () => {
     expect(result.total_available).toBe(3500);
   });
 });
+

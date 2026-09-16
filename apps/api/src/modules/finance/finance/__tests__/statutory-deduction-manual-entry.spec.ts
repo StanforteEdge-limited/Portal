@@ -2,7 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import { FinanceService } from '$modules/finance/finance/finance.service';
 
 function createService(drizzle) {
-  return new FinanceService(drizzle, {} as any, {} as any, {} as any);
+  return new FinanceService({ client: { query: drizzle, transaction: drizzle.$transaction, execute: drizzle.$executeRaw } } as any, {} as any, {} as any, {} as any);
 }
 
 describe('FinanceService — statutory deduction manual entries', () => {
@@ -187,3 +187,4 @@ describe('FinanceService — statutory deduction manual entries', () => {
     });
   });
 });
+

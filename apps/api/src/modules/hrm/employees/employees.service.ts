@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { SQL, and, asc, count, desc, eq, exists, gte, ilike, inArray, isNull, lte, ne, or, sum } from 'drizzle-orm';
-import { EmploymentStatus, EmploymentType, GroupUserRole } from '$common/db/drizzle-compat';
+import type { EmploymentStatus, EmploymentType, GroupUserRole } from '$app/db/enums';
 import { DbService, type AppDb } from '$common/db/db.service';
 import { TenantContextService } from '$common/auth/tenant-context.service';
 import { randomToken } from '$common/utils/crypto';
@@ -1485,5 +1485,7 @@ export class EmployeesService {
   }
 
 }
+
+
 
 

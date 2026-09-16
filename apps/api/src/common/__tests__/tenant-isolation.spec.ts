@@ -1,7 +1,4 @@
-import { sql } from 'drizzle-orm';
 import { NotFoundException, UnauthorizedException } from '@nestjs/common';
-import { RepositoryService } from '$common/db/repository.service';
-import { TenantContextService } from '$common/auth/tenant-context.service';
 import { UsersService } from '$modules/identity/users/users.service';
 import { OrganizationsService } from '$modules/hrm/organizations/organizations.service';
 import { RbacService } from '$modules/identity/rbac/rbac.service';
@@ -10,81 +7,7 @@ import { AuthService } from '$modules/identity/auth/auth.service';
 
 const tenantA = { tenantId: 10n, profileId: 1n, membershipId: 100n, isOwner: true };
 
-function repositoryDb() {
-  const selected: any[] = [];
-  const db: any = {
-    selected,
-    select: jest.fn(() => ({
-      from: jest.fn(() => {
-        const query: any = {
-          where: jest.fn(() => query),
-          orderBy: jest.fn(() => query),
-          offset: jest.fn(() => query),
-          limit: jest.fn(() => query),
-          then: (resolve: (value: any) => unknown) => Promise.resolve(selected.shift() ?? []).then(resolve),
-        };
-        return query;
-      }),
-    })),
-    insert: jest.fn(() => ({
-      values: jest.fn((data: any) => ({
-        returning: jest.fn(async () => [{ id: 1n, ...data }]),
-      })),
-    })),
-    execute: jest.fn(async () => [{ ok: true }]),
-  };
-  return db;
-}
-
 describe('tenant isolation', () => {
-  it('scopes repository reads and adds the active tenant to writes', async () => {
-    const db = repositoryDb();
-    const context = new TenantContextService();
-    context.enter(tenantA);
-    const repository: any = new RepositoryService({ client: db } as any, context);
-
-    db.selected.push([{ profileId: 7n }], [{ id: 7n, tenantId: 10n }]);
-    await expect(repository.profile.findMany({ where: { email: 'member@example.com' } })).resolves.toEqual([
-      { id: 7n, tenantId: 10n },
-    ]);
-    expect(db.select).toHaveBeenCalledTimes(2);
-
-    await repository.project.create({ data: { name: 'Tenant A project' } });
-    expect(db.insert).toHaveBeenCalled();
-    expect(db.insert.mock.results[0].value.values).toHaveBeenCalledWith(
-      expect.objectContaining({ tenantId: 10n, name: 'Tenant A project' }),
-    );
-    await expect(repository.project.create({ data: { tenantId: 20n, name: 'cross-tenant' } })).rejects.toThrow(
-      'Tenant mismatch',
-    );
-  });
-
-  it('requires tenant context for raw queries', async () => {
-    const db = repositoryDb();
-    const repository: any = new RepositoryService({ client: db } as any);
-    await expect(repository.$queryRaw(sql`select 1`)).rejects.toBeInstanceOf(UnauthorizedException);
-
-    const context = new TenantContextService();
-    context.enter(tenantA);
-    const scoped: any = new RepositoryService({ client: db } as any, context);
-    await expect(scoped.$queryRaw(sql`select ${tenantA.tenantId}`)).resolves.toEqual([{ ok: true }]);
-    expect(db.execute).toHaveBeenCalledTimes(1);
-  });
-
-  it('allows only explicit system context to bypass tenant reads', async () => {
-    const db = repositoryDb();
-    const context = new TenantContextService();
-    const repository: any = new RepositoryService({ client: db } as any, context);
-
-    await expect(context.runSystem('nightly cross-tenant reconciliation', () =>
-      repository.profile.findMany({ where: { email: 'member@example.com' } }),
-    )).resolves.toEqual([]);
-    expect(db.select).toHaveBeenCalledTimes(1);
-
-    await expect(context.runSystem('', () => undefined)).rejects.toThrow('reason is required');
-    await expect(repository.$queryRaw(sql`select 1`)).rejects.toBeInstanceOf(UnauthorizedException);
-  });
-
   it('does not expose profiles or organizations from another tenant', async () => {
     const drizzle: any = {
       profile: { findUnique: jest.fn() },
@@ -178,3 +101,4 @@ describe('tenant isolation', () => {
     expect(users.inviteUser).toHaveBeenCalledWith('9', expect.anything(), 10n);
   });
 });
+

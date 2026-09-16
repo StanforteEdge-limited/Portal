@@ -3,7 +3,7 @@ import { FinanceService } from '$modules/finance/finance/finance.service';
 import { DeductionService } from '$modules/finance/finance/deduction.service';
 
 function createFinanceService(drizzle: any) {
-  return new FinanceService(drizzle, {} as any, {} as any, {} as any);
+  return new FinanceService({ client: { query: drizzle, transaction: drizzle.$transaction, execute: drizzle.$executeRaw } } as any, {} as any, {} as any, {} as any);
 }
 
 function createDeductionService(drizzle: any) {
@@ -249,3 +249,4 @@ describe('DeductionService — deduction updates', () => {
     });
   });
 });
+

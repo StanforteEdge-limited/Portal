@@ -66,6 +66,9 @@ import type { NewPayrollComponent } from './model';
 
 type TxClient = Parameters<Parameters<AppDb['transaction']>[0]>[0];
 
+
+type WhereInput = Record<string, any>;
+type InputJsonValue = unknown;
 @Injectable()
 export class PayrollService {
   constructor(
@@ -1674,7 +1677,7 @@ export class PayrollService {
   }
 
   async generateRunItemPayslip(runId: string, itemId: string) {
-    const run = await this.drizzle.payrollRun.findFirst({
+    const run = await this.db.client.query.payrollRun.findFirst({
       where: { id: runId, ...this.tenantWhere() },
       include: {
         items: {
@@ -1718,7 +1721,7 @@ export class PayrollService {
   }
 
   async generateBankSchedule(runId: string) {
-    const run = await this.drizzle.payrollRun.findFirst({
+    const run = await this.db.client.query.payrollRun.findFirst({
       where: { id: runId, ...this.tenantWhere() },
       include: {
         items: {
@@ -1764,7 +1767,7 @@ export class PayrollService {
   }
 
   async monthlyBreakdown(id: string) {
-    const run = await this.drizzle.payrollRun.findFirst({
+    const run = await this.db.client.query.payrollRun.findFirst({
       where: { id, ...this.tenantWhere() },
       include: {
         items: {
@@ -1834,7 +1837,7 @@ export class PayrollService {
   }
 
   async generateRunPayslipsPackage(runId: string) {
-    const run = await this.drizzle.payrollRun.findFirst({
+    const run = await this.db.client.query.payrollRun.findFirst({
       where: { id: runId, ...this.tenantWhere() },
       include: this.runInclude()
     });
@@ -1882,7 +1885,7 @@ export class PayrollService {
   }
 
   async distributeRunPayslips(runId: string, actorId?: string) {
-    const run = await this.drizzle.payrollRun.findFirst({
+    const run = await this.db.client.query.payrollRun.findFirst({
       where: { id: runId, ...this.tenantWhere() },
       include: this.runInclude()
     });
@@ -1907,7 +1910,7 @@ export class PayrollService {
       if (!workerEmail) {
         skipped += 1;
         skippedWorkers.push(item.worker?.fullName || item.id);
-        await this.drizzle.payrollPayslipDistribution.create({
+        await this.db.client.query.payrollPayslipDistribution.create({
           data: {
             runId: run.id,
             runItemId: item.id,
@@ -1916,7 +1919,7 @@ export class PayrollService {
             status: 'skipped',
             errorMessage: 'Worker has no email address',
             sentBy: actorId ? toBigInt(actorId) : null,
-            metadata: { worker_name: item.worker?.fullName || null } as Drizzle.InputJsonValue,
+            metadata: { worker_name: item.worker?.fullName || null } as InputJsonValue,
           }
         });
         continue;
@@ -1939,7 +1942,7 @@ export class PayrollService {
             }
           ]
         });
-        await this.drizzle.payrollPayslipDistribution.create({
+        await this.db.client.query.payrollPayslipDistribution.create({
           data: {
             runId: run.id,
             runItemId: item.id,
@@ -1948,7 +1951,7 @@ export class PayrollService {
             status: 'sent',
             sentBy: actorId ? toBigInt(actorId) : null,
             sentAt: new Date(),
-            metadata: { file_name: payslip.file_name } as Drizzle.InputJsonValue,
+            metadata: { file_name: payslip.file_name } as InputJsonValue,
           }
         });
         if (item.worker?.profileId) {
@@ -1962,7 +1965,7 @@ export class PayrollService {
               run_id: run.id,
               run_name: run.name,
               item_id: item.id,
-            } as Drizzle.InputJsonValue,
+            } as InputJsonValue,
           });
         }
         sent += 1;
@@ -1970,7 +1973,7 @@ export class PayrollService {
         const message = error?.message || 'Unable to send payslip';
         failed += 1;
         failedWorkers.push({ worker: item.worker?.fullName || workerEmail, error: message });
-        await this.drizzle.payrollPayslipDistribution.create({
+        await this.db.client.query.payrollPayslipDistribution.create({
           data: {
             runId: run.id,
             runItemId: item.id,
@@ -1979,7 +1982,7 @@ export class PayrollService {
             status: 'failed',
             errorMessage: message,
             sentBy: actorId ? toBigInt(actorId) : null,
-            metadata: { worker_name: item.worker?.fullName || null } as Drizzle.InputJsonValue,
+            metadata: { worker_name: item.worker?.fullName || null } as InputJsonValue,
           }
         });
       }
@@ -1987,7 +1990,7 @@ export class PayrollService {
 
     const summaryText = `sent=${sent}, skipped=${skipped}, failed=${failed}${skippedWorkers.length ? ` [skipped: ${skippedWorkers.join(', ')}]` : ''}${failedWorkers.length ? ` [failed: ${failedWorkers.map((row) => row.worker).join(', ')}]` : ''}`;
     const note = this.appendRunNote(run.notes, 'Payslips Distributed', summaryText, actorId);
-    await this.drizzle.payrollRun.update({
+    await this.db.client.query.payrollRun.update({
       where: { id: run.id },
       data: { notes: note }
     });
@@ -2029,8 +2032,8 @@ export class PayrollService {
   async reportsOverview(query: Record<string, any>) {
     const year = Number(query.year || new Date().getFullYear());
     const orgFilter = query.organization_id ? { organizationId: toBigInt(String(query.organization_id)) } : {};
-    const [runs, workers] = await this.drizzle.$transaction([
-      this.drizzle.payrollRun.findMany({
+    const [runs, workers] = await Promise.all([
+      this.db.client.query.payrollRun.findMany({
         where: { year, ...orgFilter, ...this.tenantWhere() },
         include: {
           items: {
@@ -2044,7 +2047,7 @@ export class PayrollService {
         },
         orderBy: [{ year: 'asc' }, { month: 'asc' }]
       }),
-      this.drizzle.payrollWorker.findMany({
+      this.db.client.query.payrollWorker.findMany({
         where: { status: 'active', ...orgFilter, ...this.tenantWhere() },
         select: { workerType: true, organizationId: true }
       })
@@ -2135,14 +2138,14 @@ export class PayrollService {
   async updateRunItem(runId: string, itemId: string, dto: UpdatePayrollRunItemDto, actorId?: string) {
     const run = await this.findRunScoped(runId);
     if (!run) throw new NotFoundException('Payroll run not found');
-    const item = await this.drizzle.payrollRunItem.findFirst({ where: { id: itemId, runId }, include: { run: { include: { postings: true } } } });
+    const item = await this.db.client.query.payrollRunItem.findFirst({ where: { id: itemId, runId }, include: { run: { include: { postings: true } } } });
     if (!item) throw new NotFoundException('Payroll run item not found');
     if (['paid', 'closed'].includes(item.run.status) || item.run.postings.length > 0) {
       throw new BadRequestException('Paid, closed, or posted payroll runs cannot be edited');
     }
     const computedNetPay = dto.net_pay ?? Number(item.computedNetPay || item.netPay || 0);
     const actualNetPay = dto.actual_net_pay ?? dto.net_pay ?? Number(item.actualNetPay || item.netPay || 0);
-    await this.drizzle.payrollRunItem.update({
+    await this.db.client.query.payrollRunItem.update({
       where: { id: itemId },
       data: {
         grossPay: dto.gross_pay ?? undefined,
@@ -2168,14 +2171,14 @@ export class PayrollService {
   async updateRunItemAllocations(runId: string, itemId: string, dto: UpdatePayrollRunAllocationsDto, actorId?: string) {
     const run = await this.findRunScoped(runId);
     if (!run) throw new NotFoundException('Payroll run not found');
-    const item = await this.drizzle.payrollRunItem.findFirst({ where: { id: itemId, runId }, include: { run: { include: { postings: true } } } });
+    const item = await this.db.client.query.payrollRunItem.findFirst({ where: { id: itemId, runId }, include: { run: { include: { postings: true } } } });
     if (!item) throw new NotFoundException('Payroll run item not found');
     if (['paid', 'closed'].includes(item.run.status) || item.run.postings.length > 0) {
       throw new BadRequestException('Paid, closed, or posted payroll runs cannot be edited');
     }
     const totalPercent = dto.allocations.reduce((sum, row) => sum + Number(row.allocation_percent || 0), 0);
     if (Math.abs(totalPercent - 100) > 0.01) throw new BadRequestException('Allocation percent must total 100');
-    await this.drizzle.$transaction(async (tx) => {
+    await this.db.client.transaction(async (tx) => {
       await tx.payrollRunItemAllocation.deleteMany({ where: { runItemId: itemId } });
       if (dto.allocations.length) {
         await tx.payrollRunItemAllocation.createMany({
@@ -2205,16 +2208,16 @@ export class PayrollService {
   }
 
   async updateRunWorkerTimesheetAllocations(runId: string, workerId: string, dto: UpdatePayrollRunTimesheetAllocationsDto, actorId?: string) {
-    const run = await this.drizzle.payrollRun.findFirst({ where: { id: runId, ...this.tenantWhere() }, include: { postings: true } });
+    const run = await this.db.client.query.payrollRun.findFirst({ where: { id: runId, ...this.tenantWhere() }, include: { postings: true } });
     if (!run) throw new NotFoundException('Payroll run not found');
     if (['paid', 'closed'].includes(run.status) || run.postings.length > 0) {
       throw new BadRequestException('Paid, closed, or posted payroll runs cannot be edited');
     }
-    const worker = await this.drizzle.payrollWorker.findFirst({ where: { id: workerId, ...this.tenantWhere() } });
+    const worker = await this.db.client.query.payrollWorker.findFirst({ where: { id: workerId, ...this.tenantWhere() } });
     if (!worker) throw new NotFoundException('Payroll worker not found');
 
     const normalized = this.normalizeTimesheetInputRows(dto.allocations);
-    await this.drizzle.$transaction(async (tx) => {
+    await this.db.client.transaction(async (tx) => {
       await tx.payrollRunTimesheetAllocation.deleteMany({ where: { runId, workerId } });
       if (normalized.length) {
         await tx.payrollRunTimesheetAllocation.createMany({
@@ -2251,11 +2254,11 @@ export class PayrollService {
   async listImportJobs(query: Record<string, any>) {
     const page = Math.max(1, Number(query.page ?? 1));
     const perPage = Math.min(50, Math.max(1, Number(query.per_page ?? 10)));
-    const where: Drizzle.PayrollImportJobWhereInput = {};
+    const where: WhereInput = {};
     if (query.status) where.status = String(query.status);
 
-    const [rows, total] = await this.drizzle.$transaction([
-      this.drizzle.payrollImportJob.findMany({
+    const [rows, total] = await Promise.all([
+      this.db.client.query.payrollImportJob.findMany({
         where,
         include: {
           uploadedByUser: { select: { id: true, firstName: true, lastName: true, email: true } },
@@ -2267,14 +2270,14 @@ export class PayrollService {
         skip: (page - 1) * perPage,
         take: perPage,
       }),
-      this.drizzle.payrollImportJob.count({ where }),
+      this.db.client.query.payrollImportJob.count({ where }),
     ]);
 
     return paginatedResponse(rows.map((row) => this.serializeImportJobSummary(row)), { page, per_page: perPage, total });
   }
 
   async getImportJob(id: string) {
-    const job = await this.drizzle.payrollImportJob.findUnique({
+    const job = await this.db.client.query.payrollImportJob.findUnique({
       where: { id },
       include: {
         uploadedByUser: { select: { id: true, firstName: true, lastName: true, email: true } },
@@ -2297,7 +2300,7 @@ export class PayrollService {
   }
 
   async retryFailedImport(id: string, actorId?: string) {
-    const sourceJob = await this.drizzle.payrollImportJob.findUnique({
+    const sourceJob = await this.db.client.query.payrollImportJob.findUnique({
       where: { id },
       include: { rows: { where: { status: 'error' }, orderBy: [{ createdAt: 'asc' }] } }
     });
@@ -2545,7 +2548,7 @@ export class PayrollService {
     options?: { fileName?: string; retryOfJobId?: string; retriedBy?: bigint | null }
   ) {
     const fileName = options?.fileName || `payroll-import-${new Date().toISOString().slice(0, 10)}.xlsx`;
-    const job = await this.drizzle.payrollImportJob.create({
+    const job = await this.db.client.query.payrollImportJob.create({
       data: {
         fileName,
         status: 'processing',
@@ -2556,45 +2559,45 @@ export class PayrollService {
         summary: {
           ...analysis.summary,
           status_counts: { pending: analysis.workers.length + analysis.runs.length + analysis.lineGroups.length + analysis.payments.length }
-        } as Drizzle.InputJsonValue,
+        } as InputJsonValue,
       }
     });
 
     const workerMap = new Map<string, any>();
     const runMap = new Map<string, any>();
     const itemMap = new Map<string, { itemId: string; runId: string }>();
-    const rowResults: Array<{ sheetName: string; rowNumber?: number; rowKey: string; action: string; status: string; errorMessage?: string | null; payload: Drizzle.InputJsonValue; linkedRunId?: string | null; linkedRunItemId?: string | null }> = [];
+    const rowResults: Array<{ sheetName: string; rowNumber?: number; rowKey: string; action: string; status: string; errorMessage?: string | null; payload: InputJsonValue; linkedRunId?: string | null; linkedRunItemId?: string | null }> = [];
     const statusCounts = { success: 0, error: 0, skipped: 0 };
 
     for (const row of analysis.workers) {
       try {
-        const worker = await this.drizzle.$transaction((tx) => this.upsertImportedWorkerTx(tx, row));
+        const worker = await this.db.client.transaction((tx) => this.upsertImportedWorkerTx(tx, row));
         workerMap.set(row.worker_ref, worker);
-        rowResults.push({ sheetName: 'Workers', rowNumber: row.row_number, rowKey: row.worker_ref, action: 'upsert', status: 'success', payload: row as Drizzle.InputJsonValue });
+        rowResults.push({ sheetName: 'Workers', rowNumber: row.row_number, rowKey: row.worker_ref, action: 'upsert', status: 'success', payload: row as InputJsonValue });
         statusCounts.success += 1;
       } catch (error: any) {
-        rowResults.push({ sheetName: 'Workers', rowNumber: row.row_number, rowKey: row.worker_ref, action: 'upsert', status: 'error', errorMessage: error?.message || 'Unable to import worker', payload: row as Drizzle.InputJsonValue });
+        rowResults.push({ sheetName: 'Workers', rowNumber: row.row_number, rowKey: row.worker_ref, action: 'upsert', status: 'error', errorMessage: error?.message || 'Unable to import worker', payload: row as InputJsonValue });
         statusCounts.error += 1;
       }
     }
 
     for (const row of analysis.runs) {
       try {
-        const run = await this.drizzle.$transaction((tx) => this.upsertImportedRunTx(tx, row, updateExisting, actorId));
+        const run = await this.db.client.transaction((tx) => this.upsertImportedRunTx(tx, row, updateExisting, actorId));
         runMap.set(row.run_name, run);
-        rowResults.push({ sheetName: 'Runs', rowNumber: row.row_number, rowKey: row.run_name, action: updateExisting ? 'upsert' : 'create', status: 'success', payload: row as Drizzle.InputJsonValue, linkedRunId: run.id });
+        rowResults.push({ sheetName: 'Runs', rowNumber: row.row_number, rowKey: row.run_name, action: updateExisting ? 'upsert' : 'create', status: 'success', payload: row as InputJsonValue, linkedRunId: run.id });
         statusCounts.success += 1;
       } catch (error: any) {
-        rowResults.push({ sheetName: 'Runs', rowNumber: row.row_number, rowKey: row.run_name, action: updateExisting ? 'upsert' : 'create', status: 'error', errorMessage: error?.message || 'Unable to import run', payload: row as Drizzle.InputJsonValue });
+        rowResults.push({ sheetName: 'Runs', rowNumber: row.row_number, rowKey: row.run_name, action: updateExisting ? 'upsert' : 'create', status: 'error', errorMessage: error?.message || 'Unable to import run', payload: row as InputJsonValue });
         statusCounts.error += 1;
       }
     }
 
     for (const grouped of analysis.lineGroups) {
       const key = `${grouped.run_name}::${grouped.worker_ref}`;
-      const run = runMap.get(grouped.run_name) || (await this.drizzle.payrollRun.findFirst({ where: { ...this.tenantWhere(), OR: [{ name: grouped.run_name }, { AND: [{ year: analysis.runs.find((row) => row.run_name === grouped.run_name)?.year ?? -1 }, { month: analysis.runs.find((row) => row.run_name === grouped.run_name)?.month ?? -1 }] }] } }));
+      const run = runMap.get(grouped.run_name) || (await this.db.client.query.payrollRun.findFirst({ where: { ...this.tenantWhere(), OR: [{ name: grouped.run_name }, { AND: [{ year: analysis.runs.find((row) => row.run_name === grouped.run_name)?.year ?? -1 }, { month: analysis.runs.find((row) => row.run_name === grouped.run_name)?.month ?? -1 }] }] } }));
       const worker = workerMap.get(grouped.worker_ref) || await this.findImportedWorker(grouped.worker_ref, analysis.workers);
-      const payload = { run_name: grouped.run_name, worker_ref: grouped.worker_ref, lines: grouped.lines, allocations: analysis.allocationsByKey.get(key) ?? [] } as Drizzle.InputJsonValue;
+      const payload = { run_name: grouped.run_name, worker_ref: grouped.worker_ref, lines: grouped.lines, allocations: analysis.allocationsByKey.get(key) ?? [] } as InputJsonValue;
       if (!run || !worker) {
         rowResults.push({ sheetName: 'RunItems', rowNumber: grouped.lines[0]?.row_number, rowKey: key, action: 'upsert', status: 'error', errorMessage: 'Referenced payroll run or worker is unavailable', payload });
         statusCounts.error += 1;
@@ -2602,7 +2605,7 @@ export class PayrollService {
       }
       try {
         const allocationRows = analysis.allocationsByKey.get(key) ?? [];
-        const item = await this.drizzle.$transaction((tx) => this.createImportedRunItemTx(tx, run.id, worker, grouped, allocationRows, updateExisting));
+        const item = await this.db.client.transaction((tx) => this.createImportedRunItemTx(tx, run.id, worker, grouped, allocationRows, updateExisting));
         itemMap.set(key, { itemId: item.id, runId: run.id });
         rowResults.push({ sheetName: 'RunItems', rowNumber: grouped.lines[0]?.row_number, rowKey: key, action: 'upsert', status: 'success', payload, linkedRunId: run.id, linkedRunItemId: item.id });
         statusCounts.success += 1;
@@ -2616,37 +2619,37 @@ export class PayrollService {
       const key = `${payment.run_name}::${payment.worker_ref}`;
       const target = itemMap.get(key) || await this.findImportedItem(key, analysis, workerMap, runMap);
       if (!target) {
-        rowResults.push({ sheetName: 'Payments', rowNumber: payment.row_number, rowKey: key, action: 'update', status: 'error', errorMessage: 'Referenced payroll run item is unavailable', payload: payment as Drizzle.InputJsonValue });
+        rowResults.push({ sheetName: 'Payments', rowNumber: payment.row_number, rowKey: key, action: 'update', status: 'error', errorMessage: 'Referenced payroll run item is unavailable', payload: payment as InputJsonValue });
         statusCounts.error += 1;
         continue;
       }
       try {
-        await this.drizzle.payrollRunItem.update({
+        await this.db.client.query.payrollRunItem.update({
           where: { id: target.itemId },
           data: {
             paymentStatus: payment.payment_status || 'pending',
             paymentReference: payment.payment_reference || null,
           }
         });
-        rowResults.push({ sheetName: 'Payments', rowNumber: payment.row_number, rowKey: key, action: 'update', status: 'success', payload: payment as Drizzle.InputJsonValue, linkedRunId: target.runId, linkedRunItemId: target.itemId });
+        rowResults.push({ sheetName: 'Payments', rowNumber: payment.row_number, rowKey: key, action: 'update', status: 'success', payload: payment as InputJsonValue, linkedRunId: target.runId, linkedRunItemId: target.itemId });
         statusCounts.success += 1;
       } catch (error: any) {
-        rowResults.push({ sheetName: 'Payments', rowNumber: payment.row_number, rowKey: key, action: 'update', status: 'error', errorMessage: error?.message || 'Unable to update payment status', payload: payment as Drizzle.InputJsonValue, linkedRunId: target.runId, linkedRunItemId: target.itemId });
+        rowResults.push({ sheetName: 'Payments', rowNumber: payment.row_number, rowKey: key, action: 'update', status: 'error', errorMessage: error?.message || 'Unable to update payment status', payload: payment as InputJsonValue, linkedRunId: target.runId, linkedRunItemId: target.itemId });
         statusCounts.error += 1;
       }
     }
 
     const successfulRunIds = Array.from(new Set(rowResults.filter((row) => row.linkedRunId && row.status === 'success').map((row) => row.linkedRunId!)));
     for (const runId of successfulRunIds) {
-      const run = await this.drizzle.payrollRun.findFirst({ where: { id: runId, ...this.tenantWhere() }, include: { items: true } });
+      const run = await this.db.client.query.payrollRun.findFirst({ where: { id: runId, ...this.tenantWhere() }, include: { items: true } });
       if (!run) continue;
       const matchingSource = analysis.runs.find((row) => run.name === row.run_name || (run.year === row.year && run.month === row.month));
       const nextStatus = matchingSource?.status || (run.items.some((item) => item.paymentStatus === 'paid') ? 'paid' : 'prepared');
-      await this.drizzle.payrollRun.update({ where: { id: runId }, data: { status: nextStatus } });
+      await this.db.client.query.payrollRun.update({ where: { id: runId }, data: { status: nextStatus } });
     }
 
     if (rowResults.length) {
-      await this.drizzle.payrollImportRow.createMany({
+      await this.db.client.query.payrollImportRow.createMany({
         data: rowResults.map((row) => ({
           jobId: job.id,
           sheetName: row.sheetName,
@@ -2662,7 +2665,7 @@ export class PayrollService {
       });
     }
 
-    const completedJob = await this.drizzle.payrollImportJob.update({
+    const completedJob = await this.db.client.query.payrollImportJob.update({
       where: { id: job.id },
       data: {
         status: statusCounts.error > 0 ? (statusCounts.success > 0 ? 'partial' : 'failed') : 'completed',
@@ -2674,7 +2677,7 @@ export class PayrollService {
           processed_run_items: analysis.lineGroups.length,
           processed_payments: analysis.payments.length,
           status_counts: statusCounts,
-        } as Drizzle.InputJsonValue,
+        } as InputJsonValue,
       },
       include: {
         uploadedByUser: { select: { id: true, firstName: true, lastName: true, email: true } },
@@ -2695,7 +2698,7 @@ export class PayrollService {
           job_id: completedJob.id,
           status: completedJob.status,
           summary: completedJob.summary || {},
-        } as Drizzle.InputJsonValue,
+        } as InputJsonValue,
       });
     }
 
@@ -3566,7 +3569,7 @@ export class PayrollService {
     const run = runs[0] ?? null;
     if (!run) return null;
     if (['approved', 'authorized', 'paid', 'closed'].includes(run.status)) return null;
-    const approvedRows = await this.drizzle.projectTimesheetEntry.findMany({
+    const approvedRows = await this.db.client.query.projectTimesheetEntry.findMany({
       where: {
         workerId,
         status: 'approved',
@@ -3575,7 +3578,7 @@ export class PayrollService {
       orderBy: [{ workDate: 'asc' }, { createdAt: 'asc' }]
     });
     const totalHours = approvedRows.reduce((sum, row) => sum + Number(row.hours || 0), 0);
-    await this.drizzle.$transaction(async (tx) => {
+    await this.db.client.transaction(async (tx) => {
       await tx.payrollRunTimesheetAllocation.deleteMany({ where: { runId: run.id, workerId } });
       if (approvedRows.length) {
         await tx.payrollRunTimesheetAllocation.createMany({
@@ -3807,13 +3810,13 @@ export class PayrollService {
   }
 
   private expandProfileComponentLines(component: any, amount: number, rate: number | null, notes: string | null) {
-    const lineRate = rate == null ? null : new Drizzle.Decimal(rate);
+    const lineRate = rate == null ? null : new Decimal(rate);
     const employerSharePercent = Math.max(0, Math.min(100, Number(component.employerSharePercent || 0)));
     if (component.componentType === 'earning' || component.componentType === 'employer_cost') {
       return [{
         componentId: component.id,
         lineType: component.componentType,
-        amount: new Drizzle.Decimal(amount),
+        amount: new Decimal(amount),
         rate: lineRate,
         notes,
         affectsNetPay: component.componentType === 'earning' ? true : false,
@@ -3823,7 +3826,7 @@ export class PayrollService {
       return [{
         componentId: component.id,
         lineType: 'employer_cost',
-        amount: new Drizzle.Decimal(amount),
+        amount: new Decimal(amount),
         rate: lineRate,
         notes,
         affectsNetPay: false,
@@ -3836,7 +3839,7 @@ export class PayrollService {
         ...(employeeAmount > 0 ? [{
           componentId: component.id,
           lineType: 'deduction',
-          amount: new Drizzle.Decimal(employeeAmount),
+          amount: new Decimal(employeeAmount),
           rate: lineRate,
           notes: notes || 'Employee share',
           affectsNetPay: true,
@@ -3844,7 +3847,7 @@ export class PayrollService {
         ...(employerAmount > 0 ? [{
           componentId: component.id,
           lineType: 'employer_cost',
-          amount: new Drizzle.Decimal(employerAmount),
+          amount: new Decimal(employerAmount),
           rate: lineRate,
           notes: notes || 'Employer share',
           affectsNetPay: false,
@@ -3854,7 +3857,7 @@ export class PayrollService {
     return [{
       componentId: component.id,
       lineType: 'deduction',
-      amount: new Drizzle.Decimal(amount),
+      amount: new Decimal(amount),
       rate: lineRate,
       notes,
       affectsNetPay: component.affectsNetPay !== false,
@@ -3878,7 +3881,7 @@ export class PayrollService {
           projectId: row.projectId ?? null,
           fundId: row.fundId ?? null,
           grantId: row.grantId ?? null,
-          allocationPercent: new Drizzle.Decimal(percent),
+          allocationPercent: new Decimal(percent),
           allocationAmount: null,
           sortOrder: row.sortOrder ?? 0,
           hours: Number(row.hours || 0),
@@ -3890,8 +3893,8 @@ export class PayrollService {
   private resolveAllocations(input: {
     allocationMode: string;
     hybridFixedPercent: number;
-    fixedAllocations: Array<{ organizationId: bigint | null; teamId: bigint | null; projectId: bigint | null; fundId: string | null; grantId: string | null; allocationPercent: number; allocationAmount?: Drizzle.Decimal | null; sortOrder: number }>;
-    timesheetAllocations: Array<{ organizationId: bigint | null; teamId: bigint | null; projectId: bigint | null; fundId: string | null; grantId: string | null; allocationPercent: Drizzle.Decimal; allocationAmount?: Drizzle.Decimal | null; sortOrder: number; hours?: number }>;
+    fixedAllocations: Array<{ organizationId: bigint | null; teamId: bigint | null; projectId: bigint | null; fundId: string | null; grantId: string | null; allocationPercent: number; allocationAmount?: Decimal | null; sortOrder: number }>;
+    timesheetAllocations: Array<{ organizationId: bigint | null; teamId: bigint | null; projectId: bigint | null; fundId: string | null; grantId: string | null; allocationPercent: Decimal; allocationAmount?: Decimal | null; sortOrder: number; hours?: number }>;
   }) {
     const timesheetRows = input.timesheetAllocations.length ? input.timesheetAllocations : [];
     if (input.allocationMode === 'timesheet' && timesheetRows.length) {
@@ -3900,7 +3903,7 @@ export class PayrollService {
     if (input.allocationMode !== 'hybrid' || !timesheetRows.length) {
       return input.fixedAllocations.map((row, index) => ({
         ...row,
-        allocationPercent: new Drizzle.Decimal(Number(row.allocationPercent || 0)),
+        allocationPercent: new Decimal(Number(row.allocationPercent || 0)),
         sortOrder: index,
       }));
     }
@@ -3920,7 +3923,7 @@ export class PayrollService {
       .filter((row) => row.allocationPercent > 0)
       .map((row, index) => ({
         ...row,
-        allocationPercent: new Drizzle.Decimal(row.allocationPercent),
+        allocationPercent: new Decimal(row.allocationPercent),
         allocationAmount: null,
         sortOrder: index,
       }));
@@ -3987,7 +3990,7 @@ export class PayrollService {
     const componentCodes = Array.from(new Set(lines.map((row) => row.component_code).filter(Boolean)));
 
     const components = componentCodes.length
-      ? await this.drizzle.payrollComponent.findMany({ where: { code: { in: componentCodes } } })
+      ? await this.db.client.query.payrollComponent.findMany({ where: { code: { in: componentCodes } } })
       : [];
     const componentSet = new Set(components.map((row) => row.code));
 
@@ -4000,11 +4003,11 @@ export class PayrollService {
       if (!row.period_start) rowIssues.push('period_start is required');
       if (!row.period_end) rowIssues.push('period_end is required');
       if (runRows.has(row.run_name)) rowIssues.push('run_name must be unique');
-      const existing = row.year && row.month ? await this.drizzle.payrollRun.findFirst({ where: { year: row.year, month: row.month, ...this.tenantWhere() } }) : null;
+      const existing = row.year && row.month ? await this.db.client.query.payrollRun.findFirst({ where: { year: row.year, month: row.month, ...this.tenantWhere() } }) : null;
       if (existing && dto.update_existing !== true) rowIssues.push(`run already exists for ${row.month}/${row.year}`);
       if (existing && existing.status === 'paid') rowIssues.push('existing paid runs cannot be overwritten');
       if (row.paid_from_account) {
-        const account = await this.resolveFinanceAccountLookup(this.drizzle, row.paid_from_account);
+        const account = await this.resolveFinanceAccountLookup(this.db.client.query, row.paid_from_account);
         if (!account) rowIssues.push(`payment account not found: ${row.paid_from_account}`);
       }
       runRows.set(row.run_name, row);
@@ -4021,22 +4024,22 @@ export class PayrollService {
         if (matches.length > 1) rowIssues.push('worker_ref must be unique');
       }
       if (row.organization) {
-        const orgId = await this.resolveOrganizationLookup(this.drizzle, row.organization);
+        const orgId = await this.resolveOrganizationLookup(this.db.client.query, row.organization);
         if (!orgId) rowIssues.push(`organization not found: ${row.organization}`);
       }
       if (row.team) {
-        const teamId = await this.resolveTeamLookup(this.drizzle, row.team);
+        const teamId = await this.resolveTeamLookup(this.db.client.query, row.team);
         if (!teamId) rowIssues.push(`team not found: ${row.team}`);
       }
       if (row.fund) {
-        const fundId = await this.resolveFundLookup(this.drizzle, row.fund);
+        const fundId = await this.resolveFundLookup(this.db.client.query, row.fund);
         if (!fundId) rowIssues.push(`fund not found: ${row.fund}`);
       }
       if (row.grant) {
-        const grantId = await this.resolveGrantLookup(this.drizzle, row.grant);
+        const grantId = await this.resolveGrantLookup(this.db.client.query, row.grant);
         if (!grantId) rowIssues.push(`grant not found: ${row.grant}`);
       }
-      if (row.profile_id && !await this.drizzle.profile.findUnique({ where: { id: this.parseBigInt(row.profile_id, 'profile id') } })) {
+      if (row.profile_id && !await this.db.client.query.profile.findUnique({ where: { id: this.parseBigInt(row.profile_id, 'profile id') } })) {
         rowIssues.push(`profile not found: ${row.profile_id}`);
       }
       if (rowIssues.length) issues.push({ sheet: 'Workers', row_number: row.row_number, key: row.worker_ref || `row-${row.row_number}`, issues: rowIssues });
@@ -4061,19 +4064,19 @@ export class PayrollService {
       if (row.run_name && !runNames.has(row.run_name)) rowIssues.push(`unknown run_name: ${row.run_name}`);
       if (row.worker_ref && !workerRefs.has(row.worker_ref)) rowIssues.push(`unknown worker_ref: ${row.worker_ref}`);
       if (row.organization) {
-        const orgId = await this.resolveOrganizationLookup(this.drizzle, row.organization);
+        const orgId = await this.resolveOrganizationLookup(this.db.client.query, row.organization);
         if (!orgId) rowIssues.push(`organization not found: ${row.organization}`);
       }
       if (row.team) {
-        const teamId = await this.resolveTeamLookup(this.drizzle, row.team);
+        const teamId = await this.resolveTeamLookup(this.db.client.query, row.team);
         if (!teamId) rowIssues.push(`team not found: ${row.team}`);
       }
       if (row.fund) {
-        const fundId = await this.resolveFundLookup(this.drizzle, row.fund);
+        const fundId = await this.resolveFundLookup(this.db.client.query, row.fund);
         if (!fundId) rowIssues.push(`fund not found: ${row.fund}`);
       }
       if (row.grant) {
-        const grantId = await this.resolveGrantLookup(this.drizzle, row.grant);
+        const grantId = await this.resolveGrantLookup(this.db.client.query, row.grant);
         if (!grantId) rowIssues.push(`grant not found: ${row.grant}`);
       }
       if (row.allocation_percent <= 0) rowIssues.push('allocation_percent must be greater than zero');
@@ -4139,7 +4142,7 @@ export class PayrollService {
     };
   }
 
-  private async upsertImportedWorkerTx(tx: Drizzle.TransactionClient, row: any) {
+  private async upsertImportedWorkerTx(tx: AppDb, row: any) {
     const profileId = row.profile_id ? this.parseBigInt(row.profile_id, 'profile id') : null;
     const organizationId = row.organization ? await this.resolveOrganizationLookup(tx, row.organization) : null;
     const teamId = row.team ? await this.resolveTeamLookup(tx, row.team) : null;
@@ -4188,7 +4191,7 @@ export class PayrollService {
     return worker;
   }
 
-  private async upsertImportedRunTx(tx: Drizzle.TransactionClient, row: any, updateExisting: boolean, actorId?: string) {
+  private async upsertImportedRunTx(tx: AppDb, row: any, updateExisting: boolean, actorId?: string) {
     const paidFromAccount = row.paid_from_account ? await this.resolveFinanceAccountLookup(tx, row.paid_from_account) : null;
     const existing = await tx.payrollRun.findFirst({ where: { year: row.year, month: row.month }, include: { postings: true } });
     if (existing) {
@@ -4228,7 +4231,7 @@ export class PayrollService {
   }
 
   private async createImportedRunItemTx(
-    tx: Drizzle.TransactionClient,
+    tx: AppDb,
     runId: string,
     worker: any,
     grouped: { run_name: string; worker_ref: string; lines: any[] },
@@ -4244,7 +4247,7 @@ export class PayrollService {
       return {
         componentId: component!.id,
         lineType: component!.componentType,
-        amount: new Drizzle.Decimal(Number(line.amount || 0)),
+        amount: new Decimal(Number(line.amount || 0)),
         notes: line.notes || null,
       };
     });
@@ -4351,9 +4354,9 @@ export class PayrollService {
     if (!row) return null;
     const profileId = row.profile_id ? this.parseBigInt(row.profile_id, 'profile id') : null;
     return (
-      (profileId ? await this.drizzle.payrollWorker.findFirst({ where: { profileId, ...this.tenantWhere() } }) : null) ||
-      (row.staff_code ? await this.drizzle.payrollWorker.findFirst({ where: { staffCode: row.staff_code, ...this.tenantWhere() } }) : null) ||
-      (row.email ? await this.drizzle.payrollWorker.findFirst({ where: { email: row.email, fullName: row.full_name, ...this.tenantWhere() } }) : null)
+      (profileId ? await this.db.client.query.payrollWorker.findFirst({ where: { profileId, ...this.tenantWhere() } }) : null) ||
+      (row.staff_code ? await this.db.client.query.payrollWorker.findFirst({ where: { staffCode: row.staff_code, ...this.tenantWhere() } }) : null) ||
+      (row.email ? await this.db.client.query.payrollWorker.findFirst({ where: { email: row.email, fullName: row.full_name, ...this.tenantWhere() } }) : null)
     );
   }
 
@@ -4364,14 +4367,14 @@ export class PayrollService {
     runMap: Map<string, any>
   ) {
     const [runName, workerRef] = key.split('::');
-    const run = runMap.get(runName) || await this.drizzle.payrollRun.findFirst({ where: { name: runName, ...this.tenantWhere() } });
+    const run = runMap.get(runName) || await this.db.client.query.payrollRun.findFirst({ where: { name: runName, ...this.tenantWhere() } });
     const worker = workerMap.get(workerRef) || await this.findImportedWorker(workerRef, analysis.workers);
     if (!run || !worker) return null;
-    const item = await this.drizzle.payrollRunItem.findFirst({ where: { runId: run.id, workerId: worker.id } });
+    const item = await this.db.client.query.payrollRunItem.findFirst({ where: { runId: run.id, workerId: worker.id } });
     return item ? { itemId: item.id, runId: run.id } : null;
   }
 
-  private async resolveOrganizationLookup(client: Drizzle.TransactionClient | RepositoryService, value: string) {
+  private async resolveOrganizationLookup(client: AppDb, value: string) {
     const trimmed = String(value || '').trim();
     if (!trimmed) return null;
     if (/^\d+$/.test(trimmed)) {
@@ -4382,7 +4385,7 @@ export class PayrollService {
     return match?.id ?? null;
   }
 
-  private async resolveTeamLookup(client: Drizzle.TransactionClient | RepositoryService, value: string) {
+  private async resolveTeamLookup(client: AppDb, value: string) {
     const trimmed = String(value || '').trim();
     if (!trimmed) return null;
     if (/^\d+$/.test(trimmed)) {
@@ -4393,7 +4396,7 @@ export class PayrollService {
     return match?.id ?? null;
   }
 
-  private async resolveFundLookup(client: Drizzle.TransactionClient | RepositoryService, value: string) {
+  private async resolveFundLookup(client: AppDb, value: string) {
     const trimmed = String(value || '').trim();
     if (!trimmed) return null;
     const match = await client.financeFund.findFirst({
@@ -4404,7 +4407,7 @@ export class PayrollService {
     return match?.id ?? null;
   }
 
-  private async resolveGrantLookup(client: Drizzle.TransactionClient | RepositoryService, value: string) {
+  private async resolveGrantLookup(client: AppDb, value: string) {
     const trimmed = String(value || '').trim();
     if (!trimmed) return null;
     const match = await client.financeGrant.findFirst({
@@ -4415,7 +4418,7 @@ export class PayrollService {
     return match?.id ?? null;
   }
 
-  private async resolveFinanceAccountLookup(client: Drizzle.TransactionClient | RepositoryService, value: string) {
+  private async resolveFinanceAccountLookup(client: AppDb, value: string) {
     const trimmed = String(value || '').trim();
     if (!trimmed) return null;
     const match = await client.financeAccount.findFirst({
@@ -4455,7 +4458,7 @@ export class PayrollService {
       includeRoleRecipients?: string[];
     }
   ) {
-    const run = await this.drizzle.payrollRun.findFirst({
+    const run = await this.db.client.query.payrollRun.findFirst({
       where: { id: runId, ...this.tenantWhere() },
       select: {
         id: true,
@@ -4488,7 +4491,7 @@ export class PayrollService {
             run_id: run.id,
             run_name: run.name,
             ...(input.data || {}),
-          } as Drizzle.InputJsonValue,
+          } as InputJsonValue,
         })
       )
     );
@@ -4503,7 +4506,7 @@ export class PayrollService {
       message: string;
       link?: string;
       notifiableType?: string;
-      data?: Drizzle.InputJsonValue;
+      data?: InputJsonValue;
     }
   ) {
     const sentVia = await this.resolveNotificationChannels(userId, category);
@@ -4521,7 +4524,7 @@ export class PayrollService {
   }
 
   private async resolveNotificationChannels(userId: string, category: string) {
-    const row = await this.drizzle.payrollNotificationPreference.findUnique({
+    const row = await this.db.client.query.payrollNotificationPreference.findUnique({
       where: { userId: toBigInt(userId) }
     });
     const config = this.normalizeNotificationPreferenceConfig((row?.config || {}) as Record<string, any>);
@@ -4566,19 +4569,19 @@ export class PayrollService {
     note?: string,
     metadata?: Record<string, any>
   ) {
-    await this.drizzle.payrollRunEvent.create({
+    await this.db.client.query.payrollRunEvent.create({
       data: {
         runId,
         actorId: actorId ? toBigInt(actorId) : null,
         eventType,
         note: note || null,
-        metadata: (metadata || {}) as Drizzle.InputJsonValue,
+        metadata: (metadata || {}) as InputJsonValue,
       }
     });
   }
 
   private async recordRunEventTx(
-    tx: Drizzle.TransactionClient,
+    tx: AppDb,
     runId: string,
     eventType: string,
     actorId?: string,
@@ -4591,7 +4594,7 @@ export class PayrollService {
         actorId: actorId ? toBigInt(actorId) : null,
         eventType,
         note: note || null,
-        metadata: (metadata || {}) as Drizzle.InputJsonValue,
+        metadata: (metadata || {}) as InputJsonValue,
       }
     });
   }
@@ -4643,5 +4646,6 @@ export class PayrollService {
     }
   }
 }
+
 
 
