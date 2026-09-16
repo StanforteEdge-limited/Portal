@@ -2,7 +2,7 @@ import { defineRelationsPart } from 'drizzle-orm';
 import { AnyPgColumn, bigint, bigserial, boolean, date, doublePrecision, index, integer, jsonb, numeric, pgTable, serial, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
 import { tokenTypeEnum, organizationTypeEnum, groupUserRoleEnum, requestStatusEnum, employmentTypeEnum, employmentStatusEnum, workModeEnum, onboardingStatusEnum, workItemTypeEnum, workItemStatusEnum, workPriorityEnum, workLogApprovalStatusEnum, procurementCategoryEnum, paymentPatternEnum, procurementStatusEnum, poStatusEnum, grnStatusEnum, mailProviderEnum } from '$app/db/enums';
 import { profile } from '$modules/identity/users/model';
-import { organization } from '$modules/directory/organizations/model';
+import { organization } from '$modules/hrm/organizations/model';
 import { tenant } from '$modules/tenancy/model';
 
 export const storageFolder = pgTable("sta_storage_folders", {
