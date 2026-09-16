@@ -1,6 +1,6 @@
 import { Global, Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
-import { NotificationsModule } from '$modules/notifications/notifications.module';
+import { NotificationsModule } from '$modules/hrm/notifications/notifications.module';
 import { StorageModule } from '$modules/storage/storage.module';
 import { BackgroundJobsController } from './background-jobs.controller';
 import { BackgroundJobsService } from './background-jobs.service';

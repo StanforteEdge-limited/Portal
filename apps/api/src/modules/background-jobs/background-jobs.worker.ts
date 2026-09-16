@@ -4,7 +4,7 @@ import { Job } from 'bullmq';
 import { eq } from 'drizzle-orm';
 import { DbService } from '$common/db/db.service';
 import { TenantContextService } from '$common/auth/tenant-context.service';
-import { NotificationsService } from '$modules/notifications/notifications.service';
+import { NotificationsService } from '$modules/hrm/notifications/notifications.service';
 import { BackgroundJobsService } from './background-jobs.service';
 import { toBigInt } from '$common/utils/ids';
 import { backgroundJob } from './model';
