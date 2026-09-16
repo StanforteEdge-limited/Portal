@@ -3,6 +3,7 @@ import * as bcrypt from 'bcryptjs';
 import { Drizzle, EmploymentStatus, EmploymentType, GroupUserRole } from '$common/db/drizzle-compat';
 import { DrizzleClientKnownRequestError } from '$common/db/drizzle-compat';
 import { RepositoryService } from '$common/db/repository.service';
+import { TenantContextService } from '$common/auth/tenant-context.service';
 import { randomToken } from '$common/utils/crypto';
 import { parseBigIntId, toBigInt } from '$common/utils/ids';
 import { isLeaveRequestType, objectSchema, policyScopeMatches, policyScopeRank, resolveLeaveTypeKey } from '$common/utils/leave-policy';
@@ -20,21 +21,58 @@ import {
 
 @Injectable()
 export class HrService {
-  constructor(private readonly drizzle: RepositoryService) {}
+  constructor(
+    private readonly drizzle: RepositoryService,
+    private readonly tenantContext: TenantContextService,
+  ) {}
+
+  private currentTenantId(): bigint | undefined {
+    return this.tenantContext.currentTenantId();
+  }
+
+  private tenantWhere() {
+    const tid = this.currentTenantId();
+    return tid ? { tenantId: tid } : {};
+  }
+
+  private async requireScopedEmployee(profileId: bigint): Promise<void> {
+    const tid = this.currentTenantId();
+    if (tid) {
+      const scoped = await this.drizzle.employeeProfile.findFirst({
+        where: { userId: profileId, tenantId: tid }
+      });
+      if (!scoped) throw new NotFoundException('Employee not found');
+      return;
+    }
+    const profile = await this.drizzle.profile.findUnique({ where: { id: profileId } });
+    if (!profile || !['staff', 'employee'].includes(profile.type)) {
+      throw new NotFoundException('Employee not found');
+    }
+  }
 
   async summary() {
-    const [total, active, inactive, onboardingPending] = await this.drizzle.$transaction([
-      this.drizzle.profile.count({ where: { type: { in: ['staff', 'employee'] } } }),
-      this.drizzle.employeeProfile.count({ where: { employmentStatus: 'active' } }),
-      this.drizzle.employeeProfile.count({ where: { employmentStatus: { in: ['draft', 'suspended', 'exited'] } } }),
-      this.drizzle.onboardingProgress.count({
+    const tid = this.currentTenantId();
+    const [total, active, inactive] = await this.drizzle.$transaction([
+      this.drizzle.profile.count({
         where: {
-          status: {
-            in: ['invited', 'accepted', 'profile_pending', 'forms_pending', 'hr_review']
-          }
+          type: { in: ['staff', 'employee'] },
+          ...(tid ? { employeeProfile: { is: { tenantId: tid } } } : {})
         }
+      }),
+      this.drizzle.employeeProfile.count({
+        where: { employmentStatus: 'active', ...(tid ? { tenantId: tid } : {}) }
+      }),
+      this.drizzle.employeeProfile.count({
+        where: { employmentStatus: { in: ['draft', 'suspended', 'exited'] }, ...(tid ? { tenantId: tid } : {}) }
       })
     ]);
+    const onboardingPending = await this.drizzle.onboardingProgress.count({
+      where: {
+        status: {
+          in: ['invited', 'accepted', 'profile_pending', 'forms_pending', 'hr_review']
+        }
+      }
+    });
 
     return { total, active, inactive, onboarding_pending: onboardingPending };
   }
@@ -61,6 +99,8 @@ export class HrService {
     const profileFilter: Drizzle.EmployeeProfileWhereInput = {};
     if (query.employment_status) profileFilter.employmentStatus = String(query.employment_status) as EmploymentStatus;
     if (query.employment_type) profileFilter.employmentType = String(query.employment_type) as EmploymentType;
+    const tid = this.currentTenantId();
+    if (tid) profileFilter.tenantId = tid;
     if (Object.keys(profileFilter).length > 0) {
       where.employeeProfile = { is: profileFilter };
     }
@@ -176,8 +216,17 @@ export class HrService {
   }
 
   async getEmployee(id: string) {
+    const profileId = parseBigIntId(id, 'employee id');
+    const tid = this.currentTenantId();
+    if (tid) {
+      const scoped = await this.drizzle.employeeProfile.findFirst({
+        where: { userId: profileId, tenantId: tid }
+      });
+      if (!scoped) throw new NotFoundException('Employee not found');
+    }
+
     const profile = await this.drizzle.profile.findUnique({
-      where: { id: parseBigIntId(id, 'employee id') },
+      where: { id: profileId },
       include: this.employeeInclude()
     });
 
@@ -190,6 +239,13 @@ export class HrService {
 
   async updateEmployee(id: string, dto: UpsertEmployeeDto) {
     const profileId = parseBigIntId(id, 'employee id');
+    const tid = this.currentTenantId();
+    if (tid) {
+      const scoped = await this.drizzle.employeeProfile.findFirst({
+        where: { userId: profileId, tenantId: tid }
+      });
+      if (!scoped) throw new NotFoundException('Employee not found');
+    }
     const profile = await this.drizzle.profile.findUnique({ where: { id: profileId } });
     if (!profile || !['staff', 'employee'].includes(profile.type)) {
       throw new NotFoundException('Employee not found');
@@ -234,14 +290,16 @@ export class HrService {
 
   async runEmployeeAction(id: string, dto: EmployeeActionDto) {
     const profileId = parseBigIntId(id, 'employee id');
-    const existing = await this.drizzle.employeeProfile.findUnique({ where: { userId: profileId } });
+    const existing = await this.drizzle.employeeProfile.findFirst({
+      where: { userId: profileId, ...this.tenantWhere() }
+    });
     if (!existing) throw new NotFoundException('Employee profile not found');
 
     const nextStatus: EmploymentStatus =
       dto.action === 'activate' ? 'active' : dto.action === 'suspend' ? 'suspended' : 'exited';
 
     await this.drizzle.employeeProfile.update({
-      where: { userId: profileId },
+      where: { id: existing.id },
       data: {
         employmentStatus: nextStatus,
         exitDate: dto.action === 'exit' ? new Date(dto.effective_date ?? Date.now()) : null
@@ -261,25 +319,29 @@ export class HrService {
   async setPrimaryOrganization(id: string, dto: SetPrimaryOrganizationDto) {
     const profileId = parseBigIntId(id, 'employee id');
     const organizationId = parseBigIntId(dto.organization_id, 'organization id');
+    const tid = this.currentTenantId();
 
-    const [profile, organization] = await this.drizzle.$transaction([
-      this.drizzle.profile.findUnique({ where: { id: profileId } }),
-      this.drizzle.organization.findUnique({ where: { id: organizationId } })
-    ]);
-
-    if (!profile || !['staff', 'employee'].includes(profile.type)) {
-      throw new NotFoundException('Employee not found');
+    if (tid) {
+      const scoped = await this.drizzle.employeeProfile.findFirst({
+        where: { userId: profileId, tenantId: tid }
+      });
+      if (!scoped) throw new NotFoundException('Employee not found');
     }
+
+    const organization = await this.drizzle.organization.findFirst({
+      where: { id: organizationId, ...this.tenantWhere() }
+    });
+
     if (!organization) throw new NotFoundException('Organization not found');
 
     await this.drizzle.$transaction(async (tx) => {
       await tx.profileOrganization.updateMany({
-        where: { profileId, isPrimary: true },
+        where: { profileId, isPrimary: true, ...this.tenantWhere() },
         data: { isPrimary: false }
       });
 
       const existing = await tx.profileOrganization.findFirst({
-        where: { profileId, organizationId }
+        where: { profileId, organizationId, ...this.tenantWhere() }
       });
 
       if (existing) {
@@ -292,6 +354,7 @@ export class HrService {
           data: {
             profileId,
             organizationId,
+            tenantId: tid ?? null,
             isPrimary: true,
             createdAt: new Date()
           }
@@ -310,12 +373,13 @@ export class HrService {
   async addOrganizationMembership(id: string, dto: AssignEmployeeOrganizationDto) {
     const profileId = parseBigIntId(id, 'employee id');
     const organizationId = parseBigIntId(dto.organization_id, 'organization id');
+    const tid = this.currentTenantId();
 
-    const [profile, organization] = await this.drizzle.$transaction([
-      this.drizzle.profile.findUnique({ where: { id: profileId } }),
-      this.drizzle.organization.findUnique({ where: { id: organizationId } })
-    ]);
-    if (!profile || !['staff', 'employee'].includes(profile.type)) throw new NotFoundException('Employee not found');
+    await this.requireScopedEmployee(profileId);
+
+    const organization = await this.drizzle.organization.findFirst({
+      where: { id: organizationId, ...this.tenantWhere() }
+    });
     if (!organization) throw new NotFoundException('Organization not found');
 
     await this.drizzle.profileOrganization.upsert({
@@ -326,11 +390,13 @@ export class HrService {
         }
       },
       update: {
-        isPrimary: Boolean(dto.is_primary)
+        isPrimary: Boolean(dto.is_primary),
+        ...(tid ? { tenantId: tid } : {})
       },
       create: {
         profileId,
         organizationId,
+        tenantId: tid ?? null,
         isPrimary: Boolean(dto.is_primary),
         createdAt: new Date()
       }
@@ -339,7 +405,7 @@ export class HrService {
     if (dto.is_primary) {
       await this.drizzle.$transaction(async (tx) => {
       await tx.profileOrganization.updateMany({
-        where: { profileId, organizationId: { not: organizationId }, isPrimary: true },
+        where: { profileId, organizationId: { not: organizationId }, isPrimary: true, ...this.tenantWhere() },
         data: { isPrimary: false }
       });
       await tx.profile.update({
@@ -356,15 +422,17 @@ export class HrService {
     const profileId = parseBigIntId(id, 'employee id');
     const organizationId = parseBigIntId(organizationIdParam, 'organization id');
 
+    await this.requireScopedEmployee(profileId);
+
     const membership = await this.drizzle.profileOrganization.findFirst({
-      where: { profileId, organizationId }
+      where: { profileId, organizationId, ...this.tenantWhere() }
     });
     if (!membership) throw new NotFoundException('Organization membership not found');
 
     await this.drizzle.profileOrganization.delete({ where: { id: membership.id } });
 
     const primary = await this.drizzle.profileOrganization.findFirst({
-      where: { profileId, isPrimary: true }
+      where: { profileId, isPrimary: true, ...this.tenantWhere() }
     });
 
     await this.drizzle.profile.update({
@@ -379,11 +447,11 @@ export class HrService {
     const profileId = parseBigIntId(id, 'employee id');
     const teamId = parseBigIntId(dto.team_id, 'team id');
 
-    const [profile, team] = await this.drizzle.$transaction([
-      this.drizzle.profile.findUnique({ where: { id: profileId } }),
-      this.drizzle.group.findUnique({ where: { id: teamId } })
-    ]);
-    if (!profile || !['staff', 'employee'].includes(profile.type)) throw new NotFoundException('Employee not found');
+    await this.requireScopedEmployee(profileId);
+
+    const team = await this.drizzle.group.findFirst({
+      where: { id: teamId, ...this.tenantWhere() }
+    });
     if (!team) throw new NotFoundException('Team not found');
 
     const role: GroupUserRole =
@@ -425,6 +493,13 @@ export class HrService {
     const profileId = parseBigIntId(id, 'employee id');
     const teamId = parseBigIntId(teamIdParam, 'team id');
 
+    await this.requireScopedEmployee(profileId);
+
+    const team = await this.drizzle.group.findFirst({
+      where: { id: teamId, ...this.tenantWhere() }
+    });
+    if (!team) throw new NotFoundException('Team not found');
+
     await this.drizzle.groupUser.delete({
       where: {
         unique_group_user: {
@@ -450,7 +525,9 @@ export class HrService {
   }
 
   async listOnboardingFormAssignments(query: Record<string, any>) {
-    const where: Drizzle.FormAssignmentWhereInput = {};
+    const where: Drizzle.FormAssignmentWhereInput = {
+      ...this.tenantWhere()
+    };
     if (query.form_id) where.formId = String(query.form_id);
     if (query.profile_id) where.assignedToProfileId = parseBigIntId(String(query.profile_id), 'profile id');
     if (query.role_slug) where.assignedToRole = String(query.role_slug);
@@ -480,8 +557,15 @@ export class HrService {
     if (!dto.profile_id && !dto.role_slug) {
       throw new BadRequestException('Either profile_id or role_slug is required');
     }
-    const form = await this.drizzle.form.findUnique({ where: { id: dto.form_id } });
-    if (!form || !form.isActive) throw new NotFoundException('Form not found');
+    const tid = this.currentTenantId();
+    const scopedForm = await this.drizzle.form.findFirst({
+      where: {
+        id: dto.form_id,
+        isActive: true,
+        ...(tid ? { OR: [{ tenantId: tid }, { tenantId: null }] } : {})
+      }
+    });
+    if (!scopedForm) throw new NotFoundException('Form not found');
 
     const assignedToProfileId = dto.profile_id ? parseBigIntId(dto.profile_id, 'profile id') : null;
     if (assignedToProfileId) {
@@ -491,6 +575,7 @@ export class HrService {
 
     return this.drizzle.formAssignment.create({
       data: {
+        tenantId: tid ?? null,
         formId: dto.form_id,
         assignedToRole: dto.role_slug ?? null,
         assignedToProfileId,
@@ -500,14 +585,18 @@ export class HrService {
   }
 
   async deleteOnboardingFormAssignment(id: string) {
-    const existing = await this.drizzle.formAssignment.findUnique({ where: { id } });
+    const existing = await this.drizzle.formAssignment.findFirst({
+      where: { id, ...this.tenantWhere() }
+    });
     if (!existing) throw new NotFoundException('Form assignment not found');
     await this.drizzle.formAssignment.delete({ where: { id } });
     return { success: true };
   }
 
   async updateOnboardingFormAssignment(id: string, dto: UpdateOnboardingFormAssignmentDto) {
-    const existing = await this.drizzle.formAssignment.findUnique({ where: { id } });
+    const existing = await this.drizzle.formAssignment.findFirst({
+      where: { id, ...this.tenantWhere() }
+    });
     if (!existing) throw new NotFoundException('Form assignment not found');
 
     let assignedToProfileId: bigint | null | undefined;
@@ -521,8 +610,15 @@ export class HrService {
 
     const formId = dto.form_id ?? existing.formId;
     if (dto.form_id) {
-      const form = await this.drizzle.form.findUnique({ where: { id: dto.form_id } });
-      if (!form || !form.isActive) throw new NotFoundException('Form not found');
+      const tid = this.currentTenantId();
+      const form = await this.drizzle.form.findFirst({
+        where: {
+          id: dto.form_id,
+          isActive: true,
+          ...(tid ? { OR: [{ tenantId: tid }, { tenantId: null }] } : {})
+        }
+      });
+      if (!form) throw new NotFoundException('Form not found');
     }
 
     const assignedToRole = dto.role_slug !== undefined ? dto.role_slug || null : existing.assignedToRole;
@@ -550,6 +646,7 @@ export class HrService {
 
     const where: Drizzle.LeaveBalanceLedgerWhereInput = {
       periodYear: year,
+      ...this.tenantWhere(),
       ...(userId ? { userId } : {})
     };
 
@@ -611,6 +708,7 @@ export class HrService {
 
     const row = await this.drizzle.leaveBalanceLedger.create({
       data: {
+        tenantId: this.currentTenantId() ?? null,
         userId,
         leaveTypeKey,
         periodYear,
@@ -639,6 +737,7 @@ export class HrService {
     dto: UpsertEmployeeDto,
     actorId: bigint | null
   ) {
+    const tid = this.currentTenantId();
     const managerUserId = dto.manager_user_id ? parseBigIntId(dto.manager_user_id, 'manager user id') : undefined;
     const primaryTeamId = dto.primary_team_id ? parseBigIntId(dto.primary_team_id, 'primary team id') : undefined;
     const primaryOrganizationId = dto.primary_organization_id
@@ -651,16 +750,27 @@ export class HrService {
     const jobTitle = this.normalizeOptionalText(dto.job_title);
     const jobDescription = this.normalizeOptionalText(dto.job_description);
 
+    if (tid) {
+      const existingEmp = await tx.employeeProfile.findUnique({ where: { userId: profileId } });
+      if (existingEmp && existingEmp.tenantId !== tid) {
+        throw new NotFoundException('Employee not found');
+      }
+    }
+
     if (managerUserId) {
       const managerExists = await tx.profile.count({ where: { id: managerUserId } });
       if (!managerExists) throw new BadRequestException('Manager not found');
     }
     if (primaryTeamId) {
-      const teamExists = await tx.group.count({ where: { id: primaryTeamId } });
+      const teamExists = await tx.group.count({
+        where: { id: primaryTeamId, ...(tid ? { tenantId: tid } : {}) }
+      });
       if (!teamExists) throw new BadRequestException('Primary team not found');
     }
     if (primaryOrganizationId) {
-      const organizationExists = await tx.organization.count({ where: { id: primaryOrganizationId } });
+      const organizationExists = await tx.organization.count({
+        where: { id: primaryOrganizationId, ...(tid ? { tenantId: tid } : {}) }
+      });
       if (!organizationExists) throw new NotFoundException('Organization not found');
     }
     if (designationId) {
@@ -671,7 +781,8 @@ export class HrService {
       const employeeCodeExists = await tx.employeeProfile.findFirst({
         where: {
           employeeCode,
-          userId: { not: profileId }
+          userId: { not: profileId },
+          ...(tid ? { tenantId: tid } : {})
         }
       });
       if (employeeCodeExists) throw new BadRequestException('Employee code already exists');
@@ -680,6 +791,7 @@ export class HrService {
     await tx.employeeProfile.upsert({
       where: { userId: profileId },
       update: {
+        ...(tid ? { tenantId: tid } : {}),
         employeeCode,
         jobTitle,
         jobDescription,
@@ -695,6 +807,7 @@ export class HrService {
       },
       create: {
         userId: profileId,
+        tenantId: tid ?? null,
         employeeCode,
         jobTitle,
         jobDescription,
@@ -713,7 +826,7 @@ export class HrService {
 
     if (primaryOrganizationId) {
       await tx.profileOrganization.updateMany({
-        where: { profileId, isPrimary: true, organizationId: { not: primaryOrganizationId } },
+        where: { profileId, isPrimary: true, organizationId: { not: primaryOrganizationId }, ...(tid ? { tenantId: tid } : {}) },
         data: { isPrimary: false }
       });
       await tx.profileOrganization.upsert({
@@ -723,10 +836,11 @@ export class HrService {
             organizationId: primaryOrganizationId
           }
         },
-        update: { isPrimary: true },
+        update: { isPrimary: true, ...(tid ? { tenantId: tid } : {}) },
         create: {
           profileId,
           organizationId: primaryOrganizationId,
+          tenantId: tid ?? null,
           isPrimary: true,
           createdAt: new Date()
         }
@@ -793,7 +907,8 @@ export class HrService {
       const roles = await tx.role.findMany({
         where: {
           slug: { in: roleSlugs },
-          isActive: true
+          isActive: true,
+          ...(tid ? { OR: [{ tenantId: tid }, { tenantId: null }] } : {})
         },
         select: { id: true, slug: true }
       });
@@ -804,11 +919,12 @@ export class HrService {
         throw new BadRequestException(`Unknown role(s): ${missing.join(', ')}`);
       }
 
-      await tx.userRole.deleteMany({ where: { profileId } });
+      await tx.userRole.deleteMany({ where: { profileId, ...(tid ? { tenantId: tid } : {}) } });
       await tx.userRole.createMany({
         data: roles.map((role, index) => ({
           profileId,
           roleId: role.id,
+          tenantId: tid ?? null,
           organizationId: null,
           isPrimaryRole: index === 0
         })),
@@ -849,6 +965,7 @@ export class HrService {
     const { entitlements, carryoverCaps } = await this.getDefaultLeaveRulesFromRequestTypes();
     const now = new Date();
     const context = userId ? await this.resolvePolicyContextForUser(userId) : null;
+    const tid = this.currentTenantId();
     const rows = await this.drizzle.policy.findMany({
       where: {
         module: 'leave',
@@ -856,7 +973,10 @@ export class HrService {
         NOT: { scopeType: 'global' },
         isActive: true,
         OR: [{ effectiveFrom: null }, { effectiveFrom: { lte: now } }],
-        AND: [{ OR: [{ effectiveTo: null }, { effectiveTo: { gte: now } }] }]
+        AND: [
+          { OR: [{ effectiveTo: null }, { effectiveTo: { gte: now } }] },
+          ...(tid ? [{ OR: [{ tenantId: tid }, { tenantId: null }] }] : [])
+        ]
       },
       orderBy: [{ scopeType: 'asc' }, { priority: 'asc' }, { createdAt: 'asc' }]
     });
@@ -891,7 +1011,8 @@ export class HrService {
         by: ['leaveTypeKey'],
         where: {
           userId,
-          periodYear: previousYear
+          periodYear: previousYear,
+          ...this.tenantWhere()
         },
         _sum: {
           deltaDays: true
