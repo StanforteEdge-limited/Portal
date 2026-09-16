@@ -1,14 +1,24 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
-import { Drizzle, EmploymentStatus, EmploymentType, GroupUserRole } from '$common/db/drizzle-compat';
-import { DrizzleClientKnownRequestError } from '$common/db/drizzle-compat';
-import { RepositoryService } from '$common/db/repository.service';
+import { SQL, and, asc, count, desc, eq, exists, gte, ilike, inArray, isNull, lte, ne, or, sum } from 'drizzle-orm';
+import { EmploymentStatus, EmploymentType, GroupUserRole } from '$common/db/drizzle-compat';
+import { DbService, type AppDb } from '$common/db/db.service';
 import { TenantContextService } from '$common/auth/tenant-context.service';
 import { randomToken } from '$common/utils/crypto';
 import { parseBigIntId, toBigInt } from '$common/utils/ids';
 import { isLeaveRequestType, objectSchema, policyScopeMatches, policyScopeRank, resolveLeaveTypeKey } from '$common/utils/leave-policy';
 import { paginatedResponse } from '$common/helpers/paginated-response';
 import { generateUniqueUsername, makeUsernameSeed } from '$common/utils/username';
+import { employeeProfile, employeeMeta, hrDesignation, leaveBalanceLedger, onboardingProgress } from '$modules/hr/hr/model';
+import { profile, type Profile } from '$modules/identity/users/model';
+import { role, userRole } from '$modules/identity/rbac/model';
+import { organization, profileOrganization } from '$modules/directory/organizations/model';
+import { group, groupUser } from '$modules/communication/groups/model';
+import { form, formAssignment } from '$modules/requests/forms/model';
+import { project, projectMember } from '$modules/operations/projects/model';
+import { document as documentTable } from '$modules/requests/documents/model';
+import { policy } from '$modules/requests/policies/model';
+import { requestType } from '$modules/requests/requests/model';
 import { SetPrimaryOrganizationDto } from '$modules/hr/hr/dto/set-primary-organization.dto';
 import { EmployeeActionDto, UpsertEmployeeDto } from '$modules/hr/hr/dto/upsert-employee.dto';
 import { AdjustLeaveBalanceDto } from '$modules/hr/hr/dto/leave-balance.dto';
@@ -19,10 +29,13 @@ import {
   UpdateOnboardingFormAssignmentDto
 } from '$modules/hr/hr/dto/manage-employee-links.dto';
 
+type TxClient = Parameters<Parameters<AppDb['transaction']>[0]>[0];
+type WorkMode = 'onsite' | 'hybrid' | 'remote';
+
 @Injectable()
 export class HrService {
   constructor(
-    private readonly drizzle: RepositoryService,
+    private readonly db: DbService,
     private readonly tenantContext: TenantContextService,
   ) {}
 
@@ -30,113 +43,147 @@ export class HrService {
     return this.tenantContext.currentTenantId();
   }
 
-  private tenantWhere() {
-    const tid = this.currentTenantId();
-    return tid ? { tenantId: tid } : {};
-  }
-
   private async requireScopedEmployee(profileId: bigint): Promise<void> {
     const tid = this.currentTenantId();
     if (tid) {
-      const scoped = await this.drizzle.employeeProfile.findFirst({
-        where: { userId: profileId, tenantId: tid }
-      });
+      const [scoped] = await this.db.client
+        .select({ id: employeeProfile.id })
+        .from(employeeProfile)
+        .where(and(eq(employeeProfile.userId, profileId), eq(employeeProfile.tenantId, tid)))
+        .limit(1);
       if (!scoped) throw new NotFoundException('Employee not found');
       return;
     }
-    const profile = await this.drizzle.profile.findUnique({ where: { id: profileId } });
-    if (!profile || !['staff', 'employee'].includes(profile.type)) {
+    const [existingProfile] = await this.db.client.select().from(profile).where(eq(profile.id, profileId)).limit(1);
+    if (!existingProfile || !['staff', 'employee'].includes(existingProfile.type)) {
       throw new NotFoundException('Employee not found');
     }
   }
 
   async summary() {
     const tid = this.currentTenantId();
-    const [total, active, inactive] = await this.drizzle.$transaction([
-      this.drizzle.profile.count({
-        where: {
-          type: { in: ['staff', 'employee'] },
-          ...(tid ? { employeeProfile: { is: { tenantId: tid } } } : {})
-        }
-      }),
-      this.drizzle.employeeProfile.count({
-        where: { employmentStatus: 'active', ...(tid ? { tenantId: tid } : {}) }
-      }),
-      this.drizzle.employeeProfile.count({
-        where: { employmentStatus: { in: ['draft', 'suspended', 'exited'] }, ...(tid ? { tenantId: tid } : {}) }
-      })
-    ]);
-    const onboardingPending = await this.drizzle.onboardingProgress.count({
-      where: {
-        status: {
-          in: ['invited', 'accepted', 'profile_pending', 'forms_pending', 'hr_review']
-        }
-      }
-    });
+    const totalCond = tid
+      ? and(
+          inArray(profile.type, ['staff', 'employee']),
+          exists(
+            this.db.client
+              .select({ id: employeeProfile.id })
+              .from(employeeProfile)
+              .where(and(eq(employeeProfile.userId, profile.id), eq(employeeProfile.tenantId, tid)))
+          )
+        )
+      : inArray(profile.type, ['staff', 'employee']);
 
-    return { total, active, inactive, onboarding_pending: onboardingPending };
+    const [totalRows, activeRows, inactiveRows] = await Promise.all([
+      this.db.client.select({ value: count() }).from(profile).where(totalCond),
+      this.db.client
+        .select({ value: count() })
+        .from(employeeProfile)
+        .where(and(eq(employeeProfile.employmentStatus, 'active'), tid ? eq(employeeProfile.tenantId, tid) : undefined)),
+      this.db.client
+        .select({ value: count() })
+        .from(employeeProfile)
+        .where(
+          and(
+            inArray(employeeProfile.employmentStatus, ['draft', 'suspended', 'exited']),
+            tid ? eq(employeeProfile.tenantId, tid) : undefined
+          )
+        )
+    ]);
+    const [pendingRows] = await this.db.client
+      .select({ value: count() })
+      .from(onboardingProgress)
+      .where(
+        inArray(onboardingProgress.status, ['invited', 'accepted', 'profile_pending', 'forms_pending', 'hr_review'])
+      );
+
+    return {
+      total: Number(totalRows[0]?.value ?? 0),
+      active: Number(activeRows[0]?.value ?? 0),
+      inactive: Number(inactiveRows[0]?.value ?? 0),
+      onboarding_pending: Number(pendingRows?.value ?? 0)
+    };
   }
 
   async listEmployees(query: Record<string, any>) {
     const page = Math.max(1, Number(query.page ?? 1));
     const perPage = Math.min(100, Math.max(1, Number(query.per_page ?? 20)));
 
-    const where: Drizzle.ProfileWhereInput = {
-      type: { in: ['staff', 'employee'] }
-    };
+    const conditions: SQL[] = [inArray(profile.type, ['staff', 'employee'])];
 
     if (query.search) {
-      where.OR = [
-        { username: { contains: String(query.search), mode: 'insensitive' } },
-        { email: { contains: String(query.search), mode: 'insensitive' } },
-        { firstName: { contains: String(query.search), mode: 'insensitive' } },
-        { lastName: { contains: String(query.search), mode: 'insensitive' } }
-      ];
+      const term = `%${String(query.search).trim()}%`;
+      conditions.push(
+        or(
+          ilike(profile.username, term),
+          ilike(profile.email, term),
+          ilike(profile.firstName, term),
+          ilike(profile.lastName, term)
+        ) as SQL
+      );
     }
 
-    if (query.status) where.status = String(query.status);
+    if (query.status) conditions.push(eq(profile.status, String(query.status)));
 
-    const profileFilter: Drizzle.EmployeeProfileWhereInput = {};
-    if (query.employment_status) profileFilter.employmentStatus = String(query.employment_status) as EmploymentStatus;
-    if (query.employment_type) profileFilter.employmentType = String(query.employment_type) as EmploymentType;
     const tid = this.currentTenantId();
-    if (tid) profileFilter.tenantId = tid;
-    if (Object.keys(profileFilter).length > 0) {
-      where.employeeProfile = { is: profileFilter };
+    const empConditions: SQL[] = [];
+    if (tid) empConditions.push(eq(employeeProfile.tenantId, tid));
+    if (query.employment_status) empConditions.push(eq(employeeProfile.employmentStatus, String(query.employment_status) as EmploymentStatus));
+    if (query.employment_type) empConditions.push(eq(employeeProfile.employmentType, String(query.employment_type) as EmploymentType));
+    if (empConditions.length > 0) {
+      conditions.push(
+        exists(
+          this.db.client
+            .select({ id: employeeProfile.id })
+            .from(employeeProfile)
+            .where(and(eq(employeeProfile.userId, profile.id), ...empConditions))
+        )
+      );
     }
 
     if (query.organization_id) {
-      where.organizations = {
-        some: { organizationId: parseBigIntId(String(query.organization_id), 'organization id') }
-      };
+      const organizationId = parseBigIntId(String(query.organization_id), 'organization id');
+      conditions.push(
+        exists(
+          this.db.client
+            .select({ id: profileOrganization.id })
+            .from(profileOrganization)
+            .where(
+              and(
+                eq(profileOrganization.profileId, profile.id),
+                eq(profileOrganization.organizationId, organizationId)
+              )
+            )
+        )
+      );
     }
 
-    const [data, total] = await this.drizzle.$transaction([
-      this.drizzle.profile.findMany({
-        where,
-        include: this.employeeInclude(),
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * perPage,
-        take: perPage
-      }),
-      this.drizzle.profile.count({ where })
+    const [rows, totalRows] = await Promise.all([
+      this.db.client
+        .select()
+        .from(profile)
+        .where(and(...conditions))
+        .orderBy(desc(profile.createdAt))
+        .limit(perPage)
+        .offset((page - 1) * perPage),
+      this.db.client.select({ value: count() }).from(profile).where(and(...conditions))
     ]);
 
-    return paginatedResponse(
-      data.map((item) => this.serializeEmployee(item)),
-      { page, per_page: perPage, total }
-    );
+    const details = await this.buildEmployeeDetails(rows);
+    const data = rows.map((row) => this.serializeEmployee({ ...row, ...details.get(row.id)! }));
+
+    return paginatedResponse(data, { page, per_page: perPage, total: Number(totalRows[0]?.value ?? 0) });
   }
 
   async createEmployee(dto: UpsertEmployeeDto) {
     try {
-      return await this.drizzle.$transaction(async (tx) => {
+      const profileId = await this.db.client.transaction(async (tx) => {
         let profileId: bigint;
         let resolvedPrimaryOrganizationId = dto.primary_organization_id?.trim() || undefined;
 
         if (dto.user_id) {
           profileId = parseBigIntId(dto.user_id, 'user id');
-          const existing = await tx.profile.findUnique({ where: { id: profileId } });
+          const [existing] = await tx.select().from(profile).where(eq(profile.id, profileId)).limit(1);
           if (!existing) throw new NotFoundException('User not found');
           if (!resolvedPrimaryOrganizationId && existing.primaryOrganizationId) {
             resolvedPrimaryOrganizationId = existing.primaryOrganizationId.toString();
@@ -155,20 +202,25 @@ export class HrService {
             ? requestedUsername
             : await generateUniqueUsername(
                 makeUsernameSeed(dto.first_name, dto.last_name, email.split('@')[0]),
-                async (candidate) => Boolean(await tx.profile.findFirst({ where: { username: candidate } }))
+                async (candidate) =>
+                  Boolean((await tx.select({ id: profile.id }).from(profile).where(eq(profile.username, candidate)).limit(1))[0])
               );
+
           const [emailExists, usernameExists] = await Promise.all([
-            tx.profile.findUnique({ where: { email } }),
-            requestedUsername ? tx.profile.findFirst({ where: { username } }) : Promise.resolve(null)
+            tx.select({ id: profile.id }).from(profile).where(eq(profile.email, email)).limit(1),
+            requestedUsername
+              ? tx.select({ id: profile.id }).from(profile).where(eq(profile.username, username)).limit(1)
+              : Promise.resolve<Array<{ id: bigint }>>([])
           ]);
 
-          if (emailExists) throw new BadRequestException('Email already exists');
-          if (usernameExists) throw new BadRequestException('Username already exists');
+          if (emailExists[0]) throw new BadRequestException('Email already exists');
+          if (usernameExists[0]) throw new BadRequestException('Username already exists');
 
           const tempPassword = randomToken(10);
           const passwordHash = await bcrypt.hash(tempPassword, 12);
-          const created = await tx.profile.create({
-            data: {
+          const [createdUser] = await tx
+            .insert(profile)
+            .values({
               username,
               email,
               passwordHash,
@@ -177,9 +229,9 @@ export class HrService {
               firstName: dto.first_name,
               lastName: dto.last_name,
               phone: dto.phone
-            }
-          });
-          profileId = created.id;
+            })
+            .returning();
+          profileId = createdUser.id;
         }
 
         if (!resolvedPrimaryOrganizationId) {
@@ -197,18 +249,17 @@ export class HrService {
           },
           null
         );
-        
-        const profile = await tx.profile.findUnique({
-          where: { id: profileId },
-          include: this.employeeInclude()
-        });
-        
-        if (!profile || !['staff', 'employee'].includes(profile.type)) {
-          throw new NotFoundException('Employee not found');
-        }
-        
-        return this.serializeEmployee(profile);
+
+        return profileId;
       });
+
+      const createdProfile = await this.findEmployeeProfile(profileId);
+
+      if (!createdProfile || !['staff', 'employee'].includes(createdProfile.type)) {
+        throw new NotFoundException('Employee not found');
+      }
+
+      return this.serializeEmployee(createdProfile);
     } catch (error) {
       this.handleEmployeePersistenceError(error);
       throw error;
@@ -219,69 +270,74 @@ export class HrService {
     const profileId = parseBigIntId(id, 'employee id');
     const tid = this.currentTenantId();
     if (tid) {
-      const scoped = await this.drizzle.employeeProfile.findFirst({
-        where: { userId: profileId, tenantId: tid }
-      });
+      const [scoped] = await this.db.client
+        .select({ id: employeeProfile.id })
+        .from(employeeProfile)
+        .where(and(eq(employeeProfile.userId, profileId), eq(employeeProfile.tenantId, tid)))
+        .limit(1);
       if (!scoped) throw new NotFoundException('Employee not found');
     }
 
-    const profile = await this.drizzle.profile.findUnique({
-      where: { id: profileId },
-      include: this.employeeInclude()
-    });
+    const employee = await this.findEmployeeProfile(profileId);
 
-    if (!profile || !['staff', 'employee'].includes(profile.type)) {
+    if (!employee || !['staff', 'employee'].includes(employee.type)) {
       throw new NotFoundException('Employee not found');
     }
 
-    return this.serializeEmployee(profile);
+    return this.serializeEmployee(employee);
   }
 
   async updateEmployee(id: string, dto: UpsertEmployeeDto) {
     const profileId = parseBigIntId(id, 'employee id');
     const tid = this.currentTenantId();
     if (tid) {
-      const scoped = await this.drizzle.employeeProfile.findFirst({
-        where: { userId: profileId, tenantId: tid }
-      });
+      const [scoped] = await this.db.client
+        .select({ id: employeeProfile.id })
+        .from(employeeProfile)
+        .where(and(eq(employeeProfile.userId, profileId), eq(employeeProfile.tenantId, tid)))
+        .limit(1);
       if (!scoped) throw new NotFoundException('Employee not found');
     }
-    const profile = await this.drizzle.profile.findUnique({ where: { id: profileId } });
-    if (!profile || !['staff', 'employee'].includes(profile.type)) {
+    const [currentProfile] = await this.db.client.select().from(profile).where(eq(profile.id, profileId)).limit(1);
+    if (!currentProfile || !['staff', 'employee'].includes(currentProfile.type)) {
       throw new NotFoundException('Employee not found');
     }
 
-    const nextEmail = dto.email ? dto.email.trim().toLowerCase() : profile.email;
-    const nextUsername = dto.username !== undefined ? this.normalizeOptionalText(dto.username) : profile.username;
-    if (dto.email !== undefined && nextEmail !== profile.email) {
-      const existingEmail = await this.drizzle.profile.findFirst({
-        where: { email: nextEmail, id: { not: profileId } }
-      });
+    const nextEmail = dto.email ? dto.email.trim().toLowerCase() : currentProfile.email;
+    const nextUsername = dto.username !== undefined ? this.normalizeOptionalText(dto.username) : currentProfile.username;
+    if (dto.email !== undefined && nextEmail !== currentProfile.email) {
+      const [existingEmail] = await this.db.client
+        .select({ id: profile.id })
+        .from(profile)
+        .where(and(eq(profile.email, nextEmail), ne(profile.id, profileId)))
+        .limit(1);
       if (existingEmail) throw new BadRequestException('Email already exists');
     }
-    if (dto.username !== undefined && nextUsername && nextUsername !== profile.username) {
-      const existingUsername = await this.drizzle.profile.findFirst({
-        where: { username: nextUsername, id: { not: profileId } }
-      });
+    if (dto.username !== undefined && nextUsername && nextUsername !== currentProfile.username) {
+      const [existingUsername] = await this.db.client
+        .select({ id: profile.id })
+        .from(profile)
+        .where(and(eq(profile.username, nextUsername), ne(profile.id, profileId)))
+        .limit(1);
       if (existingUsername) throw new BadRequestException('Username already exists');
     }
 
     try {
-      return await this.drizzle.$transaction(async (tx) => {
-        await tx.profile.update({
-          where: { id: profileId },
-          data: {
-            firstName: dto.first_name ?? profile.firstName,
-            lastName: dto.last_name ?? profile.lastName,
-            phone: dto.phone ?? profile.phone,
+      await this.db.client.transaction(async (tx) => {
+        await tx
+          .update(profile)
+          .set({
+            firstName: dto.first_name ?? currentProfile.firstName,
+            lastName: dto.last_name ?? currentProfile.lastName,
+            phone: dto.phone ?? currentProfile.phone,
             email: nextEmail,
             username: nextUsername
-          }
-        });
+          })
+          .where(eq(profile.id, profileId));
 
         await this.upsertEmployeeProfileTx(tx, profileId, dto, profileId);
-        return this.getEmployee(profileId.toString());
       });
+      return this.getEmployee(profileId.toString());
     } catch (error) {
       this.handleEmployeePersistenceError(error);
       throw error;
@@ -290,28 +346,29 @@ export class HrService {
 
   async runEmployeeAction(id: string, dto: EmployeeActionDto) {
     const profileId = parseBigIntId(id, 'employee id');
-    const existing = await this.drizzle.employeeProfile.findFirst({
-      where: { userId: profileId, ...this.tenantWhere() }
-    });
+    const tid = this.currentTenantId();
+    const [existing] = await this.db.client
+      .select()
+      .from(employeeProfile)
+      .where(and(eq(employeeProfile.userId, profileId), tid ? eq(employeeProfile.tenantId, tid) : undefined))
+      .limit(1);
     if (!existing) throw new NotFoundException('Employee profile not found');
 
     const nextStatus: EmploymentStatus =
       dto.action === 'activate' ? 'active' : dto.action === 'suspend' ? 'suspended' : 'exited';
 
-    await this.drizzle.employeeProfile.update({
-      where: { id: existing.id },
-      data: {
+    await this.db.client
+      .update(employeeProfile)
+      .set({
         employmentStatus: nextStatus,
         exitDate: dto.action === 'exit' ? new Date(dto.effective_date ?? Date.now()) : null
-      }
-    });
+      })
+      .where(eq(employeeProfile.id, existing.id));
 
-    await this.drizzle.profile.update({
-      where: { id: profileId },
-      data: {
-        status: nextStatus === 'active' ? 'active' : nextStatus === 'suspended' ? 'inactive' : 'inactive'
-      }
-    });
+    await this.db.client
+      .update(profile)
+      .set({ status: nextStatus === 'active' ? 'active' : 'inactive' })
+      .where(eq(profile.id, profileId));
 
     return this.getEmployee(profileId.toString());
   }
@@ -322,49 +379,52 @@ export class HrService {
     const tid = this.currentTenantId();
 
     if (tid) {
-      const scoped = await this.drizzle.employeeProfile.findFirst({
-        where: { userId: profileId, tenantId: tid }
-      });
+      const [scoped] = await this.db.client
+        .select({ id: employeeProfile.id })
+        .from(employeeProfile)
+        .where(and(eq(employeeProfile.userId, profileId), eq(employeeProfile.tenantId, tid)))
+        .limit(1);
       if (!scoped) throw new NotFoundException('Employee not found');
     }
 
-    const organization = await this.drizzle.organization.findFirst({
-      where: { id: organizationId, ...this.tenantWhere() }
-    });
+    const [organizationRow] = await this.db.client
+      .select()
+      .from(organization)
+      .where(and(eq(organization.id, organizationId), tid ? eq(organization.tenantId, tid) : undefined))
+      .limit(1);
 
-    if (!organization) throw new NotFoundException('Organization not found');
+    if (!organizationRow) throw new NotFoundException('Organization not found');
 
-    await this.drizzle.$transaction(async (tx) => {
-      await tx.profileOrganization.updateMany({
-        where: { profileId, isPrimary: true, ...this.tenantWhere() },
-        data: { isPrimary: false }
-      });
+    await this.db.client.transaction(async (tx) => {
+      await tx
+        .update(profileOrganization)
+        .set({ isPrimary: false })
+        .where(
+          and(
+            eq(profileOrganization.profileId, profileId),
+            eq(profileOrganization.isPrimary, true),
+            tid ? eq(profileOrganization.tenantId, tid) : undefined
+          )
+        );
 
-      const existing = await tx.profileOrganization.findFirst({
-        where: { profileId, organizationId, ...this.tenantWhere() }
-      });
-
-      if (existing) {
-        await tx.profileOrganization.update({
-          where: { id: existing.id },
-          data: { isPrimary: true }
+      await tx
+        .insert(profileOrganization)
+        .values({
+          profileId,
+          organizationId,
+          tenantId: tid ?? null,
+          isPrimary: true,
+          createdAt: new Date()
+        })
+        .onConflictDoUpdate({
+          target: [profileOrganization.profileId, profileOrganization.organizationId],
+          set: { isPrimary: true, ...(tid ? { tenantId: tid } : {}) }
         });
-      } else {
-        await tx.profileOrganization.create({
-          data: {
-            profileId,
-            organizationId,
-            tenantId: tid ?? null,
-            isPrimary: true,
-            createdAt: new Date()
-          }
-        });
-      }
 
-      await tx.profile.update({
-        where: { id: profileId },
-        data: { primaryOrganizationId: organizationId }
-      });
+      await tx
+        .update(profile)
+        .set({ primaryOrganizationId: organizationId })
+        .where(eq(profile.id, profileId));
     });
 
     return this.getEmployee(id);
@@ -377,42 +437,45 @@ export class HrService {
 
     await this.requireScopedEmployee(profileId);
 
-    const organization = await this.drizzle.organization.findFirst({
-      where: { id: organizationId, ...this.tenantWhere() }
-    });
-    if (!organization) throw new NotFoundException('Organization not found');
+    const [organizationRow] = await this.db.client
+      .select()
+      .from(organization)
+      .where(and(eq(organization.id, organizationId), tid ? eq(organization.tenantId, tid) : undefined))
+      .limit(1);
+    if (!organizationRow) throw new NotFoundException('Organization not found');
 
-    await this.drizzle.profileOrganization.upsert({
-      where: {
-        profile_org_unique: {
-          profileId,
-          organizationId
-        }
-      },
-      update: {
-        isPrimary: Boolean(dto.is_primary),
-        ...(tid ? { tenantId: tid } : {})
-      },
-      create: {
+    await this.db.client
+      .insert(profileOrganization)
+      .values({
         profileId,
         organizationId,
         tenantId: tid ?? null,
         isPrimary: Boolean(dto.is_primary),
         createdAt: new Date()
-      }
-    });
+      })
+      .onConflictDoUpdate({
+        target: [profileOrganization.profileId, profileOrganization.organizationId],
+        set: { isPrimary: Boolean(dto.is_primary), ...(tid ? { tenantId: tid } : {}) }
+      });
 
     if (dto.is_primary) {
-      await this.drizzle.$transaction(async (tx) => {
-      await tx.profileOrganization.updateMany({
-        where: { profileId, organizationId: { not: organizationId }, isPrimary: true, ...this.tenantWhere() },
-        data: { isPrimary: false }
+      await this.db.client.transaction(async (tx) => {
+        await tx
+          .update(profileOrganization)
+          .set({ isPrimary: false })
+          .where(
+            and(
+              eq(profileOrganization.profileId, profileId),
+              ne(profileOrganization.organizationId, organizationId),
+              eq(profileOrganization.isPrimary, true),
+              tid ? eq(profileOrganization.tenantId, tid) : undefined
+            )
+          );
+        await tx
+          .update(profile)
+          .set({ primaryOrganizationId: organizationId })
+          .where(eq(profile.id, profileId));
       });
-      await tx.profile.update({
-        where: { id: profileId },
-        data: { primaryOrganizationId: organizationId }
-      });
-    });
     }
 
     return this.getEmployee(id);
@@ -421,24 +484,43 @@ export class HrService {
   async removeOrganizationMembership(id: string, organizationIdParam: string) {
     const profileId = parseBigIntId(id, 'employee id');
     const organizationId = parseBigIntId(organizationIdParam, 'organization id');
+    const tid = this.currentTenantId();
 
     await this.requireScopedEmployee(profileId);
 
-    const membership = await this.drizzle.profileOrganization.findFirst({
-      where: { profileId, organizationId, ...this.tenantWhere() }
-    });
+    const [membership] = await this.db.client
+      .select()
+      .from(profileOrganization)
+      .where(
+        and(
+          eq(profileOrganization.profileId, profileId),
+          eq(profileOrganization.organizationId, organizationId),
+          tid ? eq(profileOrganization.tenantId, tid) : undefined
+        )
+      )
+      .limit(1);
     if (!membership) throw new NotFoundException('Organization membership not found');
 
-    await this.drizzle.profileOrganization.delete({ where: { id: membership.id } });
+    await this.db.client
+      .delete(profileOrganization)
+      .where(and(eq(profileOrganization.id, membership.id), tid ? eq(profileOrganization.tenantId, tid) : undefined));
 
-    const primary = await this.drizzle.profileOrganization.findFirst({
-      where: { profileId, isPrimary: true, ...this.tenantWhere() }
-    });
+    const [primary] = await this.db.client
+      .select()
+      .from(profileOrganization)
+      .where(
+        and(
+          eq(profileOrganization.profileId, profileId),
+          eq(profileOrganization.isPrimary, true),
+          tid ? eq(profileOrganization.tenantId, tid) : undefined
+        )
+      )
+      .limit(1);
 
-    await this.drizzle.profile.update({
-      where: { id: profileId },
-      data: { primaryOrganizationId: primary?.organizationId ?? null }
-    });
+    await this.db.client
+      .update(profile)
+      .set({ primaryOrganizationId: primary?.organizationId ?? null })
+      .where(eq(profile.id, profileId));
 
     return this.getEmployee(id);
   }
@@ -446,12 +528,15 @@ export class HrService {
   async addTeamMembership(id: string, dto: AssignEmployeeTeamDto) {
     const profileId = parseBigIntId(id, 'employee id');
     const teamId = parseBigIntId(dto.team_id, 'team id');
+    const tid = this.currentTenantId();
 
     await this.requireScopedEmployee(profileId);
 
-    const team = await this.drizzle.group.findFirst({
-      where: { id: teamId, ...this.tenantWhere() }
-    });
+    const [team] = await this.db.client
+      .select()
+      .from(group)
+      .where(and(eq(group.id, teamId), tid ? eq(group.tenantId, tid) : undefined))
+      .limit(1);
     if (!team) throw new NotFoundException('Team not found');
 
     const role: GroupUserRole =
@@ -461,30 +546,28 @@ export class HrService {
           ? GroupUserRole.admin
           : GroupUserRole.member;
 
-    const existingPrimary = await this.drizzle.groupUser.findFirst({
-      where: { userId: profileId, isPrimary: true },
-      select: { id: true }
-    });
+    const [existingPrimary] = await this.db.client
+      .select({ id: groupUser.id })
+      .from(groupUser)
+      .where(and(eq(groupUser.userId, profileId), eq(groupUser.isPrimary, true)))
+      .limit(1);
     const makePrimary = !existingPrimary;
 
-    await this.drizzle.groupUser.upsert({
-      where: {
-        unique_group_user: {
-          groupId: teamId,
-          userId: profileId
-        }
-      },
-      update: {
-        role,
-        isPrimary: makePrimary
-      },
-      create: {
+    await this.db.client
+      .insert(groupUser)
+      .values({
         groupId: teamId,
         userId: profileId,
         role,
         isPrimary: makePrimary
-      }
-    });
+      })
+      .onConflictDoUpdate({
+        target: [groupUser.groupId, groupUser.userId],
+        set: {
+          role,
+          isPrimary: makePrimary
+        }
+      });
 
     return this.getEmployee(id);
   }
@@ -492,59 +575,68 @@ export class HrService {
   async removeTeamMembership(id: string, teamIdParam: string) {
     const profileId = parseBigIntId(id, 'employee id');
     const teamId = parseBigIntId(teamIdParam, 'team id');
+    const tid = this.currentTenantId();
 
     await this.requireScopedEmployee(profileId);
 
-    const team = await this.drizzle.group.findFirst({
-      where: { id: teamId, ...this.tenantWhere() }
-    });
+    const [team] = await this.db.client
+      .select()
+      .from(group)
+      .where(and(eq(group.id, teamId), tid ? eq(group.tenantId, tid) : undefined))
+      .limit(1);
     if (!team) throw new NotFoundException('Team not found');
 
-    await this.drizzle.groupUser.delete({
-      where: {
-        unique_group_user: {
-          groupId: teamId,
-          userId: profileId
-        }
-      }
-    });
+    await this.db.client
+      .delete(groupUser)
+      .where(and(eq(groupUser.groupId, teamId), eq(groupUser.userId, profileId)));
 
-    const fallbackTeam = await this.drizzle.groupUser.findFirst({
-      where: { userId: profileId },
-      orderBy: { joinedAt: 'asc' }
-    });
+    const [fallbackTeam] = await this.db.client
+      .select()
+      .from(groupUser)
+      .where(eq(groupUser.userId, profileId))
+      .orderBy(asc(groupUser.joinedAt))
+      .limit(1);
 
     if (fallbackTeam) {
-      await this.drizzle.groupUser.update({
-        where: { id: fallbackTeam.id },
-        data: { isPrimary: true }
-      });
+      await this.db.client
+        .update(groupUser)
+        .set({ isPrimary: true })
+        .where(eq(groupUser.id, fallbackTeam.id));
     }
 
     return this.getEmployee(id);
   }
 
   async listOnboardingFormAssignments(query: Record<string, any>) {
-    const where: Drizzle.FormAssignmentWhereInput = {
-      ...this.tenantWhere()
-    };
-    if (query.form_id) where.formId = String(query.form_id);
-    if (query.profile_id) where.assignedToProfileId = parseBigIntId(String(query.profile_id), 'profile id');
-    if (query.role_slug) where.assignedToRole = String(query.role_slug);
+    const tid = this.currentTenantId();
+    const conditions: SQL[] = [];
+    if (tid) conditions.push(eq(formAssignment.tenantId, tid));
+    if (query.form_id) conditions.push(eq(formAssignment.formId, String(query.form_id)));
+    if (query.profile_id) conditions.push(eq(formAssignment.assignedToProfileId, parseBigIntId(String(query.profile_id), 'profile id')));
+    if (query.role_slug) conditions.push(eq(formAssignment.assignedToRole, String(query.role_slug)));
 
-    const assignments = await this.drizzle.formAssignment.findMany({
-      where,
-      include: {
-        form: { select: { id: true, name: true, module: true, isActive: true } }
-      },
-      orderBy: [{ dueDate: 'asc' }, { createdAt: 'desc' }]
-    });
+    const rows = await this.db.client
+      .select({
+        id: formAssignment.id,
+        formId: formAssignment.formId,
+        assignedToRole: formAssignment.assignedToRole,
+        assignedToProfileId: formAssignment.assignedToProfileId,
+        dueDate: formAssignment.dueDate,
+        createdAt: formAssignment.createdAt,
+        formName: form.name,
+        module: form.module,
+        formIsActive: form.isActive
+      })
+      .from(formAssignment)
+      .leftJoin(form, eq(formAssignment.formId, form.id))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(asc(formAssignment.dueDate), desc(formAssignment.createdAt));
 
-    const items = assignments.map((row) => ({
+    const items = rows.map((row) => ({
       id: row.id,
       form_id: row.formId,
-      form_name: row.form.name,
-      module: row.form.module,
+      form_name: row.formName,
+      module: row.module,
       assigned_to_role: row.assignedToRole,
       assigned_to_profile_id: row.assignedToProfileId ? row.assignedToProfileId.toString() : null,
       due_date: row.dueDate,
@@ -558,67 +650,84 @@ export class HrService {
       throw new BadRequestException('Either profile_id or role_slug is required');
     }
     const tid = this.currentTenantId();
-    const scopedForm = await this.drizzle.form.findFirst({
-      where: {
-        id: dto.form_id,
-        isActive: true,
-        ...(tid ? { OR: [{ tenantId: tid }, { tenantId: null }] } : {})
-      }
-    });
+    const [scopedForm] = await this.db.client
+      .select()
+      .from(form)
+      .where(
+        and(
+          eq(form.id, dto.form_id),
+          eq(form.isActive, true),
+          tid ? or(eq(form.tenantId, tid), isNull(form.tenantId)) : undefined
+        )
+      )
+      .limit(1);
     if (!scopedForm) throw new NotFoundException('Form not found');
 
     const assignedToProfileId = dto.profile_id ? parseBigIntId(dto.profile_id, 'profile id') : null;
     if (assignedToProfileId) {
-      const user = await this.drizzle.profile.findUnique({ where: { id: assignedToProfileId } });
-      if (!user) throw new NotFoundException('Profile not found');
+      const [existingUser] = await this.db.client.select().from(profile).where(eq(profile.id, assignedToProfileId)).limit(1);
+      if (!existingUser) throw new NotFoundException('Profile not found');
     }
 
-    return this.drizzle.formAssignment.create({
-      data: {
+    const [assignment] = await this.db.client
+      .insert(formAssignment)
+      .values({
         tenantId: tid ?? null,
         formId: dto.form_id,
         assignedToRole: dto.role_slug ?? null,
         assignedToProfileId,
         dueDate: dto.due_date ? new Date(dto.due_date) : null
-      }
-    });
+      })
+      .returning();
+    return assignment;
   }
 
   async deleteOnboardingFormAssignment(id: string) {
-    const existing = await this.drizzle.formAssignment.findFirst({
-      where: { id, ...this.tenantWhere() }
-    });
+    const tid = this.currentTenantId();
+    const [existing] = await this.db.client
+      .select()
+      .from(formAssignment)
+      .where(and(eq(formAssignment.id, id), tid ? eq(formAssignment.tenantId, tid) : undefined))
+      .limit(1);
     if (!existing) throw new NotFoundException('Form assignment not found');
-    await this.drizzle.formAssignment.delete({ where: { id } });
+    await this.db.client
+      .delete(formAssignment)
+      .where(and(eq(formAssignment.id, id), tid ? eq(formAssignment.tenantId, tid) : undefined));
     return { success: true };
   }
 
   async updateOnboardingFormAssignment(id: string, dto: UpdateOnboardingFormAssignmentDto) {
-    const existing = await this.drizzle.formAssignment.findFirst({
-      where: { id, ...this.tenantWhere() }
-    });
+    const tid = this.currentTenantId();
+    const [existing] = await this.db.client
+      .select()
+      .from(formAssignment)
+      .where(and(eq(formAssignment.id, id), tid ? eq(formAssignment.tenantId, tid) : undefined))
+      .limit(1);
     if (!existing) throw new NotFoundException('Form assignment not found');
 
     let assignedToProfileId: bigint | null | undefined;
     if (dto.profile_id !== undefined) {
       assignedToProfileId = dto.profile_id ? parseBigIntId(dto.profile_id, 'profile id') : null;
       if (assignedToProfileId) {
-        const user = await this.drizzle.profile.findUnique({ where: { id: assignedToProfileId } });
-        if (!user) throw new NotFoundException('Profile not found');
+        const [existingUser] = await this.db.client.select().from(profile).where(eq(profile.id, assignedToProfileId)).limit(1);
+        if (!existingUser) throw new NotFoundException('Profile not found');
       }
     }
 
     const formId = dto.form_id ?? existing.formId;
     if (dto.form_id) {
-      const tid = this.currentTenantId();
-      const form = await this.drizzle.form.findFirst({
-        where: {
-          id: dto.form_id,
-          isActive: true,
-          ...(tid ? { OR: [{ tenantId: tid }, { tenantId: null }] } : {})
-        }
-      });
-      if (!form) throw new NotFoundException('Form not found');
+      const [scopedForm] = await this.db.client
+        .select()
+        .from(form)
+        .where(
+          and(
+            eq(form.id, dto.form_id),
+            eq(form.isActive, true),
+            tid ? or(eq(form.tenantId, tid), isNull(form.tenantId)) : undefined
+          )
+        )
+        .limit(1);
+      if (!scopedForm) throw new NotFoundException('Form not found');
     }
 
     const assignedToRole = dto.role_slug !== undefined ? dto.role_slug || null : existing.assignedToRole;
@@ -629,31 +738,35 @@ export class HrService {
       throw new BadRequestException('Either profile_id or role_slug is required');
     }
 
-    return this.drizzle.formAssignment.update({
-      where: { id },
-      data: {
+    const [updated] = await this.db.client
+      .update(formAssignment)
+      .set({
         formId,
         assignedToRole,
         assignedToProfileId: resolvedProfileId,
         dueDate: dto.due_date !== undefined ? (dto.due_date ? new Date(dto.due_date) : null) : undefined
-      }
-    });
+      })
+      .where(and(eq(formAssignment.id, id), tid ? eq(formAssignment.tenantId, tid) : undefined))
+      .returning();
+    return updated;
   }
 
   async getLeaveBalance(query: Record<string, any>) {
     const year = Number(query.year ?? new Date().getFullYear());
     const userId = query.user_id ? parseBigIntId(String(query.user_id), 'user id') : undefined;
+    const tid = this.currentTenantId();
 
-    const where: Drizzle.LeaveBalanceLedgerWhereInput = {
-      periodYear: year,
-      ...this.tenantWhere(),
-      ...(userId ? { userId } : {})
-    };
+    const conditions: SQL[] = [
+      eq(leaveBalanceLedger.periodYear, year),
+      ...(tid ? [eq(leaveBalanceLedger.tenantId, tid)] : []),
+      ...(userId ? [eq(leaveBalanceLedger.userId, userId)] : [])
+    ];
 
-    const rows = await this.drizzle.leaveBalanceLedger.findMany({
-      where,
-      orderBy: [{ userId: 'asc' }, { leaveTypeKey: 'asc' }, { createdAt: 'asc' }]
-    });
+    const rows = await this.db.client
+      .select()
+      .from(leaveBalanceLedger)
+      .where(and(...conditions))
+      .orderBy(asc(leaveBalanceLedger.userId), asc(leaveBalanceLedger.leaveTypeKey), asc(leaveBalanceLedger.createdAt));
 
     const entitlementByUser = new Map<string, Record<string, number>>();
     const balanceMap = new Map<string, { user_id: string; leave_type_key: string; entitled: number; used: number; adjustments: number; available: number }>();
@@ -703,21 +816,22 @@ export class HrService {
       throw new BadRequestException('Invalid period_year');
     }
 
-    const userExists = await this.drizzle.profile.count({ where: { id: userId } });
-    if (!userExists) throw new NotFoundException('User not found');
+    const [existingUser] = await this.db.client.select({ id: profile.id }).from(profile).where(eq(profile.id, userId)).limit(1);
+    if (!existingUser) throw new NotFoundException('User not found');
 
-    const row = await this.drizzle.leaveBalanceLedger.create({
-      data: {
+    const [row] = await this.db.client
+      .insert(leaveBalanceLedger)
+      .values({
         tenantId: this.currentTenantId() ?? null,
         userId,
         leaveTypeKey,
         periodYear,
-        deltaDays: dto.delta_days,
+        deltaDays: String(dto.delta_days),
         entryType: dto.entry_type?.trim() || 'adjustment',
         notes: dto.notes ?? null,
         createdBy: actorId ? toBigInt(actorId) : null
-      }
-    });
+      })
+      .returning();
 
     return {
       id: row.id,
@@ -732,7 +846,7 @@ export class HrService {
   }
 
   private async upsertEmployeeProfileTx(
-    tx: Drizzle.TransactionClient,
+    tx: TxClient,
     profileId: bigint,
     dto: UpsertEmployeeDto,
     actorId: bigint | null
@@ -751,61 +865,58 @@ export class HrService {
     const jobDescription = this.normalizeOptionalText(dto.job_description);
 
     if (tid) {
-      const existingEmp = await tx.employeeProfile.findUnique({ where: { userId: profileId } });
+      const [existingEmp] = await tx.select().from(employeeProfile).where(eq(employeeProfile.userId, profileId)).limit(1);
       if (existingEmp && existingEmp.tenantId !== tid) {
         throw new NotFoundException('Employee not found');
       }
     }
 
     if (managerUserId) {
-      const managerExists = await tx.profile.count({ where: { id: managerUserId } });
+      const [managerExists] = await tx.select({ id: profile.id }).from(profile).where(eq(profile.id, managerUserId)).limit(1);
       if (!managerExists) throw new BadRequestException('Manager not found');
     }
     if (primaryTeamId) {
-      const teamExists = await tx.group.count({
-        where: { id: primaryTeamId, ...(tid ? { tenantId: tid } : {}) }
-      });
+      const [teamExists] = await tx
+        .select({ id: group.id })
+        .from(group)
+        .where(and(eq(group.id, primaryTeamId), tid ? eq(group.tenantId, tid) : undefined))
+        .limit(1);
       if (!teamExists) throw new BadRequestException('Primary team not found');
     }
     if (primaryOrganizationId) {
-      const organizationExists = await tx.organization.count({
-        where: { id: primaryOrganizationId, ...(tid ? { tenantId: tid } : {}) }
-      });
+      const [organizationExists] = await tx
+        .select({ id: organization.id })
+        .from(organization)
+        .where(and(eq(organization.id, primaryOrganizationId), tid ? eq(organization.tenantId, tid) : undefined))
+        .limit(1);
       if (!organizationExists) throw new NotFoundException('Organization not found');
     }
     if (designationId) {
-      const designationExists = await tx.hrDesignation.count({ where: { id: designationId } });
+      const [designationExists] = await tx
+        .select({ id: hrDesignation.id })
+        .from(hrDesignation)
+        .where(eq(hrDesignation.id, designationId))
+        .limit(1);
       if (!designationExists) throw new BadRequestException('Designation template not found');
     }
     if (employeeCode) {
-      const employeeCodeExists = await tx.employeeProfile.findFirst({
-        where: {
-          employeeCode,
-          userId: { not: profileId },
-          ...(tid ? { tenantId: tid } : {})
-        }
-      });
+      const [employeeCodeExists] = await tx
+        .select({ id: employeeProfile.id })
+        .from(employeeProfile)
+        .where(
+          and(
+            eq(employeeProfile.employeeCode, employeeCode),
+            ne(employeeProfile.userId, profileId),
+            tid ? eq(employeeProfile.tenantId, tid) : undefined
+          )
+        )
+        .limit(1);
       if (employeeCodeExists) throw new BadRequestException('Employee code already exists');
     }
 
-    await tx.employeeProfile.upsert({
-      where: { userId: profileId },
-      update: {
-        ...(tid ? { tenantId: tid } : {}),
-        employeeCode,
-        jobTitle,
-        jobDescription,
-        managerUserId,
-        designationId,
-        employmentType: dto.employment_type,
-        employmentStatus: dto.employment_status,
-        workMode: dto.work_mode,
-        hireDate: dto.hire_date ? new Date(dto.hire_date) : undefined,
-        confirmationDate: dto.confirmation_date ? new Date(dto.confirmation_date) : undefined,
-        exitDate: dto.exit_date ? new Date(dto.exit_date) : undefined,
-        updatedBy: actorId ?? undefined
-      },
-      create: {
+    await tx
+      .insert(employeeProfile)
+      .values({
         userId: profileId,
         tenantId: tid ?? null,
         employeeCode,
@@ -813,64 +924,82 @@ export class HrService {
         jobDescription,
         managerUserId,
         designationId: designationId ?? null,
-        employmentType: dto.employment_type,
-        employmentStatus: dto.employment_status ?? 'draft',
-        workMode: dto.work_mode,
+        employmentType: dto.employment_type as EmploymentType | undefined,
+        employmentStatus: (dto.employment_status ?? 'draft') as EmploymentStatus,
+        workMode: dto.work_mode as WorkMode | undefined,
         hireDate: dto.hire_date ? new Date(dto.hire_date) : undefined,
         confirmationDate: dto.confirmation_date ? new Date(dto.confirmation_date) : undefined,
         exitDate: dto.exit_date ? new Date(dto.exit_date) : undefined,
         createdBy: actorId ?? undefined,
         updatedBy: actorId ?? undefined
-      }
-    });
+      })
+      .onConflictDoUpdate({
+        target: employeeProfile.userId,
+        set: {
+          ...(tid ? { tenantId: tid } : {}),
+          employeeCode,
+          jobTitle,
+          jobDescription,
+          managerUserId,
+          designationId: dto.designation_id !== undefined ? (designationId ?? null) : undefined,
+          employmentType: dto.employment_type as EmploymentType | undefined,
+          employmentStatus: dto.employment_status as EmploymentStatus | undefined,
+          workMode: dto.work_mode as WorkMode | undefined,
+          hireDate: dto.hire_date ? new Date(dto.hire_date) : undefined,
+          confirmationDate: dto.confirmation_date ? new Date(dto.confirmation_date) : undefined,
+          exitDate: dto.exit_date ? new Date(dto.exit_date) : undefined,
+          updatedBy: actorId ?? undefined
+        }
+      });
 
     if (primaryOrganizationId) {
-      await tx.profileOrganization.updateMany({
-        where: { profileId, isPrimary: true, organizationId: { not: primaryOrganizationId }, ...(tid ? { tenantId: tid } : {}) },
-        data: { isPrimary: false }
-      });
-      await tx.profileOrganization.upsert({
-        where: {
-          profile_org_unique: {
-            profileId,
-            organizationId: primaryOrganizationId
-          }
-        },
-        update: { isPrimary: true, ...(tid ? { tenantId: tid } : {}) },
-        create: {
+      await tx
+        .update(profileOrganization)
+        .set({ isPrimary: false })
+        .where(
+          and(
+            eq(profileOrganization.profileId, profileId),
+            eq(profileOrganization.isPrimary, true),
+            ne(profileOrganization.organizationId, primaryOrganizationId),
+            tid ? eq(profileOrganization.tenantId, tid) : undefined
+          )
+        );
+      await tx
+        .insert(profileOrganization)
+        .values({
           profileId,
           organizationId: primaryOrganizationId,
           tenantId: tid ?? null,
           isPrimary: true,
           createdAt: new Date()
-        }
-      });
-      await tx.profile.update({
-        where: { id: profileId },
-        data: { primaryOrganizationId }
-      });
+        })
+        .onConflictDoUpdate({
+          target: [profileOrganization.profileId, profileOrganization.organizationId],
+          set: { isPrimary: true, ...(tid ? { tenantId: tid } : {}) }
+        });
+      await tx
+        .update(profile)
+        .set({ primaryOrganizationId })
+        .where(eq(profile.id, profileId));
     }
 
     if (primaryTeamId) {
-      await tx.groupUser.updateMany({
-        where: { userId: profileId, isPrimary: true },
-        data: { isPrimary: false }
-      });
-      await tx.groupUser.upsert({
-        where: {
-          unique_group_user: {
-            groupId: primaryTeamId,
-            userId: profileId
-          }
-        },
-        update: { isPrimary: true },
-        create: {
+      await tx
+        .update(groupUser)
+        .set({ isPrimary: false })
+        .where(and(eq(groupUser.userId, profileId), eq(groupUser.isPrimary, true)));
+      await tx
+        .insert(groupUser)
+        .values({
           groupId: primaryTeamId,
           userId: profileId,
           isPrimary: true,
           role: 'member'
-        }
-      });
+        })
+        .onConflictDoUpdate({
+          target: [groupUser.groupId, groupUser.userId],
+          set: { isPrimary: true }
+        });
     }
 
     if (dto.metadata && Object.keys(dto.metadata).length > 0) {
@@ -878,87 +1007,222 @@ export class HrService {
       if (Array.isArray(normalizedMetadata.assigned_emails)) {
         normalizedMetadata.assigned_emails = normalizedMetadata.assigned_emails
           .map((item) => String(item || '').trim().toLowerCase())
-          .filter((email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
+          .filter((emailItem) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailItem));
       }
       await Promise.all(
         Object.entries(normalizedMetadata).map(([key, value]) =>
-          tx.employeeMeta.upsert({
-            where: {
-              employee_meta_unique: {
-                userId: profileId,
-                metaKey: key
-              }
-            },
-            update: {
-              metaValue: value as Drizzle.InputJsonValue
-            },
-            create: {
-              userId: profileId,
-              metaKey: key,
-              metaValue: value as Drizzle.InputJsonValue
-            }
-          })
+          tx
+            .insert(employeeMeta)
+            .values({ userId: profileId, metaKey: key, metaValue: value })
+            .onConflictDoUpdate({
+              target: [employeeMeta.userId, employeeMeta.metaKey],
+              set: { metaValue: value }
+            })
         )
       );
     }
 
     if (dto.roles && dto.roles.length > 0) {
       const roleSlugs = Array.from(new Set(dto.roles));
-      const roles = await tx.role.findMany({
-        where: {
-          slug: { in: roleSlugs },
-          isActive: true,
-          ...(tid ? { OR: [{ tenantId: tid }, { tenantId: null }] } : {})
-        },
-        select: { id: true, slug: true }
-      });
+      const matchedRoles = await tx
+        .select({ id: role.id, slug: role.slug })
+        .from(role)
+        .where(
+          and(
+            inArray(role.slug, roleSlugs),
+            eq(role.isActive, true),
+            tid ? or(eq(role.tenantId, tid), isNull(role.tenantId)) : undefined
+          )
+        );
 
-      if (roles.length !== roleSlugs.length) {
-        const found = new Set(roles.map((item) => item.slug));
+      if (matchedRoles.length !== roleSlugs.length) {
+        const found = new Set(matchedRoles.map((item) => item.slug));
         const missing = roleSlugs.filter((slug) => !found.has(slug));
         throw new BadRequestException(`Unknown role(s): ${missing.join(', ')}`);
       }
 
-      await tx.userRole.deleteMany({ where: { profileId, ...(tid ? { tenantId: tid } : {}) } });
-      await tx.userRole.createMany({
-        data: roles.map((role, index) => ({
-          profileId,
-          roleId: role.id,
-          tenantId: tid ?? null,
-          organizationId: null,
-          isPrimaryRole: index === 0
-        })),
-        skipDuplicates: true
-      });
+      await tx
+        .delete(userRole)
+        .where(and(eq(userRole.profileId, profileId), tid ? eq(userRole.tenantId, tid) : undefined));
+      await tx
+        .insert(userRole)
+        .values(
+          matchedRoles.map((matchedRole, index) => ({
+            profileId,
+            roleId: matchedRole.id,
+            tenantId: tid ?? null,
+            organizationId: null,
+            isPrimaryRole: index === 0
+          }))
+        )
+        .onConflictDoNothing({ target: [userRole.profileId, userRole.roleId, userRole.organizationId] });
     }
   }
 
-  private employeeInclude() {
-    return {
-      primaryOrganization: true,
-      organizations: {
-        include: { organization: true }
-      },
-      roles: { include: { role: true, organization: true } },
-      groups: {
-        include: {
-          group: true
-        }
-      },
-      projectMemberships: {
-        include: { project: true }
-      },
-      employeeProfile: {
-        include: {
-          manager: { select: { id: true, firstName: true, lastName: true, email: true } },
-          designation: {
-            include: { document: true }
-          }
-        }
-      },
-      employeeMeta: true,
-      onboardingProgress: true
-    } as const;
+  private async buildEmployeeDetails(rows: Profile[]) {
+    const ids = rows.map((row) => row.id);
+    const details = new Map<
+      bigint,
+      {
+        primaryOrganization: any;
+        organizations: any[];
+        roles: any[];
+        groups: any[];
+        projectMemberships: any[];
+        employeeProfile: any;
+        employeeMeta: any[];
+        onboardingProgress: any;
+      }
+    >();
+
+    for (const id of ids) {
+      details.set(id, {
+        primaryOrganization: null,
+        organizations: [],
+        roles: [],
+        groups: [],
+        projectMemberships: [],
+        employeeProfile: null,
+        employeeMeta: [],
+        onboardingProgress: null
+      });
+    }
+
+    const primaryOrgIds = Array.from(
+      new Set(rows.map((row) => row.primaryOrganizationId).filter((value): value is bigint => value != null))
+    );
+
+    const [orgRows, groupRows, projectRows, roleRows, empRows, metaRows, onboardingRows, primaryOrgRows] =
+      await Promise.all([
+        this.db.client
+          .select({ membership: profileOrganization, organization })
+          .from(profileOrganization)
+          .leftJoin(organization, eq(profileOrganization.organizationId, organization.id))
+          .where(inArray(profileOrganization.profileId, ids)),
+        this.db.client
+          .select({ membership: groupUser, group })
+          .from(groupUser)
+          .leftJoin(group, eq(groupUser.groupId, group.id))
+          .where(inArray(groupUser.userId, ids)),
+        this.db.client
+          .select({ membership: projectMember, project })
+          .from(projectMember)
+          .leftJoin(project, eq(projectMember.projectId, project.id))
+          .where(inArray(projectMember.userId, ids)),
+        this.db.client
+          .select({ membership: userRole, role, organization })
+          .from(userRole)
+          .leftJoin(role, eq(userRole.roleId, role.id))
+          .leftJoin(organization, eq(userRole.organizationId, organization.id))
+          .where(inArray(userRole.profileId, ids)),
+        this.db.client.select().from(employeeProfile).where(inArray(employeeProfile.userId, ids)),
+        this.db.client.select().from(employeeMeta).where(inArray(employeeMeta.userId, ids)),
+        this.db.client.select().from(onboardingProgress).where(inArray(onboardingProgress.userId, ids)),
+        primaryOrgIds.length > 0
+          ? this.db.client.select().from(organization).where(inArray(organization.id, primaryOrgIds))
+          : (Promise.resolve([]) as Promise<typeof organization.$inferSelect[]>)
+      ]);
+
+    const primaryOrgById = new Map(primaryOrgRows.map((row) => [row.id.toString(), row]));
+    for (const row of rows) {
+      const data = details.get(row.id);
+      if (!data) continue;
+      data.primaryOrganization =
+        row.primaryOrganizationId != null ? (primaryOrgById.get(row.primaryOrganizationId.toString()) ?? null) : null;
+    }
+
+    for (const row of orgRows) {
+      const data = details.get(row.membership.profileId);
+      if (!data) continue;
+      data.organizations.push({ ...row.membership, organization: row.organization });
+    }
+
+    for (const row of groupRows) {
+      const data = details.get(row.membership.userId);
+      if (!data) continue;
+      data.groups.push({ ...row.membership, group: row.group });
+    }
+
+    for (const row of projectRows) {
+      const data = details.get(row.membership.userId);
+      if (!data) continue;
+      data.projectMemberships.push({ ...row.membership, project: row.project });
+    }
+
+    for (const row of roleRows) {
+      const data = details.get(row.membership.profileId);
+      if (!data) continue;
+      data.roles.push({ ...row.membership, role: row.role, organization: row.organization ?? null });
+    }
+
+    for (const row of metaRows) {
+      const data = details.get(row.userId);
+      if (!data) continue;
+      data.employeeMeta.push(row);
+    }
+
+    for (const row of onboardingRows) {
+      const data = details.get(row.userId);
+      if (!data || data.onboardingProgress) continue;
+      data.onboardingProgress = row;
+    }
+
+    const empRefs: Array<{ userId: bigint; managerUserId: bigint | null; designationId: bigint | null }> = [];
+    for (const row of empRows) {
+      const data = details.get(row.userId);
+      if (!data) continue;
+      data.employeeProfile = { ...row, manager: null, designation: null };
+      empRefs.push({ userId: row.userId, managerUserId: row.managerUserId, designationId: row.designationId });
+    }
+
+    const managerIds = Array.from(
+      new Set(empRefs.map((ref) => ref.managerUserId).filter((value): value is bigint => value != null))
+    );
+    const designationIds = Array.from(
+      new Set(empRefs.map((ref) => ref.designationId).filter((value): value is bigint => value != null))
+    );
+
+    const [managerRows, typeRows] = await Promise.all([
+      managerIds.length > 0
+        ? this.db.client
+            .select({ id: profile.id, firstName: profile.firstName, lastName: profile.lastName, email: profile.email })
+            .from(profile)
+            .where(inArray(profile.id, managerIds))
+        : (Promise.resolve([]) as Promise<Array<{ id: bigint; firstName: string | null; lastName: string | null; email: string | null }>>),
+      designationIds.length > 0
+        ? this.db.client
+            .select({ designation: hrDesignation, document: documentTable })
+            .from(hrDesignation)
+            .leftJoin(documentTable, eq(hrDesignation.documentId, documentTable.id))
+            .where(inArray(hrDesignation.id, designationIds))
+        : (Promise.resolve([]) as Promise<Array<{ designation: typeof hrDesignation.$inferSelect; document: typeof documentTable.$inferSelect | null }>>)
+    ]);
+
+    const managerById = new Map(managerRows.map((row) => [row.id.toString(), row]));
+    const designationById = new Map(
+      typeRows.map((row) => [
+        row.designation.id.toString(),
+        { ...row.designation, document: row.document ?? null }
+      ])
+    );
+
+    for (const ref of empRefs) {
+      const data = details.get(ref.userId);
+      if (!data?.employeeProfile) continue;
+      data.employeeProfile.manager =
+        ref.managerUserId != null ? (managerById.get(ref.managerUserId.toString()) ?? null) : null;
+      data.employeeProfile.designation =
+        ref.designationId != null ? (designationById.get(ref.designationId.toString()) ?? null) : null;
+    }
+
+    return details;
+  }
+
+  private async findEmployeeProfile(profileId: bigint) {
+    const [row] = await this.db.client.select().from(profile).where(eq(profile.id, profileId)).limit(1);
+    if (!row) return null;
+    const details = await this.buildEmployeeDetails([row]);
+    return { ...row, ...details.get(profileId)! };
   }
 
   private async resolveLeaveEntitlementPolicy(userId?: bigint, year = new Date().getFullYear()) {
@@ -966,20 +1230,22 @@ export class HrService {
     const now = new Date();
     const context = userId ? await this.resolvePolicyContextForUser(userId) : null;
     const tid = this.currentTenantId();
-    const rows = await this.drizzle.policy.findMany({
-      where: {
-        module: 'leave',
-        policyKey: { in: ['leave_entitlements', 'entitlement'] },
-        NOT: { scopeType: 'global' },
-        isActive: true,
-        OR: [{ effectiveFrom: null }, { effectiveFrom: { lte: now } }],
-        AND: [
-          { OR: [{ effectiveTo: null }, { effectiveTo: { gte: now } }] },
-          ...(tid ? [{ OR: [{ tenantId: tid }, { tenantId: null }] }] : [])
-        ]
-      },
-      orderBy: [{ scopeType: 'asc' }, { priority: 'asc' }, { createdAt: 'asc' }]
-    });
+
+    const conditions: SQL[] = [
+      eq(policy.module, 'leave'),
+      inArray(policy.policyKey, ['leave_entitlements', 'entitlement']),
+      ne(policy.scopeType, 'global'),
+      eq(policy.isActive, true),
+      or(isNull(policy.effectiveFrom), lte(policy.effectiveFrom, now)),
+      or(isNull(policy.effectiveTo), gte(policy.effectiveTo, now))
+    ];
+    if (tid) conditions.push(or(eq(policy.tenantId, tid), isNull(policy.tenantId)));
+
+    const rows = await this.db.client
+      .select()
+      .from(policy)
+      .where(and(...conditions))
+      .orderBy(asc(policy.scopeType), asc(policy.priority), asc(policy.createdAt));
 
     const matched = rows
       .filter((row) => {
@@ -1007,19 +1273,19 @@ export class HrService {
 
     if (userId && Number.isFinite(year) && year > 2000) {
       const previousYear = year - 1;
-      const previousDeltaRows = await this.drizzle.leaveBalanceLedger.groupBy({
-        by: ['leaveTypeKey'],
-        where: {
-          userId,
-          periodYear: previousYear,
-          ...this.tenantWhere()
-        },
-        _sum: {
-          deltaDays: true
-        }
-      });
+      const previousDeltaRows = await this.db.client
+        .select({ leaveTypeKey: leaveBalanceLedger.leaveTypeKey, total: sum(leaveBalanceLedger.deltaDays) })
+        .from(leaveBalanceLedger)
+        .where(
+          and(
+            eq(leaveBalanceLedger.userId, userId),
+            eq(leaveBalanceLedger.periodYear, previousYear),
+            tid ? eq(leaveBalanceLedger.tenantId, tid) : undefined
+          )
+        )
+        .groupBy(leaveBalanceLedger.leaveTypeKey);
       const previousDeltaByKey = new Map(
-        previousDeltaRows.map((row) => [row.leaveTypeKey, Number(row._sum?.deltaDays ?? 0)])
+        previousDeltaRows.map((row) => [row.leaveTypeKey, Number(row.total ?? 0)])
       );
       const baseEntitlements = { ...entitlements };
 
@@ -1036,14 +1302,14 @@ export class HrService {
   }
 
   private async getDefaultLeaveRulesFromRequestTypes() {
-    const types = await this.drizzle.requestType.findMany({
-      where: { isActive: true },
-      select: {
-        name: true,
-        taxonomyKeys: true,
-        formSchema: true
-      }
-    });
+    const types = await this.db.client
+      .select({
+        name: requestType.name,
+        taxonomyKeys: requestType.taxonomyKeys,
+        formSchema: requestType.formSchema
+      })
+      .from(requestType)
+      .where(eq(requestType.isActive, true));
 
     const defaults: Record<string, number> = {};
     const carryoverCaps: Record<string, number> = {};
@@ -1065,29 +1331,33 @@ export class HrService {
   }
 
   private async resolvePolicyContextForUser(userId: bigint) {
-    const [profile, primaryTeam] = await this.drizzle.$transaction([
-      this.drizzle.profile.findUnique({
-        where: { id: userId },
-        include: {
-          employeeProfile: { select: { employmentType: true } }
-        }
-      }),
-      this.drizzle.groupUser.findFirst({
-        where: { userId, isPrimary: true },
-        select: { groupId: true }
-      })
+    const [[currentProfile], [primaryTeam]] = await Promise.all([
+      this.db.client
+        .select({
+          primaryOrganizationId: profile.primaryOrganizationId,
+          employmentType: employeeProfile.employmentType
+        })
+        .from(profile)
+        .leftJoin(employeeProfile, eq(employeeProfile.userId, profile.id))
+        .where(eq(profile.id, userId))
+        .limit(1),
+      this.db.client
+        .select({ groupId: groupUser.groupId })
+        .from(groupUser)
+        .where(and(eq(groupUser.userId, userId), eq(groupUser.isPrimary, true)))
+        .limit(1)
     ]);
 
     return {
       user_id: userId.toString(),
-      organization_id: profile?.primaryOrganizationId?.toString(),
+      organization_id: currentProfile?.primaryOrganizationId?.toString(),
       team_id: primaryTeam?.groupId?.toString(),
-      staff_type: profile?.employeeProfile?.employmentType ?? undefined
+      staff_type: currentProfile?.employmentType ?? undefined
     };
   }
 
-  private serializeEmployee(profile: any) {
-    const groupMemberships = (profile.groups ?? []).map((entry: any) => ({
+  private serializeEmployee(profileRow: any) {
+    const groupMemberships = (profileRow.groups ?? []).map((entry: any) => ({
       id: entry.group.id.toString(),
       name: entry.group.name,
       type: entry.group.type,
@@ -1095,24 +1365,24 @@ export class HrService {
     }));
 
     return this.normalizeBigInts({
-      id: profile.id.toString(),
-      username: profile.username,
-      email: profile.email,
-      status: profile.status,
-      type: profile.type,
-      first_name: profile.firstName,
-      last_name: profile.lastName,
-      phone: profile.phone,
-      primary_organization: profile.primaryOrganization
-        ? { id: profile.primaryOrganization.id.toString(), name: profile.primaryOrganization.name, code: profile.primaryOrganization.code }
+      id: profileRow.id.toString(),
+      username: profileRow.username,
+      email: profileRow.email,
+      status: profileRow.status,
+      type: profileRow.type,
+      first_name: profileRow.firstName,
+      last_name: profileRow.lastName,
+      phone: profileRow.phone,
+      primary_organization: profileRow.primaryOrganization
+        ? { id: profileRow.primaryOrganization.id.toString(), name: profileRow.primaryOrganization.name, code: profileRow.primaryOrganization.code }
         : null,
-      organizations: (profile.organizations ?? []).map((entry: any) => ({
+      organizations: (profileRow.organizations ?? []).map((entry: any) => ({
         id: entry.organization.id.toString(),
         name: entry.organization.name,
         code: entry.organization.code,
         is_primary: entry.isPrimary
       })),
-      roles: (profile.roles ?? []).map((entry: any) => ({
+      roles: (profileRow.roles ?? []).map((entry: any) => ({
         id: entry.role.id.toString(),
         slug: entry.role.slug,
         name: entry.role.name,
@@ -1123,37 +1393,37 @@ export class HrService {
         const type = String(entry.type).toLowerCase();
         return type === 'team' || type === 'department';
       }),
-      projects: (profile.projectMemberships ?? []).map((entry: any) => ({
+      projects: (profileRow.projectMemberships ?? []).map((entry: any) => ({
         id: entry.project.id.toString(),
         name: entry.project.name,
         type: 'project',
         role: entry.role
       })),
-      employee_profile: profile.employeeProfile
+      employee_profile: profileRow.employeeProfile
         ? {
-            ...profile.employeeProfile,
-            userId: profile.employeeProfile.userId.toString(),
-            managerUserId: profile.employeeProfile.managerUserId
-              ? profile.employeeProfile.managerUserId.toString()
+            ...profileRow.employeeProfile,
+            userId: profileRow.employeeProfile.userId.toString(),
+            managerUserId: profileRow.employeeProfile.managerUserId
+              ? profileRow.employeeProfile.managerUserId.toString()
               : null,
-            designationId: profile.employeeProfile.designationId
-              ? profile.employeeProfile.designationId.toString()
+            designationId: profileRow.employeeProfile.designationId
+              ? profileRow.employeeProfile.designationId.toString()
               : null,
-            jobTitle: profile.employeeProfile.jobTitle || profile.employeeProfile.designation?.name || null,
-            jobDescription: profile.employeeProfile.jobDescription || profile.employeeProfile.designation?.document?.contentHtml || null,
+            jobTitle: profileRow.employeeProfile.jobTitle || profileRow.employeeProfile.designation?.name || null,
+            jobDescription: profileRow.employeeProfile.jobDescription || profileRow.employeeProfile.designation?.document?.contentHtml || null,
             primary_team:
               (() => {
-                const pt = (profile.groups ?? []).find(
+                const pt = (profileRow.groups ?? []).find(
                   (g: any) => g.isPrimary && ['team', 'department'].includes(String(g.group.type).toLowerCase())
                 );
                 return pt ? { id: pt.group.id.toString(), name: pt.group.name, type: pt.group.type } : null;
               })(),
             primary_organization:
               (() => {
-                const po = (profile.organizations ?? []).find((o: any) => o.isPrimary);
+                const po = (profileRow.organizations ?? []).find((o: any) => o.isPrimary);
                 return po ? { id: po.organization.id.toString(), name: po.organization.name, code: po.organization.code } : null;
               })(),
-            meta: (profile.employeeMeta ?? []).reduce(
+            meta: (profileRow.employeeMeta ?? []).reduce(
               (acc: Record<string, unknown>, entry: any) => {
                 acc[entry.metaKey] = entry.metaValue;
                 return acc;
@@ -1162,9 +1432,9 @@ export class HrService {
             )
           }
         : null,
-      onboarding_progress: profile.onboardingProgress ?? null,
-      created_at: profile.createdAt,
-      updated_at: profile.updatedAt
+      onboarding_progress: profileRow.onboardingProgress ?? null,
+      created_at: profileRow.createdAt,
+      updated_at: profileRow.updatedAt
     });
   }
 
@@ -1190,24 +1460,27 @@ export class HrService {
   }
 
   private handleEmployeePersistenceError(error: unknown) {
-    if (!(error instanceof DrizzleClientKnownRequestError)) return;
-    if (error.code === 'P2002') {
-      const target = Array.isArray(error.meta?.target)
-        ? (error.meta?.target as string[]).join(', ')
-        : String(error.meta?.target ?? '');
-      if (target.includes('email')) {
-        throw new BadRequestException('Email already exists');
+    if (error && typeof error === 'object') {
+      const raw = error as { code?: unknown; detail?: unknown; constraint?: unknown };
+      const code = String(raw.code ?? '');
+      if (code === '23505') {
+        const detail = String(raw.detail ?? '').toLowerCase();
+        const constraint = String(raw.constraint ?? '').toLowerCase();
+        const context = `${constraint} ${detail}`;
+        if (context.includes('email')) {
+          throw new BadRequestException('Email already exists');
+        }
+        if (context.includes('username')) {
+          throw new BadRequestException('Username already exists');
+        }
+        if (context.includes('employee_code')) {
+          throw new BadRequestException('Employee code already exists');
+        }
+        throw new BadRequestException('Duplicate value detected');
       }
-      if (target.includes('username')) {
-        throw new BadRequestException('Username already exists');
+      if (code === '23503') {
+        throw new BadRequestException('Invalid employee relationship reference');
       }
-      if (target.includes('employee_code')) {
-        throw new BadRequestException('Employee code already exists');
-      }
-      throw new BadRequestException('Duplicate value detected');
-    }
-    if (error.code === 'P2003') {
-      throw new BadRequestException('Invalid employee relationship reference');
     }
   }
 
