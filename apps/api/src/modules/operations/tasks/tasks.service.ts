@@ -19,12 +19,35 @@ import { financeFund, financeGrant } from '$modules/finance/finance/model';
 
 @Injectable()
 export class TasksService {
-  constructor(
+constructor(
     private readonly db: DbService,
     private readonly tenantContext: TenantContextService,
   ) {}
+
+  private tenantScope(tid: bigint, column: any): SQL {
+    return eq(column, tid);
+  }
+
+  private tenantOrgTeamScope(orgCol: any, teamCol: any, tid: bigint): SQL {
+    return or(
+      inArray(orgCol, this.db.client.select({ id: organization.id }).from(organization).where(eq(organization.tenantId, tid)) as any),
+      inArray(teamCol, this.db.client.select({ id: group.id }).from(group).where(eq(group.tenantId, tid)) as any),
+    ) as SQL;
+  }
+
+  private itemTenantScope(tid: bigint, actorId?: bigint): SQL {
+    return or(
+      inArray(workItem.projectId, this.db.client.select({ id: project.id }).from(project).where(eq(project.tenantId, tid)) as any),
+      inArray(workItem.organizationId, this.db.client.select({ id: organization.id }).from(organization).where(eq(organization.tenantId, tid)) as any),
+      inArray(workItem.ownerTeamId, this.db.client.select({ id: group.id }).from(group).where(eq(group.tenantId, tid)) as any),
+      inArray(workItem.sprintId, this.db.client.select({ id: sprint.id }).from(sprint).where(eq(sprint.tenantId, tid)) as any),
+      ...(actorId !== undefined ? [eq(workItem.assignedToId, actorId), eq(workItem.assignedById, actorId)] : []),
+    ) as SQL;
+  }
+
 async listGoals(query: Record<string, any>) {
-    const conditions: SQL[] = [];
+    const tid = this.tenantContext.requireTenantId();
+    const conditions: SQL[] = [this.tenantOrgTeamScope(teamGoal.organizationId, teamGoal.teamId, tid)];
     if (query.team_id) conditions.push(eq(teamGoal.teamId, this.parseBigInt(String(query.team_id), 'team id')));
     if (query.organization_id) conditions.push(eq(teamGoal.organizationId, this.parseBigInt(String(query.organization_id), 'organization id')));
     if (query.period_year) conditions.push(eq(teamGoal.periodYear, Number(query.period_year)));
@@ -55,16 +78,22 @@ async listGoals(query: Record<string, any>) {
       startDate: dto.start_date ? new Date(dto.start_date) : null,
       endDate: dto.end_date ? new Date(dto.end_date) : null,
     };
-    if (id) {
+if (id) {
       await this.db.client.update(teamGoal).set(payload).where(eq(teamGoal.id, id));
-      return this.getGoal(id);
+      return this.getGoal(id, userId);
     }
     const [row] = await this.db.client.insert(teamGoal).values(payload).returning();
-    return this.getGoal(row.id);
+    return this.getGoal(row.id, userId);
   }
 
-  async getGoal(id: string) {
-    const [row] = await this.db.client.select().from(teamGoal).where(eq(teamGoal.id, id)).limit(1);
+async getGoal(id: string, allowActorId?: bigint) {
+    const tid = this.tenantContext.requireTenantId();
+    const [row] = await this.db.client.select().from(teamGoal)
+      .where(and(
+        eq(teamGoal.id, id),
+        or(this.tenantOrgTeamScope(teamGoal.organizationId, teamGoal.teamId, tid), allowActorId ? eq(teamGoal.createdById, allowActorId) : undefined) as SQL,
+      ))
+      .limit(1);
     if (!row) throw new NotFoundException('Goal not found');
     const [objectives, kpis] = await Promise.all([
       this.db.client.select().from(teamObjective).where(eq(teamObjective.goalId, id)),
@@ -76,8 +105,9 @@ async listGoals(query: Record<string, any>) {
     return this.serializeGoal(enriched[0]);
   }
 
-  async listObjectives(query: Record<string, any>) {
-    const conditions: SQL[] = [];
+async listObjectives(query: Record<string, any>) {
+    const tid = this.tenantContext.requireTenantId();
+    const conditions: SQL[] = [this.tenantOrgTeamScope(teamObjective.organizationId, teamObjective.teamId, tid)];
     if (query.goal_id) conditions.push(eq(teamObjective.goalId, String(query.goal_id)));
     if (query.team_id) conditions.push(eq(teamObjective.teamId, this.parseBigInt(String(query.team_id), 'team id')));
     const rows = await this.db.client
@@ -104,16 +134,22 @@ async listGoals(query: Record<string, any>) {
       weight: dto.weight != null ? String(dto.weight) : null,
       dueDate: dto.due_date ? new Date(dto.due_date) : null,
     };
-    if (id) {
+if (id) {
       await this.db.client.update(teamObjective).set(payload).where(eq(teamObjective.id, id));
-      return this.getObjective(id);
+      return this.getObjective(id, userId);
     }
     const [row] = await this.db.client.insert(teamObjective).values(payload).returning();
-    return this.getObjective(row.id);
+    return this.getObjective(row.id, userId);
   }
 
-  async getObjective(id: string) {
-    const [row] = await this.db.client.select().from(teamObjective).where(eq(teamObjective.id, id)).limit(1);
+async getObjective(id: string, allowActorId?: bigint) {
+    const tid = this.tenantContext.requireTenantId();
+    const [row] = await this.db.client.select().from(teamObjective)
+      .where(and(
+        eq(teamObjective.id, id),
+        or(this.tenantOrgTeamScope(teamObjective.organizationId, teamObjective.teamId, tid), allowActorId ? eq(teamObjective.createdById, allowActorId) : undefined) as SQL,
+      ))
+      .limit(1);
     if (!row) throw new NotFoundException('Objective not found');
     const kpis = await this.db.client.select().from(teamKpi).where(eq(teamKpi.objectiveId, id));
     const enriched = await this.enrichObjectives([row]);
@@ -121,8 +157,9 @@ async listGoals(query: Record<string, any>) {
     return this.serializeObjective(enriched[0]);
   }
 
-  async listKpis(query: Record<string, any>) {
-    const conditions: SQL[] = [];
+async listKpis(query: Record<string, any>) {
+    const tid = this.tenantContext.requireTenantId();
+    const conditions: SQL[] = [this.tenantOrgTeamScope(teamKpi.organizationId, teamKpi.teamId, tid)];
     if (query.goal_id) conditions.push(eq(teamKpi.goalId, String(query.goal_id)));
     if (query.objective_id) conditions.push(eq(teamKpi.objectiveId, String(query.objective_id)));
     if (query.team_id) conditions.push(eq(teamKpi.teamId, this.parseBigInt(String(query.team_id), 'team id')));
@@ -156,16 +193,22 @@ async listGoals(query: Record<string, any>) {
       status: dto.status ?? 'draft',
       weight: dto.weight != null ? String(dto.weight) : null,
     };
-    if (id) {
+if (id) {
       await this.db.client.update(teamKpi).set(payload).where(eq(teamKpi.id, id));
-      return this.getKpi(id);
+      return this.getKpi(id, userId);
     }
     const [row] = await this.db.client.insert(teamKpi).values(payload).returning();
-    return this.getKpi(row.id);
+    return this.getKpi(row.id, userId);
   }
 
-  async getKpi(id: string) {
-    const [row] = await this.db.client.select().from(teamKpi).where(eq(teamKpi.id, id)).limit(1);
+async getKpi(id: string, allowActorId?: bigint) {
+    const tid = this.tenantContext.requireTenantId();
+    const [row] = await this.db.client.select().from(teamKpi)
+      .where(and(
+        eq(teamKpi.id, id),
+        or(this.tenantOrgTeamScope(teamKpi.organizationId, teamKpi.teamId, tid), allowActorId ? eq(teamKpi.createdById, allowActorId) : undefined) as SQL,
+      ))
+      .limit(1);
     if (!row) throw new NotFoundException('KPI not found');
     const enriched = await this.enrichKpis([row]);
     return this.serializeKpi(enriched[0]);
@@ -208,8 +251,9 @@ async listGoals(query: Record<string, any>) {
           .from(groupUser)
           .where(and(inArray(groupUser.userId, reportIds), eq(groupUser.isPrimary, true)))
       : [];
-    const teamIds = [...new Set(primaryTeams.map((row) => row.groupId))] as bigint[];
+const teamIds = [...new Set(primaryTeams.map((row) => row.groupId))] as bigint[];
     const conditions: SQL[] = [
+      this.itemTenantScope(tid, managerId),
       or(
         eq(workItem.assignedById, managerId),
         reportIds.length ? inArray(workItem.assignedToId, reportIds) : undefined,
@@ -290,8 +334,9 @@ async listGoals(query: Record<string, any>) {
     return this.serializeWorkItem(enriched[0]);
   }
 
-  async board(actorId: string, query: Record<string, any>) {
-    const conditions: SQL[] = [];
+async board(actorId: string, query: Record<string, any>) {
+    const tid = this.tenantContext.requireTenantId();
+    const conditions: SQL[] = [this.itemTenantScope(tid, this.parseBigInt(actorId, 'user id'))];
     if (query.project_id) conditions.push(eq(workItem.projectId, this.parseBigInt(String(query.project_id), 'project id')));
     if (query.sprint_id) conditions.push(eq(workItem.sprintId, this.parseBigInt(String(query.sprint_id), 'sprint id')));
     if (query.assigned_to_id) conditions.push(eq(workItem.assignedToId, this.parseBigInt(String(query.assigned_to_id), 'assigned to id')));
@@ -468,10 +513,10 @@ async listGoals(query: Record<string, any>) {
       .where(and(eq(employeeProfile.managerUserId, managerId), eq(employeeProfile.tenantId, tid)))).map((row) => row.userId);
 
     const conditions: SQL[] = [
-      or(
+or(
         inArray(
           workLog.workItemId,
-          this.db.client.select({ id: workItem.id }).from(workItem).where(eq(workItem.assignedById, managerId)) as any,
+          this.db.client.select({ id: workItem.id }).from(workItem).where(and(eq(workItem.assignedById, managerId), this.itemTenantScope(tid, managerId))) as any,
         ),
         reportIds.length ? inArray(workLog.staffId, reportIds) : undefined,
       ) as SQL,

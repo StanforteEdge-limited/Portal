@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { and, desc, eq, ilike, inArray, isNotNull, or, SQL } from 'drizzle-orm';
 import { DbService } from '$common/db/db.service';
+import { TenantContextService } from '$common/auth/tenant-context.service';
 import { paginatedResponse } from '$common/helpers/paginated-response';
 import { parseBigIntId, toBigInt } from '$common/utils/ids';
 import type { GroupUserRole } from '$app/db/enums';
@@ -14,10 +15,19 @@ import { project, projectGovernance, projectMember } from './model';
 
 @Injectable()
 export class ProjectsService {
-  constructor(private readonly db: DbService) {}
+constructor(
+    private readonly db: DbService,
+    private readonly tenantContext: TenantContextService,
+  ) {}
+
+  private tenantCond(column: any): SQL | undefined {
+    const tid = this.tenantContext.currentTenantId();
+    return tid ? eq(column, tid) : undefined;
+  }
 
   async list(query: Record<string, any>) {
     const conditions: SQL[] = [];
+    conditions.push(this.tenantCond(project.tenantId)!);
     if (query.organization_id) conditions.push(eq(project.organizationId, parseBigIntId(String(query.organization_id), 'organization id')));
     if (query.active_only === 'true') conditions.push(eq(project.isActive, true));
     if (query.search) {
@@ -60,21 +70,24 @@ export class ProjectsService {
       ? parseBigIntId(dto.organization_id, 'organization id')
       : null;
 
-    if (organizationId) {
-      const [org] = await this.db.client.select({ id: organization.id }).from(organization).where(eq(organization.id, organizationId)).limit(1);
+if (organizationId) {
+      const [org] = await this.db.client.select({ id: organization.id }).from(organization)
+        .where(and(eq(organization.id, organizationId), this.tenantCond(organization.tenantId)!))
+        .limit(1);
       if (!org) throw new NotFoundException('Organization not found');
     }
 
     const ownerId = dto.owner_user_id ? parseBigIntId(dto.owner_user_id, 'owner user id') : createdById;
 
     const createdProject = await this.db.client.transaction(async (tx) => {
-      const [created] = await tx.insert(project)
+const [created] = await tx.insert(project)
         .values({
           name: dto.name,
           description: dto.description,
           createdBy: createdById,
           updatedBy: createdById,
           organizationId,
+          tenantId: this.tenantContext.currentTenantId() ?? null,
           isActive: true,
         })
         .returning();
@@ -287,17 +300,17 @@ export class ProjectsService {
 
   private async getProjectUsage(id: string) {
     const projectId = parseBigIntId(id, 'project id');
-    const [projectRecord] = await this.db.client
+const [projectRecord] = await this.db.client
       .select({ id: project.id, name: project.name })
       .from(project)
-      .where(eq(project.id, projectId))
+      .where(and(eq(project.id, projectId), this.tenantCond(project.tenantId)!))
       .limit(1);
     if (!projectRecord) throw new NotFoundException('Project not found');
 
     const requests = await this.db.client
       .select({ id: requestInstance.id, status: requestInstance.status, data: requestInstance.data })
       .from(requestInstance)
-      .where(isNotNull(requestInstance.data));
+      .where(and(isNotNull(requestInstance.data), this.tenantCond(requestInstance.tenantId)!));
 
     let total = 0;
     let open = 0;
@@ -319,12 +332,12 @@ export class ProjectsService {
   }
 
   private async findProjectWithDetails(projectId: bigint) {
-    const [row] = await this.db.client
+const [row] = await this.db.client
       .select({ project, organization, governance: projectGovernance })
       .from(project)
       .leftJoin(organization, eq(project.organizationId, organization.id))
       .leftJoin(projectGovernance, eq(projectGovernance.projectId, project.id))
-      .where(eq(project.id, projectId))
+      .where(and(eq(project.id, projectId), this.tenantCond(project.tenantId)!))
       .limit(1);
     if (!row) return null;
 
