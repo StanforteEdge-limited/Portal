@@ -3,7 +3,7 @@ import { NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { RepositoryService } from '$common/db/repository.service';
 import { TenantContextService } from '$common/auth/tenant-context.service';
 import { UsersService } from '$modules/identity/users/users.service';
-import { OrganizationsService } from '$modules/directory/organizations/organizations.service';
+import { OrganizationsService } from '$modules/hrm/organizations/organizations.service';
 import { RbacService } from '$modules/identity/rbac/rbac.service';
 import { TenancyService } from '$modules/tenancy/tenancy.service';
 import { AuthService } from '$modules/identity/auth/auth.service';
