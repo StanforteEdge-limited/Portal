@@ -1,6 +1,6 @@
 import { defineRelationsPart } from 'drizzle-orm';
-import { bigint, bigserial, boolean, date, doublePrecision, index, integer, jsonb, numeric, pgTable, serial, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
-import { tokenTypeEnum, organizationTypeEnum, groupUserRoleEnum, requestStatusEnum, employmentTypeEnum, employmentStatusEnum, workModeEnum, onboardingStatusEnum, workItemTypeEnum, workItemStatusEnum, workPriorityEnum, workLogApprovalStatusEnum, procurementCategoryEnum, paymentPatternEnum, procurementStatusEnum, poStatusEnum, grnStatusEnum, mailProviderEnum } from '$app/db/enums';
+import { bigint, boolean, date, index, jsonb, numeric, pgTable, text, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
+import { grnStatusEnum, paymentPatternEnum, poStatusEnum, procurementCategoryEnum, procurementStatusEnum } from '$app/db/enums';
 import { tenant } from '$modules/tenancy/model';
 
 export const procurementCase = pgTable("sta_procurement_cases", {
@@ -124,21 +124,4 @@ export const procurementAttachment = pgTable("sta_procurement_attachments", {
 export type ProcurementAttachment = typeof procurementAttachment.$inferSelect;
 export type NewProcurementAttachment = typeof procurementAttachment.$inferInsert;
 
-export const vendorPortalUser = pgTable("sta_vendor_portal_users", {
-  id: uuid("id").defaultRandom().primaryKey().notNull(),
-  vendorId: uuid("vendor_id").notNull(),
-  email: varchar("email", { length: 255 }).notNull().unique(),
-  hashedPassword: text("hashed_password"),
-  name: varchar("name", { length: 120 }).notNull(),
-  status: varchar("status", { length: 20 }).default("active").notNull(),
-  lastLoginAt: timestamp("last_login_at", { mode: 'date', precision: 6 }),
-  createdAt: timestamp("created_at", { mode: 'date', precision: 6 }).defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { mode: 'date', precision: 6 }).notNull().$onUpdate(() => new Date()),
-}, (table) => [
-    index("vendorPortalUser_index_vendorId").on(table.vendorId),
-]);
-
-export type VendorPortalUser = typeof vendorPortalUser.$inferSelect;
-export type NewVendorPortalUser = typeof vendorPortalUser.$inferInsert;
-
-export const modules_finance_procurementRelations = defineRelationsPart({ procurementCase, procurementRequisition, procurementOrder, procurementGRN, procurementAttachment, vendorPortalUser });
+export const modules_finance_procurementRelations = defineRelationsPart({ procurementCase, procurementRequisition, procurementOrder, procurementGRN, procurementAttachment });

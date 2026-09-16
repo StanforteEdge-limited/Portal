@@ -1,9 +1,6 @@
 import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
 import { ProcurementController } from './procurement.controller';
 import { ProcurementService } from './procurement.service';
-import { VendorPortalController } from './vendor-portal.controller';
-import { VendorPortalService } from './vendor-portal.service';
 import { WorkflowModule } from '$modules/requests/workflow/workflow.module';
 import { NotificationsModule } from '$modules/notifications/notifications.module';
 import { MailModule } from '$common/mail/mail.module';
@@ -20,12 +17,10 @@ import { StorageService } from '$modules/storage/storage.service';
     MailModule,
     PdfModule,
     StorageModule,
-    JwtModule.register({ secret: process.env.JWT_SECRET || 'fallback-secret' }),
   ],
-  controllers: [ProcurementController, VendorPortalController],
+  controllers: [ProcurementController],
   providers: [
     ProcurementService,
-    VendorPortalService,
     ProcurementDocumentFacadeService,
     {
       provide: 'PROCUREMENT_JOB_HANDLERS',

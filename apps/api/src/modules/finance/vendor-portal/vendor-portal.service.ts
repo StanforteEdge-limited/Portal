@@ -3,9 +3,10 @@ import { JwtService } from '@nestjs/jwt';
 import { and, asc, desc, eq, ne } from 'drizzle-orm';
 import { DbService } from '$common/db/db.service';
 import * as bcrypt from 'bcryptjs';
-import { VendorLoginDto, VendorAcknowledgeDto } from '$modules/finance/procurement/dto/vendor-login.dto';
+import { VendorLoginDto, VendorAcknowledgeDto } from './dto/vendor-login.dto';
 import { fileAsset } from '$modules/storage/model';
-import { procurementAttachment, procurementOrder, vendorPortalUser } from './model';
+import { procurementAttachment, procurementOrder } from '$modules/finance/procurement/model';
+import { vendorPortalUser } from './model';
 
 @Injectable()
 export class VendorPortalService {
@@ -67,7 +68,7 @@ export class VendorPortalService {
     const [updated] = await this.db.client
       .update(procurementOrder)
       .set({ vendorAcknowledgedAt: new Date(), vendorAcknowledgeNote: dto.note ?? null, status: 'acknowledged' })
-      .where(eq(procurementOrder.id, id))
+      .where(and(eq(procurementOrder.id, id), eq(procurementOrder.vendorId, vendorId)))
       .returning();
     return updated;
   }

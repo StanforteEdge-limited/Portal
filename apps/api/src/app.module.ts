@@ -15,6 +15,8 @@ import { FormsModule } from '$modules/requests/forms/forms.module';
 import { RequestsModule } from '$modules/requests/requests/requests.module';
 import { WorkflowModule } from '$modules/requests/workflow/workflow.module';
 import { FinanceModule } from '$modules/finance/finance/finance.module';
+import { ProcurementModule } from '$modules/finance/procurement/procurement.module';
+import { VendorPortalModule } from '$modules/finance/vendor-portal/vendor-portal.module';
 import { HrModule } from '$modules/hr/hr/hr.module';
 import { LeaveModule } from '$modules/hr/leave/leave.module';
 import { NotificationsModule } from '$modules/notifications/notifications.module';
@@ -57,6 +59,8 @@ import { SchedulingModule } from '$modules/scheduling/scheduling.module';
     RequestsModule,
     WorkflowModule,
     FinanceModule,
+    ProcurementModule,
+    VendorPortalModule,
     HrModule,
     LeaveModule,
     NotificationsModule,

@@ -1,7 +1,7 @@
 import { Controller, Post, Get, Param, Body, Req, UseGuards } from '@nestjs/common';
 import { VendorPortalService } from './vendor-portal.service';
-import { VendorLoginDto, VendorAcknowledgeDto } from '$modules/finance/procurement/dto/vendor-login.dto';
-import { VendorJwtGuard } from '$modules/finance/procurement/guards/vendor-jwt.guard';
+import { VendorLoginDto, VendorAcknowledgeDto } from './dto/vendor-login.dto';
+import { VendorJwtGuard } from '$common/auth/vendor-jwt.guard';
 
 @Controller('vendor-portal')
 export class VendorPortalController {
