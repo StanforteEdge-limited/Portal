@@ -111,6 +111,25 @@ export class PayrollService {
     return this.toScale(value) ?? '0';
   }
 
+  private tenantWhere() {
+    const tid = this.tenantContext.currentTenantId();
+    return tid ? { tenantId: tid } : {};
+  }
+
+  private tenantCond(column: any): SQL | undefined {
+    const tid = this.tenantContext.currentTenantId();
+    return tid ? eq(column, tid) : undefined;
+  }
+
+  private async findRunScoped(id: string) {
+    const rows = await this.db.client
+      .select()
+      .from(payrollRun)
+      .where(and(eq(payrollRun.id, id), this.tenantCond(payrollRun.tenantId)))
+      .limit(1);
+    return rows[0] ?? null;
+  }
+
   private combine(...conds: Array<SQL | undefined>): SQL | undefined {
     const present = conds.filter((c): c is SQL => c !== undefined);
     return present.length ? and(...present) : undefined;
@@ -956,7 +975,7 @@ export class PayrollService {
   async listRuns(query: Record<string, any>) {
     const page = Math.max(1, Number(query.page ?? 1));
     const perPage = Math.min(100, Math.max(1, Number(query.per_page ?? 20)));
-    const where: Drizzle.PayrollRunWhereInput = {};
+    const where: Drizzle.PayrollRunWhereInput = { ...this.tenantWhere() };
     if (query.status_in) {
       where.status = { in: String(query.status_in).split(',') };
     } else if (query.status) {
@@ -984,8 +1003,8 @@ export class PayrollService {
   }
 
   async getRun(id: string) {
-    const row = await this.drizzle.payrollRun.findUnique({
-      where: { id },
+    const row = await this.drizzle.payrollRun.findFirst({
+      where: { id, ...this.tenantWhere() },
       include: this.runInclude()
     });
     if (!row) throw new NotFoundException('Payroll run not found');
@@ -993,8 +1012,8 @@ export class PayrollService {
   }
 
   async deleteRun(id: string) {
-    const existing = await this.drizzle.payrollRun.findUnique({
-      where: { id },
+    const existing = await this.drizzle.payrollRun.findFirst({
+      where: { id, ...this.tenantWhere() },
       include: {
         _count: {
           select: {
@@ -1068,7 +1087,7 @@ export class PayrollService {
   }
 
   async updateRun(id: string, dto: CreatePayrollRunDto, actorId?: string) {
-    const existing = await this.drizzle.payrollRun.findUnique({ where: { id } });
+    const existing = await this.findRunScoped(id);
     if (!existing) throw new NotFoundException('Payroll run not found');
     if (!['draft', 'prepared'].includes(existing.status)) {
       throw new BadRequestException('Only draft or prepared runs can be edited');
@@ -1093,13 +1112,14 @@ export class PayrollService {
   }
 
   async generateRun(id: string, actorId?: string) {
-    const run = await this.drizzle.payrollRun.findUnique({ where: { id } });
+    const run = await this.findRunScoped(id);
     if (!run) throw new NotFoundException('Payroll run not found');
     if (!['draft', 'prepared'].includes(run.status)) throw new BadRequestException('Run cannot be regenerated in its current status');
 
     const workers = await this.drizzle.payrollWorker.findMany({
       where: {
         status: 'active',
+        ...this.tenantWhere(),
         OR: [{ startDate: null }, { startDate: { lte: run.periodEnd } }],
         AND: [{ OR: [{ endDate: null }, { endDate: { gte: run.periodStart } }] }],
         ...(run.organizationId ? { organizationId: run.organizationId } : {}),
@@ -1462,7 +1482,7 @@ export class PayrollService {
   }
 
   async submitRun(id: string, actorId?: string) {
-    const run = await this.drizzle.payrollRun.findUnique({ where: { id }, include: { items: true } });
+    const run = await this.drizzle.payrollRun.findFirst({ where: { id, ...this.tenantWhere() }, include: { items: true } });
     if (!run) throw new NotFoundException('Payroll run not found');
     if (run.items.length === 0) {
       throw new BadRequestException(
@@ -1490,7 +1510,7 @@ export class PayrollService {
   }
 
   async reviewRun(id: string, dto: { note?: string }, actorId?: string) {
-    const run = await this.drizzle.payrollRun.findUnique({ where: { id } });
+    const run = await this.findRunScoped(id);
     if (!run) throw new NotFoundException('Payroll run not found');
     if (!['prepared', 'draft', 'rejected'].includes(run.status)) throw new BadRequestException('Run cannot be moved to review in its current status');
     await this.drizzle.payrollRun.update({
@@ -1514,7 +1534,7 @@ export class PayrollService {
   }
 
   async approveRun(id: string, dto: { note?: string }, actorId?: string) {
-    const run = await this.drizzle.payrollRun.findUnique({ where: { id } });
+    const run = await this.findRunScoped(id);
     if (!run) throw new NotFoundException('Payroll run not found');
     if (!['under_review', 'prepared'].includes(run.status)) throw new BadRequestException('Run cannot be approved in its current status');
     await this.drizzle.payrollRun.update({
@@ -1541,7 +1561,7 @@ export class PayrollService {
   }
 
   async authorizeRun(id: string, dto: { notes?: string }, userId: string) {
-    const run = await this.drizzle.payrollRun.findUnique({ where: { id } });
+    const run = await this.findRunScoped(id);
     if (!run) throw new NotFoundException('Payroll run not found');
     if (run.status !== 'approved') {
       throw new BadRequestException(`Cannot authorize a run with status "${run.status}". Run must be approved first.`);
@@ -1570,7 +1590,7 @@ export class PayrollService {
   }
 
   async rejectRun(id: string, dto: { note?: string }, actorId?: string) {
-    const run = await this.drizzle.payrollRun.findUnique({ where: { id } });
+    const run = await this.findRunScoped(id);
     if (!run) throw new NotFoundException('Payroll run not found');
     if (!['under_review', 'approved'].includes(run.status)) throw new BadRequestException('Run cannot be rejected in its current status');
     await this.drizzle.payrollRun.update({
@@ -1593,7 +1613,7 @@ export class PayrollService {
   }
 
   async reopenRun(id: string, dto: { note?: string }, actorId?: string) {
-    const run = await this.drizzle.payrollRun.findUnique({ where: { id }, include: { postings: true } });
+    const run = await this.drizzle.payrollRun.findFirst({ where: { id, ...this.tenantWhere() }, include: { postings: true } });
     if (!run) throw new NotFoundException('Payroll run not found');
     if (!['rejected', 'approved', 'prepared'].includes(run.status)) throw new BadRequestException('Run cannot be reopened in its current status');
     if (run.postings.length > 0 || run.status === 'paid' || run.status === 'closed') {
@@ -1611,7 +1631,7 @@ export class PayrollService {
   }
 
   async closeRun(id: string, dto: { note?: string }, actorId?: string) {
-    const run = await this.drizzle.payrollRun.findUnique({ where: { id } });
+    const run = await this.findRunScoped(id);
     if (!run) throw new NotFoundException('Payroll run not found');
     if (run.status !== 'paid') throw new BadRequestException('Only paid payroll runs can be closed');
     await this.drizzle.payrollRun.update({
@@ -1634,7 +1654,7 @@ export class PayrollService {
   }
 
   async payRun(id: string, dto: PayPayrollRunDto, actorId?: string) {
-    const run = await this.drizzle.payrollRun.findUnique({ where: { id }, include: this.runInclude() });
+    const run = await this.drizzle.payrollRun.findFirst({ where: { id, ...this.tenantWhere() }, include: this.runInclude() });
     if (!run) throw new NotFoundException('Payroll run not found');
     if (run.status !== 'authorized') {
       throw new BadRequestException(`Cannot pay a run with status "${run.status}". Run must be authorized by ED/COO first.`);
@@ -1699,8 +1719,8 @@ export class PayrollService {
   }
 
   async generateRunItemPayslip(runId: string, itemId: string) {
-    const run = await this.drizzle.payrollRun.findUnique({
-      where: { id: runId },
+    const run = await this.drizzle.payrollRun.findFirst({
+      where: { id: runId, ...this.tenantWhere() },
       include: {
         items: {
           where: { id: itemId },
@@ -1743,8 +1763,8 @@ export class PayrollService {
   }
 
   async generateBankSchedule(runId: string) {
-    const run = await this.drizzle.payrollRun.findUnique({
-      where: { id: runId },
+    const run = await this.drizzle.payrollRun.findFirst({
+      where: { id: runId, ...this.tenantWhere() },
       include: {
         items: {
           include: {
@@ -1789,8 +1809,8 @@ export class PayrollService {
   }
 
   async monthlyBreakdown(id: string) {
-    const run = await this.drizzle.payrollRun.findUnique({
-      where: { id },
+    const run = await this.drizzle.payrollRun.findFirst({
+      where: { id, ...this.tenantWhere() },
       include: {
         items: {
           include: {
@@ -1859,8 +1879,8 @@ export class PayrollService {
   }
 
   async generateRunPayslipsPackage(runId: string) {
-    const run = await this.drizzle.payrollRun.findUnique({
-      where: { id: runId },
+    const run = await this.drizzle.payrollRun.findFirst({
+      where: { id: runId, ...this.tenantWhere() },
       include: this.runInclude()
     });
     if (!run) throw new NotFoundException('Payroll run not found');
@@ -1907,8 +1927,8 @@ export class PayrollService {
   }
 
   async distributeRunPayslips(runId: string, actorId?: string) {
-    const run = await this.drizzle.payrollRun.findUnique({
-      where: { id: runId },
+    const run = await this.drizzle.payrollRun.findFirst({
+      where: { id: runId, ...this.tenantWhere() },
       include: this.runInclude()
     });
     if (!run) throw new NotFoundException('Payroll run not found');
@@ -2056,7 +2076,7 @@ export class PayrollService {
     const orgFilter = query.organization_id ? { organizationId: toBigInt(String(query.organization_id)) } : {};
     const [runs, workers] = await this.drizzle.$transaction([
       this.drizzle.payrollRun.findMany({
-        where: { year, ...orgFilter },
+        where: { year, ...orgFilter, ...this.tenantWhere() },
         include: {
           items: {
             include: {
@@ -2070,7 +2090,7 @@ export class PayrollService {
         orderBy: [{ year: 'asc' }, { month: 'asc' }]
       }),
       this.drizzle.payrollWorker.findMany({
-        where: { status: 'active', ...orgFilter },
+        where: { status: 'active', ...orgFilter, ...this.tenantWhere() },
         select: { workerType: true, organizationId: true }
       })
     ]);
@@ -2158,6 +2178,8 @@ export class PayrollService {
   }
 
   async updateRunItem(runId: string, itemId: string, dto: UpdatePayrollRunItemDto, actorId?: string) {
+    const run = await this.findRunScoped(runId);
+    if (!run) throw new NotFoundException('Payroll run not found');
     const item = await this.drizzle.payrollRunItem.findFirst({ where: { id: itemId, runId }, include: { run: { include: { postings: true } } } });
     if (!item) throw new NotFoundException('Payroll run item not found');
     if (['paid', 'closed'].includes(item.run.status) || item.run.postings.length > 0) {
@@ -2189,6 +2211,8 @@ export class PayrollService {
   }
 
   async updateRunItemAllocations(runId: string, itemId: string, dto: UpdatePayrollRunAllocationsDto, actorId?: string) {
+    const run = await this.findRunScoped(runId);
+    if (!run) throw new NotFoundException('Payroll run not found');
     const item = await this.drizzle.payrollRunItem.findFirst({ where: { id: itemId, runId }, include: { run: { include: { postings: true } } } });
     if (!item) throw new NotFoundException('Payroll run item not found');
     if (['paid', 'closed'].includes(item.run.status) || item.run.postings.length > 0) {
@@ -2226,12 +2250,12 @@ export class PayrollService {
   }
 
   async updateRunWorkerTimesheetAllocations(runId: string, workerId: string, dto: UpdatePayrollRunTimesheetAllocationsDto, actorId?: string) {
-    const run = await this.drizzle.payrollRun.findUnique({ where: { id: runId }, include: { postings: true } });
+    const run = await this.drizzle.payrollRun.findFirst({ where: { id: runId, ...this.tenantWhere() }, include: { postings: true } });
     if (!run) throw new NotFoundException('Payroll run not found');
     if (['paid', 'closed'].includes(run.status) || run.postings.length > 0) {
       throw new BadRequestException('Paid, closed, or posted payroll runs cannot be edited');
     }
-    const worker = await this.drizzle.payrollWorker.findUnique({ where: { id: workerId } });
+    const worker = await this.drizzle.payrollWorker.findFirst({ where: { id: workerId, ...this.tenantWhere() } });
     if (!worker) throw new NotFoundException('Payroll worker not found');
 
     const normalized = this.normalizeTimesheetInputRows(dto.allocations);
@@ -2613,7 +2637,7 @@ export class PayrollService {
 
     for (const grouped of analysis.lineGroups) {
       const key = `${grouped.run_name}::${grouped.worker_ref}`;
-      const run = runMap.get(grouped.run_name) || (await this.drizzle.payrollRun.findFirst({ where: { OR: [{ name: grouped.run_name }, { AND: [{ year: analysis.runs.find((row) => row.run_name === grouped.run_name)?.year ?? -1 }, { month: analysis.runs.find((row) => row.run_name === grouped.run_name)?.month ?? -1 }] }] } }));
+      const run = runMap.get(grouped.run_name) || (await this.drizzle.payrollRun.findFirst({ where: { ...this.tenantWhere(), OR: [{ name: grouped.run_name }, { AND: [{ year: analysis.runs.find((row) => row.run_name === grouped.run_name)?.year ?? -1 }, { month: analysis.runs.find((row) => row.run_name === grouped.run_name)?.month ?? -1 }] }] } }));
       const worker = workerMap.get(grouped.worker_ref) || await this.findImportedWorker(grouped.worker_ref, analysis.workers);
       const payload = { run_name: grouped.run_name, worker_ref: grouped.worker_ref, lines: grouped.lines, allocations: analysis.allocationsByKey.get(key) ?? [] } as Drizzle.InputJsonValue;
       if (!run || !worker) {
@@ -2659,7 +2683,7 @@ export class PayrollService {
 
     const successfulRunIds = Array.from(new Set(rowResults.filter((row) => row.linkedRunId && row.status === 'success').map((row) => row.linkedRunId!)));
     for (const runId of successfulRunIds) {
-      const run = await this.drizzle.payrollRun.findUnique({ where: { id: runId }, include: { items: true } });
+      const run = await this.drizzle.payrollRun.findFirst({ where: { id: runId, ...this.tenantWhere() }, include: { items: true } });
       if (!run) continue;
       const matchingSource = analysis.runs.find((row) => run.name === row.run_name || (run.year === row.year && run.month === row.month));
       const nextStatus = matchingSource?.status || (run.items.some((item) => item.paymentStatus === 'paid') ? 'paid' : 'prepared');
@@ -3569,7 +3593,12 @@ export class PayrollService {
     const year = workDate.getUTCFullYear();
     const periodStart = new Date(Date.UTC(year, month - 1, 1));
     const periodEnd = new Date(Date.UTC(year, month, 0));
-    const run = await this.drizzle.payrollRun.findFirst({ where: { year, month } });
+    const runs = await this.db.client
+      .select()
+      .from(payrollRun)
+      .where(and(eq(payrollRun.year, year), eq(payrollRun.month, month), this.tenantCond(payrollRun.tenantId)))
+      .limit(1);
+    const run = runs[0] ?? null;
     if (!run) return null;
     if (['approved', 'authorized', 'paid', 'closed'].includes(run.status)) return null;
     const approvedRows = await this.drizzle.projectTimesheetEntry.findMany({
@@ -4001,7 +4030,7 @@ export class PayrollService {
       if (!row.period_start) rowIssues.push('period_start is required');
       if (!row.period_end) rowIssues.push('period_end is required');
       if (runRows.has(row.run_name)) rowIssues.push('run_name must be unique');
-      const existing = row.year && row.month ? await this.drizzle.payrollRun.findFirst({ where: { year: row.year, month: row.month } }) : null;
+      const existing = row.year && row.month ? await this.drizzle.payrollRun.findFirst({ where: { year: row.year, month: row.month, ...this.tenantWhere() } }) : null;
       if (existing && dto.update_existing !== true) rowIssues.push(`run already exists for ${row.month}/${row.year}`);
       if (existing && existing.status === 'paid') rowIssues.push('existing paid runs cannot be overwritten');
       if (row.paid_from_account) {
@@ -4352,9 +4381,9 @@ export class PayrollService {
     if (!row) return null;
     const profileId = row.profile_id ? this.parseBigInt(row.profile_id, 'profile id') : null;
     return (
-      (profileId ? await this.drizzle.payrollWorker.findFirst({ where: { profileId } }) : null) ||
-      (row.staff_code ? await this.drizzle.payrollWorker.findFirst({ where: { staffCode: row.staff_code } }) : null) ||
-      (row.email ? await this.drizzle.payrollWorker.findFirst({ where: { email: row.email, fullName: row.full_name } }) : null)
+      (profileId ? await this.drizzle.payrollWorker.findFirst({ where: { profileId, ...this.tenantWhere() } }) : null) ||
+      (row.staff_code ? await this.drizzle.payrollWorker.findFirst({ where: { staffCode: row.staff_code, ...this.tenantWhere() } }) : null) ||
+      (row.email ? await this.drizzle.payrollWorker.findFirst({ where: { email: row.email, fullName: row.full_name, ...this.tenantWhere() } }) : null)
     );
   }
 
@@ -4365,7 +4394,7 @@ export class PayrollService {
     runMap: Map<string, any>
   ) {
     const [runName, workerRef] = key.split('::');
-    const run = runMap.get(runName) || await this.drizzle.payrollRun.findFirst({ where: { name: runName } });
+    const run = runMap.get(runName) || await this.drizzle.payrollRun.findFirst({ where: { name: runName, ...this.tenantWhere() } });
     const worker = workerMap.get(workerRef) || await this.findImportedWorker(workerRef, analysis.workers);
     if (!run || !worker) return null;
     const item = await this.drizzle.payrollRunItem.findFirst({ where: { runId: run.id, workerId: worker.id } });
@@ -4456,8 +4485,8 @@ export class PayrollService {
       includeRoleRecipients?: string[];
     }
   ) {
-    const run = await this.drizzle.payrollRun.findUnique({
-      where: { id: runId },
+    const run = await this.drizzle.payrollRun.findFirst({
+      where: { id: runId, ...this.tenantWhere() },
       select: {
         id: true,
         name: true,
