@@ -32,14 +32,7 @@ export class PurchaseOrderDocument implements Document<PurchaseOrderContext> {
     const poId = ids.options?.poId as string;
     if (!poId) throw new Error('poId option required');
 
-    const po = await this.engine.drizzle.procurementOrder.findUnique({
-      where: { id: poId },
-      include: {
-        vendor: true,
-        preparer: true,
-        organization: true,
-      },
-    });
+    const po = await this.engine.fetchPurchaseOrder(poId);
     if (!po) throw new Error('Purchase Order not found');
 
     const items = (po.items as any[]) || [];

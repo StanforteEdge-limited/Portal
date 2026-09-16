@@ -2,7 +2,6 @@ import { NotFoundException } from '@nestjs/common';
 import { DocumentGeneratorService } from '$common/documents/document-generator.service';
 import { Document, DocumentIds, DocumentOutput } from '$common/documents/document.types';
 import { PaymentVoucherDocument } from './payment-voucher.document';
-import { toBigInt } from '$common/utils/ids';
 
 type PVWithAttachmentsContext = {
   voucher: any;
@@ -20,17 +19,7 @@ export class PVWithAttachmentsDocument implements Document<PVWithAttachmentsCont
     if (!voucherId) throw new Error('voucherId required');
     const generatedAt = new Date();
 
-    const voucher = await this.engine.drizzle.financePaymentVoucher.findFirst({
-      where: { requestId: toBigInt(requestId), id: voucherId },
-      include: {
-        evidenceFile: true,
-        attachments: {
-          where: { fileKind: 'evidence' },
-          include: { file: true },
-          orderBy: { sortOrder: 'asc' },
-        },
-      },
-    });
+    const voucher = await this.engine.fetchPaymentVoucher(requestId, voucherId);
     if (!voucher) throw new NotFoundException('Payment voucher not found');
 
     const pvDoc = new PaymentVoucherDocument(this.engine);
@@ -74,7 +63,7 @@ export class PVWithAttachmentsDocument implements Document<PVWithAttachmentsCont
         : [];
 
     if (retirementIds.length) {
-      const files = await this.engine.drizzle.fileAsset.findMany({ where: { id: { in: retirementIds } } });
+      const files = await this.engine.fetchFileAssetsByIds(retirementIds);
       for (const file of files) {
         const buffer = await this.engine.readAssetFileBuffer(file);
         if (buffer) {

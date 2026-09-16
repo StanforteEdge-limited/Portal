@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { DeductionService } from '$modules/finance/finance/deduction.service';
-import { DrizzleService } from '$common/drizzle/drizzle.service';
+import { RepositoryService } from '$common/db/repository.service';
 import { StatutoryDeductionsQueryDto, RemitStatutoryDeductionsDto } from '$modules/finance/finance/dto/statutory-deductions.dto';
 
 const mockDeductions = [
@@ -37,7 +37,7 @@ describe('DeductionService — listRequestDeductions', () => {
       },
     };
     const module: TestingModule = await Test.createTestingModule({
-      providers: [DeductionService, { provide: DrizzleService, useValue: drizzle }],
+      providers: [DeductionService, { provide: RepositoryService, useValue: drizzle }],
     }).compile();
     service = module.get<DeductionService>(DeductionService);
   });
@@ -68,7 +68,7 @@ describe('DeductionService — batchRemitDeductions', () => {
       },
     };
     const module: TestingModule = await Test.createTestingModule({
-      providers: [DeductionService, { provide: DrizzleService, useValue: drizzle }],
+      providers: [DeductionService, { provide: RepositoryService, useValue: drizzle }],
     }).compile();
     service = module.get<DeductionService>(DeductionService);
   });

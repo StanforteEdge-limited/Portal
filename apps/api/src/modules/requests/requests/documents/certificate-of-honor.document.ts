@@ -27,17 +27,7 @@ export class CertificateOfHonorDocument implements Document<CertificateContext> 
 
     let signatureDataUri: string | null = null;
     if (options.signature_file_id) {
-      const sigAsset = await this.engine.drizzle.fileAsset.findUnique({
-        where: { id: options.signature_file_id as string },
-      });
-      if (sigAsset) {
-        const buf = await this.engine.readAssetFileBuffer(sigAsset);
-        if (buf) {
-          const ext = (sigAsset.fileName ?? '').split('.').pop()?.toLowerCase() ?? 'png';
-          const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/png';
-          signatureDataUri = `data:${mime};base64,${buf.toString('base64')}`;
-        }
-      }
+      signatureDataUri = await this.engine.resolveSignatureDataUri(options.signature_file_id as string);
     }
 
     const staffName =

@@ -40,17 +40,7 @@ export class RequestWithAttachmentsDocument implements Document<RequestWithAttac
     ];
 
     for (const item of request.items) {
-      const files = Array.from(
-        new Map(
-          [
-            ...(item.files ?? []).map((a: any) => a.file).filter(Boolean),
-            item.file ?? null,
-          ]
-            .filter(Boolean)
-            .map((f: any) => [f.id, f]),
-        ).values(),
-      ) as any[];
-      for (const file of files) {
+      for (const file of this.engine.uniqueFilesFromRequestItem(item)) {
         const buffer = await this.engine.readAssetFileBuffer(file);
         if (buffer) {
           entries.push({ path: `request/attachments/${file.fileName}`, buffer });

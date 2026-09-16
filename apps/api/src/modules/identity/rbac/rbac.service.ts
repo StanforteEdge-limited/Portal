@@ -1,7 +1,9 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { DrizzleService } from '$common/drizzle/drizzle.service';
+import { SQL, and, asc, count, eq, ilike, inArray, isNull, or } from 'drizzle-orm';
+import { DbService } from '$common/db/db.service';
+import { TenantContextService } from '$common/auth/tenant-context.service';
 import { paginatedResponse } from '$common/helpers/paginated-response';
-import { toBigInt } from '$common/utils/ids';
+import { parseBigIntId } from '$common/utils/ids';
 import { TenantContext } from '$common/auth/tenant-context';
 import { AssignUserRolesDto } from '$modules/identity/rbac/dto/assign-user-roles.dto';
 import { CreatePermissionDto } from '$modules/identity/rbac/dto/create-permission.dto';
@@ -9,73 +11,122 @@ import { CreateRoleDto } from '$modules/identity/rbac/dto/create-role.dto';
 import { SetRolePermissionsDto } from '$modules/identity/rbac/dto/set-role-permissions.dto';
 import { UpdatePermissionDto } from '$modules/identity/rbac/dto/update-permission.dto';
 import { UpdateRoleDto } from '$modules/identity/rbac/dto/update-role.dto';
+import { role as roleTable, permission as permissionTable, rolePermission, userRole as userRoleTable } from '$modules/identity/rbac/model';
+import { profile } from '$modules/identity/users/model';
+import { organization } from '$modules/directory/organizations/model';
+import { tenantMembership } from '$modules/tenancy/model';
 
 @Injectable()
 export class RbacService {
-  constructor(private readonly drizzle: DrizzleService) {}
+  constructor(
+    private readonly db: DbService,
+    private readonly tenantContext: TenantContextService,
+  ) {}
+
+private templateScopeCondition(table: typeof roleTable | typeof permissionTable, tid?: bigint): SQL | undefined {
+    if (!tid) return undefined;
+    return or(eq(table.tenantId, tid), isNull(table.tenantId)) as SQL;
+  }
 
   async getOverview(includeInactive = false, tenant?: TenantContext) {
-    const [roles, permissions, usersWithRoles] = await this.drizzle.$transaction([
-      this.drizzle.role.count({ where: includeInactive ? {} : { isActive: true } }),
-      this.drizzle.permission.count(),
-      this.drizzle.userRole.groupBy({
-        by: ['profileId'],
-        where: tenant ? { tenantId: tenant.tenantId } : undefined,
-        orderBy: { profileId: 'asc' }
-      })
+    const tid = tenant?.tenantId ?? this.tenantContext.currentTenantId();
+    const roleCond = this.templateScopeCondition(roleTable, tid);
+    const permCond = this.templateScopeCondition(permissionTable, tid);
+    const isActiveCond = includeInactive ? undefined : eq(roleTable.isActive, true);
+
+    const [roleCount, permissionCount, userProfileIds] = await Promise.all([
+      this.db.client.select({ value: count() }).from(roleTable).where(and(isActiveCond, roleCond)),
+      this.db.client.select({ value: count() }).from(permissionTable).where(permCond),
+      tid
+        ? this.db.client
+            .selectDistinct({ profileId: userRoleTable.profileId })
+            .from(userRoleTable)
+            .where(eq(userRoleTable.tenantId, tid))
+        : ([] as any[]),
     ]);
 
     return {
-      roles,
-      permissions,
-      assigned_users: usersWithRoles.length
+      roles: Number(roleCount[0]?.value ?? 0),
+      permissions: Number(permissionCount[0]?.value ?? 0),
+      assigned_users: userProfileIds.length,
     };
   }
 
   async listRoles(includeInactive = false, tenant?: TenantContext) {
-    const roles = await this.drizzle.role.findMany({
-      where: includeInactive ? {} : { isActive: true },
-      include: {
-        permissions: { include: { permission: true } },
-        userRoles: {
-          where: tenant ? { tenantId: tenant.tenantId } : undefined,
-          include: {
-            profile: { select: { id: true, email: true, username: true } },
-            organization: { select: { id: true, name: true, code: true } }
-          }
-        }
-      },
-      orderBy: { name: 'asc' }
-    });
+    const tid = tenant?.tenantId ?? this.tenantContext.currentTenantId();
+    const conditions: SQL[] = [];
+    if (!includeInactive) conditions.push(eq(roleTable.isActive, true));
+    const roleCond = this.templateScopeCondition(roleTable, tid);
+    if (roleCond) conditions.push(roleCond);
 
-    const items = roles.map((role) => ({
-      id: role.id.toString(),
-      name: role.name,
-      slug: role.slug,
-      description: role.description,
-      is_active: role.isActive,
-      created_at: role.createdAt,
-      updated_at: role.updatedAt,
-      permissions: role.permissions.map((rp) => ({
-        id: rp.permission.id.toString(),
-        name: rp.permission.name,
-        slug: rp.permission.slug,
-        module: rp.permission.module
-      })),
-      users: role.userRoles.map((userRole) => ({
-        profile_id: userRole.profile.id.toString(),
-        email: userRole.profile.email,
-        username: userRole.profile.username,
-        organization: userRole.organization
-          ? {
-              id: userRole.organization.id.toString(),
-              name: userRole.organization.name,
-              code: userRole.organization.code
-            }
-          : null,
-        is_primary_role: userRole.isPrimaryRole
-      }))
+    const roles = await this.db.client
+      .select()
+      .from(roleTable)
+      .where(and(...conditions))
+      .orderBy(asc(roleTable.name));
+    const roleIds = roles.map((r) => r.id);
+
+    const [permRows, userRoleRows] = await Promise.all([
+      roleIds.length
+        ? this.db.client
+            .select({ roleId: rolePermission.roleId, perm: permissionTable })
+            .from(rolePermission)
+            .leftJoin(permissionTable, eq(rolePermission.permissionId, permissionTable.id))
+            .where(inArray(rolePermission.roleId, roleIds))
+        : ([] as any[]),
+      roleIds.length
+        ? this.db.client
+            .select({ ur: userRoleTable, user: profile, org: organization })
+            .from(userRoleTable)
+            .leftJoin(profile, eq(userRoleTable.profileId, profile.id))
+            .leftJoin(organization, eq(userRoleTable.organizationId, organization.id))
+            .where(and(inArray(userRoleTable.roleId, roleIds), tid ? eq(userRoleTable.tenantId, tid) : undefined))
+            .orderBy(asc(userRoleTable.profileId))
+        : ([] as any[]),
+    ]);
+
+    const permByRole = new Map(
+      roleIds.map((id) => [
+        id,
+        permRows
+          .filter((p) => p.roleId === id)
+          .map((p) => ({
+            id: p.perm?.id?.toString() ?? '',
+            name: p.perm?.name ?? '',
+            slug: p.perm?.slug ?? '',
+            module: p.perm?.module,
+          })),
+      ]),
+    );
+    const usersByRole = new Map(
+      roleIds.map((id) => [
+        id,
+        userRoleRows
+          .filter((u) => u.ur.roleId === id)
+          .map((u) => ({
+            profile_id: u.user?.id?.toString() ?? '',
+            email: u.user?.email ?? '',
+            username: u.user?.username,
+            organization: u.org
+              ? { id: u.org.id.toString(), name: u.org.name, code: u.org.code }
+              : null,
+            is_primary_role: u.ur.isPrimaryRole,
+          })),
+      ]),
+    );
+
+    const items = roles.map((r) => ({
+      id: r.id.toString(),
+      name: r.name,
+      slug: r.slug,
+      description: r.description,
+      is_active: r.isActive,
+      created_at: r.createdAt,
+      updated_at: r.updatedAt,
+      permissions: permByRole.get(r.id) ?? [],
+      users: usersByRole.get(r.id) ?? [],
     }));
+
     return paginatedResponse(items, { page: 1, per_page: items.length, total: items.length });
   }
 
@@ -88,31 +139,40 @@ export class RbacService {
       await this.ensurePermissionsExist(permissionIds);
     }
 
+    const tid = this.tenantContext.currentTenantId();
     const now = new Date();
-    const role = await this.drizzle.role.create({
-      data: {
+    const [created] = await this.db.client
+      .insert(roleTable)
+      .values({
         name: dto.name.trim(),
         slug,
         description: dto.description,
         isActive: dto.is_active ?? true,
+        tenantId: tid ?? null,
         createdAt: now,
-        updatedAt: now
-      }
-    });
+        updatedAt: now,
+      })
+      .returning();
 
     if (permissionIds.length > 0) {
-      await this.drizzle.rolePermission.createMany({
-        data: permissionIds.map((permissionId) => ({ roleId: role.id, permissionId })),
-        skipDuplicates: true
-      });
+      await this.db.client
+        .insert(rolePermission)
+        .values(permissionIds.map((permissionId) => ({ roleId: created.id, permissionId })))
+        .onConflictDoNothing();
     }
 
-    return this.getRoleById(role.id);
+    return this.getRoleById(created.id, tid);
   }
 
   async updateRole(roleId: string, dto: UpdateRoleDto) {
-    const id = this.parseId(roleId, 'role id');
-    const existing = await this.drizzle.role.findUnique({ where: { id } });
+    const id = parseBigIntId(roleId, 'role id');
+    const tid = this.tenantContext.currentTenantId();
+    const roleCond = this.templateScopeCondition(roleTable, tid);
+    const [existing] = await this.db.client
+      .select()
+      .from(roleTable)
+      .where(and(eq(roleTable.id, id), roleCond))
+      .limit(1);
     if (!existing) throw new NotFoundException('Role not found');
 
     const slug = dto.slug ? this.normalizeSlug(dto.slug) : undefined;
@@ -125,294 +185,330 @@ export class RbacService {
       slug?: string;
       description?: string;
       isActive?: boolean;
-      updatedAt: Date;
-    } = {
-      updatedAt: new Date()
-    };
-
+    } = {};
     if (dto.name !== undefined) data.name = dto.name.trim();
     if (slug !== undefined) data.slug = slug;
     if (dto.description !== undefined) data.description = dto.description;
     if (dto.is_active !== undefined) data.isActive = dto.is_active;
 
-    await this.drizzle.role.update({ where: { id }, data });
+    await this.db.client
+      .update(roleTable)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(roleTable.id, id));
 
     if (dto.permission_ids) {
       const permissionIds = this.parseIds(dto.permission_ids, 'permission id');
       await this.ensurePermissionsExist(permissionIds);
-
-      await this.drizzle.$transaction(async (tx) => {
-        await tx.rolePermission.deleteMany({ where: { roleId: id } });
-        await tx.rolePermission.createMany({
-          data: permissionIds.map((permissionId) => ({ roleId: id, permissionId })),
-          skipDuplicates: true
-        });
+      await this.db.client.transaction(async (tx) => {
+        await tx.delete(rolePermission).where(eq(rolePermission.roleId, id));
+        await tx
+          .insert(rolePermission)
+          .values(permissionIds.map((permissionId) => ({ roleId: id, permissionId })))
+          .onConflictDoNothing();
       });
     }
 
-    return this.getRoleById(id);
+    return this.getRoleById(id, tid);
   }
 
   async getRoleDeleteImpact(roleId: string, tenant?: TenantContext) {
-    const id = this.parseId(roleId, 'role id');
-    const role = await this.drizzle.role.findUnique({ where: { id } });
+    const id = parseBigIntId(roleId, 'role id');
+    const tid = tenant?.tenantId ?? this.tenantContext.currentTenantId();
+    const roleCond = this.templateScopeCondition(roleTable, tid);
+    const [role] = await this.db.client
+      .select()
+      .from(roleTable)
+      .where(and(eq(roleTable.id, id), roleCond))
+      .limit(1);
     if (!role) throw new NotFoundException('Role not found');
 
-    const assignments = await this.drizzle.userRole.findMany({
-      where: { roleId: id, ...(tenant ? { tenantId: tenant.tenantId } : {}) },
-      select: {
-        id: true,
-        profileId: true,
-        organizationId: true
-      },
-      include: {
-        profile: { select: { email: true, username: true } },
-        organization: { select: { id: true, name: true, code: true } }
-      },
-      orderBy: [{ profileId: 'asc' }]
-    });
+    const assignments = await this.db.client
+      .select({ ur: userRoleTable, user: profile, org: organization })
+      .from(userRoleTable)
+      .leftJoin(profile, eq(userRoleTable.profileId, profile.id))
+      .leftJoin(organization, eq(userRoleTable.organizationId, organization.id))
+      .where(and(eq(userRoleTable.roleId, id), tid ? eq(userRoleTable.tenantId, tid) : undefined))
+      .orderBy(asc(userRoleTable.profileId));
 
     return {
       role: {
         id: role.id.toString(),
         name: role.name,
-        slug: role.slug
+        slug: role.slug,
       },
       usage: {
         assignment_count: assignments.length,
         assignments: assignments.map((item) => ({
-          id: item.id.toString(),
-          profile_id: item.profileId.toString(),
-          email: item.profile.email,
-          username: item.profile.username,
-          organization: item.organization
-            ? {
-                id: item.organization.id.toString(),
-                name: item.organization.name,
-                code: item.organization.code
-              }
-            : null
-        }))
-      }
+          id: item.ur.id.toString(),
+          profile_id: item.ur.profileId.toString(),
+          email: item.user?.email ?? '',
+          username: item.user?.username,
+          organization: item.org
+            ? { id: item.org.id.toString(), name: item.org.name, code: item.org.code }
+            : null,
+        })),
+      },
     };
   }
 
   async deleteRole(roleId: string, replacementRoleId?: string, tenant?: TenantContext) {
-    const id = this.parseId(roleId, 'role id');
-    const role = await this.drizzle.role.findUnique({ where: { id } });
+    const id = parseBigIntId(roleId, 'role id');
+    const tid = tenant?.tenantId ?? this.tenantContext.currentTenantId();
+    const roleCond = this.templateScopeCondition(roleTable, tid);
+    const [role] = await this.db.client
+      .select()
+      .from(roleTable)
+      .where(and(eq(roleTable.id, id), roleCond))
+      .limit(1);
     if (!role) throw new NotFoundException('Role not found');
 
-    const assignments = await this.drizzle.userRole.findMany({
-      where: { roleId: id, ...(tenant ? { tenantId: tenant.tenantId } : {}) },
-      select: {
-        id: true,
-        profileId: true,
-        organizationId: true,
-        isPrimaryRole: true
-      }
-    });
+    const assignments = await this.db.client
+      .select({ id: userRoleTable.id, profileId: userRoleTable.profileId, organizationId: userRoleTable.organizationId, isPrimaryRole: userRoleTable.isPrimaryRole })
+      .from(userRoleTable)
+      .where(and(eq(userRoleTable.roleId, id), tid ? eq(userRoleTable.tenantId, tid) : undefined));
 
     let replacementId: bigint | null = null;
     if (assignments.length > 0) {
       if (!replacementRoleId) {
         throw new BadRequestException(
-          `Role is assigned to ${assignments.length} user-role record(s). Provide replacement_role_id to reassign before delete.`
+          `Role is assigned to ${assignments.length} user-role record(s). Provide replacement_role_id to reassign before delete.`,
         );
       }
-      replacementId = this.parseId(replacementRoleId, 'replacement role id');
+      replacementId = parseBigIntId(replacementRoleId, 'replacement role id');
       if (replacementId === id) {
         throw new BadRequestException('Replacement role must be different from role being deleted');
       }
-      const replacementRole = await this.drizzle.role.findUnique({ where: { id: replacementId } });
+      const replCond = this.templateScopeCondition(roleTable, tid);
+      const [replacementRole] = await this.db.client
+        .select({ id: roleTable.id })
+        .from(roleTable)
+        .where(and(eq(roleTable.id, replacementId), replCond))
+        .limit(1);
       if (!replacementRole) throw new NotFoundException('Replacement role not found');
     }
 
-    await this.drizzle.$transaction(async (tx) => {
+    await this.db.client.transaction(async (tx) => {
       if (replacementId) {
         for (const assignment of assignments) {
-          const existingReplacement = await tx.userRole.findFirst({
-            where: {
-              profileId: assignment.profileId,
-              roleId: replacementId,
-              organizationId: assignment.organizationId,
-              ...(tenant ? { tenantId: tenant.tenantId } : {})
-            }
-          });
+          const [existingReplacement] = await tx
+            .select()
+            .from(userRoleTable)
+            .where(
+              and(
+                eq(userRoleTable.profileId, assignment.profileId),
+                eq(userRoleTable.roleId, replacementId),
+                eq(userRoleTable.organizationId, assignment.organizationId),
+                tid ? eq(userRoleTable.tenantId, tid) : undefined,
+              ),
+            )
+            .limit(1);
 
           if (existingReplacement) {
             if (assignment.isPrimaryRole && !existingReplacement.isPrimaryRole) {
-              await tx.userRole.update({
-                where: { id: existingReplacement.id },
-                data: { isPrimaryRole: true }
-              });
+              await tx
+                .update(userRoleTable)
+                .set({ isPrimaryRole: true })
+                .where(eq(userRoleTable.id, existingReplacement.id));
             }
-            await tx.userRole.delete({ where: { id: assignment.id } });
+            await tx.delete(userRoleTable).where(eq(userRoleTable.id, assignment.id));
             continue;
           }
 
-          await tx.userRole.update({
-            where: { id: assignment.id },
-            data: { roleId: replacementId, isPrimaryRole: assignment.isPrimaryRole }
-          });
+          await tx
+            .update(userRoleTable)
+            .set({ roleId: replacementId, isPrimaryRole: assignment.isPrimaryRole })
+            .where(eq(userRoleTable.id, assignment.id));
         }
       }
 
-      await tx.rolePermission.deleteMany({ where: { roleId: id } });
-      await tx.role.delete({ where: { id } });
+      await tx.delete(rolePermission).where(eq(rolePermission.roleId, id));
+      await tx.delete(roleTable).where(eq(roleTable.id, id));
     });
 
     return {
       success: true,
-      reassigned_assignments: assignments.length
+      reassigned_assignments: assignments.length,
     };
   }
 
   async setRolePermissions(roleId: string, dto: SetRolePermissionsDto) {
-    const id = this.parseId(roleId, 'role id');
-    const role = await this.drizzle.role.findUnique({ where: { id } });
+    const id = parseBigIntId(roleId, 'role id');
+    const tid = this.tenantContext.currentTenantId();
+    const roleCond = this.templateScopeCondition(roleTable, tid);
+    const [role] = await this.db.client
+      .select()
+      .from(roleTable)
+      .where(and(eq(roleTable.id, id), roleCond))
+      .limit(1);
     if (!role) throw new NotFoundException('Role not found');
 
     const permissionIds = this.parseIds(dto.permission_ids, 'permission id');
     await this.ensurePermissionsExist(permissionIds);
 
-    await this.drizzle.$transaction(async (tx) => {
-      await tx.rolePermission.deleteMany({ where: { roleId: id } });
-      await tx.rolePermission.createMany({
-        data: permissionIds.map((permissionId) => ({ roleId: id, permissionId })),
-        skipDuplicates: true
-      });
-      await tx.role.update({ where: { id }, data: { updatedAt: new Date() } });
+    await this.db.client.transaction(async (tx) => {
+      await tx.delete(rolePermission).where(eq(rolePermission.roleId, id));
+      await tx
+        .insert(rolePermission)
+        .values(permissionIds.map((permissionId) => ({ roleId: id, permissionId })))
+        .onConflictDoNothing();
+      await tx.update(roleTable).set({ updatedAt: new Date() }).where(eq(roleTable.id, id));
     });
 
-    return this.getRoleById(id);
+    return this.getRoleById(id, tid);
   }
 
   async listPermissions(filters: { module?: string; search?: string }) {
-    const where: {
-      module?: string;
-      OR?: Array<{ name: { contains: string; mode: 'insensitive' } } | { slug: { contains: string; mode: 'insensitive' } }>;
-    } = {};
-
-    if (filters.module) where.module = filters.module;
+    const conditions: SQL[] = [];
+    if (filters.module) conditions.push(eq(permissionTable.module, filters.module));
     if (filters.search) {
-      where.OR = [
-        { name: { contains: filters.search, mode: 'insensitive' } },
-        { slug: { contains: filters.search, mode: 'insensitive' } }
-      ];
+      const search = `%${filters.search}%`;
+      const searchCond = or(ilike(permissionTable.name, search), ilike(permissionTable.slug, search));
+      if (searchCond) conditions.push(searchCond as SQL);
     }
+    const where = conditions.length ? and(...conditions) : undefined;
 
-    const permissions = await this.drizzle.permission.findMany({
-      where,
-      include: {
-        roles: {
-          include: { role: true }
-        }
-      },
-      orderBy: [{ module: 'asc' }, { name: 'asc' }]
-    });
+    const perms = await this.db.client
+      .select()
+      .from(permissionTable)
+      .where(where)
+      .orderBy(asc(permissionTable.module), asc(permissionTable.name));
+    const permIds = perms.map((p) => p.id);
 
-    return permissions.map((permission) => ({
-      id: permission.id.toString(),
-      name: permission.name,
-      slug: permission.slug,
-      description: permission.description,
-      module: permission.module,
-      created_at: permission.createdAt,
-      updated_at: permission.updatedAt,
-      roles: permission.roles.map((rolePermission) => ({
-        id: rolePermission.role.id.toString(),
-        name: rolePermission.role.name,
-        slug: rolePermission.role.slug
-      }))
+    const rolePermRows = permIds.length
+      ? await this.db.client
+          .select({ permissionId: rolePermission.permissionId, role: roleTable })
+          .from(rolePermission)
+          .leftJoin(roleTable, eq(rolePermission.roleId, roleTable.id))
+          .where(inArray(rolePermission.permissionId, permIds))
+      : ([] as any[]);
+
+    const rolesByPerm = new Map(
+      permIds.map((id) => [
+        id,
+        rolePermRows
+          .filter((r) => r.permissionId === id)
+          .map((r) => ({
+            id: r.role?.id?.toString() ?? '',
+            name: r.role?.name ?? '',
+            slug: r.role?.slug ?? '',
+          })),
+      ]),
+    );
+
+    return perms.map((perm) => ({
+      id: perm.id.toString(),
+      name: perm.name,
+      slug: perm.slug,
+      description: perm.description,
+      module: perm.module,
+      created_at: perm.createdAt,
+      updated_at: perm.updatedAt,
+      roles: rolesByPerm.get(perm.id) ?? [],
     }));
   }
 
   async createPermission(dto: CreatePermissionDto) {
     const slug = this.normalizeSlug(dto.slug ?? dto.name);
-    const existing = await this.drizzle.permission.findUnique({ where: { slug } });
-    if (existing) throw new BadRequestException('Permission slug already exists');
+    const tid = this.tenantContext.currentTenantId();
+    const permCond = this.templateScopeCondition(permissionTable, tid);
+    const [existingPerm] = await this.db.client
+      .select()
+      .from(permissionTable)
+      .where(and(eq(permissionTable.slug, slug), permCond))
+      .limit(1);
+    if (existingPerm) throw new BadRequestException('Permission slug already exists');
 
     const now = new Date();
-    const permission = await this.drizzle.permission.create({
-      data: {
+    const [created] = await this.db.client
+      .insert(permissionTable)
+      .values({
         name: dto.name.trim(),
         slug,
         description: dto.description,
         module: dto.module,
+        tenantId: tid ?? null,
         createdAt: now,
-        updatedAt: now
-      }
-    });
+        updatedAt: now,
+      })
+      .returning();
 
     return {
-      id: permission.id.toString(),
-      name: permission.name,
-      slug: permission.slug,
-      description: permission.description,
-      module: permission.module,
-      created_at: permission.createdAt,
-      updated_at: permission.updatedAt
+      id: created.id.toString(),
+      name: created.name,
+      slug: created.slug,
+      description: created.description,
+      module: created.module,
+      created_at: created.createdAt,
+      updated_at: created.updatedAt,
     };
   }
 
   async getPermissionDeleteImpact(permissionId: string) {
-    const id = this.parseId(permissionId, 'permission id');
-    const permission = await this.drizzle.permission.findUnique({
-      where: { id },
-      include: {
-        roles: {
-          include: {
-            role: true
-          },
-          orderBy: {
-            role: {
-              name: 'asc'
-            }
-          }
-        }
-      }
-    });
-    if (!permission) throw new NotFoundException('Permission not found');
+    const id = parseBigIntId(permissionId, 'permission id');
+    const [perm] = await this.db.client
+      .select()
+      .from(permissionTable)
+      .where(eq(permissionTable.id, id))
+      .limit(1);
+    if (!perm) throw new NotFoundException('Permission not found');
+
+    const roleRows = await this.db.client
+      .select({ role: roleTable })
+      .from(rolePermission)
+      .leftJoin(roleTable, eq(rolePermission.roleId, roleTable.id))
+      .where(eq(rolePermission.permissionId, id))
+      .orderBy(asc(roleTable.name));
 
     return {
       permission: {
-        id: permission.id.toString(),
-        name: permission.name,
-        slug: permission.slug,
-        module: permission.module
+        id: perm.id.toString(),
+        name: perm.name,
+        slug: perm.slug,
+        module: perm.module,
       },
       usage: {
-        role_count: permission.roles.length,
-        roles: permission.roles.map((item) => ({
-          id: item.role.id.toString(),
-          name: item.role.name,
-          slug: item.role.slug
-        }))
-      }
+        role_count: roleRows.length,
+        roles: roleRows.map((item) => ({
+          id: item.role?.id?.toString() ?? '',
+          name: item.role?.name ?? '',
+          slug: item.role?.slug ?? '',
+        })),
+      },
     };
   }
 
   async updatePermission(permissionId: string, dto: UpdatePermissionDto) {
-    const id = this.parseId(permissionId, 'permission id');
-    const existing = await this.drizzle.permission.findUnique({ where: { id } });
+    const id = parseBigIntId(permissionId, 'permission id');
+    const tid = this.tenantContext.currentTenantId();
+    const permCond = this.templateScopeCondition(permissionTable, tid);
+    const [existing] = await this.db.client
+      .select()
+      .from(permissionTable)
+      .where(and(eq(permissionTable.id, id), permCond))
+      .limit(1);
     if (!existing) throw new NotFoundException('Permission not found');
 
     const slug = dto.slug ? this.normalizeSlug(dto.slug) : undefined;
     if (slug && slug !== existing.slug) {
-      const slugExists = await this.drizzle.permission.findUnique({ where: { slug } });
+      const [slugExists] = await this.db.client
+        .select()
+        .from(permissionTable)
+        .where(and(eq(permissionTable.slug, slug), permCond))
+        .limit(1);
       if (slugExists) throw new BadRequestException('Permission slug already exists');
     }
 
-    const updated = await this.drizzle.permission.update({
-      where: { id },
-      data: {
-        name: dto.name !== undefined ? dto.name.trim() : undefined,
-        slug,
-        description: dto.description !== undefined ? dto.description : undefined,
-        module: dto.module !== undefined ? dto.module : undefined,
-        updatedAt: new Date()
-      }
-    });
+    const data: { name?: string; slug?: string; description?: string; module?: string } = {};
+    if (dto.name !== undefined) data.name = dto.name.trim();
+    if (slug !== undefined) data.slug = slug;
+    if (dto.description !== undefined) data.description = dto.description;
+    if (dto.module !== undefined) data.module = dto.module;
+
+    const [updated] = await this.db.client
+      .update(permissionTable)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(permissionTable.id, id))
+      .returning();
 
     return {
       id: updated.id.toString(),
@@ -421,134 +517,155 @@ export class RbacService {
       description: updated.description,
       module: updated.module,
       created_at: updated.createdAt,
-      updated_at: updated.updatedAt
+      updated_at: updated.updatedAt,
     };
   }
 
   async deletePermission(permissionId: string, replacementPermissionId?: string) {
-    const id = this.parseId(permissionId, 'permission id');
-    const existing = await this.drizzle.permission.findUnique({ where: { id } });
+    const id = parseBigIntId(permissionId, 'permission id');
+    const tid = this.tenantContext.currentTenantId();
+    const permCond = this.templateScopeCondition(permissionTable, tid);
+    const [existing] = await this.db.client
+      .select()
+      .from(permissionTable)
+      .where(and(eq(permissionTable.id, id), permCond))
+      .limit(1);
     if (!existing) throw new NotFoundException('Permission not found');
 
-    const assignments = await this.drizzle.rolePermission.findMany({
-      where: { permissionId: id },
-      select: { roleId: true }
-    });
+    const assignments = await this.db.client
+      .select({ roleId: rolePermission.roleId })
+      .from(rolePermission)
+      .where(eq(rolePermission.permissionId, id));
     const affectedRoleIds = Array.from(new Set(assignments.map((item) => item.roleId)));
 
     let replacementId: bigint | null = null;
     if (affectedRoleIds.length > 0) {
       if (!replacementPermissionId) {
         throw new BadRequestException(
-          `Permission is assigned to ${affectedRoleIds.length} role(s). Provide replacement_permission_id to preserve role capabilities before delete.`
+          `Permission is assigned to ${affectedRoleIds.length} role(s). Provide replacement_permission_id to preserve role capabilities before delete.`,
         );
       }
-      replacementId = this.parseId(replacementPermissionId, 'replacement permission id');
+      replacementId = parseBigIntId(replacementPermissionId, 'replacement permission id');
       if (replacementId === id) {
         throw new BadRequestException('Replacement permission must be different from permission being deleted');
       }
-      const replacement = await this.drizzle.permission.findUnique({ where: { id: replacementId } });
+      const [replacement] = await this.db.client
+        .select()
+        .from(permissionTable)
+        .where(and(eq(permissionTable.id, replacementId), permCond))
+        .limit(1);
       if (!replacement) throw new NotFoundException('Replacement permission not found');
     }
 
-    await this.drizzle.$transaction(async (tx) => {
+    await this.db.client.transaction(async (tx) => {
       if (replacementId && affectedRoleIds.length > 0) {
-        await tx.rolePermission.createMany({
-          data: affectedRoleIds.map((roleId) => ({
-            roleId,
-            permissionId: replacementId as bigint
-          })),
-          skipDuplicates: true
-        });
+        await tx
+          .insert(rolePermission)
+          .values(
+            affectedRoleIds.map((roleId) => ({
+              roleId,
+              permissionId: replacementId as bigint,
+            })),
+          )
+          .onConflictDoNothing();
       }
 
-      await tx.rolePermission.deleteMany({ where: { permissionId: id } });
-      await tx.permission.delete({ where: { id } });
+      await tx.delete(rolePermission).where(eq(rolePermission.permissionId, id));
+      await tx.delete(permissionTable).where(eq(permissionTable.id, id));
     });
 
     return {
       success: true,
-      affected_roles: affectedRoleIds.length
+      affected_roles: affectedRoleIds.length,
     };
   }
 
   async getUserRoles(profileId: string, tenant?: TenantContext) {
-    const id = this.parseId(profileId, 'profile id');
+    const id = parseBigIntId(profileId, 'profile id');
+    const tid = tenant?.tenantId ?? this.tenantContext.currentTenantId();
 
-    if (tenant) {
-      const membership = await this.drizzle.tenantMembership.findFirst({
-        where: { tenantId: tenant.tenantId, profileId: id, status: 'active' }
-      });
+    if (tid) {
+      const [membership] = await this.db.client
+        .select()
+        .from(tenantMembership)
+        .where(and(eq(tenantMembership.tenantId, tid), eq(tenantMembership.profileId, id), eq(tenantMembership.status, 'active')))
+        .limit(1);
       if (!membership) throw new NotFoundException('Profile not found');
     }
 
-    const profile = await this.drizzle.profile.findUnique({
-      where: { id },
-      include: {
-        roles: {
-          where: tenant ? { tenantId: tenant.tenantId } : undefined,
-          include: {
-            role: {
-              include: {
-                permissions: {
-                  include: { permission: true }
-                }
-              }
-            },
-            organization: true
-          }
-        }
-      }
-    });
+    const [prof] = await this.db.client
+      .select()
+      .from(profile)
+      .where(eq(profile.id, id))
+      .limit(1);
+    if (!prof) throw new NotFoundException('Profile not found');
 
-    if (!profile) throw new NotFoundException('Profile not found');
+    const urRows = await this.db.client
+      .select({ ur: userRoleTable, role: roleTable, org: organization })
+      .from(userRoleTable)
+      .leftJoin(roleTable, eq(userRoleTable.roleId, roleTable.id))
+      .leftJoin(organization, eq(userRoleTable.organizationId, organization.id))
+      .where(and(eq(userRoleTable.profileId, id), tid ? eq(userRoleTable.tenantId, tid) : undefined))
+      .orderBy(asc(userRoleTable.roleId));
+
+    const roleIds = Array.from(new Set(urRows.map((r) => r.role?.id).filter(Boolean) as bigint[]));
+    const permRows = roleIds.length
+      ? await this.db.client
+          .select({ roleId: rolePermission.roleId, perm: permissionTable })
+          .from(rolePermission)
+          .leftJoin(permissionTable, eq(rolePermission.permissionId, permissionTable.id))
+          .where(inArray(rolePermission.roleId, roleIds))
+      : ([] as any[]);
+
+    const permByRole = new Map(
+      roleIds.map((id) => [
+        id,
+        permRows
+          .filter((p) => p.roleId === id)
+          .map((p) => ({
+            id: p.perm?.id?.toString() ?? '',
+            slug: p.perm?.slug ?? '',
+            name: p.perm?.name ?? '',
+          })),
+      ]),
+    );
 
     return {
       profile: {
-        id: profile.id.toString(),
-        email: profile.email,
-        username: profile.username,
-        first_name: profile.firstName,
-        last_name: profile.lastName
+        id: prof.id.toString(),
+        email: prof.email,
+        username: prof.username,
+        first_name: prof.firstName,
+        last_name: prof.lastName,
       },
-      roles: profile.roles.map((userRole: {
-        role: {
-          id: bigint;
-          name: string;
-          slug: string;
-          permissions: Array<{ permission: { id: bigint; slug: string; name: string } }>;
-        };
-        organization: { id: bigint; name: string; code: string } | null;
-        isPrimaryRole: boolean;
-      }) => ({
-        role_id: userRole.role.id.toString(),
-        name: userRole.role.name,
-        slug: userRole.role.slug,
-        organization: userRole.organization
-          ? {
-              id: userRole.organization.id.toString(),
-              name: userRole.organization.name,
-              code: userRole.organization.code
-            }
+      roles: urRows.map((ur) => ({
+        role_id: ur.role?.id?.toString() ?? '',
+        name: ur.role?.name ?? '',
+        slug: ur.role?.slug ?? '',
+        organization: ur.org
+          ? { id: ur.org.id.toString(), name: ur.org.name, code: ur.org.code }
           : null,
-        is_primary_role: userRole.isPrimaryRole,
-        permissions: userRole.role.permissions.map((permission: { permission: { id: bigint; slug: string; name: string } }) => ({
-          id: permission.permission.id.toString(),
-          slug: permission.permission.slug,
-          name: permission.permission.name
-        }))
-      }))
+        is_primary_role: ur.ur.isPrimaryRole,
+        permissions: permByRole.get(ur.ur.roleId) ?? [],
+      })),
     };
   }
 
   async assignUserRoles(profileId: string, dto: AssignUserRolesDto, tenant?: TenantContext) {
-    const id = this.parseId(profileId, 'profile id');
-    const profile = await this.drizzle.profile.findUnique({ where: { id } });
-    if (!profile) throw new NotFoundException('Profile not found');
-    if (tenant) {
-      const membership = await this.drizzle.tenantMembership.findFirst({
-        where: { tenantId: tenant.tenantId, profileId: id, status: 'active' }
-      });
+    const id = parseBigIntId(profileId, 'profile id');
+    const tid = tenant?.tenantId ?? this.tenantContext.currentTenantId();
+    const [prof] = await this.db.client
+      .select()
+      .from(profile)
+      .where(eq(profile.id, id))
+      .limit(1);
+    if (!prof) throw new NotFoundException('Profile not found');
+    if (tid) {
+      const [membership] = await this.db.client
+        .select()
+        .from(tenantMembership)
+        .where(and(eq(tenantMembership.tenantId, tid), eq(tenantMembership.profileId, id), eq(tenantMembership.status, 'active')))
+        .limit(1);
       if (!membership) throw new NotFoundException('Profile not found');
     }
 
@@ -557,82 +674,71 @@ export class RbacService {
       throw new BadRequestException('At least one role must be provided');
     }
 
-    const organizationId = dto.organization_id ? this.parseId(dto.organization_id, 'organization id') : null;
+    const organizationId = dto.organization_id ? parseBigIntId(dto.organization_id, 'organization id') : null;
     if (organizationId) {
-      const organization = await this.drizzle.organization.findFirst({
-        where: {
-          id: organizationId,
-          ...(tenant ? { tenantId: tenant.tenantId } : {})
-        }
-      });
-      if (!organization) throw new NotFoundException('Organization not found');
+      const [org] = await this.db.client
+        .select()
+        .from(organization)
+        .where(and(eq(organization.id, organizationId), tid ? eq(organization.tenantId, tid) : undefined))
+        .limit(1);
+      if (!org) throw new NotFoundException('Organization not found');
     }
 
     await this.ensureRolesExist(roleIds);
 
     let primaryRoleId: bigint | null = null;
     if (dto.primary_role_id) {
-      primaryRoleId = this.parseId(dto.primary_role_id, 'primary role id');
+      primaryRoleId = parseBigIntId(dto.primary_role_id, 'primary role id');
       if (!roleIds.some((roleId) => roleId === primaryRoleId)) {
         throw new BadRequestException('Primary role must be included in role_ids');
       }
     }
 
-    await this.drizzle.$transaction(async (tx) => {
-      const scope = {
-        ...(tenant ? { tenantId: tenant.tenantId } : {}),
-        ...(organizationId === null ? { organizationId: null } : { organizationId })
-      };
-
+    await this.db.client.transaction(async (tx) => {
       if (dto.replace_existing) {
-        await tx.userRole.deleteMany({
-          where: {
-            profileId: id,
-            ...(tenant ? { tenantId: tenant.tenantId } : {}),
-            ...(organizationId ? { organizationId } : {})
-          }
-        });
+        const replaceWhere: SQL[] = [eq(userRoleTable.profileId, id)];
+        if (tid) replaceWhere.push(eq(userRoleTable.tenantId, tid));
+        if (organizationId) replaceWhere.push(eq(userRoleTable.organizationId, organizationId));
+        await tx.delete(userRoleTable).where(and(...replaceWhere));
       }
 
       if (primaryRoleId) {
-        await tx.userRole.updateMany({
-          where: {
-            profileId: id,
-            ...scope,
-            isPrimaryRole: true
-          },
-          data: { isPrimaryRole: false }
-        });
+        const clearWhere: SQL[] = [eq(userRoleTable.profileId, id)];
+        if (tid) clearWhere.push(eq(userRoleTable.tenantId, tid));
+        if (organizationId) clearWhere.push(eq(userRoleTable.organizationId, organizationId));
+        clearWhere.push(eq(userRoleTable.isPrimaryRole, true));
+        await tx
+          .update(userRoleTable)
+          .set({ isPrimaryRole: false })
+          .where(and(...clearWhere));
       }
 
       for (const roleId of roleIds) {
-        const existing = await tx.userRole.findFirst({
-          where: {
-            profileId: id,
-            roleId,
-            ...(tenant ? { tenantId: tenant.tenantId } : {}),
-            ...scope
-          }
-        });
+        const findWhere: SQL[] = [eq(userRoleTable.profileId, id), eq(userRoleTable.roleId, roleId)];
+        if (tid) findWhere.push(eq(userRoleTable.tenantId, tid));
+        if (organizationId) findWhere.push(eq(userRoleTable.organizationId, organizationId));
+        const [existing] = await tx
+          .select()
+          .from(userRoleTable)
+          .where(and(...findWhere))
+          .limit(1);
 
         if (existing) {
           if (primaryRoleId && existing.roleId === primaryRoleId && !existing.isPrimaryRole) {
-            await tx.userRole.update({
-              where: { id: existing.id },
-              data: { isPrimaryRole: true }
-            });
+            await tx
+              .update(userRoleTable)
+              .set({ isPrimaryRole: true })
+              .where(eq(userRoleTable.id, existing.id));
           }
           continue;
         }
 
-        await tx.userRole.create({
-          data: {
-            profileId: id,
-            roleId,
-            tenantId: tenant?.tenantId,
-            organizationId,
-            isPrimaryRole: primaryRoleId ? roleId === primaryRoleId : false
-          }
+        await tx.insert(userRoleTable).values({
+          profileId: id,
+          roleId,
+          tenantId: tid as bigint,
+          organizationId: organizationId ?? null,
+          isPrimaryRole: primaryRoleId ? roleId === primaryRoleId : false,
         });
       }
     });
@@ -640,17 +746,20 @@ export class RbacService {
     return this.getUserRoles(profileId, tenant);
   }
 
-  private async getRoleById(id: bigint) {
-    const role = await this.drizzle.role.findUnique({
-      where: { id },
-      include: {
-        permissions: {
-          include: { permission: true }
-        }
-      }
-    });
-
+  private async getRoleById(id: bigint, tid?: bigint) {
+    const roleCond = this.templateScopeCondition(roleTable, tid);
+    const [role] = await this.db.client
+      .select()
+      .from(roleTable)
+      .where(and(eq(roleTable.id, id), roleCond))
+      .limit(1);
     if (!role) throw new NotFoundException('Role not found');
+
+    const perms = await this.db.client
+      .select({ perm: permissionTable })
+      .from(rolePermission)
+      .leftJoin(permissionTable, eq(rolePermission.permissionId, permissionTable.id))
+      .where(eq(rolePermission.roleId, id));
 
     return {
       id: role.id.toString(),
@@ -660,25 +769,17 @@ export class RbacService {
       is_active: role.isActive,
       created_at: role.createdAt,
       updated_at: role.updatedAt,
-      permissions: role.permissions.map((permission) => ({
-        id: permission.permission.id.toString(),
-        name: permission.permission.name,
-        slug: permission.permission.slug,
-        module: permission.permission.module
-      }))
+      permissions: perms.map((permission) => ({
+        id: permission.perm?.id?.toString() ?? '',
+        name: permission.perm?.name ?? '',
+        slug: permission.perm?.slug ?? '',
+        module: permission.perm?.module,
+      })),
     };
   }
 
-  private parseId(value: string, label: string): bigint {
-    try {
-      return toBigInt(value);
-    } catch {
-      throw new BadRequestException(`Invalid ${label}`);
-    }
-  }
-
   private parseIds(values: string[], label: string): bigint[] {
-    return values.map((value) => this.parseId(value, label));
+    return values.map((value) => parseBigIntId(value, label));
   }
 
   private normalizeSlug(value: string) {
@@ -694,29 +795,30 @@ export class RbacService {
   }
 
   private async ensureRoleSlugAvailable(slug: string) {
-    const existing = await this.drizzle.role.findUnique({ where: { slug } });
+    const [existing] = await this.db.client
+      .select({ id: roleTable.id })
+      .from(roleTable)
+      .where(eq(roleTable.slug, slug))
+      .limit(1);
     if (existing) throw new BadRequestException('Role slug already exists');
   }
 
   private async ensurePermissionsExist(permissionIds: bigint[]) {
     if (permissionIds.length === 0) return;
-
-    const found = await this.drizzle.permission.findMany({
-      where: { id: { in: permissionIds } },
-      select: { id: true }
-    });
-
+    const found = await this.db.client
+      .select({ id: permissionTable.id })
+      .from(permissionTable)
+      .where(inArray(permissionTable.id, permissionIds));
     if (found.length !== permissionIds.length) {
       throw new NotFoundException('One or more permissions were not found');
     }
   }
 
   private async ensureRolesExist(roleIds: bigint[]) {
-    const found = await this.drizzle.role.findMany({
-      where: { id: { in: roleIds } },
-      select: { id: true }
-    });
-
+    const found = await this.db.client
+      .select({ id: roleTable.id })
+      .from(roleTable)
+      .where(inArray(roleTable.id, roleIds));
     if (found.length !== roleIds.length) {
       throw new NotFoundException('One or more roles were not found');
     }

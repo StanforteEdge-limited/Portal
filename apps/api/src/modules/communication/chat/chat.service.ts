@@ -1,27 +1,31 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { DrizzleService } from '$common/drizzle/drizzle.service';
-import { toBigInt } from '$common/utils/ids';
+import { SQL, and, asc, count, desc, eq, gt, inArray, lt } from 'drizzle-orm';
+import { DbService } from '$common/db/db.service';
+import { TenantContextService } from '$common/auth/tenant-context.service';
+import { parseBigIntId } from '$common/utils/ids';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { SendMessageDto } from './dto/send-message.dto';
 import { UpdateMemberDto } from './dto/update-member.dto';
 import { ChatRealtimeService } from './chat-realtime.service';
+import { chatConversation, chatConversationMember, chatMessage, chatMessageAttachment } from './model';
+import { profile } from '$modules/identity/users/model';
+import { fileAsset } from '$modules/storage/model';
 
-const PROFILE_SELECT = { id: true, firstName: true, lastName: true, email: true, username: true } as const;
+const PROFILE_SELECT = {
+  id: profile.id,
+  firstName: profile.firstName,
+  lastName: profile.lastName,
+  email: profile.email,
+  username: profile.username,
+} as const;
 
 @Injectable()
 export class ChatService {
   constructor(
-    private readonly drizzle: DrizzleService,
+    private readonly db: DbService,
+    private readonly tenantContext: TenantContextService,
     private readonly realtime: ChatRealtimeService
   ) {}
-
-  private parseId(value: string | number, label: string): bigint {
-    try {
-      return toBigInt(String(value));
-    } catch {
-      throw new BadRequestException(`Invalid ${label}`);
-    }
-  }
 
   private displayName(profile: { firstName?: string | null; lastName?: string | null; email?: string | null; username?: string | null }): string {
     return `${profile.firstName ?? ''} ${profile.lastName ?? ''}`.trim() || profile.email || profile.username || 'User';
@@ -30,14 +34,23 @@ export class ChatService {
   private async profileMap(profileIds: Array<bigint | null | undefined>) {
     const ids = Array.from(new Set(profileIds.filter((id): id is bigint => id != null)));
     if (!ids.length) return new Map<string, any>();
-    const rows = await this.drizzle.profile.findMany({ where: { id: { in: ids } }, select: PROFILE_SELECT });
+    const rows = await this.db.client.select(PROFILE_SELECT).from(profile).where(inArray(profile.id, ids));
     return new Map(rows.map((row) => [row.id.toString(), row]));
   }
 
   private async requireMembership(profileId: bigint, conversationId: bigint) {
-    const member = await this.drizzle.chatConversationMember.findFirst({
-      where: { conversationId, profileId },
-    });
+    const tid = this.tenantContext.currentTenantId();
+    const [member] = await this.db.client
+      .select()
+      .from(chatConversationMember)
+      .where(
+        and(
+          eq(chatConversationMember.conversationId, conversationId),
+          eq(chatConversationMember.profileId, profileId),
+          tid ? eq(chatConversationMember.tenantId, tid) : undefined,
+        ),
+      )
+      .limit(1);
     if (!member) {
       throw new NotFoundException('Conversation not found or you are not a member');
     }
@@ -45,27 +58,30 @@ export class ChatService {
   }
 
   private async requireConversation(conversationId: bigint) {
-    const conversation = await this.drizzle.chatConversation.findUnique({
-      where: { id: conversationId },
-    });
+    const tid = this.tenantContext.currentTenantId();
+    const [conversation] = await this.db.client
+      .select()
+      .from(chatConversation)
+      .where(and(eq(chatConversation.id, conversationId), tid ? eq(chatConversation.tenantId, tid) : undefined))
+      .limit(1);
     if (!conversation) throw new NotFoundException('Conversation not found');
     return conversation;
   }
 
   async membershipIds(profileId: string): Promise<bigint[]> {
-    const me = this.parseId(profileId, 'profile id');
-    const rows = await this.drizzle.chatConversationMember.findMany({
-      where: { profileId: me },
-      select: { conversationId: true },
-    });
+    const me = parseBigIntId(profileId, 'profile id');
+    const rows = await this.db.client
+      .select({ conversationId: chatConversationMember.conversationId })
+      .from(chatConversationMember)
+      .where(eq(chatConversationMember.profileId, me));
     return rows.map((row) => row.conversationId);
   }
 
   async isMember(profileId: string, conversationIdRaw: string): Promise<boolean> {
     try {
       await this.requireMembership(
-        this.parseId(profileId, 'profile id'),
-        this.parseId(conversationIdRaw, 'conversation id')
+        parseBigIntId(profileId, 'profile id'),
+        parseBigIntId(conversationIdRaw, 'conversation id')
       );
       return true;
     } catch {
@@ -74,21 +90,25 @@ export class ChatService {
   }
 
   async conversations(profileId: string) {
-    const me = this.parseId(profileId, 'profile id');
-    const memberships = await this.drizzle.chatConversationMember.findMany({
-      where: { profileId: me },
-      orderBy: { joinedAt: 'desc' },
-    });
+    const me = parseBigIntId(profileId, 'profile id');
+    const tid = this.tenantContext.currentTenantId();
+    const memberships = await this.db.client
+      .select()
+      .from(chatConversationMember)
+      .where(and(eq(chatConversationMember.profileId, me), tid ? eq(chatConversationMember.tenantId, tid) : undefined))
+      .orderBy(desc(chatConversationMember.joinedAt));
     if (!memberships.length) return { data: [], total: 0 };
 
     const conversationIds = memberships.map((m) => m.conversationId);
-    const conversations = await this.drizzle.chatConversation.findMany({
-      where: { id: { in: conversationIds } },
-      orderBy: { updatedAt: 'desc' },
-    });
-    const allMemberRows = await this.drizzle.chatConversationMember.findMany({
-      where: { conversationId: { in: conversationIds } },
-    });
+    const conversations = await this.db.client
+      .select()
+      .from(chatConversation)
+      .where(and(inArray(chatConversation.id, conversationIds), tid ? eq(chatConversation.tenantId, tid) : undefined))
+      .orderBy(desc(chatConversation.updatedAt));
+    const allMemberRows = await this.db.client
+      .select()
+      .from(chatConversationMember)
+      .where(and(inArray(chatConversationMember.conversationId, conversationIds), tid ? eq(chatConversationMember.tenantId, tid) : undefined));
     const allProfileIds = Array.from(new Set(allMemberRows.map((m) => m.profileId)));
     const profiles = await this.profileMap(allProfileIds);
 
@@ -143,56 +163,77 @@ export class ChatService {
   private async getLatestMessages(conversationIds: bigint[]) {
     const map = new Map<string, any>();
     for (const conversationId of conversationIds) {
-      const [latest] = await this.drizzle.chatMessage.findMany({
-        where: { conversationId },
-        orderBy: { createdAt: 'desc' },
-        take: 1,
-        select: { id: true, body: true, senderProfileId: true, createdAt: true },
-      });
+      const [latest] = await this.db.client
+        .select({
+          id: chatMessage.id,
+          body: chatMessage.body,
+          senderProfileId: chatMessage.senderProfileId,
+          createdAt: chatMessage.createdAt,
+        })
+        .from(chatMessage)
+        .where(eq(chatMessage.conversationId, conversationId))
+        .orderBy(desc(chatMessage.createdAt))
+        .limit(1);
       if (latest) map.set(conversationId.toString(), latest);
     }
     return map;
   }
 
   private async getUnreadForConversations(profileId: bigint, conversationIds: bigint[]) {
-    const memberships = await this.drizzle.chatConversationMember.findMany({
-      where: { conversationId: { in: conversationIds }, profileId },
-    });
+    const tid = this.tenantContext.currentTenantId();
+    const memberships = await this.db.client
+      .select()
+      .from(chatConversationMember)
+      .where(
+        and(
+          inArray(chatConversationMember.conversationId, conversationIds),
+          eq(chatConversationMember.profileId, profileId),
+          tid ? eq(chatConversationMember.tenantId, tid) : undefined,
+        ),
+      );
     const map = new Map<string, number>();
     for (const membership of memberships) {
-      const count = await this.drizzle.chatMessage.count({
-        where: {
-          conversationId: membership.conversationId,
-          ...(membership.lastReadAt ? { createdAt: { gt: membership.lastReadAt } } : {}),
-        },
-      });
-      map.set(membership.conversationId.toString(), count);
+      const conditions: SQL[] = [eq(chatMessage.conversationId, membership.conversationId)];
+      if (tid) conditions.push(eq(chatMessage.tenantId, tid));
+      if (membership.lastReadAt) conditions.push(gt(chatMessage.createdAt, membership.lastReadAt));
+      const [row] = await this.db.client.select({ count: count() }).from(chatMessage).where(and(...conditions));
+      map.set(membership.conversationId.toString(), row?.count ?? 0);
     }
     return map;
   }
 
   private async findExistingDirect(myId: bigint, otherId: bigint): Promise<bigint | null> {
-    const mine = await this.drizzle.chatConversationMember.findMany({
-      where: { profileId: myId },
-      select: { conversationId: true },
-    });
+    const tid = this.tenantContext.currentTenantId();
+    const mine = await this.db.client
+      .select({ conversationId: chatConversationMember.conversationId })
+      .from(chatConversationMember)
+      .where(and(eq(chatConversationMember.profileId, myId), tid ? eq(chatConversationMember.tenantId, tid) : undefined));
     if (!mine.length) return null;
     const conversationIds = mine.map((m) => m.conversationId);
-    const theirs = await this.drizzle.chatConversationMember.findMany({
-      where: { profileId: otherId, conversationId: { in: conversationIds } },
-      select: { conversationId: true },
-    });
+    const theirs = await this.db.client
+      .select({ conversationId: chatConversationMember.conversationId })
+      .from(chatConversationMember)
+      .where(
+        and(
+          eq(chatConversationMember.profileId, otherId),
+          inArray(chatConversationMember.conversationId, conversationIds),
+          tid ? eq(chatConversationMember.tenantId, tid) : undefined,
+        ),
+      );
     if (!theirs.length) return null;
     const overlaps = theirs.map((t) => t.conversationId);
-    const direct = await this.drizzle.chatConversation.findFirst({
-      where: { id: { in: overlaps }, type: 'direct' },
-    });
+    const [direct] = await this.db.client
+      .select()
+      .from(chatConversation)
+      .where(and(inArray(chatConversation.id, overlaps), eq(chatConversation.type, 'direct'), tid ? eq(chatConversation.tenantId, tid) : undefined))
+      .limit(1);
     return direct ? direct.id : null;
   }
 
   async createConversation(profileId: string, dto: CreateConversationDto) {
-    const me = this.parseId(profileId, 'profile id');
-    const memberIds = Array.from(new Set(dto.member_ids.map((id) => this.parseId(id, 'member id'))));
+    const me = parseBigIntId(profileId, 'profile id');
+    const tid = this.tenantContext.requireTenantId();
+    const memberIds = Array.from(new Set(dto.member_ids.map((id) => parseBigIntId(id, 'member id'))));
     if (dto.type === 'direct') {
       if (memberIds.length !== 1) {
         throw new BadRequestException('A direct conversation requires exactly one member_id');
@@ -209,30 +250,30 @@ export class ChatService {
     }
 
     const allIds = [me, ...memberIds];
-    const profiles = await this.drizzle.profile.findMany({
-      where: { id: { in: allIds } },
-      select: { id: true },
-    });
+    const profiles = await this.db.client.select({ id: profile.id }).from(profile).where(inArray(profile.id, allIds));
     if (profiles.length !== allIds.length) {
       throw new BadRequestException('One or more member profiles do not exist');
     }
 
-    const created = await this.drizzle.chatConversation.create({
-      data: {
+    const [created] = await this.db.client
+      .insert(chatConversation)
+      .values({
+        tenantId: tid,
         type: dto.type,
         name: dto.type === 'group' ? dto.name || 'Group' : null,
         description: dto.description ?? null,
         createdBy: me,
-      },
-    });
+      })
+      .returning();
 
-    await this.drizzle.chatConversationMember.createMany({
-      data: allIds.map((profileUserId) => ({
+    await this.db.client.insert(chatConversationMember).values(
+      allIds.map((profileUserId) => ({
+        tenantId: tid,
         conversationId: created.id,
         profileId: profileUserId,
-        role: profileUserId === me ? 'admin' : 'member',
+        role: profileUserId === me ? 'admin' as const : 'member' as const,
       })),
-    });
+    );
 
     if (dto.type === 'group') {
       const detail = await this.detail(profileId, created.id.toString());
@@ -246,15 +287,16 @@ export class ChatService {
   }
 
   async detail(profileId: string, conversationIdRaw: string) {
-    const me = this.parseId(profileId, 'profile id');
-    const conversationId = this.parseId(conversationIdRaw, 'conversation id');
+    const me = parseBigIntId(profileId, 'profile id');
+    const conversationId = parseBigIntId(conversationIdRaw, 'conversation id');
     await this.requireMembership(me, conversationId);
     const conversation = await this.requireConversation(conversationId);
 
-    const members = await this.drizzle.chatConversationMember.findMany({
-      where: { conversationId },
-      orderBy: { joinedAt: 'asc' },
-    });
+    const members = await this.db.client
+      .select()
+      .from(chatConversationMember)
+      .where(eq(chatConversationMember.conversationId, conversationId))
+      .orderBy(asc(chatConversationMember.joinedAt));
     const profiles = await this.profileMap(members.map((member) => member.profileId));
 
     return {
@@ -276,21 +318,24 @@ export class ChatService {
   }
 
   async messages(profileId: string, conversationIdRaw: string, query: Record<string, any>) {
-    const me = this.parseId(profileId, 'profile id');
-    const conversationId = this.parseId(conversationIdRaw, 'conversation id');
+    const me = parseBigIntId(profileId, 'profile id');
+    const conversationId = parseBigIntId(conversationIdRaw, 'conversation id');
     await this.requireMembership(me, conversationId);
+    const tid = this.tenantContext.currentTenantId();
 
     const perPage = Math.min(200, Math.max(1, Number(query.per_page ?? 50)));
-    const beforeId = query.before_id ? this.parseId(query.before_id, 'message id') : undefined;
+    const beforeId = query.before_id ? parseBigIntId(query.before_id, 'message id') : undefined;
 
-    const where: any = { conversationId };
-    if (beforeId) where.id = { lt: beforeId };
+    const conditions: SQL[] = [eq(chatMessage.conversationId, conversationId)];
+    if (tid) conditions.push(eq(chatMessage.tenantId, tid));
+    if (beforeId) conditions.push(lt(chatMessage.id, beforeId));
 
-    const rows = await this.drizzle.chatMessage.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      take: perPage + 1,
-    });
+    const rows = await this.db.client
+      .select()
+      .from(chatMessage)
+      .where(and(...conditions))
+      .orderBy(desc(chatMessage.createdAt))
+      .limit(perPage + 1);
 
     const hasMore = rows.length > perPage;
     const pageRows = rows.slice(0, perPage);
@@ -319,36 +364,50 @@ export class ChatService {
 
   private async loadAttachments(messageIds: bigint[]) {
     if (!messageIds.length) return new Map<string, any[]>();
-    const rows = await this.drizzle.chatMessageAttachment.findMany({
-      where: { messageId: { in: messageIds } },
-      include: {
-        fileAsset: {
-          select: { id: true, fileName: true, mimeType: true, fileSize: true, storagePath: true, publicUrl: true },
+    const tid = this.tenantContext.currentTenantId();
+    const rows = await this.db.client
+      .select({
+        attachment: chatMessageAttachment,
+        file: {
+          id: fileAsset.id,
+          fileName: fileAsset.fileName,
+          mimeType: fileAsset.mimeType,
+          fileSize: fileAsset.fileSize,
+          storagePath: fileAsset.storagePath,
+          publicUrl: fileAsset.publicUrl,
         },
-      },
-    });
+      })
+      .from(chatMessageAttachment)
+      .leftJoin(fileAsset, eq(chatMessageAttachment.fileAssetId, fileAsset.id))
+      .where(and(inArray(chatMessageAttachment.messageId, messageIds), tid ? eq(chatMessageAttachment.tenantId, tid) : undefined));
     const map = new Map<string, any[]>();
     for (const row of rows) {
-      const key = row.messageId.toString();
-      const file = row.fileAsset;
+      const key = row.attachment.messageId.toString();
+      const file = row.file;
       const entry = {
-        id: row.id.toString(),
-        file_asset_id: row.fileAssetId,
+        id: row.attachment.id.toString(),
+        file_asset_id: row.attachment.fileAssetId,
         file_name: file?.fileName ?? null,
         mime_type: file?.mimeType ?? null,
         file_size: file?.fileSize != null ? String(file.fileSize) : null,
         storage_path: file?.storagePath ?? null,
         public_url: file?.publicUrl ?? null,
       };
-      (map.get(key) ||= []).push(entry);
+      let list = map.get(key);
+      if (!list) {
+        list = [];
+        map.set(key, list);
+      }
+      list.push(entry);
     }
     return map;
   }
 
   async sendMessage(profileId: string, conversationIdRaw: string, dto: SendMessageDto) {
-    const me = this.parseId(profileId, 'profile id');
-    const conversationId = this.parseId(conversationIdRaw, 'conversation id');
+    const me = parseBigIntId(profileId, 'profile id');
+    const conversationId = parseBigIntId(conversationIdRaw, 'conversation id');
     await this.requireMembership(me, conversationId);
+    const tid = this.tenantContext.requireTenantId();
 
     const body = dto.body?.trim();
     const fileAssetIds = dto.file_asset_ids?.filter(Boolean) ?? [];
@@ -358,49 +417,50 @@ export class ChatService {
 
     let replyTo: bigint | null = null;
     if (dto.reply_to_message_id) {
-      replyTo = this.parseId(dto.reply_to_message_id, 'message id');
-      const replyExists = await this.drizzle.chatMessage.findUnique({
-        where: { id: replyTo },
-        select: { id: true },
-      });
+      replyTo = parseBigIntId(dto.reply_to_message_id, 'message id');
+      const [replyExists] = await this.db.client
+        .select({ id: chatMessage.id })
+        .from(chatMessage)
+        .where(and(eq(chatMessage.id, replyTo), eq(chatMessage.tenantId, tid)))
+        .limit(1);
       if (!replyExists) throw new BadRequestException('Reply-to message not found');
     }
 
     let verifiedFiles: string[] = [];
     if (fileAssetIds.length) {
-      const files = await this.drizzle.fileAsset.findMany({
-        where: { id: { in: fileAssetIds } },
-        select: { id: true },
-      });
+      const files = await this.db.client
+        .select({ id: fileAsset.id })
+        .from(fileAsset)
+        .where(inArray(fileAsset.id, fileAssetIds));
       if (files.length !== fileAssetIds.length) {
         throw new BadRequestException('One or more file_asset_id values do not exist');
       }
       verifiedFiles = fileAssetIds;
     }
 
-    const message = await this.drizzle.chatMessage.create({
-      data: {
+    const [message] = await this.db.client
+      .insert(chatMessage)
+      .values({
+        tenantId: tid,
         conversationId,
         senderProfileId: me,
         body: body ?? null,
         replyToMessageId: replyTo,
-      },
-    });
+      })
+      .returning();
 
     if (verifiedFiles.length) {
-      await this.drizzle.$transaction(
+      await Promise.all(
         verifiedFiles.map((fileAssetId) =>
-          this.drizzle.chatMessageAttachment.create({
-            data: { messageId: message.id, fileAssetId },
-          })
+          this.db.client.insert(chatMessageAttachment).values({ tenantId: tid, messageId: message.id, fileAssetId })
         )
       );
     }
 
-    await this.drizzle.chatConversation.update({
-      where: { id: conversationId },
-      data: { updatedAt: new Date() },
-    });
+    await this.db.client
+      .update(chatConversation)
+      .set({ updatedAt: new Date() })
+      .where(eq(chatConversation.id, conversationId));
 
     const profiles = await this.profileMap([me]);
     const attachments = await this.loadAttachments([message.id]);
@@ -420,13 +480,20 @@ export class ChatService {
   }
 
   async markRead(profileId: string, conversationIdRaw: string) {
-    const me = this.parseId(profileId, 'profile id');
-    const conversationId = this.parseId(conversationIdRaw, 'conversation id');
+    const me = parseBigIntId(profileId, 'profile id');
+    const conversationId = parseBigIntId(conversationIdRaw, 'conversation id');
     await this.requireMembership(me, conversationId);
-    await this.drizzle.chatConversationMember.updateMany({
-      where: { conversationId, profileId: me },
-      data: { lastReadAt: new Date() },
-    });
+    const tid = this.tenantContext.currentTenantId();
+    await this.db.client
+      .update(chatConversationMember)
+      .set({ lastReadAt: new Date() })
+      .where(
+        and(
+          eq(chatConversationMember.conversationId, conversationId),
+          eq(chatConversationMember.profileId, me),
+          tid ? eq(chatConversationMember.tenantId, tid) : undefined,
+        ),
+      );
     this.realtime.emitConversation(conversationId, 'message:read', {
       conversation_id: conversationId.toString(),
       profile_id: me.toString(),
@@ -436,11 +503,11 @@ export class ChatService {
   }
 
   async unreadCount(profileId: string) {
-    const me = this.parseId(profileId, 'profile id');
-    const memberships = await this.drizzle.chatConversationMember.findMany({
-      where: { profileId: me },
-      select: { conversationId: true },
-    });
+    const me = parseBigIntId(profileId, 'profile id');
+    const memberships = await this.db.client
+      .select({ conversationId: chatConversationMember.conversationId })
+      .from(chatConversationMember)
+      .where(eq(chatConversationMember.profileId, me));
     if (!memberships.length) return { unread_count: 0 };
     const counts = await this.getUnreadForConversations(
       me,
@@ -451,34 +518,38 @@ export class ChatService {
   }
 
   async addMembers(profileId: string, conversationIdRaw: string, memberIdsRaw: string[]) {
-    const me = this.parseId(profileId, 'profile id');
-    const conversationId = this.parseId(conversationIdRaw, 'conversation id');
+    const me = parseBigIntId(profileId, 'profile id');
+    const conversationId = parseBigIntId(conversationIdRaw, 'conversation id');
     const conversation = await this.requireConversation(conversationId);
     if (conversation.type !== 'group') {
       throw new BadRequestException('Members can only be added to group conversations');
     }
     await this.requireMembership(me, conversationId);
+    const tid = this.tenantContext.requireTenantId();
 
-    const memberIds = Array.from(new Set(memberIdsRaw.map((id) => this.parseId(id, 'member id'))));
-    const profiles = await this.drizzle.profile.findMany({
-      where: { id: { in: memberIds } },
-      select: { id: true },
-    });
+    const memberIds = Array.from(new Set(memberIdsRaw.map((id) => parseBigIntId(id, 'member id'))));
+    const profiles = await this.db.client.select({ id: profile.id }).from(profile).where(inArray(profile.id, memberIds));
     if (profiles.length !== memberIds.length) {
       throw new BadRequestException('One or more member profiles do not exist');
     }
 
-    const existing = await this.drizzle.chatConversationMember.findMany({
-      where: { conversationId, profileId: { in: memberIds } },
-      select: { profileId: true },
-    });
+    const existing = await this.db.client
+      .select({ profileId: chatConversationMember.profileId })
+      .from(chatConversationMember)
+      .where(
+        and(
+          eq(chatConversationMember.conversationId, conversationId),
+          inArray(chatConversationMember.profileId, memberIds),
+          tid ? eq(chatConversationMember.tenantId, tid) : undefined,
+        ),
+      );
     const existingIds = new Set(existing.map((row) => row.profileId.toString()));
     const toAdd = memberIds.filter((id) => !existingIds.has(id.toString()));
 
     if (toAdd.length) {
-      await this.drizzle.chatConversationMember.createMany({
-        data: toAdd.map((profileUserId) => ({ conversationId, profileId: profileUserId, role: 'member' })),
-      });
+      await this.db.client.insert(chatConversationMember).values(
+        toAdd.map((profileUserId) => ({ tenantId: tid, conversationId, profileId: profileUserId, role: 'member' as const })),
+      );
     }
     const detail = await this.detail(profileId, conversationId.toString());
     for (const profileUserId of toAdd) {
@@ -492,39 +563,71 @@ export class ChatService {
   }
 
   async updateMemberRole(profileId: string, conversationIdRaw: string, memberProfileIdRaw: string, dto: UpdateMemberDto) {
-    const me = this.parseId(profileId, 'profile id');
-    const conversationId = this.parseId(conversationIdRaw, 'conversation id');
-    const targetProfileId = this.parseId(memberProfileIdRaw, 'member profile id');
+    const me = parseBigIntId(profileId, 'profile id');
+    const conversationId = parseBigIntId(conversationIdRaw, 'conversation id');
+    const targetProfileId = parseBigIntId(memberProfileIdRaw, 'member profile id');
     await this.requireMembership(me, conversationId);
-    const myMembership = await this.drizzle.chatConversationMember.findFirst({
-      where: { conversationId, profileId: me },
-    });
+    const tid = this.tenantContext.currentTenantId();
+    const [myMembership] = await this.db.client
+      .select()
+      .from(chatConversationMember)
+      .where(
+        and(
+          eq(chatConversationMember.conversationId, conversationId),
+          eq(chatConversationMember.profileId, me),
+          tid ? eq(chatConversationMember.tenantId, tid) : undefined,
+        ),
+      )
+      .limit(1);
     if (!myMembership || myMembership.role !== 'admin') {
       throw new BadRequestException('Only conversation admins can update member roles');
     }
-    const updated = await this.drizzle.chatConversationMember.updateMany({
-      where: { conversationId, profileId: targetProfileId },
-      data: { role: dto.role },
-    });
-    if (!updated.count) throw new NotFoundException('Member not found in conversation');
+    const [updated] = await this.db.client
+      .update(chatConversationMember)
+      .set({ role: dto.role })
+      .where(
+        and(
+          eq(chatConversationMember.conversationId, conversationId),
+          eq(chatConversationMember.profileId, targetProfileId),
+          tid ? eq(chatConversationMember.tenantId, tid) : undefined,
+        ),
+      )
+      .returning();
+    if (!updated) throw new NotFoundException('Member not found in conversation');
     return { success: true };
   }
 
   async removeMember(profileId: string, conversationIdRaw: string, memberProfileIdRaw: string) {
-    const me = this.parseId(profileId, 'profile id');
-    const conversationId = this.parseId(conversationIdRaw, 'conversation id');
-    const targetProfileId = this.parseId(memberProfileIdRaw, 'member profile id');
+    const me = parseBigIntId(profileId, 'profile id');
+    const conversationId = parseBigIntId(conversationIdRaw, 'conversation id');
+    const targetProfileId = parseBigIntId(memberProfileIdRaw, 'member profile id');
     await this.requireMembership(me, conversationId);
-    const myMembership = await this.drizzle.chatConversationMember.findFirst({
-      where: { conversationId, profileId: me },
-    });
+    const tid = this.tenantContext.currentTenantId();
+    const [myMembership] = await this.db.client
+      .select()
+      .from(chatConversationMember)
+      .where(
+        and(
+          eq(chatConversationMember.conversationId, conversationId),
+          eq(chatConversationMember.profileId, me),
+          tid ? eq(chatConversationMember.tenantId, tid) : undefined,
+        ),
+      )
+      .limit(1);
     if (!myMembership || myMembership.role !== 'admin') {
       throw new BadRequestException('Only conversation admins can remove members');
     }
-    const removed = await this.drizzle.chatConversationMember.deleteMany({
-      where: { conversationId, profileId: targetProfileId },
-    });
-    if (!removed.count) throw new NotFoundException('Member not found in conversation');
+    const [removed] = await this.db.client
+      .delete(chatConversationMember)
+      .where(
+        and(
+          eq(chatConversationMember.conversationId, conversationId),
+          eq(chatConversationMember.profileId, targetProfileId),
+          tid ? eq(chatConversationMember.tenantId, tid) : undefined,
+        ),
+      )
+      .returning();
+    if (!removed) throw new NotFoundException('Member not found in conversation');
     this.realtime.emitConversation(conversationId, 'conversation:member_left', {
       conversation_id: conversationId.toString(),
       profile_id: targetProfileId.toString(),
@@ -533,12 +636,19 @@ export class ChatService {
   }
 
   async leave(profileId: string, conversationIdRaw: string) {
-    const me = this.parseId(profileId, 'profile id');
-    const conversationId = this.parseId(conversationIdRaw, 'conversation id');
+    const me = parseBigIntId(profileId, 'profile id');
+    const conversationId = parseBigIntId(conversationIdRaw, 'conversation id');
     await this.requireMembership(me, conversationId);
-    await this.drizzle.chatConversationMember.deleteMany({
-      where: { conversationId, profileId: me },
-    });
+    const tid = this.tenantContext.currentTenantId();
+    await this.db.client
+      .delete(chatConversationMember)
+      .where(
+        and(
+          eq(chatConversationMember.conversationId, conversationId),
+          eq(chatConversationMember.profileId, me),
+          tid ? eq(chatConversationMember.tenantId, tid) : undefined,
+        ),
+      );
     this.realtime.emitConversation(conversationId, 'conversation:member_left', {
       conversation_id: conversationId.toString(),
       profile_id: me.toString(),

@@ -1,0 +1,13 @@
+node_modules
+**/node_modules
+**/dist
+**/.git
+.git
+.github
+e2e
+apps/*/.env
+apps/*/.env.*.local
+.env
+*.log
+**/coverage
+**/.cache

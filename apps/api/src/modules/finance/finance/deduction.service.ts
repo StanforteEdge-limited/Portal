@@ -4,30 +4,50 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { Drizzle } from '$common/db/drizzle-compat';
+import { Decimal } from 'decimal.js';
+import { SQL, and, asc, count, desc, eq, exists, gte, ilike, inArray, isNull, like, lt, lte, or, sql } from 'drizzle-orm';
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { extname, resolve } from 'node:path';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 import { paginatedResponse } from '$common/helpers/paginated-response';
-import { DrizzleService } from '$common/drizzle/drizzle.service';
+import { DbService } from '$common/db/db.service';
+import { TenantContextService } from '$common/auth/tenant-context.service';
 import { toBigInt } from '$common/utils/ids';
 import { UpsertDeductionTypeDto } from '$modules/finance/finance/dto/upsert-deduction-type.dto';
 import { ApplyPVDeductionsDto } from '$modules/finance/finance/dto/apply-pv-deductions.dto';
 import { CreateWHTRemittanceDto } from '$modules/finance/finance/dto/create-wht-remittance.dto';
 import { RequestRemittancesQueryDto, StatutoryDeductionsQueryDto, RemitStatutoryDeductionsDto } from '$modules/finance/finance/dto/statutory-deductions.dto';
 import { PdfService } from '$common/pdf/pdf.service';
+import { fileAsset } from '$modules/storage/model';
+import { profile } from '$modules/identity/users/model';
+import { requestInstance } from '$modules/requests/requests/model';
+import {
+  financeAccount,
+  financeChartAccount,
+  financeContact,
+  financeDeductionType,
+  financePaymentVoucher,
+  financePVDeduction,
+  financeRequestDeduction,
+  financeRequestDeductionRemittanceAllocation,
+  financeRequestRemittance,
+  financeSetting,
+  financeVendorWHTAccrual,
+  financeWHTRemittance,
+} from './model';
 
 @Injectable()
 export class DeductionService {
   private readonly logger = new Logger(DeductionService.name);
 
   constructor(
-    private readonly drizzle: DrizzleService,
+    private readonly db: DbService,
+    private readonly tenantContext: TenantContextService,
     private readonly pdfService: PdfService,
   ) {}
 
-  private sumAllocatedAmount(allocations: Array<{ allocatedAmount: Drizzle.Decimal | number | string }>): number {
+private sumAllocatedAmount(allocations: Array<{ allocatedAmount: Decimal | number | string }>): number {
     return allocations.reduce((sum, allocation) => sum + Number(allocation.allocatedAmount ?? 0), 0);
   }
 
@@ -46,31 +66,244 @@ export class DeductionService {
     };
   }
 
+  private async fetchProfileRows(ids: Array<bigint | null | undefined>): Promise<Map<string, any>> {
+    const profileIds = Array.from(new Set(ids.filter((id): id is bigint => id != null)));
+    if (profileIds.length === 0) return new Map();
+    const rows = await this.db.client
+      .select({ id: profile.id, firstName: profile.firstName, lastName: profile.lastName, email: profile.email, username: profile.username })
+      .from(profile)
+      .where(inArray(profile.id, profileIds));
+    return new Map(rows.map((row) => [row.id.toString(), row]));
+  }
+
+  private async fileAssetsByIds(ids: Array<string | null | undefined>): Promise<any[]> {
+    const fileIds = Array.from(new Set(ids.filter((id): id is string => Boolean(id))));
+    if (fileIds.length === 0) return [];
+    const tid = this.tenantContext.currentTenantId();
+    return this.db.client
+      .select()
+      .from(fileAsset)
+      .where(and(inArray(fileAsset.id, fileIds), tid ? eq(fileAsset.tenantId, tid) : undefined));
+  }
+
+  private async fetchPaymentVouchers(voucherIds: Array<string | null | undefined>): Promise<Map<string, any>> {
+    const ids = Array.from(new Set(voucherIds.filter((id): id is string => Boolean(id))));
+    if (ids.length === 0) return new Map();
+    const rows = await this.db.client
+      .select({
+        id: financePaymentVoucher.id,
+        voucherNumber: financePaymentVoucher.voucherNumber,
+        createdAt: financePaymentVoucher.createdAt,
+        disbursedAt: financePaymentVoucher.disbursedAt,
+      })
+      .from(financePaymentVoucher)
+      .where(inArray(financePaymentVoucher.id, ids));
+    return new Map(rows.map((row) => [row.id, row]));
+  }
+
+  private async fetchFinanceAccounts(accountIds: Array<string | null | undefined>): Promise<Map<string, any>> {
+    const ids = Array.from(new Set(accountIds.filter((id): id is string => Boolean(id))));
+    if (ids.length === 0) return new Map();
+    const tid = this.tenantContext.currentTenantId();
+    const rows = await this.db.client
+      .select({
+        id: financeAccount.id,
+        name: financeAccount.name,
+        bankName: financeAccount.bankName,
+        accountNumber: financeAccount.accountNumber,
+      })
+      .from(financeAccount)
+      .where(and(inArray(financeAccount.id, ids), tid ? eq(financeAccount.tenantId, tid) : undefined));
+    return new Map(rows.map((row) => [row.id, row]));
+  }
+
   private async nextRequestRemittanceNumber(remittedAt: Date) {
     const year = remittedAt.getFullYear();
-    const count = await this.drizzle.financeRequestRemittance.count({
-      where: {
-        createdAt: {
-          gte: new Date(year, 0, 1),
-          lt: new Date(year + 1, 0, 1),
-        },
-      },
-    });
-    return `TRM/${year}/${String(count + 500).padStart(3, '0')}`;
+    const [countRow] = await this.db.client
+      .select({ value: count() })
+      .from(financeRequestRemittance)
+      .where(
+        and(
+          gte(financeRequestRemittance.createdAt, new Date(year, 0, 1)),
+          lt(financeRequestRemittance.createdAt, new Date(year + 1, 0, 1)),
+        ),
+      );
+    const countValue = Number(countRow?.value ?? 0);
+    return `TRM/${year}/${String(countValue + 500).padStart(3, '0')}`;
   }
 
   private async hydrateEvidenceFiles(fileIds: unknown) {
     const ids = Array.isArray(fileIds) ? fileIds.map(String) : [];
     if (ids.length === 0) return [];
-    const files = await this.drizzle.fileAsset.findMany({
-      where: { id: { in: ids } },
-      select: { id: true, fileName: true, publicUrl: true },
-    });
+    const files = await this.fileAssetsByIds(ids);
     const fileMap = new Map(files.map((file) => [file.id, file]));
     return ids
       .map((id) => fileMap.get(id))
       .filter(Boolean)
       .map((file: any) => ({ id: file.id, file_name: file.fileName, public_url: file.publicUrl ?? null }));
+  }
+
+  private async fillDeductionRels(deductions: any[], opts: { allocations?: 'none' | 'shallow' | 'deep'; request?: 'minimal' | 'list' | 'pdf'; createdByUser?: boolean; deductionType?: 'basic' | 'full' } = {}) {
+    if (deductions.length === 0) return;
+    const deductionIds = deductions.map((d) => d.id);
+    const tid = this.tenantContext.currentTenantId();
+
+    const [typeRows, requestRows, profileRows, pvDeductionRows]: [any[], any[], Map<string, any>, any[]] = await Promise.all([
+      this.db.client.select().from(financeDeductionType).where(inArray(financeDeductionType.id, deductionIds)),
+      this.db.client
+        .select({ id: requestInstance.id, createdBy: requestInstance.createdBy, status: requestInstance.status, data: requestInstance.data, createdAt: requestInstance.createdAt })
+        .from(requestInstance)
+        .where(
+          and(
+            inArray(requestInstance.id, Array.from(new Set(deductions.map((d) => d.requestId)))),
+            tid ? eq(requestInstance.tenantId, tid) : undefined,
+          ),
+        ),
+      opts.createdByUser
+        ? this.fetchProfileRows(deductions.map((d) => d.createdBy))
+        : Promise.resolve(new Map<string, any>()),
+      this.db.client.select().from(financePVDeduction).where(inArray(financePVDeduction.requestDeductionId, deductionIds)),
+    ]);
+
+    let requestCreatorMap = new Map<string, any>();
+    if (opts.request === 'pdf') {
+      requestCreatorMap = await this.fetchProfileRows(requestRows.map((r) => r.createdBy));
+    }
+
+    const typeMap = new Map(typeRows.map((row) => [row.id, row]));
+    const requestMap = new Map(requestRows.map((row) => [row.id, row]));
+    const pvdByRequest = new Map(pvDeductionRows.map((row) => [row.requestDeductionId, row]));
+
+    const voucherMap = await this.fetchPaymentVouchers(pvDeductionRows.map((row) => row.paymentVoucherId));
+    for (const pvd of pvDeductionRows) {
+      pvd.paymentVoucher = voucherMap.get(pvd.paymentVoucherId) ?? null;
+    }
+
+    for (const deduction of deductions) {
+      const type = typeMap.get(deduction.deductionTypeId);
+      deduction.deductionType = opts.deductionType === 'full' ? (type ?? null) : (type ? { id: type.id, name: type.name, code: type.code } : null);
+
+      const requestRow = requestMap.get(deduction.requestId);
+      if (requestRow && opts.request === 'minimal') {
+        deduction.request = { id: requestRow.id, data: requestRow.data };
+      } else if (requestRow && opts.request === 'list') {
+        deduction.request = { id: requestRow.id, createdAt: requestRow.createdAt, status: requestRow.status, data: requestRow.data };
+      } else if (requestRow && opts.request === 'pdf') {
+        deduction.request = {
+          id: requestRow.id,
+          status: requestRow.status,
+          data: requestRow.data,
+          createdAt: requestRow.createdAt,
+          creator: requestCreatorMap.get(requestRow.createdBy?.toString() ?? '') ?? null,
+        };
+      } else {
+        deduction.request = requestRow ?? null;
+      }
+
+      deduction.createdByUser = opts.createdByUser
+        ? (() => {
+            const p = profileRows.get(deduction.createdBy?.toString() ?? '');
+            return p ? { id: p.id, firstName: p.firstName, lastName: p.lastName } : null;
+          })()
+        : null;
+
+      deduction.pvDeduction = pvdByRequest.get(deduction.id) ?? null;
+    }
+
+    if (opts.allocations && opts.allocations !== 'none') {
+      const allocRows = await this.db.client
+        .select()
+        .from(financeRequestDeductionRemittanceAllocation)
+        .where(inArray(financeRequestDeductionRemittanceAllocation.requestDeductionId, deductionIds))
+        .orderBy(desc(financeRequestDeductionRemittanceAllocation.createdAt));
+
+      if (opts.allocations === 'shallow') {
+        const byDeduction = new Map<string, any[]>();
+        for (const alloc of allocRows) {
+          const list = byDeduction.get(alloc.requestDeductionId) ?? [];
+          list.push({ id: alloc.id, allocatedAmount: alloc.allocatedAmount });
+          byDeduction.set(alloc.requestDeductionId, list);
+        }
+        for (const deduction of deductions) {
+          deduction.remittanceAllocations = byDeduction.get(deduction.id) ?? [];
+        }
+      } else {
+        const remittanceIds = Array.from(new Set(allocRows.map((a) => a.requestRemittanceId)));
+        const remittanceRows = remittanceIds.length
+          ? await this.db.client.select().from(financeRequestRemittance).where(inArray(financeRequestRemittance.id, remittanceIds))
+          : [];
+        await this.fillRemittanceRels(remittanceRows);
+        const remMap = new Map(remittanceRows.map((r) => [r.id, r]));
+        const byDeduction = new Map<string, any[]>();
+        for (const alloc of allocRows) {
+          const withRemittance = { ...alloc, requestRemittance: remMap.get(alloc.requestRemittanceId) ?? null };
+          const list = byDeduction.get(alloc.requestDeductionId) ?? [];
+          list.push(withRemittance);
+          byDeduction.set(alloc.requestDeductionId, list);
+        }
+        for (const deduction of deductions) {
+          deduction.remittanceAllocations = byDeduction.get(deduction.id) ?? [];
+        }
+      }
+    }
+  }
+
+  private async fillRemittanceRels(remittances: any[], opts: { deductions?: 'map' | 'pdf' } = {}) {
+    if (remittances.length === 0) return remittances;
+    const remittanceIds = remittances.map((r) => r.id);
+
+    const [voucherMap, remitterMap, creatorMap, accountMap, allocRows]: [
+      Map<string, any>,
+      Map<string, any>,
+      Map<string, any>,
+      Map<string, any>,
+      any[],
+    ] = await Promise.all([
+      this.fetchPaymentVouchers(remittances.map((r) => r.paymentVoucherId)),
+      this.fetchProfileRows(remittances.map((r) => r.remittedBy)),
+      this.fetchProfileRows(remittances.map((r) => r.createdBy)),
+      this.fetchFinanceAccounts(remittances.map((r) => r.paidFromAccountId)),
+      opts.deductions
+        ? this.db.client
+            .select()
+            .from(financeRequestDeductionRemittanceAllocation)
+            .where(inArray(financeRequestDeductionRemittanceAllocation.requestRemittanceId, remittanceIds))
+            .orderBy(asc(financeRequestDeductionRemittanceAllocation.createdAt))
+        : Promise.resolve([] as any[]),
+    ]);
+    const fileRows = await this.fileAssetsByIds(remittances.map((r) => r.evidenceFileId));
+    const evidenceMap = new Map(fileRows.map((file: any) => [file.id, file]));
+
+    for (const rem of remittances) {
+      rem.paymentVoucher = voucherMap.get(rem.paymentVoucherId) ?? null;
+      rem.remittedByUser = rem.remittedBy != null ? (remitterMap.get(rem.remittedBy.toString()) ?? null) : null;
+      rem.createdByUser = rem.createdBy != null ? (creatorMap.get(rem.createdBy.toString()) ?? null) : null;
+      rem.paidFromAccount = accountMap.get(rem.paidFromAccountId) ?? null;
+      rem.evidenceFile = rem.evidenceFileId ? (evidenceMap.get(rem.evidenceFileId) ?? null) : null;
+      rem.allocations = [];
+    }
+
+    if (opts.deductions && allocRows.length) {
+      const dedIds = Array.from(new Set(allocRows.map((a) => a.requestDeductionId)));
+      const deductionRows = dedIds.length
+        ? await this.db.client.select().from(financeRequestDeduction).where(inArray(financeRequestDeduction.id, dedIds))
+        : [];
+      const dedMap = new Map(deductionRows.map((d) => [d.id, d]));
+      for (const alloc of allocRows) {
+        alloc.requestDeduction = dedMap.get(alloc.requestDeductionId) ?? null;
+      }
+      await this.fillDeductionRels(
+        deductionRows,
+        opts.deductions === 'pdf'
+          ? { allocations: 'none', request: 'pdf', deductionType: 'full' }
+          : { allocations: 'shallow', request: 'minimal', deductionType: 'basic' },
+      );
+      for (const rem of remittances) {
+        rem.allocations = allocRows.filter((a) => a.requestRemittanceId === rem.id);
+      }
+    }
+
+    return remittances;
   }
 
   private async mapRequestRemittance(remittance: any) {
@@ -133,35 +366,21 @@ export class DeductionService {
   }
 
   private async syncDeductionRemittanceSummary(
-    tx: Drizzle.TransactionClient,
+    tx: any,
     deductionId: string,
   ) {
-    const deduction = await tx.financeRequestDeduction.findUnique({
-      where: { id: deductionId },
-      include: {
-        remittanceAllocations: {
-          include: {
-            requestRemittance: true,
-          },
-          orderBy: [{ requestRemittance: { remittedAt: 'desc' } }, { createdAt: 'desc' }],
-        },
-      },
-    });
+    const [deduction] = await tx.select().from(financeRequestDeduction).where(eq(financeRequestDeduction.id, deductionId)).limit(1);
     if (!deduction) return;
 
-    const allocations = deduction.remittanceAllocations;
+    const allocations = await tx
+      .select({ allocatedAmount: financeRequestDeductionRemittanceAllocation.allocatedAmount })
+      .from(financeRequestDeductionRemittanceAllocation)
+      .where(eq(financeRequestDeductionRemittanceAllocation.requestDeductionId, deductionId));
     const allocatedAmount = this.sumAllocatedAmount(allocations);
     const status = this.deriveDeductionStatus(Number(deduction.amount), allocatedAmount);
 
-    await tx.financeRequestDeduction.update({
-      where: { id: deductionId },
-      data: {
-        status,
-      },
-    });
+    await tx.update(financeRequestDeduction).set({ status }).where(eq(financeRequestDeduction.id, deductionId));
   }
-
-  // ── PDF Helpers ───────────────────────────────────────────────────────────
 
   private fmtMoney(amount: any, currency = 'NGN'): string {
     const n = Number(amount ?? 0);
@@ -186,7 +405,11 @@ export class DeductionService {
     approved_title: string;
     approved_signature: string | null;
   }> {
-    const row = await this.drizzle.financeSetting.findUnique({ where: { key: 'default' }, select: { config: true } });
+    const [row] = await this.db.client
+      .select({ config: financeSetting.config })
+      .from(financeSetting)
+      .where(eq(financeSetting.key, 'default'))
+      .limit(1);
     const cfg: any = (row?.config && typeof row.config === 'object' && !Array.isArray(row.config)) ? row.config : {};
     const [prepared_signature, approved_signature] = await Promise.all([
       this.resolveSignatureDataUri(cfg?.prepared_by?.signature_file_id),
@@ -205,7 +428,8 @@ export class DeductionService {
 
   private async resolveSignatureDataUri(fileId: unknown): Promise<string | null> {
     if (typeof fileId !== 'string' || !fileId) return null;
-    const asset = await this.drizzle.fileAsset.findUnique({ where: { id: fileId } });
+    const assets = await this.fileAssetsByIds([fileId]);
+    const asset = assets[0] ?? null;
     if (!asset) return null;
     const storagePath = asset.storagePath || asset.publicUrl || '';
     if (!storagePath) return null;
@@ -379,20 +603,29 @@ export class DeductionService {
     `;
   }
 
-  // ── Deduction Types ──────────────────────────────────────────────────────
-
   async listDeductionTypes(query: Record<string, any>) {
-    const where: Drizzle.FinanceRequestDeductionWhereInput = {};
-    if (query.organization_id) where.organizationId = toBigInt(query.organization_id);
-    if (query.is_active !== undefined) where.isActive = query.is_active === 'true' || query.is_active === true;
-    if (query.applies_to) where.appliesTo = String(query.applies_to);
+    const conditions: SQL[] = [];
+    if (query.organization_id) conditions.push(eq(financeDeductionType.organizationId, toBigInt(query.organization_id)));
+    if (query.is_active !== undefined) conditions.push(eq(financeDeductionType.isActive, query.is_active === 'true' || query.is_active === true));
+    if (query.applies_to) conditions.push(eq(financeDeductionType.appliesTo, String(query.applies_to)));
 
-    const rows = await this.drizzle.financeDeductionType.findMany({
-      where,
-      orderBy: { name: 'asc' },
-      include: { glAccount: { select: { id: true, name: true, code: true } } },
-    });
-    return paginatedResponse(rows, { page: 1, per_page: rows.length, total: rows.length });
+    const rows = await this.db.client
+      .select()
+      .from(financeDeductionType)
+      .where(conditions.length ? and(...conditions) : undefined)
+      .orderBy(asc(financeDeductionType.name));
+
+    const glAccountIds = Array.from(new Set(rows.map((row) => row.glAccountId).filter((id): id is string => Boolean(id))));
+    let glAccountMap = new Map<string, any>();
+    if (glAccountIds.length > 0) {
+      const glRows = await this.db.client
+        .select({ id: financeChartAccount.id, name: financeChartAccount.name, code: financeChartAccount.code })
+        .from(financeChartAccount)
+        .where(inArray(financeChartAccount.id, glAccountIds));
+      glAccountMap = new Map(glRows.map((row) => [row.id, row]));
+    }
+    const resultRows = rows.map((row) => ({ ...row, glAccount: row.glAccountId ? (glAccountMap.get(row.glAccountId) ?? null) : null }));
+    return paginatedResponse(resultRows, { page: 1, per_page: rows.length, total: rows.length });
   }
 
   async upsertDeductionType(
@@ -415,168 +648,212 @@ export class DeductionService {
       if (dto.gl_account_id !== undefined) data.glAccountId = dto.gl_account_id ?? null;
 
       if (id) {
-        const existing = await this.drizzle.financeDeductionType.findUnique({ where: { id } });
+        const [existing] = await this.db.client.select().from(financeDeductionType).where(eq(financeDeductionType.id, id)).limit(1);
         if (!existing) throw new NotFoundException('Deduction type not found');
-        return await this.drizzle.financeDeductionType.update({ where: { id }, data });
+        const updated = await this.db.client.update(financeDeductionType).set(data).where(eq(financeDeductionType.id, id)).returning();
+        return updated[0];
       }
 
       if (!dto.name || !dto.code || dto.rate === undefined) {
         throw new BadRequestException('name, code, and rate are required when creating a deduction type');
       }
 
-      return await this.drizzle.financeDeductionType.create({
-        data: {
-          ...data,
-          name: dto.name,
-          code: dto.code,
-          rate: dto.rate,
-          appliesTo: dto.applies_to ?? 'vendor',
-          isActive: dto.is_active ?? true,
-          createdBy: toBigInt(userId),
-          organizationId: organizationId ? toBigInt(organizationId) : null,
-        },
-      });
+      const created = await this.db.client.insert(financeDeductionType).values({
+        ...data,
+        name: dto.name,
+        code: dto.code,
+        rate: dto.rate,
+        appliesTo: dto.applies_to ?? 'vendor',
+        isActive: dto.is_active ?? true,
+        createdBy: toBigInt(userId),
+        organizationId: organizationId ? toBigInt(organizationId) : null,
+      }).returning();
+      return created[0];
     } catch (e) {
       this.logger.error(`upsertDeductionType error: ${e instanceof Error ? e.stack : String(e)}`);
       throw e;
     }
   }
 
-  // ── PV Deductions ────────────────────────────────────────────────────────
-
   async applyPVDeductions(pvId: string, dto: ApplyPVDeductionsDto, userId: number) {
-    const pv = await this.drizzle.financePaymentVoucher.findUnique({
-      where: { id: pvId },
-      include: { contact: true },
-    });
+    const [pv] = await this.db.client.select().from(financePaymentVoucher).where(eq(financePaymentVoucher.id, pvId)).limit(1);
     if (!pv) throw new NotFoundException('Payment voucher not found');
 
     const now = new Date();
 
-    return this.drizzle.$transaction(async (tx) => {
-      const existingPVDeductions = await tx.financePVDeduction.findMany({
-        where: { paymentVoucherId: pvId },
-        select: { requestDeductionId: true },
-      });
+    return this.db.client.transaction(async (tx) => {
+      const existingPVDeductions = await tx
+        .select({ requestDeductionId: financePVDeduction.requestDeductionId })
+        .from(financePVDeduction)
+        .where(eq(financePVDeduction.paymentVoucherId, pvId));
       const linkedRequestDeductionIds = existingPVDeductions
         .map((row) => row.requestDeductionId)
         .filter((value): value is string => Boolean(value));
 
-      // Remove any previously applied deductions for this PV
-      await tx.financePVDeduction.deleteMany({ where: { paymentVoucherId: pvId } });
-      await tx.financeVendorWHTAccrual.deleteMany({ where: { paymentVoucherId: pvId } });
+      await tx.delete(financePVDeduction).where(eq(financePVDeduction.paymentVoucherId, pvId));
+      await tx.delete(financeVendorWHTAccrual).where(eq(financeVendorWHTAccrual.paymentVoucherId, pvId));
       if (linkedRequestDeductionIds.length > 0) {
-        await tx.financeRequestDeduction.deleteMany({ where: { id: { in: linkedRequestDeductionIds } } });
+        await tx.delete(financeRequestDeduction).where(inArray(financeRequestDeduction.id, linkedRequestDeductionIds));
       }
 
-      const createdDeductions = [] as Array<{ id: string; deductionTypeId: string; grossAmount: Drizzle.Decimal; deductionAmount: Drizzle.Decimal; requestDeductionId: string | null }>;
+      const createdDeductions = [] as Array<{ id: string; deductionTypeId: string; grossAmount: Decimal | number | string; deductionAmount: Decimal | number | string; requestDeductionId: string | null }>;
       for (const line of dto.deductions) {
         const requestDeduction = pv.requestId
-          ? await tx.financeRequestDeduction.create({
-              data: {
-                requestId: pv.requestId,
-                deductionTypeId: line.deduction_type_id,
-                amount: line.deduction_amount,
-                rate: line.rate,
-                grossAmount: line.gross_amount,
-                status: 'pending',
-                createdBy: toBigInt(userId),
-                updatedAt: now,
-              },
-            })
+          ? (await tx.insert(financeRequestDeduction).values({
+              requestId: pv.requestId,
+              deductionTypeId: line.deduction_type_id,
+              amount: line.deduction_amount as any,
+              rate: line.rate as any,
+              grossAmount: line.gross_amount as any,
+              status: 'pending',
+              createdBy: toBigInt(userId),
+              updatedAt: now,
+            }).returning())[0]
           : null;
 
-        const deduction = await tx.financePVDeduction.create({
-          data: {
-            paymentVoucherId: pvId,
-            deductionTypeId: line.deduction_type_id,
-            requestDeductionId: requestDeduction?.id ?? null,
-            rate: line.rate,
-            grossAmount: line.gross_amount,
-            deductionAmount: line.deduction_amount,
-            createdBy: toBigInt(userId),
-            updatedAt: now,
-          },
-        });
+        const deduction = (await tx.insert(financePVDeduction).values({
+          paymentVoucherId: pvId,
+          deductionTypeId: line.deduction_type_id,
+          requestDeductionId: requestDeduction?.id ?? null,
+          rate: line.rate as any,
+          grossAmount: line.gross_amount as any,
+          deductionAmount: line.deduction_amount as any,
+          createdBy: toBigInt(userId),
+          updatedAt: now,
+        }).returning())[0];
         createdDeductions.push(deduction);
       }
 
-      // Create accruals for contact-linked PVs
       if (pv.contactId) {
         await Promise.all(
           createdDeductions.map((deduction) =>
-            tx.financeVendorWHTAccrual.create({
-              data: {
-                contactId: pv.contactId!,
-                paymentVoucherId: pvId,
-                pvDeductionId: deduction.id,
-                deductionTypeId: deduction.deductionTypeId,
-                periodYear: now.getFullYear(),
-                periodMonth: now.getMonth() + 1,
-                grossAmount: deduction.grossAmount,
-                withheldAmount: deduction.deductionAmount,
-                organizationId: null,
-                updatedAt: now,
-              },
-            }),
+            tx.insert(financeVendorWHTAccrual).values({
+              contactId: pv.contactId!,
+              paymentVoucherId: pvId,
+              pvDeductionId: deduction.id,
+              deductionTypeId: deduction.deductionTypeId,
+              periodYear: now.getFullYear(),
+              periodMonth: now.getMonth() + 1,
+              grossAmount: String(deduction.grossAmount),
+              withheldAmount: String(deduction.deductionAmount),
+              organizationId: null,
+              updatedAt: now,
+            } as any),
           ),
         );
       }
 
-      // Update PV net amount
       const totalDeducted = dto.deductions.reduce((sum, d) => sum + d.deduction_amount, 0);
       const grossAmount = dto.deductions[0]?.gross_amount ?? null;
-      await tx.financePaymentVoucher.update({
-        where: { id: pvId },
-        data: {
-          grossAmount: grossAmount,
-          netAmount: grossAmount !== null ? grossAmount - totalDeducted : null,
-        },
-      });
+      await tx
+        .update(financePaymentVoucher)
+        .set({
+          grossAmount: grossAmount === null ? null : String(grossAmount),
+          netAmount: grossAmount !== null ? String(grossAmount - totalDeducted) : null,
+        })
+        .where(eq(financePaymentVoucher.id, pvId));
 
       return { deductions: createdDeductions, total_deducted: totalDeducted };
     });
   }
 
   async listPVDeductions(pvId: string) {
-    const rows = await this.drizzle.financePVDeduction.findMany({
-      where: { paymentVoucherId: pvId },
-      include: { deductionType: true, requestDeduction: true },
-      orderBy: { createdAt: 'asc' },
-    });
+    const rows = await this.db.client
+      .select()
+      .from(financePVDeduction)
+      .where(eq(financePVDeduction.paymentVoucherId, pvId))
+      .orderBy(asc(financePVDeduction.createdAt)) as any[];
+
+    const deductionTypeIds = Array.from(new Set(rows.map((row) => row.deductionTypeId)));
+    const requestDeductionIds = Array.from(new Set(rows.map((row) => row.requestDeductionId).filter((id): id is string => Boolean(id))));
+    const [typeRows, deductionRows] = await Promise.all([
+      deductionTypeIds.length ? this.db.client.select().from(financeDeductionType).where(inArray(financeDeductionType.id, deductionTypeIds)) : [],
+      requestDeductionIds.length ? this.db.client.select().from(financeRequestDeduction).where(inArray(financeRequestDeduction.id, requestDeductionIds)) : [],
+    ]);
+    const typeMap = new Map(typeRows.map((row) => [row.id, row] as const));
+    const deductionMap = new Map(deductionRows.map((row) => [row.id, row] as const));
+    for (const row of rows) {
+      row.deductionType = typeMap.get(row.deductionTypeId) ?? null;
+      row.requestDeduction = row.requestDeductionId ? (deductionMap.get(row.requestDeductionId) ?? null) : null;
+    }
     return paginatedResponse(rows, { page: 1, per_page: rows.length, total: rows.length });
   }
-
-  // ── Vendor WHT Accruals ──────────────────────────────────────────────────
 
   async listVendorAccruals(vendorId: string, query: Record<string, any>) {
-    const where: Drizzle.FinanceRequestDeductionWhereInput = { vendorId };
-    if (query.period_year) where.periodYear = Number(query.period_year);
-    if (query.period_month) where.periodMonth = Number(query.period_month);
-    if (query.unremitted === 'true') where.remittanceId = null;
-    if (query.deduction_type_id) where.deductionTypeId = String(query.deduction_type_id);
+    const conditions: SQL[] = [eq(financeVendorWHTAccrual.contactId, vendorId)];
+    if (query.period_year) conditions.push(eq(financeVendorWHTAccrual.periodYear, Number(query.period_year)));
+    if (query.period_month) conditions.push(eq(financeVendorWHTAccrual.periodMonth, Number(query.period_month)));
+    if (query.unremitted === 'true') conditions.push(isNull(financeVendorWHTAccrual.remittanceId));
+    if (query.deduction_type_id) conditions.push(eq(financeVendorWHTAccrual.deductionTypeId, String(query.deduction_type_id)));
 
-    const rows = await this.drizzle.financeVendorWHTAccrual.findMany({
-      where,
-      include: {
-        deductionType: true,
-        paymentVoucher: { select: { id: true, voucherNumber: true, createdAt: true } },
-      },
-      orderBy: [{ periodYear: 'desc' }, { periodMonth: 'desc' }],
-    });
+    const rows = await this.db.client
+      .select()
+      .from(financeVendorWHTAccrual)
+      .where(and(...conditions))
+      .orderBy(desc(financeVendorWHTAccrual.periodYear), desc(financeVendorWHTAccrual.periodMonth)) as any[];
+
+    const [typeRows, voucherRows] = await Promise.all([
+      this.db.client.select().from(financeDeductionType).where(inArray(financeDeductionType.id, Array.from(new Set(rows.map((row) => row.deductionTypeId))))),
+      this.db.client
+        .select({ id: financePaymentVoucher.id, voucherNumber: financePaymentVoucher.voucherNumber, createdAt: financePaymentVoucher.createdAt })
+        .from(financePaymentVoucher)
+        .where(inArray(financePaymentVoucher.id, Array.from(new Set(rows.map((row) => row.paymentVoucherId))))),
+    ]);
+    const typeMap = new Map(typeRows.map((row) => [row.id, row] as const));
+    const voucherMap = new Map(voucherRows.map((row) => [row.id, row] as const));
+    for (const row of rows) {
+      row.deductionType = typeMap.get(row.deductionTypeId) ?? null;
+      row.paymentVoucher = voucherMap.get(row.paymentVoucherId) ?? null;
+    }
     return paginatedResponse(rows, { page: 1, per_page: rows.length, total: rows.length });
   }
 
-  // ── WHT Remittances ──────────────────────────────────────────────────────
+  private async hydrateWhtRemittances(remittances: any[], opts: { contactTaxNumber?: boolean; paymentVoucher?: boolean } = {}) {
+    if (remittances.length === 0) return;
+    const typeIds = Array.from(new Set(remittances.map((r) => r.deductionTypeId)));
+    const accountIds = Array.from(new Set(remittances.map((r) => r.paidFromAccountId)));
+
+    const [typeRows, accountRows, accrualRows] = await Promise.all([
+      this.db.client.select().from(financeDeductionType).where(inArray(financeDeductionType.id, typeIds)),
+      this.db.client.select({ id: financeAccount.id, name: financeAccount.name }).from(financeAccount).where(inArray(financeAccount.id, accountIds)),
+      this.db.client.select().from(financeVendorWHTAccrual).where(inArray(financeVendorWHTAccrual.remittanceId, remittances.map((r) => r.id))) as any,
+    ]);
+    const typeMap = new Map(typeRows.map((row) => [row.id, row] as const));
+    const accountMap = new Map(accountRows.map((row) => [row.id, row] as const));
+    const accrualsByRemittance = new Map<string, any[]>();
+    for (const accrual of accrualRows) {
+      const list = accrualsByRemittance.get(accrual.remittanceId) ?? [];
+      list.push(accrual);
+      accrualsByRemittance.set(accrual.remittanceId, list);
+    }
+    for (const rem of remittances) {
+      rem.deductionType = typeMap.get(rem.deductionTypeId) ?? null;
+      rem.paidFromAccount = accountMap.get(rem.paidFromAccountId) ?? null;
+      rem.accruals = accrualsByRemittance.get(rem.id) ?? [];
+    }
+
+    const contactIds = Array.from(new Set(accrualRows.map((a: any) => a.contactId).filter((id: any): id is string => Boolean(id)))) as string[];
+    const contactSelection: Record<string, any> = { id: financeContact.id, name: financeContact.name };
+    if (opts.contactTaxNumber) contactSelection.taxNumber = financeContact.taxNumber;
+    const contactRows = contactIds.length
+      ? await this.db.client.select(contactSelection as any).from(financeContact).where(inArray(financeContact.id, contactIds))
+      : [];
+    const contactMap = new Map((contactRows as any[]).map((row) => [row.id, row] as const));
+    const voucherMap = opts.paymentVoucher
+      ? await this.fetchPaymentVouchers(accrualRows.map((a) => a.paymentVoucherId))
+      : new Map<string, any>();
+    for (const accrual of accrualRows) {
+      accrual.contact = contactMap.get(accrual.contactId) ?? null;
+      accrual.paymentVoucher = voucherMap.get(accrual.paymentVoucherId) ?? null;
+    }
+  }
 
   async createWHTRemittance(dto: CreateWHTRemittanceDto, userId: number, organizationId?: number) {
     if (!dto.accrual_ids || dto.accrual_ids.length === 0) {
       throw new BadRequestException('accrual_ids must not be empty');
     }
 
-    const accruals = await this.drizzle.financeVendorWHTAccrual.findMany({
-      where: { id: { in: dto.accrual_ids } },
-    });
+    const accruals = await this.db.client.select().from(financeVendorWHTAccrual).where(inArray(financeVendorWHTAccrual.id, dto.accrual_ids));
 
     const alreadyRemitted = accruals.filter((a) => a.remittanceId !== null);
     if (alreadyRemitted.length > 0) {
@@ -587,143 +864,124 @@ export class DeductionService {
 
     const year = dto.period_year;
     const month = String(dto.period_month).padStart(2, '0');
-    const seq = await this.drizzle.financeWHTRemittance.count({
-      where: { periodYear: dto.period_year, periodMonth: dto.period_month },
-    });
+    const [seqRow] = await this.db.client
+      .select({ value: count() })
+      .from(financeWHTRemittance)
+      .where(and(eq(financeWHTRemittance.periodYear, dto.period_year), eq(financeWHTRemittance.periodMonth, dto.period_month)));
+    const seq = Number(seqRow?.value ?? 0);
     const remittanceNumber = `WHT-${year}-${month}-${String(seq + 1).padStart(3, '0')}`;
     const now = new Date();
 
-    return this.drizzle.$transaction(async (tx) => {
-      const remittance = await tx.financeWHTRemittance.create({
-        data: {
-          remittanceNumber,
-          deductionTypeId: dto.deduction_type_id,
-          periodYear: dto.period_year,
-          periodMonth: dto.period_month,
-          totalAmount: dto.total_amount,
-          paidFromAccountId: dto.paid_from_account_id,
-          remittanceDate: new Date(dto.remittance_date),
-          reference: dto.reference ?? null,
-          receiptFileId: dto.receipt_file_id ?? null,
-          notes: dto.notes ?? null,
-          status: 'pending',
-          organizationId: organizationId ? toBigInt(organizationId) : null,
-          createdBy: toBigInt(userId),
-          updatedAt: now,
-        },
-      });
+    return this.db.client.transaction(async (tx) => {
+      const remittance = (await tx.insert(financeWHTRemittance).values({
+        remittanceNumber,
+        deductionTypeId: dto.deduction_type_id,
+        periodYear: dto.period_year,
+        periodMonth: dto.period_month,
+        totalAmount: String(dto.total_amount),
+        paidFromAccountId: dto.paid_from_account_id,
+        remittanceDate: new Date(dto.remittance_date),
+        reference: dto.reference ?? null,
+        receiptFileId: dto.receipt_file_id ?? null,
+        notes: dto.notes ?? null,
+        status: 'pending',
+        organizationId: organizationId ? toBigInt(organizationId) : null,
+        createdBy: toBigInt(userId),
+        updatedAt: now,
+      } as any).returning())[0];
 
-      await tx.financeVendorWHTAccrual.updateMany({
-        where: { id: { in: dto.accrual_ids } },
-        data: { remittanceId: remittance.id, remittedAt: now, updatedAt: now },
-      });
+      await tx
+        .update(financeVendorWHTAccrual)
+        .set({ remittanceId: remittance.id, remittedAt: now, updatedAt: now })
+        .where(inArray(financeVendorWHTAccrual.id, dto.accrual_ids));
 
       return remittance;
     });
   }
 
   async listWHTRemittances(query: Record<string, any>) {
-    const where: Drizzle.FinanceRequestRemittanceWhereInput = {};
-    if (query.period_year) where.periodYear = Number(query.period_year);
-    if (query.period_month) where.periodMonth = Number(query.period_month);
-    if (query.deduction_type_id) where.deductionTypeId = String(query.deduction_type_id);
-    if (query.status) where.status = String(query.status);
-    if (query.organization_id) where.organizationId = toBigInt(query.organization_id);
+    const conditions: SQL[] = [];
+    if (query.period_year) conditions.push(eq(financeWHTRemittance.periodYear, Number(query.period_year)));
+    if (query.period_month) conditions.push(eq(financeWHTRemittance.periodMonth, Number(query.period_month)));
+    if (query.deduction_type_id) conditions.push(eq(financeWHTRemittance.deductionTypeId, String(query.deduction_type_id)));
+    if (query.status) conditions.push(eq(financeWHTRemittance.status, String(query.status)));
+    if (query.organization_id) conditions.push(eq(financeWHTRemittance.organizationId, toBigInt(query.organization_id)));
 
-    const rows = await this.drizzle.financeWHTRemittance.findMany({
-      where,
-      include: {
-        deductionType: true,
-        paidFromAccount: { select: { id: true, name: true } },
-        accruals: { include: { contact: { select: { id: true, name: true } } } },
-      },
-      orderBy: [{ periodYear: 'desc' }, { periodMonth: 'desc' }],
-    });
+    const rows = await this.db.client
+      .select()
+      .from(financeWHTRemittance)
+      .where(conditions.length ? and(...conditions) : undefined)
+      .orderBy(desc(financeWHTRemittance.periodYear), desc(financeWHTRemittance.periodMonth));
+
+    await this.hydrateWhtRemittances(rows);
     return paginatedResponse(rows, { page: 1, per_page: rows.length, total: rows.length });
   }
 
   async getWHTRemittance(id: string) {
-    const remittance = await this.drizzle.financeWHTRemittance.findUnique({
-      where: { id },
-      include: {
-        deductionType: true,
-        paidFromAccount: { select: { id: true, name: true } },
-        accruals: {
-          include: {
-            contact: { select: { id: true, name: true, taxNumber: true } },
-            paymentVoucher: { select: { id: true, voucherNumber: true } },
-          },
-        },
-      },
-    });
+    const [remittance] = await this.db.client.select().from(financeWHTRemittance).where(eq(financeWHTRemittance.id, id)).limit(1);
     if (!remittance) throw new NotFoundException('WHT remittance not found');
+    await this.hydrateWhtRemittances([remittance], { contactTaxNumber: true, paymentVoucher: true });
     return remittance;
   }
-
-  // ── Request-level Statutory Deductions ──────────────────────────────────
 
   async listRequestDeductions(query: StatutoryDeductionsQueryDto) {
     const page = Math.max(1, Number(query.page ?? 1));
     const perPage = Math.min(200, Math.max(1, Number(query.per_page ?? 50)));
     const skip = (page - 1) * perPage;
 
-    const where: Drizzle.FinanceRequestDeductionWhereInput = {};
-    if (query.id) where.id = query.id;
-    if (query.status) where.status = query.status;
-    if (query.deduction_type_id) where.deductionTypeId = query.deduction_type_id;
-    if (query.request_id) where.requestId = toBigInt(query.request_id);
-    const remittanceAllocationFilters: Drizzle.FinanceRequestDeductionRemittanceAllocationWhereInput[] = [];
-    if (query.remittance_ref) remittanceAllocationFilters.push({ requestRemittance: { reference: query.remittance_ref } });
-    if (query.remittance_number) remittanceAllocationFilters.push({ requestRemittance: { remittanceNumber: query.remittance_number } });
-    if (query.payment_voucher_id) remittanceAllocationFilters.push({ requestRemittance: { paymentVoucherId: query.payment_voucher_id } });
-    if (remittanceAllocationFilters.length === 1) {
-      where.remittanceAllocations = { some: remittanceAllocationFilters[0] };
-    } else if (remittanceAllocationFilters.length > 1) {
-      const existingAnd = Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : [];
-      where.AND = [...existingAnd, ...remittanceAllocationFilters.map((filter) => ({ remittanceAllocations: { some: filter } }))];
-    }
+    const conditions: SQL[] = [];
+    if (query.id) conditions.push(eq(financeRequestDeduction.id, query.id));
+    if (query.status) conditions.push(eq(financeRequestDeduction.status, query.status));
+    if (query.deduction_type_id) conditions.push(eq(financeRequestDeduction.deductionTypeId, query.deduction_type_id));
+    if (query.request_id) conditions.push(eq(financeRequestDeduction.requestId, toBigInt(query.request_id)));
+    if (query.date_from) conditions.push(gte(financeRequestDeduction.createdAt, new Date(query.date_from)));
+    if (query.date_to) conditions.push(lte(financeRequestDeduction.createdAt, new Date(query.date_to)));
+
+    const remittanceFilter = (filter: SQL): SQL =>
+      exists(
+        this.db.client
+          .select({ id: financeRequestDeductionRemittanceAllocation.id })
+          .from(financeRequestDeductionRemittanceAllocation)
+          .innerJoin(financeRequestRemittance, eq(financeRequestDeductionRemittanceAllocation.requestRemittanceId, financeRequestRemittance.id))
+          .where(and(eq(financeRequestDeductionRemittanceAllocation.requestDeductionId, financeRequestDeduction.id), filter)),
+      );
+
+    if (query.remittance_ref) conditions.push(remittanceFilter(eq(financeRequestRemittance.reference, query.remittance_ref)));
+    if (query.remittance_number) conditions.push(remittanceFilter(eq(financeRequestRemittance.remittanceNumber, query.remittance_number)));
+    if (query.payment_voucher_id) conditions.push(remittanceFilter(eq(financeRequestRemittance.paymentVoucherId, query.payment_voucher_id)));
     if (query.search) {
-      where.request = { data: { path: ['request_number'], string_contains: query.search } };
-    }
-    if (query.date_from || query.date_to) {
-      where.createdAt = {
-        ...(query.date_from ? { gte: new Date(query.date_from) } : {}),
-        ...(query.date_to ? { lte: new Date(query.date_to) } : {}),
-      };
+      const tid = this.tenantContext.currentTenantId();
+      conditions.push(
+        exists(
+          this.db.client
+            .select({ id: requestInstance.id })
+            .from(requestInstance)
+            .where(
+              and(
+                eq(requestInstance.id, financeRequestDeduction.requestId),
+                ilike(sql`${requestInstance.data}->>'request_number'`, `%${String(query.search)}%`),
+                tid ? eq(requestInstance.tenantId, tid) : undefined,
+              ),
+            ),
+        ),
+      );
     }
 
-    const [rows, total] = await Promise.all([
-      this.drizzle.financeRequestDeduction.findMany({
-        where,
-        include: {
-          deductionType: { select: { id: true, name: true, code: true } },
-          request: { select: { id: true, createdAt: true, status: true, data: true } },
-          createdByUser: { select: { id: true, firstName: true, lastName: true } },
-          pvDeduction: {
-            select: {
-              paymentVoucher: { select: { id: true, voucherNumber: true } },
-            },
-          },
-          remittanceAllocations: {
-            include: {
-              requestRemittance: {
-                include: {
-                  remittedByUser: { select: { id: true, firstName: true, lastName: true, email: true } },
-                  paymentVoucher: { select: { id: true, voucherNumber: true } },
-                  paidFromAccount: { select: { id: true, name: true, bankName: true, accountNumber: true } },
-                  evidenceFile: { select: { id: true, fileName: true, publicUrl: true } },
-                },
-              },
-            },
-            orderBy: [{ requestRemittance: { remittedAt: 'desc' } }, { createdAt: 'desc' }],
-          },
-        },
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: perPage,
-      }),
-      this.drizzle.financeRequestDeduction.count({ where }),
+    const where = conditions.length ? and(...conditions) : undefined;
+
+    const [rows, totalRow] = await Promise.all([
+      this.db.client
+        .select()
+        .from(financeRequestDeduction)
+        .where(where)
+        .orderBy(desc(financeRequestDeduction.createdAt))
+        .offset(skip)
+        .limit(perPage),
+      this.db.client.select({ value: count() }).from(financeRequestDeduction).where(where),
     ]);
+    const total = Number(totalRow[0]?.value ?? 0);
+
+    await this.fillDeductionRels(rows, { allocations: 'deep', request: 'list', createdByUser: true, deductionType: 'basic' });
 
     const extraEvidenceIds = Array.from(
       new Set(
@@ -737,10 +995,7 @@ export class DeductionService {
       ),
     );
     const extraEvidenceFiles = extraEvidenceIds.length > 0
-      ? await this.drizzle.fileAsset.findMany({
-          where: { id: { in: extraEvidenceIds } },
-          select: { id: true, fileName: true, publicUrl: true },
-        })
+      ? await this.fileAssetsByIds(extraEvidenceIds)
       : [];
     const extraEvidenceMap = new Map(extraEvidenceFiles.map((file) => [file.id, file]));
 
@@ -823,51 +1078,35 @@ export class DeductionService {
     const perPage = Math.min(200, Math.max(1, Number(query.per_page ?? 50)));
     const skip = (page - 1) * perPage;
 
-    const where: Drizzle.FinanceRequestRemittanceWhereInput = {};
-    if (query.id) where.id = query.id;
-    if (query.remittance_number) where.remittanceNumber = query.remittance_number;
-    if (query.reference) where.reference = query.reference;
-    if (query.payment_voucher_id) where.paymentVoucherId = query.payment_voucher_id;
+    const conditions: SQL[] = [];
+    if (query.id) conditions.push(eq(financeRequestRemittance.id, query.id));
+    if (query.remittance_number) conditions.push(eq(financeRequestRemittance.remittanceNumber, query.remittance_number));
+    if (query.reference) conditions.push(eq(financeRequestRemittance.reference, query.reference));
+    if (query.payment_voucher_id) conditions.push(eq(financeRequestRemittance.paymentVoucherId, query.payment_voucher_id));
     if (query.search) {
-      where.OR = [
-        { remittanceNumber: { contains: query.search, mode: 'insensitive' } },
-        { reference: { contains: query.search, mode: 'insensitive' } },
-      ];
+      const search = `%${String(query.search)}%`;
+      const searchFilter = or(
+        ilike(financeRequestRemittance.remittanceNumber, search),
+        ilike(financeRequestRemittance.reference, search),
+      );
+      if (searchFilter) conditions.push(searchFilter as SQL);
     }
 
-    const [rows, total] = await Promise.all([
-      this.drizzle.financeRequestRemittance.findMany({
-        where,
-        include: {
-          paymentVoucher: { select: { id: true, voucherNumber: true } },
-          remittedByUser: { select: { id: true, firstName: true, lastName: true, email: true } },
-          createdByUser: { select: { id: true, firstName: true, lastName: true, email: true } },
-          paidFromAccount: { select: { id: true, name: true, bankName: true, accountNumber: true } },
-          evidenceFile: { select: { id: true, fileName: true, publicUrl: true } },
-          allocations: {
-            include: {
-              requestDeduction: {
-                include: {
-                  deductionType: { select: { id: true, name: true, code: true } },
-                  request: { select: { id: true, data: true } },
-                  pvDeduction: {
-                    select: {
-                      paymentVoucher: { select: { id: true, voucherNumber: true } },
-                    },
-                  },
-                  remittanceAllocations: { select: { allocatedAmount: true } },
-                },
-              },
-            },
-            orderBy: [{ createdAt: 'asc' }],
-          },
-        },
-        orderBy: [{ remittedAt: 'desc' }, { createdAt: 'desc' }],
-        skip,
-        take: perPage,
-      }),
-      this.drizzle.financeRequestRemittance.count({ where }),
+    const where = conditions.length ? and(...conditions) : undefined;
+
+    const [rows, totalRow] = await Promise.all([
+      this.db.client
+        .select()
+        .from(financeRequestRemittance)
+        .where(where)
+        .orderBy(desc(financeRequestRemittance.remittedAt), desc(financeRequestRemittance.createdAt))
+        .offset(skip)
+        .limit(perPage),
+      this.db.client.select({ value: count() }).from(financeRequestRemittance).where(where),
     ]);
+    const total = Number(totalRow[0]?.value ?? 0);
+
+    await this.fillRemittanceRels(rows, { deductions: 'map' });
 
     const items = await Promise.all(rows.map((row) => this.mapRequestRemittance(row)));
     return {
@@ -883,10 +1122,20 @@ export class DeductionService {
     const now = dto.remitted_at ? new Date(dto.remitted_at) : new Date();
     const year = now.getFullYear();
 
-    const existing = await this.drizzle.financeRequestDeduction.findMany({
-      where: { id: { in: ids } },
-      select: { id: true, status: true, amount: true, remittanceAllocations: { select: { allocatedAmount: true } } },
-    });
+    const existingRows = await this.db.client.select().from(financeRequestDeduction).where(inArray(financeRequestDeduction.id, ids));
+    const allocationRows = existingRows.length > 0
+      ? await this.db.client
+          .select({ requestDeductionId: financeRequestDeductionRemittanceAllocation.requestDeductionId, allocatedAmount: financeRequestDeductionRemittanceAllocation.allocatedAmount })
+          .from(financeRequestDeductionRemittanceAllocation)
+          .where(inArray(financeRequestDeductionRemittanceAllocation.requestDeductionId, existingRows.map((row) => row.id)))
+      : [];
+    const allocationsByDeduction = new Map<string, any[]>();
+    for (const allocation of allocationRows) {
+      const list = allocationsByDeduction.get(allocation.requestDeductionId) ?? [];
+      list.push(allocation);
+      allocationsByDeduction.set(allocation.requestDeductionId, list);
+    }
+    const existing = existingRows.map((row) => ({ ...row, remittanceAllocations: allocationsByDeduction.get(row.id) ?? [] }));
 
     if (existing.length !== ids.length) {
       throw new NotFoundException('Some deductions were not found');
@@ -912,69 +1161,43 @@ export class DeductionService {
 
     const remittanceNumber = dto.remittance_number?.trim() || await this.nextRequestRemittanceNumber(now);
 
-    const created = await this.drizzle.$transaction(async (tx) => {
-      const remittance = await tx.financeRequestRemittance.create({
-        data: {
-          remittanceNumber,
-          reference: dto.reference,
-          totalAmount: remittanceTotalAmount,
-          remittedAt: now,
-          paymentVoucherId: dto.payment_voucher_id ?? null,
-          remittedBy: dto.remitted_by ? toBigInt(dto.remitted_by) : null,
-          paidFromAccountId: dto.paid_from_account_id ?? null,
-          evidenceFileId: dto.evidence_file_id ?? null,
-          evidenceFileIds: dto.evidence_file_ids ? (dto.evidence_file_ids as any) : (dto.evidence_file_id ? [dto.evidence_file_id] as any : null),
-          notes: dto.notes ?? null,
-          createdBy: toBigInt(userId),
-          updatedBy: toBigInt(userId),
-        },
-      });
+    const created = await this.db.client.transaction(async (tx) => {
+      const remittance = (await tx.insert(financeRequestRemittance).values({
+        remittanceNumber,
+        reference: dto.reference,
+        totalAmount: String(remittanceTotalAmount),
+        remittedAt: now,
+        paymentVoucherId: dto.payment_voucher_id ?? null,
+        remittedBy: dto.remitted_by ? toBigInt(dto.remitted_by) : null,
+        paidFromAccountId: dto.paid_from_account_id ?? null,
+        evidenceFileId: dto.evidence_file_id ?? null,
+        evidenceFileIds: dto.evidence_file_ids ? (dto.evidence_file_ids as any) : (dto.evidence_file_id ? [dto.evidence_file_id] as any : null),
+        notes: dto.notes ?? null,
+        createdBy: toBigInt(userId),
+        updatedBy: toBigInt(userId),
+      } as any).returning())[0];
 
       for (const deductionId of ids) {
         const deduction = existing.find((row) => row.id === deductionId);
         const alreadyAllocated = deduction ? this.sumAllocatedAmount(deduction.remittanceAllocations) : 0;
         const remaining = deduction ? Number(deduction.amount) - alreadyAllocated : 0;
         const allocatedAmount = allocationMap.get(deductionId) ?? remaining;
-        await tx.financeRequestDeductionRemittanceAllocation.create({
-          data: {
-            requestDeductionId: deductionId,
-            requestRemittanceId: remittance.id,
-            allocatedAmount,
-            createdBy: toBigInt(userId),
-          },
+        await tx.insert(financeRequestDeductionRemittanceAllocation).values({
+          requestDeductionId: deductionId,
+          requestRemittanceId: remittance.id,
+          allocatedAmount: String(allocatedAmount),
+          createdBy: toBigInt(userId),
         });
         await this.syncDeductionRemittanceSummary(tx, deductionId);
       }
 
-      return tx.financeRequestRemittance.findUnique({
-        where: { id: remittance.id },
-        include: {
-          paymentVoucher: { select: { id: true, voucherNumber: true } },
-          remittedByUser: { select: { id: true, firstName: true, lastName: true, email: true } },
-          createdByUser: { select: { id: true, firstName: true, lastName: true, email: true } },
-          paidFromAccount: { select: { id: true, name: true, bankName: true, accountNumber: true } },
-          evidenceFile: { select: { id: true, fileName: true, publicUrl: true } },
-          allocations: {
-            include: {
-              requestDeduction: {
-                include: {
-                  deductionType: { select: { id: true, name: true, code: true } },
-                  request: { select: { id: true, data: true } },
-                  pvDeduction: {
-                    select: {
-                      paymentVoucher: { select: { id: true, voucherNumber: true } },
-                    },
-                  },
-                  remittanceAllocations: { select: { allocatedAmount: true } },
-                },
-              },
-            },
-          },
-        },
-      });
+      const [final] = await tx.select().from(financeRequestRemittance).where(eq(financeRequestRemittance.id, remittance.id)).limit(1);
+      return final;
     });
 
-    return created ? this.mapRequestRemittance(created) : { updated: ids.length };
+    if (!created) return { updated: ids.length };
+    const enriched = await this.fillRemittanceRels([created], { deductions: 'map' });
+    return this.mapRequestRemittance(enriched[0]);
   }
 
   async updatePendingDeduction(id: string, dto: {
@@ -984,12 +1207,12 @@ export class DeductionService {
     rate?: number;
     notes?: string;
   }) {
-    const existing = await this.drizzle.financeRequestDeduction.findUnique({ where: { id } });
+    const [existing] = await this.db.client.select().from(financeRequestDeduction).where(eq(financeRequestDeduction.id, id)).limit(1);
     if (!existing) throw new NotFoundException('Deduction not found');
     if (existing.status !== 'pending') throw new BadRequestException('Only pending deductions can be edited');
 
     if (dto.deduction_type_id) {
-      const dt = await this.drizzle.financeDeductionType.findUnique({ where: { id: dto.deduction_type_id } });
+      const [dt] = await this.db.client.select().from(financeDeductionType).where(eq(financeDeductionType.id, dto.deduction_type_id)).limit(1);
       if (!dt) throw new BadRequestException('Invalid deduction_type_id');
     }
 
@@ -1002,12 +1225,13 @@ export class DeductionService {
 
     const data: Record<string, any> = {};
     if (dto.deduction_type_id !== undefined) data.deductionTypeId = dto.deduction_type_id;
-    if (dto.gross_amount !== undefined) data.grossAmount = dto.gross_amount;
-    if (dto.amount !== undefined) data.amount = dto.amount;
-    if (dto.rate !== undefined) data.rate = dto.rate;
+    if (dto.gross_amount !== undefined) data.grossAmount = String(dto.gross_amount);
+    if (dto.amount !== undefined) data.amount = String(dto.amount);
+    if (dto.rate !== undefined) data.rate = String(dto.rate);
     if (dto.notes !== undefined) data.notes = dto.notes || null;
 
-    return this.drizzle.financeRequestDeduction.update({ where: { id }, data });
+    const updated = await this.db.client.update(financeRequestDeduction).set(data).where(eq(financeRequestDeduction.id, id)).returning();
+    return updated[0];
   }
 
   async updateRemittanceRecord(id: string, dto: {
@@ -1023,23 +1247,48 @@ export class DeductionService {
     notes?: string;
     allocations?: Array<{ id?: string; allocated_amount?: number }>;
   }) {
-    const existing = await this.drizzle.financeRequestRemittance.findUnique({
-      where: { id },
-      include: { allocations: { include: { requestDeduction: { select: { id: true, amount: true } } } } },
-    });
+    const [existing] = await this.db.client.select().from(financeRequestRemittance).where(eq(financeRequestRemittance.id, id)).limit(1);
     if (!existing) throw new NotFoundException('Remittance not found');
 
-    return this.drizzle.$transaction(async (tx) => {
-      const allocations = await tx.financeRequestDeductionRemittanceAllocation.findMany({
-        where: { requestRemittanceId: id },
-        include: { requestDeduction: { select: { id: true, amount: true, remittanceAllocations: { select: { id: true, allocatedAmount: true } } } } },
-        orderBy: [{ createdAt: 'desc' }],
-      });
+    const remittance = await this.db.client.transaction(async (tx) => {
+      const allocations = await tx
+        .select()
+        .from(financeRequestDeductionRemittanceAllocation)
+        .where(eq(financeRequestDeductionRemittanceAllocation.requestRemittanceId, id))
+        .orderBy(desc(financeRequestDeductionRemittanceAllocation.createdAt)) as any[];
       if (allocations.length === 0) throw new BadRequestException('No remittance allocations found for this remittance');
+
+      const deductionIds = Array.from(new Set(allocations.map((allocation) => allocation.requestDeductionId)));
+      const [deductionRows, sumRows] = await Promise.all([
+        deductionIds.length ? tx.select().from(financeRequestDeduction).where(inArray(financeRequestDeduction.id, deductionIds)) : [],
+        deductionIds.length
+          ? tx
+              .select({
+                id: financeRequestDeductionRemittanceAllocation.id,
+                requestDeductionId: financeRequestDeductionRemittanceAllocation.requestDeductionId,
+                allocatedAmount: financeRequestDeductionRemittanceAllocation.allocatedAmount,
+              })
+              .from(financeRequestDeductionRemittanceAllocation)
+              .where(inArray(financeRequestDeductionRemittanceAllocation.requestDeductionId, deductionIds))
+              .orderBy(desc(financeRequestDeductionRemittanceAllocation.createdAt))
+          : [],
+      ]);
+      const sumsByDeduction = new Map<string, any[]>();
+      for (const row of sumRows) {
+        const list = sumsByDeduction.get(row.requestDeductionId) ?? [];
+        list.push(row);
+        sumsByDeduction.set(row.requestDeductionId, list);
+      }
+      const deductionMap = new Map(deductionRows.map((row) => [row.id, row] as const));
+      for (const allocation of allocations) {
+        const deduction = deductionMap.get(allocation.requestDeductionId) ?? null;
+        if (deduction) deduction.remittanceAllocations = sumsByDeduction.get(deduction.id) ?? [];
+        allocation.requestDeduction = deduction;
+      }
 
       const allocationUpdates = dto.allocations ?? [];
       if (allocationUpdates.length > 0) {
-        const currentById = new Map(allocations.map((allocation) => [allocation.id, allocation]));
+      const currentById = new Map(allocations.map((allocation) => [allocation.id, allocation] as const));
         let nextTotal = 0;
         for (const allocation of allocations) {
           const override = allocationUpdates.find((entry) => entry.id === allocation.id);
@@ -1059,10 +1308,10 @@ export class DeductionService {
           if (!entry.id) continue;
           if (!currentById.has(entry.id)) throw new BadRequestException(`Allocation ${entry.id} not found on deduction`);
           if (entry.allocated_amount !== undefined) {
-            await tx.financeRequestDeductionRemittanceAllocation.update({
-              where: { id: entry.id },
-              data: { allocatedAmount: entry.allocated_amount },
-            });
+            await tx
+              .update(financeRequestDeductionRemittanceAllocation)
+              .set({ allocatedAmount: String(entry.allocated_amount) })
+              .where(eq(financeRequestDeductionRemittanceAllocation.id, entry.id));
           }
         }
       }
@@ -1071,7 +1320,7 @@ export class DeductionService {
       if (dto.remittance_number !== undefined) patch.remittanceNumber = dto.remittance_number || null;
       if (dto.remittance_ref !== undefined) patch.reference = dto.remittance_ref || null;
       if (dto.remitted_at !== undefined) patch.remittedAt = new Date(dto.remitted_at);
-      if (dto.remittance_total_amount !== undefined) patch.totalAmount = dto.remittance_total_amount;
+      if (dto.remittance_total_amount !== undefined) patch.totalAmount = String(dto.remittance_total_amount);
       if (dto.paid_from_account_id !== undefined) patch.paidFromAccountId = dto.paid_from_account_id || null;
       if (dto.payment_voucher_id !== undefined) patch.paymentVoucherId = dto.payment_voucher_id || null;
       if (dto.remitted_by !== undefined) patch.remittedBy = dto.remitted_by ? toBigInt(dto.remitted_by) : null;
@@ -1080,60 +1329,48 @@ export class DeductionService {
       if (dto.notes !== undefined) patch.notes = dto.notes || null;
       patch.updatedBy = existing.updatedBy ?? existing.createdBy;
       if (Object.keys(patch).length > 0) {
-        await tx.financeRequestRemittance.update({
-          where: { id },
-          data: patch,
-        });
+        await tx.update(financeRequestRemittance).set(patch).where(eq(financeRequestRemittance.id, id));
       }
 
       for (const allocation of allocations) {
-        await this.syncDeductionRemittanceSummary(tx, allocation.requestDeduction.id);
+        if (allocation.requestDeduction) {
+          await this.syncDeductionRemittanceSummary(tx, allocation.requestDeduction.id);
+        }
       }
-      return tx.financeRequestRemittance.findUnique({
-        where: { id },
-        include: {
-          paymentVoucher: { select: { id: true, voucherNumber: true } },
-          remittedByUser: { select: { id: true, firstName: true, lastName: true, email: true } },
-          createdByUser: { select: { id: true, firstName: true, lastName: true, email: true } },
-          paidFromAccount: { select: { id: true, name: true, bankName: true, accountNumber: true } },
-          evidenceFile: { select: { id: true, fileName: true, publicUrl: true } },
-          allocations: {
-            include: {
-              requestDeduction: {
-                include: {
-                  deductionType: { select: { id: true, name: true, code: true } },
-                  request: { select: { id: true, data: true } },
-                  pvDeduction: {
-                    select: {
-                      paymentVoucher: { select: { id: true, voucherNumber: true } },
-                    },
-                  },
-                  remittanceAllocations: { select: { allocatedAmount: true } },
-                },
-              },
-            },
-          },
-        },
-      });
+      const [final] = await tx.select().from(financeRequestRemittance).where(eq(financeRequestRemittance.id, id)).limit(1);
+      return final;
     });
+
+    const enriched = await this.fillRemittanceRels([remittance], { deductions: 'map' });
+    return this.mapRequestRemittance(enriched[0]);
   }
 
   async addRemittanceAllocations(id: string, dto: { deduction_ids: string[]; allocations?: Array<{ id?: string; allocated_amount?: number }> }, userId: number) {
-    const remittance = await this.drizzle.financeRequestRemittance.findUnique({ where: { id } });
+    const [remittance] = (await this.db.client.select().from(financeRequestRemittance).where(eq(financeRequestRemittance.id, id)).limit(1)) as any[];
     if (!remittance) throw new NotFoundException('Remittance not found');
 
-    const deductions = await this.drizzle.financeRequestDeduction.findMany({
-      where: { id: { in: dto.deduction_ids } },
-      select: { id: true, amount: true, remittanceAllocations: { select: { allocatedAmount: true } } },
-    });
+    const deductionRows = await this.db.client.select().from(financeRequestDeduction).where(inArray(financeRequestDeduction.id, dto.deduction_ids));
+    const allocationRows = deductionRows.length > 0
+      ? await this.db.client
+          .select({ requestDeductionId: financeRequestDeductionRemittanceAllocation.requestDeductionId, allocatedAmount: financeRequestDeductionRemittanceAllocation.allocatedAmount })
+          .from(financeRequestDeductionRemittanceAllocation)
+          .where(inArray(financeRequestDeductionRemittanceAllocation.requestDeductionId, deductionRows.map((row) => row.id)))
+      : [];
+    const allocationsByDeduction = new Map<string, any[]>();
+    for (const allocation of allocationRows) {
+      const list = allocationsByDeduction.get(allocation.requestDeductionId) ?? [];
+      list.push(allocation);
+      allocationsByDeduction.set(allocation.requestDeductionId, list);
+    }
+    const deductions = deductionRows.map((row) => ({ ...row, remittanceAllocations: allocationsByDeduction.get(row.id) ?? [] }));
     if (deductions.length !== dto.deduction_ids.length) throw new NotFoundException('Some deductions were not found');
 
     const allocationMap = new Map((dto.allocations ?? []).map((allocation) => [allocation.id, Number(allocation.allocated_amount)]));
-    const currentRemittanceAllocated = await this.drizzle.financeRequestDeductionRemittanceAllocation.aggregate({
-      where: { requestRemittanceId: id },
-      _sum: { allocatedAmount: true },
-    });
-    let newTotal = Number(currentRemittanceAllocated._sum.allocatedAmount ?? 0);
+    const [aggRow] = await this.db.client
+      .select({ value: sql<string>`coalesce(sum(${financeRequestDeductionRemittanceAllocation.allocatedAmount}), 0)` })
+      .from(financeRequestDeductionRemittanceAllocation)
+      .where(eq(financeRequestDeductionRemittanceAllocation.requestRemittanceId, id));
+    let newTotal = Number(aggRow?.value ?? 0);
 
     for (const deduction of deductions) {
       const alreadyAllocated = this.sumAllocatedAmount(deduction.remittanceAllocations);
@@ -1148,18 +1385,16 @@ export class DeductionService {
       throw new BadRequestException('Allocations exceed remittance total amount');
     }
 
-    await this.drizzle.$transaction(async (tx) => {
+    await this.db.client.transaction(async (tx) => {
       for (const deduction of deductions) {
         const alreadyAllocated = this.sumAllocatedAmount(deduction.remittanceAllocations);
         const remaining = Number(deduction.amount) - alreadyAllocated;
         const allocatedAmount = allocationMap.get(deduction.id) ?? remaining;
-        await tx.financeRequestDeductionRemittanceAllocation.create({
-          data: {
-            requestDeductionId: deduction.id,
-            requestRemittanceId: id,
-            allocatedAmount,
-            createdBy: toBigInt(userId),
-          },
+        await tx.insert(financeRequestDeductionRemittanceAllocation).values({
+          requestDeductionId: deduction.id,
+          requestRemittanceId: id,
+          allocatedAmount: String(allocatedAmount),
+          createdBy: toBigInt(userId),
         });
         await this.syncDeductionRemittanceSummary(tx, deduction.id);
       }
@@ -1168,14 +1403,25 @@ export class DeductionService {
     return this.listRequestRemittances({ id, page: '1', per_page: '1' }).then((res: any) => res.data.items[0]);
   }
 
-  // ── TRM Slip PDF ──────────────────────────────────────────────────────────
-
   async listRemittedDeductionsForRequest(requestId: string) {
-    return this.drizzle.financeRequestRemittance.findMany({
-      where: { allocations: { some: { requestDeduction: { requestId: toBigInt(requestId) } } } },
-      select: { id: true, remittanceNumber: true },
-      orderBy: [{ remittedAt: 'asc' }, { createdAt: 'asc' }],
-    });
+    return this.db.client
+      .select({ id: financeRequestRemittance.id, remittanceNumber: financeRequestRemittance.remittanceNumber })
+      .from(financeRequestRemittance)
+      .where(
+        exists(
+          this.db.client
+            .select({ id: financeRequestDeductionRemittanceAllocation.id })
+            .from(financeRequestDeductionRemittanceAllocation)
+            .innerJoin(financeRequestDeduction, eq(financeRequestDeductionRemittanceAllocation.requestDeductionId, financeRequestDeduction.id))
+            .where(
+              and(
+                eq(financeRequestDeductionRemittanceAllocation.requestRemittanceId, financeRequestRemittance.id),
+                eq(financeRequestDeduction.requestId, toBigInt(requestId)),
+              ),
+            ),
+        ),
+      )
+      .orderBy(asc(financeRequestRemittance.remittedAt), asc(financeRequestRemittance.createdAt));
   }
 
   async generateTrmSlipPdf(id: string) {
@@ -1184,33 +1430,9 @@ export class DeductionService {
   }
 
   async buildTrmSlipPdf(id: string): Promise<{ buffer: Buffer; fileName: string }> {
-    const remittance = await this.drizzle.financeRequestRemittance.findUnique({
-      where: { id },
-      include: {
-        createdByUser: { select: { id: true, firstName: true, lastName: true, email: true } },
-        remittedByUser: { select: { id: true, firstName: true, lastName: true, email: true } },
-        paymentVoucher: { select: { id: true, voucherNumber: true } },
-        paidFromAccount: { select: { id: true, name: true, bankName: true, accountNumber: true } },
-        evidenceFile: { select: { id: true, fileName: true, publicUrl: true } },
-        allocations: {
-          include: {
-            requestDeduction: {
-                include: {
-                  deductionType: true,
-                  request: { select: { id: true, status: true, data: true, createdAt: true, creator: { select: { firstName: true, lastName: true, email: true, username: true } } } },
-                  pvDeduction: {
-                    select: {
-                      paymentVoucher: { select: { id: true, voucherNumber: true } },
-                    },
-                  },
-                },
-            },
-          },
-          orderBy: [{ createdAt: 'asc' }],
-        },
-      },
-    });
+    const [remittance] = (await this.db.client.select().from(financeRequestRemittance).where(eq(financeRequestRemittance.id, id)).limit(1)) as any[];
     if (!remittance) throw new NotFoundException('Remittance not found');
+    await this.fillRemittanceRels([remittance], { deductions: 'pdf' });
     if ((remittance.allocations ?? []).length === 0) throw new BadRequestException('Remittance has no allocated deductions');
 
     const org = await this.fetchOrgSettings();
@@ -1225,12 +1447,7 @@ export class DeductionService {
       : '—';
     const totalAllocatedAmount = this.sumAllocatedAmount(remittance.allocations);
     const evidenceIds = Array.isArray(remittance.evidenceFileIds) ? remittance.evidenceFileIds.map(String) : [];
-    const evidenceFiles = evidenceIds.length > 0
-      ? await this.drizzle.fileAsset.findMany({
-          where: { id: { in: evidenceIds } },
-          select: { id: true, fileName: true },
-        })
-      : [];
+    const evidenceFiles = evidenceIds.length > 0 ? await this.fileAssetsByIds(evidenceIds) : [];
 
     const logoDataUri = this.getPdfLogoDataUri();
 
@@ -1368,13 +1585,12 @@ export class DeductionService {
     await this.appendPdfBuffer(mergedPdf, slipBuffer);
     const skippedFiles: string[] = [];
     for (const file of evidenceFiles) {
-      const asset = await this.drizzle.fileAsset.findUnique({ where: { id: file.id }, select: { id: true, fileName: true, mimeType: true, publicUrl: true, storagePath: true } });
-      if (!asset) {
-        skippedFiles.push(`${file.fileName} (missing metadata)`);
+      if (!file) {
+        skippedFiles.push('Evidence file (missing metadata)');
         continue;
       }
-      const buffer = await this.readAssetFileBuffer(asset);
-      await this.appendAssetToPdf(mergedPdf, buffer, asset.fileName ?? file.fileName, asset.mimeType ?? null, skippedFiles);
+      const buffer = await this.readAssetFileBuffer(file);
+      await this.appendAssetToPdf(mergedPdf, buffer, file.fileName ?? file.fileName, file.mimeType ?? null, skippedFiles);
     }
     if (skippedFiles.length > 0) {
       await this.appendTextPage(mergedPdf, 'Skipped Evidence Files', skippedFiles);
@@ -1384,52 +1600,84 @@ export class DeductionService {
     return { buffer, fileName };
   }
 
-  // ── WHT Certificate PDF ───────────────────────────────────────────────────
-
   async generateWhtCertificatePdf(pvDeductionId: string) {
-    const pvd = await this.drizzle.financePVDeduction.findUnique({
-      where: { id: pvDeductionId },
-      include: {
-        deductionType: true,
-        paymentVoucher: {
-          include: {
-            request: { select: { id: true, data: true, createdAt: true, creator: { select: { firstName: true, lastName: true, email: true } } } },
-            contact: { select: { id: true, name: true, email: true, phone: true } },
-          },
-        },
-        requestDeduction: {
-          select: {
-            remittanceAllocations: {
-              include: {
-                requestRemittance: {
-                  select: {
-                    remittanceNumber: true,
-                    remittedAt: true,
-                    reference: true,
-                  },
-                },
-              },
-              orderBy: [{ requestRemittance: { remittedAt: 'desc' } }, { createdAt: 'desc' }],
-              take: 1,
-            },
-          },
-        },
-      },
-    });
+    const [pvd] = (await this.db.client.select().from(financePVDeduction).where(eq(financePVDeduction.id, pvDeductionId)).limit(1)) as any[];
     if (!pvd) throw new NotFoundException('PV deduction not found');
+
+    const [deductionType] = await this.db.client.select().from(financeDeductionType).where(eq(financeDeductionType.id, pvd.deductionTypeId)).limit(1);
+    pvd.deductionType = deductionType ?? null;
+
+    const [paymentVoucherRow] = (await this.db.client.select().from(financePaymentVoucher).where(eq(financePaymentVoucher.id, pvd.paymentVoucherId)).limit(1)) as any[];
+    pvd.paymentVoucher = paymentVoucherRow ?? null;
+
+    if (paymentVoucherRow) {
+      const tid = this.tenantContext.currentTenantId();
+      const [request] = await this.db.client
+        .select({ id: requestInstance.id, createdBy: requestInstance.createdBy, data: requestInstance.data, createdAt: requestInstance.createdAt })
+        .from(requestInstance)
+        .where(and(eq(requestInstance.id, paymentVoucherRow.requestId), tid ? eq(requestInstance.tenantId, tid) : undefined))
+        .limit(1);
+      if (request) {
+        const [creator] = await this.db.client
+          .select({ id: profile.id, firstName: profile.firstName, lastName: profile.lastName, email: profile.email })
+          .from(profile)
+          .where(eq(profile.id, request.createdBy))
+          .limit(1);
+        paymentVoucherRow.request = {
+          id: request.id,
+          data: request.data,
+          createdAt: request.createdAt,
+          creator: creator ?? null,
+        };
+      } else {
+        paymentVoucherRow.request = null;
+      }
+      const [contact] = paymentVoucherRow.contactId
+        ? await this.db.client
+            .select({ id: financeContact.id, name: financeContact.name, email: financeContact.email, phone: financeContact.phone })
+            .from(financeContact)
+            .where(eq(financeContact.id, paymentVoucherRow.contactId))
+            .limit(1)
+        : [null];
+      paymentVoucherRow.contact = contact ?? null;
+    }
+
+    if (pvd.requestDeductionId) {
+      const [requestDeduction] = (await this.db.client.select().from(financeRequestDeduction).where(eq(financeRequestDeduction.id, pvd.requestDeductionId)).limit(1)) as any[];
+      pvd.requestDeduction = requestDeduction ?? null;
+      if (requestDeduction) {
+        const latest = ((await this.db.client
+          .select()
+          .from(financeRequestDeductionRemittanceAllocation)
+          .where(eq(financeRequestDeductionRemittanceAllocation.requestDeductionId, requestDeduction.id))
+          .orderBy(desc(financeRequestDeductionRemittanceAllocation.createdAt))
+          .limit(1)) as any[])[0] ?? null;
+        if (latest) {
+          const [remittance] = (await this.db.client
+            .select({ id: financeRequestRemittance.id, remittanceNumber: financeRequestRemittance.remittanceNumber, remittedAt: financeRequestRemittance.remittedAt, reference: financeRequestRemittance.reference })
+            .from(financeRequestRemittance)
+            .where(eq(financeRequestRemittance.id, latest.requestRemittanceId))
+            .limit(1)) as any[];
+          latest.requestRemittance = remittance ?? null;
+          requestDeduction.remittanceAllocations = [latest];
+        } else {
+          requestDeduction.remittanceAllocations = [];
+        }
+      }
+    } else {
+      pvd.requestDeduction = null;
+    }
 
     let certificateNumber = pvd.certificateNumber;
     if (!certificateNumber) {
       const year = new Date().getFullYear();
       const startsWith = `WHT/${year}/`;
-      const count = await this.drizzle.financePVDeduction.count({
-        where: { certificateNumber: { startsWith } },
-      });
-      certificateNumber = `WHT/${year}/${String(count + 1).padStart(3, '0')}`;
-      await this.drizzle.financePVDeduction.update({
-        where: { id: pvd.id },
-        data: { certificateNumber },
-      });
+      const [countRow] = await this.db.client
+        .select({ value: count() })
+        .from(financePVDeduction)
+        .where(like(financePVDeduction.certificateNumber, `${startsWith}%`));
+      certificateNumber = `WHT/${year}/${String(Number(countRow?.value ?? 0) + 1).padStart(3, '0')}`;
+      await this.db.client.update(financePVDeduction).set({ certificateNumber }).where(eq(financePVDeduction.id, pvd.id));
     }
 
     const pv = pvd.paymentVoucher;

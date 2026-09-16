@@ -2,9 +2,10 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import * as bcrypt from 'bcryptjs';
 import { Drizzle, EmploymentStatus, EmploymentType, GroupUserRole } from '$common/db/drizzle-compat';
 import { DrizzleClientKnownRequestError } from '$common/db/drizzle-compat';
-import { DrizzleService } from '$common/drizzle/drizzle.service';
+import { RepositoryService } from '$common/db/repository.service';
 import { randomToken } from '$common/utils/crypto';
-import { toBigInt } from '$common/utils/ids';
+import { parseBigIntId, toBigInt } from '$common/utils/ids';
+import { isLeaveRequestType, objectSchema, policyScopeMatches, policyScopeRank, resolveLeaveTypeKey } from '$common/utils/leave-policy';
 import { paginatedResponse } from '$common/helpers/paginated-response';
 import { generateUniqueUsername, makeUsernameSeed } from '$common/utils/username';
 import { SetPrimaryOrganizationDto } from '$modules/hr/hr/dto/set-primary-organization.dto';
@@ -19,7 +20,7 @@ import {
 
 @Injectable()
 export class HrService {
-  constructor(private readonly drizzle: DrizzleService) {}
+  constructor(private readonly drizzle: RepositoryService) {}
 
   async summary() {
     const [total, active, inactive, onboardingPending] = await this.drizzle.$transaction([
@@ -66,7 +67,7 @@ export class HrService {
 
     if (query.organization_id) {
       where.organizations = {
-        some: { organizationId: this.parseId(String(query.organization_id), 'organization id') }
+        some: { organizationId: parseBigIntId(String(query.organization_id), 'organization id') }
       };
     }
 
@@ -94,7 +95,7 @@ export class HrService {
         let resolvedPrimaryOrganizationId = dto.primary_organization_id?.trim() || undefined;
 
         if (dto.user_id) {
-          profileId = this.parseId(dto.user_id, 'user id');
+          profileId = parseBigIntId(dto.user_id, 'user id');
           const existing = await tx.profile.findUnique({ where: { id: profileId } });
           if (!existing) throw new NotFoundException('User not found');
           if (!resolvedPrimaryOrganizationId && existing.primaryOrganizationId) {
@@ -176,7 +177,7 @@ export class HrService {
 
   async getEmployee(id: string) {
     const profile = await this.drizzle.profile.findUnique({
-      where: { id: this.parseId(id, 'employee id') },
+      where: { id: parseBigIntId(id, 'employee id') },
       include: this.employeeInclude()
     });
 
@@ -188,7 +189,7 @@ export class HrService {
   }
 
   async updateEmployee(id: string, dto: UpsertEmployeeDto) {
-    const profileId = this.parseId(id, 'employee id');
+    const profileId = parseBigIntId(id, 'employee id');
     const profile = await this.drizzle.profile.findUnique({ where: { id: profileId } });
     if (!profile || !['staff', 'employee'].includes(profile.type)) {
       throw new NotFoundException('Employee not found');
@@ -232,7 +233,7 @@ export class HrService {
   }
 
   async runEmployeeAction(id: string, dto: EmployeeActionDto) {
-    const profileId = this.parseId(id, 'employee id');
+    const profileId = parseBigIntId(id, 'employee id');
     const existing = await this.drizzle.employeeProfile.findUnique({ where: { userId: profileId } });
     if (!existing) throw new NotFoundException('Employee profile not found');
 
@@ -258,8 +259,8 @@ export class HrService {
   }
 
   async setPrimaryOrganization(id: string, dto: SetPrimaryOrganizationDto) {
-    const profileId = this.parseId(id, 'employee id');
-    const organizationId = this.parseId(dto.organization_id, 'organization id');
+    const profileId = parseBigIntId(id, 'employee id');
+    const organizationId = parseBigIntId(dto.organization_id, 'organization id');
 
     const [profile, organization] = await this.drizzle.$transaction([
       this.drizzle.profile.findUnique({ where: { id: profileId } }),
@@ -307,8 +308,8 @@ export class HrService {
   }
 
   async addOrganizationMembership(id: string, dto: AssignEmployeeOrganizationDto) {
-    const profileId = this.parseId(id, 'employee id');
-    const organizationId = this.parseId(dto.organization_id, 'organization id');
+    const profileId = parseBigIntId(id, 'employee id');
+    const organizationId = parseBigIntId(dto.organization_id, 'organization id');
 
     const [profile, organization] = await this.drizzle.$transaction([
       this.drizzle.profile.findUnique({ where: { id: profileId } }),
@@ -352,8 +353,8 @@ export class HrService {
   }
 
   async removeOrganizationMembership(id: string, organizationIdParam: string) {
-    const profileId = this.parseId(id, 'employee id');
-    const organizationId = this.parseId(organizationIdParam, 'organization id');
+    const profileId = parseBigIntId(id, 'employee id');
+    const organizationId = parseBigIntId(organizationIdParam, 'organization id');
 
     const membership = await this.drizzle.profileOrganization.findFirst({
       where: { profileId, organizationId }
@@ -375,8 +376,8 @@ export class HrService {
   }
 
   async addTeamMembership(id: string, dto: AssignEmployeeTeamDto) {
-    const profileId = this.parseId(id, 'employee id');
-    const teamId = this.parseId(dto.team_id, 'team id');
+    const profileId = parseBigIntId(id, 'employee id');
+    const teamId = parseBigIntId(dto.team_id, 'team id');
 
     const [profile, team] = await this.drizzle.$transaction([
       this.drizzle.profile.findUnique({ where: { id: profileId } }),
@@ -421,8 +422,8 @@ export class HrService {
   }
 
   async removeTeamMembership(id: string, teamIdParam: string) {
-    const profileId = this.parseId(id, 'employee id');
-    const teamId = this.parseId(teamIdParam, 'team id');
+    const profileId = parseBigIntId(id, 'employee id');
+    const teamId = parseBigIntId(teamIdParam, 'team id');
 
     await this.drizzle.groupUser.delete({
       where: {
@@ -451,7 +452,7 @@ export class HrService {
   async listOnboardingFormAssignments(query: Record<string, any>) {
     const where: Drizzle.FormAssignmentWhereInput = {};
     if (query.form_id) where.formId = String(query.form_id);
-    if (query.profile_id) where.assignedToProfileId = this.parseId(String(query.profile_id), 'profile id');
+    if (query.profile_id) where.assignedToProfileId = parseBigIntId(String(query.profile_id), 'profile id');
     if (query.role_slug) where.assignedToRole = String(query.role_slug);
 
     const assignments = await this.drizzle.formAssignment.findMany({
@@ -482,7 +483,7 @@ export class HrService {
     const form = await this.drizzle.form.findUnique({ where: { id: dto.form_id } });
     if (!form || !form.isActive) throw new NotFoundException('Form not found');
 
-    const assignedToProfileId = dto.profile_id ? this.parseId(dto.profile_id, 'profile id') : null;
+    const assignedToProfileId = dto.profile_id ? parseBigIntId(dto.profile_id, 'profile id') : null;
     if (assignedToProfileId) {
       const user = await this.drizzle.profile.findUnique({ where: { id: assignedToProfileId } });
       if (!user) throw new NotFoundException('Profile not found');
@@ -511,7 +512,7 @@ export class HrService {
 
     let assignedToProfileId: bigint | null | undefined;
     if (dto.profile_id !== undefined) {
-      assignedToProfileId = dto.profile_id ? this.parseId(dto.profile_id, 'profile id') : null;
+      assignedToProfileId = dto.profile_id ? parseBigIntId(dto.profile_id, 'profile id') : null;
       if (assignedToProfileId) {
         const user = await this.drizzle.profile.findUnique({ where: { id: assignedToProfileId } });
         if (!user) throw new NotFoundException('Profile not found');
@@ -545,7 +546,7 @@ export class HrService {
 
   async getLeaveBalance(query: Record<string, any>) {
     const year = Number(query.year ?? new Date().getFullYear());
-    const userId = query.user_id ? this.parseId(String(query.user_id), 'user id') : undefined;
+    const userId = query.user_id ? parseBigIntId(String(query.user_id), 'user id') : undefined;
 
     const where: Drizzle.LeaveBalanceLedgerWhereInput = {
       periodYear: year,
@@ -598,7 +599,7 @@ export class HrService {
   }
 
   async adjustLeaveBalance(dto: AdjustLeaveBalanceDto, actorId?: string) {
-    const userId = this.parseId(dto.user_id, 'user id');
+    const userId = parseBigIntId(dto.user_id, 'user id');
     const leaveTypeKey = dto.leave_type_key.trim().toLowerCase();
     const periodYear = Number(dto.period_year);
     if (!Number.isFinite(periodYear) || periodYear < 2000 || periodYear > 2100) {
@@ -638,13 +639,13 @@ export class HrService {
     dto: UpsertEmployeeDto,
     actorId: bigint | null
   ) {
-    const managerUserId = dto.manager_user_id ? this.parseId(dto.manager_user_id, 'manager user id') : undefined;
-    const primaryTeamId = dto.primary_team_id ? this.parseId(dto.primary_team_id, 'primary team id') : undefined;
+    const managerUserId = dto.manager_user_id ? parseBigIntId(dto.manager_user_id, 'manager user id') : undefined;
+    const primaryTeamId = dto.primary_team_id ? parseBigIntId(dto.primary_team_id, 'primary team id') : undefined;
     const primaryOrganizationId = dto.primary_organization_id
-      ? this.parseId(dto.primary_organization_id, 'primary organization id')
+      ? parseBigIntId(dto.primary_organization_id, 'primary organization id')
       : undefined;
     const designationId = dto.designation_id !== undefined
-      ? (dto.designation_id ? this.parseId(dto.designation_id, 'designation id') : null)
+      ? (dto.designation_id ? parseBigIntId(dto.designation_id, 'designation id') : null)
       : undefined;
     const employeeCode = this.normalizeOptionalText(dto.employee_code);
     const jobTitle = this.normalizeOptionalText(dto.job_title);
@@ -863,10 +864,10 @@ export class HrService {
     const matched = rows
       .filter((row) => {
         if (!context) return row.scopeType === 'global';
-        return this.policyScopeMatches(row.scopeType, row.scopeId, context);
+        return policyScopeMatches(row.scopeType, row.scopeId, context);
       })
       .sort((a, b) => {
-        const rankDelta = this.policyScopeRank(a.scopeType) - this.policyScopeRank(b.scopeType);
+        const rankDelta = policyScopeRank(a.scopeType) - policyScopeRank(b.scopeType);
         if (rankDelta !== 0) return rankDelta;
         if (a.priority !== b.priority) return a.priority - b.priority;
         return a.createdAt.getTime() - b.createdAt.getTime();
@@ -926,12 +927,9 @@ export class HrService {
     const defaults: Record<string, number> = {};
     const carryoverCaps: Record<string, number> = {};
     for (const type of types) {
-      if (!this.isLeaveRequestType(type.name, type.taxonomyKeys as string[] | null, type.formSchema)) continue;
-      const schema =
-        type.formSchema && typeof type.formSchema === 'object' && !Array.isArray(type.formSchema)
-          ? (type.formSchema as Record<string, unknown>)
-          : {};
-      const key = this.resolveLeaveTypeKey(type.name, schema);
+      if (!isLeaveRequestType(type.name, type.taxonomyKeys as string[] | null, type.formSchema)) continue;
+      const schema = objectSchema(type.formSchema);
+      const key = resolveLeaveTypeKey(type.name, schema);
       if (!key) continue;
       const entitled = Number(schema.entitled_days_per_year ?? 0);
       defaults[key] = Number.isFinite(entitled) && entitled > 0 ? entitled : 0;
@@ -943,36 +941,6 @@ export class HrService {
       entitlements: defaults,
       carryoverCaps
     };
-  }
-
-  private isLeaveRequestType(name: string | null, taxonomyKeys: string[] | null, formSchema: unknown) {
-    const normalizedName = String(name ?? '').toLowerCase();
-    const normalizedCategory = String(taxonomyKeys?.[0] ?? '').toLowerCase();
-    const schema =
-      formSchema && typeof formSchema === 'object' && !Array.isArray(formSchema)
-        ? (formSchema as Record<string, unknown>)
-        : {};
-    const schemaLeaveTypeKey = String(schema.leave_type_key ?? '').trim().toLowerCase();
-    return (
-      normalizedCategory.includes('leave') ||
-      normalizedName.includes('leave') ||
-      schemaLeaveTypeKey.length > 0
-    );
-  }
-
-  private resolveLeaveTypeKey(requestTypeName: string | null, formSchema: unknown) {
-    const schema =
-      formSchema && typeof formSchema === 'object' && !Array.isArray(formSchema)
-        ? (formSchema as Record<string, unknown>)
-        : {};
-    const fromSchema = String(schema.leave_type_key ?? '').trim().toLowerCase();
-    if (fromSchema) return fromSchema;
-    const fromName = String(requestTypeName ?? '')
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '_')
-      .replace(/^_+|_+$/g, '');
-    return fromName || 'annual_leave';
   }
 
   private async resolvePolicyContextForUser(userId: bigint) {
@@ -995,29 +963,6 @@ export class HrService {
       team_id: primaryTeam?.groupId?.toString(),
       staff_type: profile?.employeeProfile?.employmentType ?? undefined
     };
-  }
-
-  private policyScopeMatches(
-    scopeType: string,
-    scopeId: string | null,
-    context: { organization_id?: string; team_id?: string; staff_type?: string; user_id?: string }
-  ) {
-    if (scopeType === 'global') return true;
-    if (!scopeId) return false;
-    if (scopeType === 'organization') return context.organization_id === scopeId;
-    if (scopeType === 'team') return context.team_id === scopeId;
-    if (scopeType === 'staff_type') return context.staff_type === scopeId;
-    if (scopeType === 'user') return context.user_id === scopeId;
-    return false;
-  }
-
-  private policyScopeRank(scopeType: string) {
-    if (scopeType === 'global') return 0;
-    if (scopeType === 'organization') return 1;
-    if (scopeType === 'team') return 2;
-    if (scopeType === 'staff_type') return 3;
-    if (scopeType === 'user') return 4;
-    return 99;
   }
 
   private serializeEmployee(profile: any) {
@@ -1145,11 +1090,4 @@ export class HrService {
     }
   }
 
-  private parseId(value: string, label: string): bigint {
-    try {
-      return toBigInt(value);
-    } catch {
-      throw new BadRequestException(`Invalid ${label}`);
-    }
-  }
 }

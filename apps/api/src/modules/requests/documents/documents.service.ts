@@ -87,7 +87,7 @@ export class DocumentsService {
       if (!file) throw new NotFoundException('File not found');
     }
 
-    const tenantId = this.currentTenantId();
+    const tenantId = this.tenantContext.currentTenantId();
     if (!tenantId) throw new BadRequestException('Tenant context is required to create a document');
 
     const [created] = await this.db.client
@@ -289,13 +289,8 @@ export class DocumentsService {
       .slice(0, 180);
   }
 
-  private currentTenantId() {
-    const context = this.tenantContext.get();
-    return context && context.scope !== 'system' ? context.tenantId : undefined;
-  }
-
-  private documentConditions(): SQL[] {
-    const tenantId = this.currentTenantId();
+private documentConditions(): SQL[] {
+    const tenantId = this.tenantContext.currentTenantId();
     return tenantId ? [eq(document.tenantId, tenantId)] : [];
   }
 
@@ -323,7 +318,7 @@ export class DocumentsService {
 
   private async findFile(id: string) {
     const conditions = [eq(fileAsset.id, id)];
-    const tenantId = this.currentTenantId();
+    const tenantId = this.tenantContext.currentTenantId();
     if (tenantId) conditions.push(eq(fileAsset.tenantId, tenantId));
     const [row] = await this.db.client
       .select({ id: fileAsset.id })

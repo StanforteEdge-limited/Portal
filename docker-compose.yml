@@ -44,6 +44,72 @@ services:
       timeout: 3s
       retries: 10
 
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    init: true
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-stanforte}:${POSTGRES_PASSWORD:-stanforte-dev}@postgres:5432/${POSTGRES_DB:-stanforte}?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ""
+      CACHE_TTL_SECONDS: "300"
+      PORT: "3000"
+      JWT_SECRET: ${JWT_SECRET:-D06BB4071445202E0C4557CDF9A1CD41729F84EA3CFDEB4C81F8B613DE9B9B82}
+      JWT_EXPIRES_IN: 15m
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-62A6E88613570318A90FF88EC92BECB5F3D39A4A6D933CFC263D2177D9F2C8C1}
+      JWT_REFRESH_EXPIRES_IN: 30d
+      CORS_ORIGINS: http://localhost:3000,http://localhost:5173,http://localhost:8025
+      APP_BASE_URL: http://localhost:3000
+      APP_URL: http://localhost:3000
+      FILE_BASE_URL: http://localhost:3000
+      EMAIL_NOTIFICATIONS_ENABLED: "true"
+      MAIL_FROM: no-reply@stanforteedge.com
+      MAIL_SUPPORT_EMAIL: support@stanforteedge.com
+      MAIL_MESSAGE_ID_DOMAIN: stanforteedge.com
+      MAIL_ENCRYPTION_KEY: ${MAIL_ENCRYPTION_KEY:-586B9AB2AAB9A0F8BB77E18F3A1E33156031AC69B8C38819FA5DD1523C65372B}
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      SMTP_USER: ""
+      SMTP_PASS: ""
+      SMTP_SECURE: "false"
+      PDF_BROWSER_PATH: /usr/bin/chromium-browser
+      STORAGE_DRIVER: local
+      FILE_UPLOAD_MAX_MB: "10"
+      REALTIME_ENABLED: "true"
+      PRESENCE_ENABLED: "true"
+      NOTIFICATION_WORKER_ENABLED: "true"
+      NOTIFICATION_SCHEDULER_ENABLED: "true"
+    ports:
+      - "${API_PORT:-3000}:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: dev
+    restart: unless-stopped
+    init: true
+    environment:
+      VITE_API_BASE_URL: http://localhost:3000/v1
+    ports:
+      - "${WEB_PORT:-5173}:5173"
+    depends_on:
+      - api
+    volumes:
+      - ./apps/web/src:/app/apps/web/src:ro
+      - ./apps/shared/src:/app/apps/shared/src:ro
+
 volumes:
   portal-postgres:
   portal-redis:

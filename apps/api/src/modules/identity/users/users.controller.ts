@@ -154,4 +154,22 @@ export class UsersController {
   inviteUser(@CurrentTenant() tenant: TenantContext, @Param('id') id: string, @Body() dto: InviteUserDto) {
     return this.usersService.inviteUser(id, dto, tenant.tenantId);
   }
+
+  @Post('users/:id/reset-link')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('users.manage')
+  @ApiOperation({ summary: 'Send a password reset link to the user (admin-initiated)' })
+  @ApiBody({
+    type: InviteUserDto,
+    examples: {
+      default: {
+        value: {
+          message: 'Your administrator requested a password reset.'
+        }
+      }
+    }
+  })
+  sendResetLink(@CurrentTenant() tenant: TenantContext, @Param('id') id: string, @Body() dto: InviteUserDto) {
+    return this.usersService.sendResetLink(id, dto, tenant);
+  }
 }

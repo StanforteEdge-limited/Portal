@@ -1,7 +1,9 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { DrizzleService } from '$common/drizzle/drizzle.service';
+import { SQL, and, asc, count, desc, eq, ilike, inArray, isNull, isNotNull, or, sql } from 'drizzle-orm';
+import { DbService } from '$common/db/db.service';
+import { TenantContextService } from '$common/auth/tenant-context.service';
 import { paginatedResponse } from '$common/helpers/paginated-response';
-import { toBigInt } from '$common/utils/ids';
+import { parseBigIntId } from '$common/utils/ids';
 import { ConvertLeadDto } from './dto/convert-lead.dto';
 import { UpsertCrmAccountDto } from './dto/upsert-account.dto';
 import { UpsertCrmActivityDto } from './dto/upsert-activity.dto';
@@ -9,18 +11,15 @@ import { UpsertCrmContactDto } from './dto/upsert-contact.dto';
 import { UpsertCrmLeadDto } from './dto/upsert-lead.dto';
 import { UpsertCrmOpportunityDto } from './dto/upsert-opportunity.dto';
 import { ReplaceCrmPipelineStagesDto, UpsertCrmPipelineDto } from './dto/upsert-pipeline.dto';
+import { crmAccount, crmContact, crmLead, crmPipeline, crmPipelineStage, crmOpportunity, crmActivity } from './model';
+import { profile } from '$modules/identity/users/model';
 
 @Injectable()
 export class CrmService {
-  constructor(private readonly drizzle: DrizzleService) {}
-
-  private parseId(value: string, label: string): bigint {
-    try {
-      return toBigInt(value);
-    } catch {
-      throw new BadRequestException(`Invalid ${label}`);
-    }
-  }
+  constructor(
+    private readonly db: DbService,
+    private readonly tenantContext: TenantContextService,
+  ) {}
 
   private toPage(query: Record<string, any>) {
     return {
@@ -32,58 +31,58 @@ export class CrmService {
   private async ownerMap(profileIds: Array<bigint | null | undefined>) {
     const ids = Array.from(new Set(profileIds.filter((id): id is bigint => id != null)));
     if (!ids.length) return new Map<string, any>();
-    const owners = await this.drizzle.profile.findMany({ where: { id: { in: ids } } });
+    const owners = await this.db.client.select().from(profile).where(inArray(profile.id, ids));
     return new Map(owners.map((owner) => [owner.id.toString(), owner]));
   }
 
   private async accountMap(accountIds: Array<bigint | null | undefined>) {
     const ids = Array.from(new Set(accountIds.filter((id): id is bigint => id != null)));
     if (!ids.length) return new Map<string, any>();
-    const accounts = await this.drizzle.crmAccount.findMany({ where: { id: { in: ids } } });
+    const tid = this.tenantContext.requireTenantId();
+    const accounts = await this.db.client.select().from(crmAccount).where(and(inArray(crmAccount.id, ids), eq(crmAccount.tenantId, tid)));
     return new Map(accounts.map((account) => [account.id.toString(), account]));
   }
 
   private async contactMap(contactIds: Array<bigint | null | undefined>) {
     const ids = Array.from(new Set(contactIds.filter((id): id is bigint => id != null)));
     if (!ids.length) return new Map<string, any>();
-    const contacts = await this.drizzle.crmContact.findMany({ where: { id: { in: ids } } });
+    const tid = this.tenantContext.requireTenantId();
+    const contacts = await this.db.client.select().from(crmContact).where(and(inArray(crmContact.id, ids), eq(crmContact.tenantId, tid)));
     return new Map(contacts.map((contact) => [contact.id.toString(), contact]));
   }
 
   async listAccounts(query: Record<string, any>) {
     const { page, perPage } = this.toPage(query);
-    const where: Record<string, any> = {};
-    if (query.search) {
-      where.OR = [
-        { name: { contains: String(query.search), mode: 'insensitive' } },
-        { email: { contains: String(query.search), mode: 'insensitive' } },
-        { industry: { contains: String(query.search), mode: 'insensitive' } },
-      ];
-    }
-    if (query.status) where.status = String(query.status);
-    if (query.type) where.type = String(query.type);
-    if (query.lifecycle_stage) where.lifecycleStage = String(query.lifecycle_stage);
-    if (query.owner_profile_id) where.ownerProfileId = this.parseId(query.owner_profile_id, 'owner profile id');
+    const tid = this.tenantContext.requireTenantId();
+    const skip = (page - 1) * perPage;
+    const conditions: SQL[] = [eq(crmAccount.tenantId, tid)];
 
-    const [rows, total] = await this.drizzle.$transaction([
-      this.drizzle.crmAccount.findMany({
-        where,
-        orderBy: { name: 'asc' },
-        skip: (page - 1) * perPage,
-        take: perPage,
-      }),
-      this.drizzle.crmAccount.count({ where }),
+    if (query.search) {
+      const search = `%${String(query.search)}%`;
+      conditions.push(or(ilike(crmAccount.name, search), ilike(crmAccount.email, search), ilike(crmAccount.industry, search)) as SQL);
+    }
+    if (query.status) conditions.push(eq(crmAccount.status, String(query.status)));
+    if (query.type) conditions.push(eq(crmAccount.type, String(query.type)));
+    if (query.lifecycle_stage) conditions.push(eq(crmAccount.lifecycleStage, String(query.lifecycle_stage)));
+    if (query.owner_profile_id) conditions.push(eq(crmAccount.ownerProfileId, parseBigIntId(query.owner_profile_id, 'owner profile id')));
+
+    const where = and(...conditions);
+
+    const [rows, totalResult] = await Promise.all([
+      this.db.client.select().from(crmAccount).where(where).orderBy(asc(crmAccount.name)).limit(perPage).offset(skip),
+      this.db.client.select({ count: count() }).from(crmAccount).where(where),
     ]);
+    const total = totalResult[0]?.count ?? 0;
 
     const accountIds = rows.map((row) => row.id);
     const counts = accountIds.length
-      ? await this.drizzle.crmContact.groupBy({
-          where: { accountId: { in: accountIds } },
-          by: ['accountId'],
-          _count: true,
-        })
+      ? await this.db.client
+          .select({ accountId: crmContact.accountId, count: count() })
+          .from(crmContact)
+          .where(inArray(crmContact.accountId, accountIds))
+          .groupBy(crmContact.accountId)
       : [];
-    const countByAccount = new Map(counts.map((entry) => [entry.accountId.toString(), entry._count?._all ?? 0]));
+    const countByAccount = new Map(counts.map((entry) => [entry.accountId.toString(), entry.count ?? 0]));
     const owners = await this.ownerMap(rows.map((row) => row.ownerProfileId));
 
     const data = rows.map((row) => ({
@@ -96,39 +95,67 @@ export class CrmService {
   }
 
   async getAccount(id: string) {
-    const accountId = this.parseId(id, 'account id');
-    const account = await this.drizzle.crmAccount.findUnique({ where: { id: accountId } });
+    const tid = this.tenantContext.requireTenantId();
+    const accountId = parseBigIntId(id, 'account id');
+    const [account] = await this.db.client
+      .select()
+      .from(crmAccount)
+      .where(and(eq(crmAccount.id, accountId), eq(crmAccount.tenantId, tid)))
+      .limit(1);
     if (!account) throw new NotFoundException('Account not found');
 
     const [contacts, opportunities, owner] = await Promise.all([
-      this.drizzle.crmContact.findMany({
-        where: { accountId },
-        orderBy: [{ isPrimary: 'desc' }, { firstName: 'asc' }],
-      }),
-      this.drizzle.crmOpportunity.findMany({ where: { accountId }, orderBy: { createdAt: 'desc' } }),
-      account.ownerProfileId ? this.drizzle.profile.findUnique({ where: { id: account.ownerProfileId } }) : null,
+      this.db.client
+        .select()
+        .from(crmContact)
+        .where(and(eq(crmContact.accountId, accountId), eq(crmContact.tenantId, tid)))
+        .orderBy(desc(crmContact.isPrimary), asc(crmContact.firstName)),
+      this.db.client
+        .select()
+        .from(crmOpportunity)
+        .where(and(eq(crmOpportunity.accountId, accountId), eq(crmOpportunity.tenantId, tid)))
+        .orderBy(desc(crmOpportunity.createdAt)),
+      account.ownerProfileId
+        ? this.db.client.select().from(profile).where(eq(profile.id, account.ownerProfileId)).limit(1).then((r) => r[0] ?? null)
+        : Promise.resolve(null),
     ]);
 
     return { ...account, owner, contacts, opportunities };
   }
 
   async createAccount(dto: UpsertCrmAccountDto) {
+    const tid = this.tenantContext.requireTenantId();
     const data = this.accountData(dto);
-    const account = await this.drizzle.crmAccount.create({ data });
+    const [account] = await this.db.client
+      .insert(crmAccount)
+      .values({ ...data, tenantId: tid })
+      .returning();
     return this.getAccount(account.id.toString());
   }
 
   async updateAccount(id: string, dto: UpsertCrmAccountDto) {
-    const accountId = this.parseId(id, 'account id');
-    const existing = await this.drizzle.crmAccount.findUnique({ where: { id: accountId } });
+    const tid = this.tenantContext.requireTenantId();
+    const accountId = parseBigIntId(id, 'account id');
+    const [existing] = await this.db.client
+      .select({ id: crmAccount.id })
+      .from(crmAccount)
+      .where(and(eq(crmAccount.id, accountId), eq(crmAccount.tenantId, tid)))
+      .limit(1);
     if (!existing) throw new NotFoundException('Account not found');
-    await this.drizzle.crmAccount.update({ where: { id: accountId }, data: this.accountData(dto) });
+    await this.db.client
+      .update(crmAccount)
+      .set(this.accountData(dto))
+      .where(and(eq(crmAccount.id, accountId), eq(crmAccount.tenantId, tid)));
     return this.getAccount(id);
   }
 
   async deleteAccount(id: string) {
-    const accountId = this.parseId(id, 'account id');
-    const deleted = await this.drizzle.crmAccount.delete({ where: { id: accountId } });
+    const tid = this.tenantContext.requireTenantId();
+    const accountId = parseBigIntId(id, 'account id');
+    const [deleted] = await this.db.client
+      .delete(crmAccount)
+      .where(and(eq(crmAccount.id, accountId), eq(crmAccount.tenantId, tid)))
+      .returning();
     if (!deleted) throw new NotFoundException('Account not found');
     return { success: true };
   }
@@ -143,32 +170,30 @@ export class CrmService {
       type: dto.type,
       lifecycleStage: dto.lifecycle_stage,
       status: dto.status,
-      ownerProfileId: dto.owner_profile_id ? this.parseId(dto.owner_profile_id, 'owner profile id') : undefined,
+      ownerProfileId: dto.owner_profile_id ? parseBigIntId(dto.owner_profile_id, 'owner profile id') : undefined,
     };
   }
 
   async listContacts(query: Record<string, any>) {
     const { page, perPage } = this.toPage(query);
-    const where: Record<string, any> = {};
-    if (query.search) {
-      where.OR = [
-        { email: { contains: String(query.search), mode: 'insensitive' } },
-        { firstName: { contains: String(query.search), mode: 'insensitive' } },
-        { lastName: { contains: String(query.search), mode: 'insensitive' } },
-      ];
-    }
-    if (query.account_id) where.accountId = this.parseId(query.account_id, 'account id');
-    if (query.is_primary === 'true' || query.is_primary === true) where.isPrimary = true;
+    const tid = this.tenantContext.requireTenantId();
+    const skip = (page - 1) * perPage;
+    const conditions: SQL[] = [eq(crmContact.tenantId, tid)];
 
-    const [rows, total] = await this.drizzle.$transaction([
-      this.drizzle.crmContact.findMany({
-        where,
-        orderBy: { firstName: 'asc' },
-        skip: (page - 1) * perPage,
-        take: perPage,
-      }),
-      this.drizzle.crmContact.count({ where }),
+    if (query.search) {
+      const search = `%${String(query.search)}%`;
+      conditions.push(or(ilike(crmContact.email, search), ilike(crmContact.firstName, search), ilike(crmContact.lastName, search)) as SQL);
+    }
+    if (query.account_id) conditions.push(eq(crmContact.accountId, parseBigIntId(query.account_id, 'account id')));
+    if (query.is_primary === 'true' || query.is_primary === true) conditions.push(eq(crmContact.isPrimary, true));
+
+    const where = and(...conditions);
+
+    const [rows, totalResult] = await Promise.all([
+      this.db.client.select().from(crmContact).where(where).orderBy(asc(crmContact.firstName)).limit(perPage).offset(skip),
+      this.db.client.select({ count: count() }).from(crmContact).where(where),
     ]);
+    const total = totalResult[0]?.count ?? 0;
 
     const accounts = await this.accountMap(rows.map((row) => row.accountId));
 
@@ -181,89 +206,108 @@ export class CrmService {
   }
 
   async getContact(id: string) {
-    const contactId = this.parseId(id, 'contact id');
-    const contact = await this.drizzle.crmContact.findUnique({ where: { id: contactId } });
+    const tid = this.tenantContext.requireTenantId();
+    const contactId = parseBigIntId(id, 'contact id');
+    const [contact] = await this.db.client
+      .select()
+      .from(crmContact)
+      .where(and(eq(crmContact.id, contactId), eq(crmContact.tenantId, tid)))
+      .limit(1);
     if (!contact) throw new NotFoundException('Contact not found');
     const account = contact.accountId
-      ? await this.drizzle.crmAccount.findUnique({ where: { id: contact.accountId } })
+      ? (await this.db.client.select().from(crmAccount).where(and(eq(crmAccount.id, contact.accountId), eq(crmAccount.tenantId, tid))).limit(1))[0] ?? null
       : null;
     return { ...contact, account };
   }
 
   async createContact(dto: UpsertCrmContactDto) {
+    const tid = this.tenantContext.requireTenantId();
     await this.assertAccountExists(dto.account_id);
-    const contact = await this.drizzle.crmContact.create({
-      data: {
-        accountId: dto.account_id ? this.parseId(dto.account_id, 'account id') : undefined,
+    const [contact] = await this.db.client
+      .insert(crmContact)
+      .values({
+        tenantId: tid,
+        accountId: dto.account_id ? parseBigIntId(dto.account_id, 'account id') : undefined,
         firstName: dto.first_name,
         lastName: dto.last_name,
         email: dto.email ? dto.email.trim().toLowerCase() : undefined,
         phone: dto.phone,
         jobTitle: dto.job_title,
         isPrimary: dto.is_primary,
-      },
-    });
+      })
+      .returning();
     return this.getContact(contact.id.toString());
   }
 
   async updateContact(id: string, dto: UpsertCrmContactDto) {
-    const contactId = this.parseId(id, 'contact id');
-    const existing = await this.drizzle.crmContact.findUnique({ where: { id: contactId } });
+    const tid = this.tenantContext.requireTenantId();
+    const contactId = parseBigIntId(id, 'contact id');
+    const [existing] = await this.db.client
+      .select({ id: crmContact.id })
+      .from(crmContact)
+      .where(and(eq(crmContact.id, contactId), eq(crmContact.tenantId, tid)))
+      .limit(1);
     if (!existing) throw new NotFoundException('Contact not found');
     await this.assertAccountExists(dto.account_id);
-    await this.drizzle.crmContact.update({
-      where: { id: contactId },
-      data: {
-        accountId: dto.account_id ? this.parseId(dto.account_id, 'account id') : undefined,
+    await this.db.client
+      .update(crmContact)
+      .set({
+        accountId: dto.account_id ? parseBigIntId(dto.account_id, 'account id') : undefined,
         firstName: dto.first_name,
         lastName: dto.last_name,
         email: dto.email ? dto.email.trim().toLowerCase() : undefined,
         phone: dto.phone,
         jobTitle: dto.job_title,
         isPrimary: dto.is_primary,
-      },
-    });
+      })
+      .where(and(eq(crmContact.id, contactId), eq(crmContact.tenantId, tid)));
     return this.getContact(id);
   }
 
   async deleteContact(id: string) {
-    const contactId = this.parseId(id, 'contact id');
-    const deleted = await this.drizzle.crmContact.delete({ where: { id: contactId } });
+    const tid = this.tenantContext.requireTenantId();
+    const contactId = parseBigIntId(id, 'contact id');
+    const [deleted] = await this.db.client
+      .delete(crmContact)
+      .where(and(eq(crmContact.id, contactId), eq(crmContact.tenantId, tid)))
+      .returning();
     if (!deleted) throw new NotFoundException('Contact not found');
     return { success: true };
   }
 
   private async assertAccountExists(id?: string) {
     if (!id) return;
-    const accountId = this.parseId(id, 'account id');
-    const account = await this.drizzle.crmAccount.findUnique({ where: { id: accountId } });
+    const tid = this.tenantContext.requireTenantId();
+    const accountId = parseBigIntId(id, 'account id');
+    const [account] = await this.db.client
+      .select({ id: crmAccount.id })
+      .from(crmAccount)
+      .where(and(eq(crmAccount.id, accountId), eq(crmAccount.tenantId, tid)))
+      .limit(1);
     if (!account) throw new NotFoundException('Account not found');
   }
 
   async listLeads(query: Record<string, any>) {
     const { page, perPage } = this.toPage(query);
-    const where: Record<string, any> = {};
-    if (query.search) {
-      where.OR = [
-        { email: { contains: String(query.search), mode: 'insensitive' } },
-        { firstName: { contains: String(query.search), mode: 'insensitive' } },
-        { lastName: { contains: String(query.search), mode: 'insensitive' } },
-        { company: { contains: String(query.search), mode: 'insensitive' } },
-      ];
-    }
-    if (query.status) where.status = String(query.status);
-    if (query.source) where.source = String(query.source);
-    if (query.owner_profile_id) where.ownerProfileId = this.parseId(query.owner_profile_id, 'owner profile id');
+    const tid = this.tenantContext.requireTenantId();
+    const skip = (page - 1) * perPage;
+    const conditions: SQL[] = [eq(crmLead.tenantId, tid)];
 
-    const [rows, total] = await this.drizzle.$transaction([
-      this.drizzle.crmLead.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * perPage,
-        take: perPage,
-      }),
-      this.drizzle.crmLead.count({ where }),
+    if (query.search) {
+      const search = `%${String(query.search)}%`;
+      conditions.push(or(ilike(crmLead.email, search), ilike(crmLead.firstName, search), ilike(crmLead.lastName, search), ilike(crmLead.company, search)) as SQL);
+    }
+    if (query.status) conditions.push(eq(crmLead.status, String(query.status)));
+    if (query.source) conditions.push(eq(crmLead.source, String(query.source)));
+    if (query.owner_profile_id) conditions.push(eq(crmLead.ownerProfileId, parseBigIntId(query.owner_profile_id, 'owner profile id')));
+
+    const where = and(...conditions);
+
+    const [rows, totalResult] = await Promise.all([
+      this.db.client.select().from(crmLead).where(where).orderBy(desc(crmLead.createdAt)).limit(perPage).offset(skip),
+      this.db.client.select({ count: count() }).from(crmLead).where(where),
     ]);
+    const total = totalResult[0]?.count ?? 0;
 
     const owners = await this.ownerMap(rows.map((row) => row.ownerProfileId));
 
@@ -276,33 +320,52 @@ export class CrmService {
   }
 
   async getLead(id: string) {
-    const leadId = this.parseId(id, 'lead id');
-    const lead = await this.drizzle.crmLead.findUnique({ where: { id: leadId } });
+    const tid = this.tenantContext.requireTenantId();
+    const leadId = parseBigIntId(id, 'lead id');
+    const [lead] = await this.db.client
+      .select()
+      .from(crmLead)
+      .where(and(eq(crmLead.id, leadId), eq(crmLead.tenantId, tid)))
+      .limit(1);
     if (!lead) throw new NotFoundException('Lead not found');
     const owner = lead.ownerProfileId
-      ? await this.drizzle.profile.findUnique({ where: { id: lead.ownerProfileId } })
+      ? (await this.db.client.select().from(profile).where(eq(profile.id, lead.ownerProfileId)).limit(1))[0] ?? null
       : null;
     return { ...lead, owner };
   }
 
   async createLead(dto: UpsertCrmLeadDto) {
-    const lead = await this.drizzle.crmLead.create({
-      data: this.leadData(dto),
-    });
+    const tid = this.tenantContext.requireTenantId();
+    const [lead] = await this.db.client
+      .insert(crmLead)
+      .values({ ...this.leadData(dto), tenantId: tid })
+      .returning();
     return this.getLead(lead.id.toString());
   }
 
   async updateLead(id: string, dto: UpsertCrmLeadDto) {
-    const leadId = this.parseId(id, 'lead id');
-    const existing = await this.drizzle.crmLead.findUnique({ where: { id: leadId } });
+    const tid = this.tenantContext.requireTenantId();
+    const leadId = parseBigIntId(id, 'lead id');
+    const [existing] = await this.db.client
+      .select({ id: crmLead.id })
+      .from(crmLead)
+      .where(and(eq(crmLead.id, leadId), eq(crmLead.tenantId, tid)))
+      .limit(1);
     if (!existing) throw new NotFoundException('Lead not found');
-    await this.drizzle.crmLead.update({ where: { id: leadId }, data: this.leadData(dto) });
+    await this.db.client
+      .update(crmLead)
+      .set(this.leadData(dto))
+      .where(and(eq(crmLead.id, leadId), eq(crmLead.tenantId, tid)));
     return this.getLead(id);
   }
 
   async deleteLead(id: string) {
-    const leadId = this.parseId(id, 'lead id');
-    const deleted = await this.drizzle.crmLead.delete({ where: { id: leadId } });
+    const tid = this.tenantContext.requireTenantId();
+    const leadId = parseBigIntId(id, 'lead id');
+    const [deleted] = await this.db.client
+      .delete(crmLead)
+      .where(and(eq(crmLead.id, leadId), eq(crmLead.tenantId, tid)))
+      .returning();
     if (!deleted) throw new NotFoundException('Lead not found');
     return { success: true };
   }
@@ -317,78 +380,79 @@ export class CrmService {
       source: dto.source,
       status: dto.status,
       score: dto.score,
-      ownerProfileId: dto.owner_profile_id ? this.parseId(dto.owner_profile_id, 'owner profile id') : undefined,
+      ownerProfileId: dto.owner_profile_id ? parseBigIntId(dto.owner_profile_id, 'owner profile id') : undefined,
     };
   }
 
   async convertLead(id: string, dto: ConvertLeadDto) {
-    const leadId = this.parseId(id, 'lead id');
+    const tid = this.tenantContext.requireTenantId();
+    const leadId = parseBigIntId(id, 'lead id');
 
-    return this.drizzle.$transaction(async (tx) => {
-      const lead = await tx.crmLead.findUnique({ where: { id: leadId } });
+    return this.db.client.transaction(async (tx) => {
+      const [lead] = await tx.select().from(crmLead).where(and(eq(crmLead.id, leadId), eq(crmLead.tenantId, tid))).limit(1);
       if (!lead) throw new NotFoundException('Lead not found');
       if (lead.convertedAccountId || lead.convertedContactId) {
         throw new BadRequestException('Lead has already been converted');
       }
 
-      let accountId = dto.account_id ? this.parseId(dto.account_id, 'account id') : null;
+      let accountId = dto.account_id ? parseBigIntId(dto.account_id, 'account id') : null;
       if (accountId) {
-        const account = await tx.crmAccount.findUnique({ where: { id: accountId } });
+        const [account] = await tx.select({ id: crmAccount.id }).from(crmAccount).where(and(eq(crmAccount.id, accountId), eq(crmAccount.tenantId, tid))).limit(1);
         if (!account) throw new NotFoundException('Account not found');
       } else {
         const accountName = dto.account_name || lead.company || `${lead.firstName ?? ''} ${lead.lastName ?? ''}`.trim();
         if (!accountName) throw new BadRequestException('An account name is required to convert the lead');
-        const account = await tx.crmAccount.create({
-          data: {
-            name: accountName,
-            industry: dto.industry,
-            email: lead.email ?? undefined,
-            phone: lead.phone ?? undefined,
-            lifecycleStage: 'customer',
-            ownerProfileId: lead.ownerProfileId ?? undefined,
-          },
-        });
+        const [account] = await tx.insert(crmAccount).values({
+          tenantId: tid,
+          name: accountName,
+          industry: dto.industry,
+          email: lead.email ?? undefined,
+          phone: lead.phone ?? undefined,
+          lifecycleStage: 'customer',
+          ownerProfileId: lead.ownerProfileId ?? undefined,
+        }).returning();
         accountId = account.id;
       }
 
-      const contact = await tx.crmContact.create({
-        data: {
-          accountId,
-          firstName: lead.firstName,
-          lastName: lead.lastName,
-          email: lead.email ?? undefined,
-          phone: lead.phone ?? undefined,
-          isPrimary: true,
-        },
-      });
+      const [contact] = await tx.insert(crmContact).values({
+        tenantId: tid,
+        accountId,
+        firstName: lead.firstName,
+        lastName: lead.lastName,
+        email: lead.email ?? undefined,
+        phone: lead.phone ?? undefined,
+        isPrimary: true,
+      }).returning();
 
-      await tx.crmLead.update({
-        where: { id: leadId },
-        data: { convertedAccountId: accountId, convertedContactId: contact.id, status: 'converted' },
-      });
+      await tx.update(crmLead).set({ convertedAccountId: accountId, convertedContactId: contact.id, status: 'converted' }).where(eq(crmLead.id, leadId));
 
       return { success: true, accountId: accountId.toString(), contactId: contact.id.toString() };
     });
   }
 
   async listPipelines() {
-    const pipelines = await this.drizzle.crmPipeline.findMany({
-      orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }],
-    });
+    const tid = this.tenantContext.requireTenantId();
+    const pipelines = await this.db.client
+      .select()
+      .from(crmPipeline)
+      .where(eq(crmPipeline.tenantId, tid))
+      .orderBy(desc(crmPipeline.isDefault), asc(crmPipeline.createdAt));
     if (!pipelines.length) {
       const seeded = await this.ensureDefaultPipeline();
-      const stages = await this.drizzle.crmPipelineStage.findMany({
-        where: { pipelineId: seeded.id },
-        orderBy: { position: 'asc' },
-      });
+      const stages = await this.db.client
+        .select()
+        .from(crmPipelineStage)
+        .where(and(eq(crmPipelineStage.pipelineId, seeded.id), eq(crmPipelineStage.tenantId, tid)))
+        .orderBy(asc(crmPipelineStage.position));
       return [{ ...seeded, stages }];
     }
 
     const pipelineIds = pipelines.map((pipeline) => pipeline.id);
-    const stages = await this.drizzle.crmPipelineStage.findMany({
-      where: { pipelineId: { in: pipelineIds } },
-      orderBy: { position: 'asc' },
-    });
+    const stages = await this.db.client
+      .select()
+      .from(crmPipelineStage)
+      .where(and(inArray(crmPipelineStage.pipelineId, pipelineIds), eq(crmPipelineStage.tenantId, tid)))
+      .orderBy(asc(crmPipelineStage.position));
     const byPipeline = new Map<string, any[]>();
     for (const stage of stages) {
       const key = stage.pipelineId.toString();
@@ -404,35 +468,55 @@ export class CrmService {
   }
 
   async getPipeline(id: string) {
-    const pipelineId = id === 'default' ? (await this.ensureDefaultPipeline()).id : this.parseId(id, 'pipeline id');
-    const pipeline = await this.drizzle.crmPipeline.findUnique({ where: { id: pipelineId } });
+    const tid = this.tenantContext.requireTenantId();
+    const pipelineId = id === 'default' ? (await this.ensureDefaultPipeline()).id : parseBigIntId(id, 'pipeline id');
+    const [pipeline] = await this.db.client
+      .select()
+      .from(crmPipeline)
+      .where(and(eq(crmPipeline.id, pipelineId), eq(crmPipeline.tenantId, tid)))
+      .limit(1);
     if (!pipeline) throw new NotFoundException('Pipeline not found');
 
     const [stages, opportunities] = await Promise.all([
-      this.drizzle.crmPipelineStage.findMany({ where: { pipelineId }, orderBy: { position: 'asc' } }),
-      this.drizzle.crmOpportunity.findMany({ where: { pipelineId }, orderBy: { createdAt: 'desc' } }),
+      this.db.client
+        .select()
+        .from(crmPipelineStage)
+        .where(and(eq(crmPipelineStage.pipelineId, pipelineId), eq(crmPipelineStage.tenantId, tid)))
+        .orderBy(asc(crmPipelineStage.position)),
+      this.db.client
+        .select()
+        .from(crmOpportunity)
+        .where(and(eq(crmOpportunity.pipelineId, pipelineId), eq(crmOpportunity.tenantId, tid)))
+        .orderBy(desc(crmOpportunity.createdAt)),
     ]);
 
     return { ...pipeline, stages, opportunities };
   }
 
   async createPipeline(dto: UpsertCrmPipelineDto) {
+    const tid = this.tenantContext.requireTenantId();
     const isDefault = dto.is_default === true;
     if (isDefault) {
-      await this.drizzle.crmPipeline.updateMany({ where: { isDefault: true }, data: { isDefault: false } });
+      await this.db.client
+        .update(crmPipeline)
+        .set({ isDefault: false })
+        .where(and(eq(crmPipeline.isDefault, true), eq(crmPipeline.tenantId, tid)));
     }
 
-    const pipeline = await this.drizzle.crmPipeline.create({
-      data: {
+    const [pipeline] = await this.db.client
+      .insert(crmPipeline)
+      .values({
+        tenantId: tid,
         name: dto.name,
         description: dto.description,
         isDefault,
-      },
-    });
+      })
+      .returning();
 
     if (dto.stages?.length) {
-      await this.drizzle.crmPipelineStage.createMany({
-        data: dto.stages.map((stage, index) => ({
+      await this.db.client.insert(crmPipelineStage).values(
+        dto.stages.map((stage, index) => ({
+          tenantId: tid,
           pipelineId: pipeline.id,
           name: stage.name,
           position: stage.position ?? index,
@@ -441,42 +525,56 @@ export class CrmService {
           isWon: stage.is_won ?? false,
           isLost: stage.is_lost ?? false,
         })),
-      });
+      );
     }
 
     return this.getPipeline(pipeline.id.toString());
   }
 
   async updatePipeline(id: string, dto: UpsertCrmPipelineDto) {
-    const pipelineId = this.parseId(id, 'pipeline id');
-    const existing = await this.drizzle.crmPipeline.findUnique({ where: { id: pipelineId } });
+    const tid = this.tenantContext.requireTenantId();
+    const pipelineId = parseBigIntId(id, 'pipeline id');
+    const [existing] = await this.db.client
+      .select({ id: crmPipeline.id })
+      .from(crmPipeline)
+      .where(and(eq(crmPipeline.id, pipelineId), eq(crmPipeline.tenantId, tid)))
+      .limit(1);
     if (!existing) throw new NotFoundException('Pipeline not found');
 
     if (dto.is_default === true) {
-      await this.drizzle.crmPipeline.updateMany({ where: { isDefault: true }, data: { isDefault: false } });
+      await this.db.client
+        .update(crmPipeline)
+        .set({ isDefault: false })
+        .where(and(eq(crmPipeline.isDefault, true), eq(crmPipeline.tenantId, tid)));
     }
 
-    await this.drizzle.crmPipeline.update({
-      where: { id: pipelineId },
-      data: {
+    await this.db.client
+      .update(crmPipeline)
+      .set({
         name: dto.name,
         description: dto.description,
         isDefault: dto.is_default,
-      },
-    });
+      })
+      .where(and(eq(crmPipeline.id, pipelineId), eq(crmPipeline.tenantId, tid)));
 
     return this.getPipeline(id);
   }
 
   async replacePipelineStages(id: string, dto: ReplaceCrmPipelineStagesDto) {
-    const pipelineId = this.parseId(id, 'pipeline id');
-    const existing = await this.drizzle.crmPipeline.findUnique({ where: { id: pipelineId } });
+    const tid = this.tenantContext.requireTenantId();
+    const pipelineId = parseBigIntId(id, 'pipeline id');
+    const [existing] = await this.db.client
+      .select({ id: crmPipeline.id })
+      .from(crmPipeline)
+      .where(and(eq(crmPipeline.id, pipelineId), eq(crmPipeline.tenantId, tid)))
+      .limit(1);
     if (!existing) throw new NotFoundException('Pipeline not found');
 
-    await this.drizzle.$transaction(async (tx) => {
-      await tx.crmPipelineStage.deleteMany({ where: { pipelineId } });
-      await tx.crmPipelineStage.createMany({
-        data: dto.stages.map((stage, index) => ({
+    await this.db.client.transaction(async (tx) => {
+      await tx.delete(crmPipelineStage).where(and(eq(crmPipelineStage.pipelineId, pipelineId), eq(crmPipelineStage.tenantId, tid)));
+      await tx.insert(crmPipelineStage).values(
+        dto.stages.map((stage, index) => ({
+          tenantId: tid,
           pipelineId,
           name: stage.name,
           position: stage.position ?? index,
@@ -485,15 +583,19 @@ export class CrmService {
           isWon: stage.is_won ?? false,
           isLost: stage.is_lost ?? false,
         })),
-      });
+      );
     });
 
     return this.getPipeline(id);
   }
 
   async deletePipeline(id: string) {
-    const pipelineId = this.parseId(id, 'pipeline id');
-    const deleted = await this.drizzle.crmPipeline.delete({ where: { id: pipelineId } });
+    const tid = this.tenantContext.requireTenantId();
+    const pipelineId = parseBigIntId(id, 'pipeline id');
+    const [deleted] = await this.db.client
+      .delete(crmPipeline)
+      .where(and(eq(crmPipeline.id, pipelineId), eq(crmPipeline.tenantId, tid)))
+      .returning();
     if (!deleted) throw new NotFoundException('Pipeline not found');
     return { success: true };
   }
@@ -510,41 +612,54 @@ export class CrmService {
   }
 
   private async ensureDefaultPipeline() {
-    const existing = await this.drizzle.crmPipeline.findFirst({ where: { isDefault: true } });
+    const tid = this.tenantContext.requireTenantId();
+    const [existing] = await this.db.client
+      .select()
+      .from(crmPipeline)
+      .where(and(eq(crmPipeline.isDefault, true), eq(crmPipeline.tenantId, tid)))
+      .limit(1);
     if (existing) return existing;
-    const first = await this.drizzle.crmPipeline.findFirst();
+    const [first] = await this.db.client
+      .select()
+      .from(crmPipeline)
+      .where(eq(crmPipeline.tenantId, tid))
+      .limit(1);
     if (first) return first;
 
-    return this.drizzle.$transaction(async (tx) => {
-      const pipeline = await tx.crmPipeline.create({
-        data: { name: 'Default Pipeline', description: 'Pipeline seeded by facity CRM', isDefault: true },
-      });
-      await tx.crmPipelineStage.createMany({
-        data: (await this.defaultStages()).map((stage) => ({ pipelineId: pipeline.id, ...stage })),
-      });
+    return this.db.client.transaction(async (tx) => {
+      const [pipeline] = await tx.insert(crmPipeline).values({
+        tenantId: tid,
+        name: 'Default Pipeline',
+        description: 'Pipeline seeded by facity CRM',
+        isDefault: true,
+      }).returning();
+      await tx.insert(crmPipelineStage).values(
+        (await this.defaultStages()).map((stage) => ({ tenantId: tid, pipelineId: pipeline.id, ...stage })),
+      );
       return pipeline;
     });
   }
 
   async listOpportunities(query: Record<string, any>) {
     const { page, perPage } = this.toPage(query);
-    const where: Record<string, any> = {};
-    if (query.search) where.name = { contains: String(query.search), mode: 'insensitive' };
-    if (query.account_id) where.accountId = this.parseId(query.account_id, 'account id');
-    if (query.stage_id) where.stageId = this.parseId(query.stage_id, 'stage id');
-    if (query.pipeline_id) where.pipelineId = this.parseId(query.pipeline_id, 'pipeline id');
-    if (query.status) where.status = String(query.status);
-    if (query.owner_profile_id) where.ownerProfileId = this.parseId(query.owner_profile_id, 'owner profile id');
+    const tid = this.tenantContext.requireTenantId();
+    const skip = (page - 1) * perPage;
+    const conditions: SQL[] = [eq(crmOpportunity.tenantId, tid)];
 
-    const [rows, total] = await this.drizzle.$transaction([
-      this.drizzle.crmOpportunity.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * perPage,
-        take: perPage,
-      }),
-      this.drizzle.crmOpportunity.count({ where }),
+    if (query.search) conditions.push(ilike(crmOpportunity.name, `%${String(query.search)}%`));
+    if (query.account_id) conditions.push(eq(crmOpportunity.accountId, parseBigIntId(query.account_id, 'account id')));
+    if (query.stage_id) conditions.push(eq(crmOpportunity.stageId, parseBigIntId(query.stage_id, 'stage id')));
+    if (query.pipeline_id) conditions.push(eq(crmOpportunity.pipelineId, parseBigIntId(query.pipeline_id, 'pipeline id')));
+    if (query.status) conditions.push(eq(crmOpportunity.status, String(query.status)));
+    if (query.owner_profile_id) conditions.push(eq(crmOpportunity.ownerProfileId, parseBigIntId(query.owner_profile_id, 'owner profile id')));
+
+    const where = and(...conditions);
+
+    const [rows, totalResult] = await Promise.all([
+      this.db.client.select().from(crmOpportunity).where(where).orderBy(desc(crmOpportunity.createdAt)).limit(perPage).offset(skip),
+      this.db.client.select({ count: count() }).from(crmOpportunity).where(where),
     ]);
+    const total = totalResult[0]?.count ?? 0;
 
     const data = await this.enrichOpportunities(rows);
     return paginatedResponse(data, { page, per_page: perPage, total });
@@ -555,8 +670,9 @@ export class CrmService {
     const contacts = await this.contactMap(rows.map((row) => row.contactId));
     const owners = await this.ownerMap(rows.map((row) => row.ownerProfileId));
     const stageIds = rows.map((row) => row.stageId).filter((id): id is bigint => id != null);
+    const tid = this.tenantContext.requireTenantId();
     const stages = stageIds.length
-      ? await this.drizzle.crmPipelineStage.findMany({ where: { id: { in: stageIds } } })
+      ? await this.db.client.select().from(crmPipelineStage).where(and(inArray(crmPipelineStage.id, stageIds), eq(crmPipelineStage.tenantId, tid)))
       : [];
     const stageById = new Map(stages.map((stage) => [stage.id.toString(), stage]));
 
@@ -570,37 +686,59 @@ export class CrmService {
   }
 
   async getOpportunity(id: string) {
-    const opportunityId = this.parseId(id, 'opportunity id');
-    const opportunity = await this.drizzle.crmOpportunity.findUnique({ where: { id: opportunityId } });
+    const tid = this.tenantContext.requireTenantId();
+    const opportunityId = parseBigIntId(id, 'opportunity id');
+    const [opportunity] = await this.db.client
+      .select()
+      .from(crmOpportunity)
+      .where(and(eq(crmOpportunity.id, opportunityId), eq(crmOpportunity.tenantId, tid)))
+      .limit(1);
     if (!opportunity) throw new NotFoundException('Opportunity not found');
 
-    const activities = await this.drizzle.crmActivity.findMany({
-      where: { opportunityId },
-      orderBy: { createdAt: 'desc' },
-    });
+    const activities = await this.db.client
+      .select()
+      .from(crmActivity)
+      .where(and(eq(crmActivity.opportunityId, opportunityId), eq(crmActivity.tenantId, tid)))
+      .orderBy(desc(crmActivity.createdAt));
 
     const data = await this.enrichOpportunities([opportunity]);
     return { ...data[0], activities };
   }
 
   async createOpportunity(dto: UpsertCrmOpportunityDto) {
+    const tid = this.tenantContext.requireTenantId();
     const data = await this.opportunityData(dto);
-    const opportunity = await this.drizzle.crmOpportunity.create({ data });
+    const [opportunity] = await this.db.client
+      .insert(crmOpportunity)
+      .values({ ...data, tenantId: tid })
+      .returning();
     return this.getOpportunity(opportunity.id.toString());
   }
 
   async updateOpportunity(id: string, dto: UpsertCrmOpportunityDto) {
-    const opportunityId = this.parseId(id, 'opportunity id');
-    const existing = await this.drizzle.crmOpportunity.findUnique({ where: { id: opportunityId } });
+    const tid = this.tenantContext.requireTenantId();
+    const opportunityId = parseBigIntId(id, 'opportunity id');
+    const [existing] = await this.db.client
+      .select({ id: crmOpportunity.id })
+      .from(crmOpportunity)
+      .where(and(eq(crmOpportunity.id, opportunityId), eq(crmOpportunity.tenantId, tid)))
+      .limit(1);
     if (!existing) throw new NotFoundException('Opportunity not found');
     const data = await this.opportunityData(dto);
-    await this.drizzle.crmOpportunity.update({ where: { id: opportunityId }, data });
+    await this.db.client
+      .update(crmOpportunity)
+      .set(data)
+      .where(and(eq(crmOpportunity.id, opportunityId), eq(crmOpportunity.tenantId, tid)));
     return this.getOpportunity(id);
   }
 
   async deleteOpportunity(id: string) {
-    const opportunityId = this.parseId(id, 'opportunity id');
-    const deleted = await this.drizzle.crmOpportunity.delete({ where: { id: opportunityId } });
+    const tid = this.tenantContext.requireTenantId();
+    const opportunityId = parseBigIntId(id, 'opportunity id');
+    const [deleted] = await this.db.client
+      .delete(crmOpportunity)
+      .where(and(eq(crmOpportunity.id, opportunityId), eq(crmOpportunity.tenantId, tid)))
+      .returning();
     if (!deleted) throw new NotFoundException('Opportunity not found');
     return { success: true };
   }
@@ -608,11 +746,16 @@ export class CrmService {
   private async opportunityData(dto: UpsertCrmOpportunityDto) {
     if (dto.account_id) await this.assertAccountExists(dto.account_id);
 
-    let pipelineId = dto.pipeline_id ? this.parseId(dto.pipeline_id, 'pipeline id') : undefined;
-    let stageId = dto.stage_id ? this.parseId(dto.stage_id, 'stage id') : undefined;
+    let pipelineId = dto.pipeline_id ? parseBigIntId(dto.pipeline_id, 'pipeline id') : undefined;
+    let stageId = dto.stage_id ? parseBigIntId(dto.stage_id, 'stage id') : undefined;
 
     if (stageId) {
-      const stage = await this.drizzle.crmPipelineStage.findUnique({ where: { id: stageId } });
+      const tid = this.tenantContext.requireTenantId();
+      const [stage] = await this.db.client
+        .select()
+        .from(crmPipelineStage)
+        .where(and(eq(crmPipelineStage.id, stageId), eq(crmPipelineStage.tenantId, tid)))
+        .limit(1);
       if (!stage) throw new NotFoundException('Stage not found');
       if (pipelineId && stage.pipelineId !== pipelineId) {
         throw new BadRequestException('Stage does not belong to the given pipeline');
@@ -621,14 +764,17 @@ export class CrmService {
     }
 
     if (!stageId) {
+      const tid = this.tenantContext.requireTenantId();
       const pipeline = pipelineId
-        ? await this.drizzle.crmPipeline.findUnique({ where: { id: pipelineId } })
+        ? (await this.db.client.select().from(crmPipeline).where(and(eq(crmPipeline.id, pipelineId), eq(crmPipeline.tenantId, tid))).limit(1))[0]
         : await this.ensureDefaultPipeline();
       if (!pipeline) throw new NotFoundException('Pipeline not found');
-      const firstStage = await this.drizzle.crmPipelineStage.findFirst({
-        where: { pipelineId: pipeline.id, isActive: true },
-        orderBy: { position: 'asc' },
-      });
+      const [firstStage] = await this.db.client
+        .select()
+        .from(crmPipelineStage)
+        .where(and(eq(crmPipelineStage.pipelineId, pipeline.id), eq(crmPipelineStage.isActive, true), eq(crmPipelineStage.tenantId, tid)))
+        .orderBy(asc(crmPipelineStage.position))
+        .limit(1);
       if (firstStage) {
         stageId = firstStage.id;
         pipelineId = pipeline.id;
@@ -637,11 +783,11 @@ export class CrmService {
 
     return {
       name: dto.name,
-      accountId: dto.account_id ? this.parseId(dto.account_id, 'account id') : undefined,
-      contactId: dto.contact_id ? this.parseId(dto.contact_id, 'contact id') : undefined,
+      accountId: dto.account_id ? parseBigIntId(dto.account_id, 'account id') : undefined,
+      contactId: dto.contact_id ? parseBigIntId(dto.contact_id, 'contact id') : undefined,
       pipelineId,
       stageId,
-      ownerProfileId: dto.owner_profile_id ? this.parseId(dto.owner_profile_id, 'owner profile id') : undefined,
+      ownerProfileId: dto.owner_profile_id ? parseBigIntId(dto.owner_profile_id, 'owner profile id') : undefined,
       amount: dto.amount != null ? String(dto.amount) : '0',
       currency: dto.currency,
       probability: dto.probability,
@@ -653,23 +799,24 @@ export class CrmService {
 
   async listActivities(query: Record<string, any>) {
     const { page, perPage } = this.toPage(query);
-    const where: Record<string, any> = {};
-    if (query.account_id) where.accountId = this.parseId(query.account_id, 'account id');
-    if (query.contact_id) where.contactId = this.parseId(query.contact_id, 'contact id');
-    if (query.opportunity_id) where.opportunityId = this.parseId(query.opportunity_id, 'opportunity id');
-    if (query.type) where.type = String(query.type);
-    if (query.done === 'false') where.doneAt = null;
-    if (query.done === 'true') where.doneAt = { not: null };
+    const tid = this.tenantContext.requireTenantId();
+    const skip = (page - 1) * perPage;
+    const conditions: SQL[] = [eq(crmActivity.tenantId, tid)];
 
-    const [rows, total] = await this.drizzle.$transaction([
-      this.drizzle.crmActivity.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * perPage,
-        take: perPage,
-      }),
-      this.drizzle.crmActivity.count({ where }),
+    if (query.account_id) conditions.push(eq(crmActivity.accountId, parseBigIntId(query.account_id, 'account id')));
+    if (query.contact_id) conditions.push(eq(crmActivity.contactId, parseBigIntId(query.contact_id, 'contact id')));
+    if (query.opportunity_id) conditions.push(eq(crmActivity.opportunityId, parseBigIntId(query.opportunity_id, 'opportunity id')));
+    if (query.type) conditions.push(eq(crmActivity.type, String(query.type)));
+    if (query.done === 'false') conditions.push(isNull(crmActivity.doneAt));
+    if (query.done === 'true') conditions.push(isNotNull(crmActivity.doneAt));
+
+    const where = and(...conditions);
+
+    const [rows, totalResult] = await Promise.all([
+      this.db.client.select().from(crmActivity).where(where).orderBy(desc(crmActivity.createdAt)).limit(perPage).offset(skip),
+      this.db.client.select({ count: count() }).from(crmActivity).where(where),
     ]);
+    const total = totalResult[0]?.count ?? 0;
 
     const data = await this.enrichActivities(rows);
     return paginatedResponse(data, { page, per_page: perPage, total });
@@ -691,68 +838,96 @@ export class CrmService {
   private async accountOpportunityMap(opportunityIds: Array<bigint | null | undefined>) {
     const ids = Array.from(new Set(opportunityIds.filter((id): id is bigint => id != null)));
     if (!ids.length) return new Map<string, any>();
-    const opportunities = await this.drizzle.crmOpportunity.findMany({ where: { id: { in: ids } } });
+    const tid = this.tenantContext.requireTenantId();
+    const opportunities = await this.db.client.select().from(crmOpportunity).where(and(inArray(crmOpportunity.id, ids), eq(crmOpportunity.tenantId, tid)));
     return new Map(opportunities.map((opportunity) => [opportunity.id.toString(), opportunity]));
   }
 
   async getActivity(id: string) {
-    const activityId = this.parseId(id, 'activity id');
-    const activity = await this.drizzle.crmActivity.findUnique({ where: { id: activityId } });
+    const tid = this.tenantContext.requireTenantId();
+    const activityId = parseBigIntId(id, 'activity id');
+    const [activity] = await this.db.client
+      .select()
+      .from(crmActivity)
+      .where(and(eq(crmActivity.id, activityId), eq(crmActivity.tenantId, tid)))
+      .limit(1);
     if (!activity) throw new NotFoundException('Activity not found');
     return (await this.enrichActivities([activity]))[0];
   }
 
   async createActivity(dto: UpsertCrmActivityDto, userId?: bigint) {
+    const tid = this.tenantContext.requireTenantId();
     if (dto.account_id) await this.assertAccountExists(dto.account_id);
     if (dto.contact_id) {
-      const contact = await this.drizzle.crmContact.findUnique({ where: { id: this.parseId(dto.contact_id, 'contact id') } });
+      const contactId = parseBigIntId(dto.contact_id, 'contact id');
+      const [contact] = await this.db.client
+        .select({ id: crmContact.id })
+        .from(crmContact)
+        .where(and(eq(crmContact.id, contactId), eq(crmContact.tenantId, tid)))
+        .limit(1);
       if (!contact) throw new NotFoundException('Contact not found');
     }
     if (dto.opportunity_id) {
-      const opportunity = await this.drizzle.crmOpportunity.findUnique({ where: { id: this.parseId(dto.opportunity_id, 'opportunity id') } });
+      const opportunityId = parseBigIntId(dto.opportunity_id, 'opportunity id');
+      const [opportunity] = await this.db.client
+        .select({ id: crmOpportunity.id })
+        .from(crmOpportunity)
+        .where(and(eq(crmOpportunity.id, opportunityId), eq(crmOpportunity.tenantId, tid)))
+        .limit(1);
       if (!opportunity) throw new NotFoundException('Opportunity not found');
     }
 
-    const activity = await this.drizzle.crmActivity.create({
-      data: {
-        accountId: dto.account_id ? this.parseId(dto.account_id, 'account id') : undefined,
-        contactId: dto.contact_id ? this.parseId(dto.contact_id, 'contact id') : undefined,
-        opportunityId: dto.opportunity_id ? this.parseId(dto.opportunity_id, 'opportunity id') : undefined,
+    const [activity] = await this.db.client
+      .insert(crmActivity)
+      .values({
+        tenantId: tid,
+        accountId: dto.account_id ? parseBigIntId(dto.account_id, 'account id') : undefined,
+        contactId: dto.contact_id ? parseBigIntId(dto.contact_id, 'contact id') : undefined,
+        opportunityId: dto.opportunity_id ? parseBigIntId(dto.opportunity_id, 'opportunity id') : undefined,
         type: dto.type,
         subject: dto.subject,
         description: dto.description,
         dueAt: dto.due_at ? new Date(dto.due_at) : undefined,
         doneAt: dto.done_at ? new Date(dto.done_at) : undefined,
         createdBy: userId,
-      },
-    });
+      })
+      .returning();
     return this.getActivity(activity.id.toString());
   }
 
   async updateActivity(id: string, dto: UpsertCrmActivityDto) {
-    const activityId = this.parseId(id, 'activity id');
-    const existing = await this.drizzle.crmActivity.findUnique({ where: { id: activityId } });
+    const tid = this.tenantContext.requireTenantId();
+    const activityId = parseBigIntId(id, 'activity id');
+    const [existing] = await this.db.client
+      .select({ id: crmActivity.id })
+      .from(crmActivity)
+      .where(and(eq(crmActivity.id, activityId), eq(crmActivity.tenantId, tid)))
+      .limit(1);
     if (!existing) throw new NotFoundException('Activity not found');
 
-    await this.drizzle.crmActivity.update({
-      where: { id: activityId },
-      data: {
-        accountId: dto.account_id ? this.parseId(dto.account_id, 'account id') : undefined,
-        contactId: dto.contact_id ? this.parseId(dto.contact_id, 'contact id') : undefined,
-        opportunityId: dto.opportunity_id ? this.parseId(dto.opportunity_id, 'opportunity id') : undefined,
+    await this.db.client
+      .update(crmActivity)
+      .set({
+        accountId: dto.account_id ? parseBigIntId(dto.account_id, 'account id') : undefined,
+        contactId: dto.contact_id ? parseBigIntId(dto.contact_id, 'contact id') : undefined,
+        opportunityId: dto.opportunity_id ? parseBigIntId(dto.opportunity_id, 'opportunity id') : undefined,
         type: dto.type,
         subject: dto.subject,
         description: dto.description,
         dueAt: dto.due_at ? new Date(dto.due_at) : undefined,
         doneAt: dto.done_at ? new Date(dto.done_at) : undefined,
-      },
-    });
+      })
+      .where(and(eq(crmActivity.id, activityId), eq(crmActivity.tenantId, tid)));
     return this.getActivity(id);
   }
 
   async deleteActivity(id: string) {
-    const activityId = this.parseId(id, 'activity id');
-    const deleted = await this.drizzle.crmActivity.delete({ where: { id: activityId } });
+    const tid = this.tenantContext.requireTenantId();
+    const activityId = parseBigIntId(id, 'activity id');
+    const [deleted] = await this.db.client
+      .delete(crmActivity)
+      .where(and(eq(crmActivity.id, activityId), eq(crmActivity.tenantId, tid)))
+      .returning();
     if (!deleted) throw new NotFoundException('Activity not found');
     return { success: true };
   }

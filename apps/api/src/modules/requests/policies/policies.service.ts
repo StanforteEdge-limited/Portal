@@ -261,18 +261,13 @@ export class PoliciesService {
     if (!Number(exists?.value ?? 0)) throw new BadRequestException('Invalid document_id');
   }
 
-  private currentTenantId() {
-    const context = this.tenantContext.get();
-    return context && context.scope !== 'system' ? context.tenantId : undefined;
-  }
-
-  private policyReadConditions(): SQL[] {
-    const tenantId = this.currentTenantId();
+private policyReadConditions(): SQL[] {
+    const tenantId = this.tenantContext.currentTenantId();
     return tenantId ? [or(eq(policy.tenantId, tenantId), isNull(policy.tenantId)) as SQL] : [];
   }
 
   private policyWriteConditions(): SQL[] {
-    const tenantId = this.currentTenantId();
+    const tenantId = this.tenantContext.currentTenantId();
     return tenantId ? [eq(policy.tenantId, tenantId)] : [];
   }
 

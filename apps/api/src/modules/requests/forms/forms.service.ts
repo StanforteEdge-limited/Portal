@@ -63,7 +63,7 @@ export class FormsService {
     const [created] = await this.db.client
       .insert(form)
       .values({
-        tenantId: this.currentTenantId(),
+        tenantId: this.tenantContext.currentTenantId(),
         name: dto.name,
         description: dto.description ?? null,
         module: dto.module ?? 'general',
@@ -98,7 +98,7 @@ export class FormsService {
     const [created] = await this.db.client
       .insert(formField)
       .values({
-        tenantId: this.currentTenantId(),
+        tenantId: this.tenantContext.currentTenantId(),
         formId,
         fieldKey: dto.field_key,
         fieldLabel: dto.field_label,
@@ -187,7 +187,7 @@ export class FormsService {
     const [created] = await this.db.client
       .insert(formAssignment)
       .values({
-        tenantId: this.currentTenantId(),
+        tenantId: this.tenantContext.currentTenantId(),
         formId: dto.form_id,
         assignedToRole: dto.assigned_to_role ?? null,
         assignedToProfileId,
@@ -264,28 +264,23 @@ export class FormsService {
     }
   }
 
-  private currentTenantId() {
-    const context = this.tenantContext.get();
-    return context && context.scope !== 'system' ? context.tenantId : undefined;
-  }
-
-  private formReadConditions(): SQL[] {
-    const tenantId = this.currentTenantId();
+private formReadConditions(): SQL[] {
+    const tenantId = this.tenantContext.currentTenantId();
     return tenantId ? [or(eq(form.tenantId, tenantId), isNull(form.tenantId)) as SQL] : [];
   }
 
   private formWriteConditions(): SQL[] {
-    const tenantId = this.currentTenantId();
+    const tenantId = this.tenantContext.currentTenantId();
     return tenantId ? [eq(form.tenantId, tenantId)] : [];
   }
 
   private formFieldConditions(): SQL[] {
-    const tenantId = this.currentTenantId();
+    const tenantId = this.tenantContext.currentTenantId();
     return tenantId ? [or(eq(formField.tenantId, tenantId), isNull(formField.tenantId)) as SQL] : [];
   }
 
   private formAssignmentConditions(): SQL[] {
-    const tenantId = this.currentTenantId();
+    const tenantId = this.tenantContext.currentTenantId();
     return tenantId ? [eq(formAssignment.tenantId, tenantId)] : [];
   }
 

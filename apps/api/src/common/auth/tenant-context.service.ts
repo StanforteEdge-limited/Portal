@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { SystemContext, TenantContext } from './tenant-context';
 
@@ -24,6 +24,17 @@ export class TenantContextService {
 
   isSystem(): boolean {
     return this.get()?.scope === 'system';
+  }
+
+  currentTenantId(): bigint | undefined {
+    const context = this.get();
+    return context && context.scope !== 'system' ? context.tenantId : undefined;
+  }
+
+  requireTenantId(): bigint {
+    const tenantId = this.currentTenantId();
+    if (!tenantId) throw new BadRequestException('Tenant context required');
+    return tenantId;
   }
 
   /**

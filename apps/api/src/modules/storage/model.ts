@@ -1,5 +1,5 @@
 import { defineRelationsPart } from 'drizzle-orm';
-import { bigint, bigserial, boolean, date, doublePrecision, index, integer, jsonb, numeric, pgTable, serial, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
+import { AnyPgColumn, bigint, bigserial, boolean, date, doublePrecision, index, integer, jsonb, numeric, pgTable, serial, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
 import { tokenTypeEnum, organizationTypeEnum, groupUserRoleEnum, requestStatusEnum, employmentTypeEnum, employmentStatusEnum, workModeEnum, onboardingStatusEnum, workItemTypeEnum, workItemStatusEnum, workPriorityEnum, workLogApprovalStatusEnum, procurementCategoryEnum, paymentPatternEnum, procurementStatusEnum, poStatusEnum, grnStatusEnum, mailProviderEnum } from '$app/db/enums';
 import { profile } from '$modules/identity/users/model';
 import { organization } from '$modules/directory/organizations/model';
@@ -8,7 +8,7 @@ import { tenant } from '$modules/tenancy/model';
 export const storageFolder = pgTable("sta_storage_folders", {
   id: bigserial("id", { mode: 'bigint' }).primaryKey(),
   tenantId: bigint("tenant_id", { mode: 'bigint' }).notNull().references(() => tenant.id, { onDelete: 'cascade' }),
-  parentId: bigint("parent_id", { mode: 'bigint' }).references(() => storageFolder.id, { onDelete: 'set null' }),
+  parentId: bigint("parent_id", { mode: 'bigint' }).references((): AnyPgColumn => storageFolder.id, { onDelete: 'set null' }),
   name: varchar("name", { length: 255 }).notNull(),
   createdBy: bigint("created_by", { mode: 'bigint' }).references(() => profile.id, { onDelete: 'set null' }),
   createdAt: timestamp("created_at", { mode: 'date', precision: 6 }).defaultNow().notNull(),

@@ -41,17 +41,7 @@ export class FullDocumentDocument implements Document<FullDocumentContext> {
     const skippedFiles: string[] = [];
 
     for (const item of request.items) {
-      const files = Array.from(
-        new Map(
-          [
-            ...(item.files ?? []).map((a: any) => a.file).filter(Boolean),
-            item.file ?? null,
-          ]
-            .filter(Boolean)
-            .map((f: any) => [f.id, f]),
-        ).values(),
-      ) as any[];
-      for (const file of files) {
+      for (const file of this.engine.uniqueFilesFromRequestItem(item)) {
         const buffer = await this.engine.readAssetFileBuffer(file);
         await this.engine.appendAssetToPdf(mergedPdf, buffer, file.fileName, file.mimeType, skippedFiles);
       }
@@ -78,9 +68,9 @@ export class FullDocumentDocument implements Document<FullDocumentContext> {
       if (pv.metadata && typeof pv.metadata === 'object' && !Array.isArray(pv.metadata)) {
         const ids = (pv.metadata as Record<string, unknown>).retirement_file_ids;
         if (Array.isArray(ids)) {
-          const retirementFiles = await this.engine.drizzle.fileAsset.findMany({
-            where: { id: { in: ids.filter((x): x is string => typeof x === 'string') } },
-          });
+          const retirementFiles = await this.engine.fetchFileAssetsByIds(
+            ids.filter((x): x is string => typeof x === 'string'),
+          );
           for (const file of retirementFiles) {
             const buffer = await this.engine.readAssetFileBuffer(file);
             await this.engine.appendAssetToPdf(mergedPdf, buffer, file.fileName, file.mimeType, skippedFiles);

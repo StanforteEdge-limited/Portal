@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { and, desc, eq, ilike, inArray, isNotNull, or, SQL } from 'drizzle-orm';
 import { DbService } from '$common/db/db.service';
 import { paginatedResponse } from '$common/helpers/paginated-response';
-import { toBigInt } from '$common/utils/ids';
+import { parseBigIntId, toBigInt } from '$common/utils/ids';
 import type { GroupUserRole } from '$app/db/enums';
 import { organization } from '$modules/directory/organizations/model';
 import { profile } from '$modules/identity/users/model';
@@ -18,14 +18,14 @@ export class ProjectsService {
 
   async list(query: Record<string, any>) {
     const conditions: SQL[] = [];
-    if (query.organization_id) conditions.push(eq(project.organizationId, this.parseId(String(query.organization_id), 'organization id')));
+    if (query.organization_id) conditions.push(eq(project.organizationId, parseBigIntId(String(query.organization_id), 'organization id')));
     if (query.active_only === 'true') conditions.push(eq(project.isActive, true));
     if (query.search) {
       const search = `%${String(query.search)}%`;
       conditions.push(or(ilike(project.name, search), ilike(project.description, search))!);
     }
     if (query.owner_user_id) {
-      const ownerId = this.parseId(String(query.owner_user_id), 'owner user id');
+      const ownerId = parseBigIntId(String(query.owner_user_id), 'owner user id');
       const ownerMemberships = await this.db.client
         .select({ projectId: projectMember.projectId })
         .from(projectMember)
@@ -47,7 +47,7 @@ export class ProjectsService {
   }
 
   async get(id: string) {
-    const projectId = this.parseId(id, 'project id');
+    const projectId = parseBigIntId(id, 'project id');
     const project = await this.findProjectWithDetails(projectId);
 
     if (!project) throw new NotFoundException('Project not found');
@@ -55,9 +55,9 @@ export class ProjectsService {
   }
 
   async create(createdBy: string, dto: CreateProjectDto) {
-    const createdById = this.parseId(createdBy, 'creator id');
+    const createdById = parseBigIntId(createdBy, 'creator id');
     const organizationId = dto.organization_id
-      ? this.parseId(dto.organization_id, 'organization id')
+      ? parseBigIntId(dto.organization_id, 'organization id')
       : null;
 
     if (organizationId) {
@@ -65,7 +65,7 @@ export class ProjectsService {
       if (!org) throw new NotFoundException('Organization not found');
     }
 
-    const ownerId = dto.owner_user_id ? this.parseId(dto.owner_user_id, 'owner user id') : createdById;
+    const ownerId = dto.owner_user_id ? parseBigIntId(dto.owner_user_id, 'owner user id') : createdById;
 
     const createdProject = await this.db.client.transaction(async (tx) => {
       const [created] = await tx.insert(project)
@@ -116,8 +116,8 @@ export class ProjectsService {
   }
 
   async update(id: string, userId: string, dto: UpdateProjectDto) {
-    const projectId = this.parseId(id, 'project id');
-    const actorId = this.parseId(userId, 'user id');
+    const projectId = parseBigIntId(id, 'project id');
+    const actorId = parseBigIntId(userId, 'user id');
     await this.ensureProjectAccess(projectId, actorId);
 
     const existing = await this.findProjectWithDetails(projectId);
@@ -135,7 +135,7 @@ export class ProjectsService {
     if (dto.start_date !== undefined) governanceData.startDate = dto.start_date ? new Date(dto.start_date) : null;
     if (dto.end_date !== undefined) governanceData.endDate = dto.end_date ? new Date(dto.end_date) : null;
     if (dto.governance_status !== undefined) governanceData.governanceStatus = dto.governance_status;
-    if (dto.owner_user_id !== undefined) governanceData.ownerUserId = this.parseId(dto.owner_user_id, 'owner user id');
+    if (dto.owner_user_id !== undefined) governanceData.ownerUserId = parseBigIntId(dto.owner_user_id, 'owner user id');
 
     await this.db.client.transaction(async (tx) => {
       await tx.update(project).set(projectData).where(eq(project.id, projectId));
@@ -151,8 +151,8 @@ export class ProjectsService {
   }
 
   async archive(id: string, userId: string) {
-    const projectId = this.parseId(id, 'project id');
-    const actorId = this.parseId(userId, 'user id');
+    const projectId = parseBigIntId(id, 'project id');
+    const actorId = parseBigIntId(userId, 'user id');
     await this.ensureProjectAccess(projectId, actorId);
 
     const existing = await this.findProjectWithDetails(projectId);
@@ -183,8 +183,8 @@ export class ProjectsService {
   }
 
   async unarchive(id: string, userId: string) {
-    const projectId = this.parseId(id, 'project id');
-    const actorId = this.parseId(userId, 'user id');
+    const projectId = parseBigIntId(id, 'project id');
+    const actorId = parseBigIntId(userId, 'user id');
     await this.ensureProjectAccess(projectId, actorId);
 
     const existing = await this.findProjectWithDetails(projectId);
@@ -219,11 +219,11 @@ export class ProjectsService {
   }
 
   async addMember(id: string, actorId: string, dto: AddProjectMemberDto) {
-    const projectId = this.parseId(id, 'project id');
-    const actor = this.parseId(actorId, 'user id');
+    const projectId = parseBigIntId(id, 'project id');
+    const actor = parseBigIntId(actorId, 'user id');
     await this.ensureProjectAccess(projectId, actor);
 
-    const userId = this.parseId(dto.user_id, 'user id');
+    const userId = parseBigIntId(dto.user_id, 'user id');
     const [user] = await this.db.client.select({ id: profile.id }).from(profile).where(eq(profile.id, userId)).limit(1);
     if (!user) throw new NotFoundException('User not found');
 
@@ -245,12 +245,12 @@ export class ProjectsService {
   }
 
   async removeMember(id: string, actorId: string, userId: string) {
-    const projectId = this.parseId(id, 'project id');
-    const actor = this.parseId(actorId, 'user id');
+    const projectId = parseBigIntId(id, 'project id');
+    const actor = parseBigIntId(actorId, 'user id');
     await this.ensureProjectAccess(projectId, actor);
 
     await this.db.client.delete(projectMember)
-      .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, this.parseId(userId, 'user id'))));
+      .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, parseBigIntId(userId, 'user id'))));
 
     return this.get(id);
   }
@@ -286,7 +286,7 @@ export class ProjectsService {
   }
 
   private async getProjectUsage(id: string) {
-    const projectId = this.parseId(id, 'project id');
+    const projectId = parseBigIntId(id, 'project id');
     const [projectRecord] = await this.db.client
       .select({ id: project.id, name: project.name })
       .from(project)
@@ -316,14 +316,6 @@ export class ProjectsService {
       request_references: total,
       open_requests: open
     };
-  }
-
-  private parseId(value: string, label: string): bigint {
-    try {
-      return toBigInt(value);
-    } catch {
-      throw new BadRequestException(`Invalid ${label}`);
-    }
   }
 
   private async findProjectWithDetails(projectId: bigint) {

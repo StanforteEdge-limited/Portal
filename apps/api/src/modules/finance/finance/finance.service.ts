@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { DrizzleService } from '$common/drizzle/drizzle.service';
-import { toBigInt } from '$common/utils/ids';
+import { RepositoryService } from '$common/db/repository.service';
+import { parseBigIntId, toBigInt } from '$common/utils/ids';
+import { isLeaveRequestType } from '$common/utils/leave-policy';
 import { PayrollService } from '$modules/hr/payroll/payroll.service';
 import { paginatedResponse } from '$common/helpers/paginated-response';
 import { DisburseRequestDto } from '$modules/finance/finance/dto/disburse-request.dto';
@@ -38,7 +39,7 @@ export class FinanceService {
   private readonly logger = new Logger(FinanceService.name);
 
   constructor(
-    private readonly drizzle: DrizzleService,
+    private readonly drizzle: RepositoryService,
     private readonly notificationsService: NotificationsService,
     private readonly mailService: MailService,
     private readonly mailQueue: MailQueueService,
@@ -210,7 +211,7 @@ export class FinanceService {
 
     const filtered = rows.filter((row) => {
       const isLeaveRequest =
-        this.isLeaveRequestType(
+        isLeaveRequestType(
           row.requestType?.name ?? null,
           (row.requestType?.taxonomyKeys as string[] | null) ?? null,
           row.requestType?.formSchema ?? null
@@ -440,27 +441,8 @@ export class FinanceService {
     };
   }
 
-  private isLeaveRequestType(
-    name: string | null,
-    taxonomyKeys: string[] | null,
-    formSchema: unknown
-  ) {
-    const normalizedName = String(name ?? '').toLowerCase();
-    const normalizedCategory = String(taxonomyKeys?.[0] ?? '').toLowerCase();
-    const schema =
-      formSchema && typeof formSchema === 'object' && !Array.isArray(formSchema)
-        ? (formSchema as Record<string, unknown>)
-        : {};
-    const schemaLeaveTypeKey = String(schema.leave_type_key ?? '').trim().toLowerCase();
-    return (
-      normalizedCategory.includes('leave') ||
-      normalizedName.includes('leave') ||
-      schemaLeaveTypeKey.length > 0
-    );
-  }
-
   async disburseRequest(requestId: string, dto: DisburseRequestDto, actorId?: string, traceId?: string) {
-    const id = this.parseId(requestId, 'request id');
+    const id = parseBigIntId(requestId, 'request id');
     const tracePrefix = traceId ? `[traceId=${traceId}] ` : '';
     const traceLog = (message: string) => this.logger.log(`${tracePrefix}${message}`);
     const traceWarn = (message: string) => this.logger.warn(`${tracePrefix}${message}`);
@@ -862,7 +844,7 @@ export class FinanceService {
   }
 
   async listPaymentVouchers(requestId: string) {
-    const id = this.parseId(requestId, 'request id');
+    const id = parseBigIntId(requestId, 'request id');
     const request = await this.drizzle.requestInstance.findUnique({
       where: { id },
       select: { totalAmount: true }
@@ -1048,7 +1030,7 @@ export class FinanceService {
     actorId?: string,
     actorPermissions: string[] = []
   ) {
-    const id = this.parseId(requestId, 'request id');
+    const id = parseBigIntId(requestId, 'request id');
     const voucher = await this.drizzle.financePaymentVoucher.findFirst({
       where: { id: voucherId, requestId: id },
       include: {
@@ -1091,7 +1073,7 @@ export class FinanceService {
   }
 
   async approvePaymentVoucherCorrection(requestId: string, voucherId: string, correctionId: string, actorId?: string) {
-    const id = this.parseId(requestId, 'request id');
+    const id = parseBigIntId(requestId, 'request id');
     const correction = await this.drizzle.financePaymentVoucherCorrection.findFirst({
       where: { id: correctionId, voucherId, requestId: id, status: 'pending' },
       include: {
@@ -1143,7 +1125,7 @@ export class FinanceService {
   }
 
   async rejectPaymentVoucherCorrection(requestId: string, voucherId: string, correctionId: string, actorId?: string, comment?: string) {
-    const id = this.parseId(requestId, 'request id');
+    const id = parseBigIntId(requestId, 'request id');
     const correction = await this.drizzle.financePaymentVoucherCorrection.findFirst({
       where: { id: correctionId, voucherId, requestId: id, status: 'pending' },
       include: { voucher: true }
@@ -1608,7 +1590,7 @@ export class FinanceService {
     const perPage = Math.min(100, Math.max(1, Number(query.per_page ?? 20)));
     const where: Drizzle.FinancePaymentVoucherWhereInput = {};
 
-    if (query.request_id) where.requestId = this.parseId(String(query.request_id), 'request id');
+    if (query.request_id) where.requestId = parseBigIntId(String(query.request_id), 'request id');
     if (query.voucher_number) where.voucherNumber = { contains: String(query.voucher_number), mode: 'insensitive' };
     if (query.retirement_status) where.retirementStatus = String(query.retirement_status);
     if (query.method) where.method = String(query.method);
@@ -2347,9 +2329,9 @@ export class FinanceService {
     const perPage = Math.min(100, Math.max(1, Number(query.per_page ?? 20)));
     const where: Drizzle.FinanceAssetWhereInput = {};
 
-    if (query.organization_id) where.organizationId = this.parseId(String(query.organization_id), 'organization_id');
-    if (query.team_id) where.teamId = this.parseId(String(query.team_id), 'team_id');
-    if (query.assigned_to_user_id) where.assignedToUserId = this.parseId(String(query.assigned_to_user_id), 'assigned_to_user_id');
+    if (query.organization_id) where.organizationId = parseBigIntId(String(query.organization_id), 'organization_id');
+    if (query.team_id) where.teamId = parseBigIntId(String(query.team_id), 'team_id');
+    if (query.assigned_to_user_id) where.assignedToUserId = parseBigIntId(String(query.assigned_to_user_id), 'assigned_to_user_id');
     if (query.category) where.category = String(query.category);
     if (query.status) where.status = String(query.status);
     if (query.condition) where.condition = String(query.condition);
@@ -2450,13 +2432,13 @@ export class FinanceService {
     const created = await this.drizzle.financeAsset.create({
       data: {
         assetId,
-        organizationId: dto.organization_id ? this.parseId(dto.organization_id, 'organization_id') : null,
-        teamId: dto.team_id ? this.parseId(dto.team_id, 'team_id') : null,
+        organizationId: dto.organization_id ? parseBigIntId(dto.organization_id, 'organization_id') : null,
+        teamId: dto.team_id ? parseBigIntId(dto.team_id, 'team_id') : null,
         assetDescription: dto.asset_description.trim(),
         category: dto.category.trim(),
         serialTagNo: dto.serial_tag_no?.trim() || null,
         locationProject: dto.location_project?.trim() || null,
-        assignedToUserId: dto.assigned_to_user_id ? this.parseId(dto.assigned_to_user_id, 'assigned_to_user_id') : null,
+        assignedToUserId: dto.assigned_to_user_id ? parseBigIntId(dto.assigned_to_user_id, 'assigned_to_user_id') : null,
         purchaseDate,
         supplier: dto.supplier?.trim() || null,
         purchaseCost: dto.purchase_cost,
@@ -2496,13 +2478,13 @@ export class FinanceService {
       where: { id },
       data: {
         assetId,
-        organizationId: dto.organization_id ? this.parseId(dto.organization_id, 'organization_id') : null,
-        teamId: dto.team_id ? this.parseId(dto.team_id, 'team_id') : null,
+        organizationId: dto.organization_id ? parseBigIntId(dto.organization_id, 'organization_id') : null,
+        teamId: dto.team_id ? parseBigIntId(dto.team_id, 'team_id') : null,
         assetDescription: dto.asset_description.trim(),
         category: dto.category.trim(),
         serialTagNo: dto.serial_tag_no?.trim() || null,
         locationProject: dto.location_project?.trim() || null,
-        assignedToUserId: dto.assigned_to_user_id ? this.parseId(dto.assigned_to_user_id, 'assigned_to_user_id') : null,
+        assignedToUserId: dto.assigned_to_user_id ? parseBigIntId(dto.assigned_to_user_id, 'assigned_to_user_id') : null,
         purchaseDate,
         supplier: dto.supplier?.trim() || null,
         purchaseCost: dto.purchase_cost,
@@ -2541,7 +2523,7 @@ export class FinanceService {
           verifiedAt,
           condition: dto.condition.trim(),
           locationProject: dto.location_project?.trim() || null,
-          assignedToUserId: dto.assigned_to_user_id ? this.parseId(dto.assigned_to_user_id, 'assigned_to_user_id') : null,
+          assignedToUserId: dto.assigned_to_user_id ? parseBigIntId(dto.assigned_to_user_id, 'assigned_to_user_id') : null,
           verifiedBy: toBigInt(actorId),
           notes: dto.notes?.trim() || null
         }
@@ -2552,7 +2534,7 @@ export class FinanceService {
         data: {
           condition: dto.condition.trim(),
           locationProject: dto.location_project?.trim() || undefined,
-          assignedToUserId: dto.assigned_to_user_id ? this.parseId(dto.assigned_to_user_id, 'assigned_to_user_id') : undefined,
+          assignedToUserId: dto.assigned_to_user_id ? parseBigIntId(dto.assigned_to_user_id, 'assigned_to_user_id') : undefined,
           lastVerifiedDate: verifiedAt,
           lastVerifiedBy: toBigInt(actorId),
           updatedBy: toBigInt(actorId)
@@ -2592,7 +2574,7 @@ export class FinanceService {
           proceeds,
           bookValueAtDisposal: metrics.netBookValue,
           gainLoss,
-          approvedBy: dto.approved_by ? this.parseId(dto.approved_by, 'approved_by') : null,
+          approvedBy: dto.approved_by ? parseBigIntId(dto.approved_by, 'approved_by') : null,
           donorAsset: dto.donor_asset ?? false,
           notes: dto.notes?.trim() || null,
           createdBy: actorId ? toBigInt(actorId) : null
@@ -2617,7 +2599,7 @@ export class FinanceService {
     const perPage = Math.min(100, Math.max(1, Number(query.per_page ?? 20)));
 
     const where: Drizzle.FinanceChartAccountWhereInput = {};
-    if (query.organization_id) where.organizationId = this.parseId(String(query.organization_id), 'organization_id');
+    if (query.organization_id) where.organizationId = parseBigIntId(String(query.organization_id), 'organization_id');
     if (query.type) where.type = String(query.type).toLowerCase();
     if (query.category) where.category = String(query.category).toLowerCase();
     if (query.is_active !== undefined) where.isActive = String(query.is_active) !== 'false';
@@ -2668,7 +2650,7 @@ export class FinanceService {
   async createChartAccount(dto: UpsertFinanceChartAccountDto, actorId?: string) {
     const row = await this.drizzle.financeChartAccount.create({
       data: {
-        organizationId: dto.organization_id ? this.parseId(dto.organization_id, 'organization_id') : null,
+        organizationId: dto.organization_id ? parseBigIntId(dto.organization_id, 'organization_id') : null,
         financeAccountId: dto.finance_account_id ?? null,
         code: dto.code.trim().toUpperCase(),
         name: dto.name.trim(),
@@ -2694,7 +2676,7 @@ export class FinanceService {
     const row = await this.drizzle.financeChartAccount.update({
       where: { id },
       data: {
-        organizationId: dto.organization_id ? this.parseId(dto.organization_id, 'organization_id') : null,
+        organizationId: dto.organization_id ? parseBigIntId(dto.organization_id, 'organization_id') : null,
         financeAccountId: dto.finance_account_id ?? null,
         code: dto.code.trim().toUpperCase(),
         name: dto.name.trim(),
@@ -2807,7 +2789,7 @@ export class FinanceService {
     const page = Math.max(1, Number(query.page ?? 1));
     const perPage = Math.min(100, Math.max(1, Number(query.per_page ?? 20)));
     const where: Drizzle.FinanceContactWhereInput = {};
-    if (query.organization_id) where.organizationId = this.parseId(String(query.organization_id), 'organization_id');
+    if (query.organization_id) where.organizationId = parseBigIntId(String(query.organization_id), 'organization_id');
     if (query.is_active !== undefined) where.isActive = String(query.is_active) !== 'false';
     if (query.contact_type) where.contactType = { in: [query.contact_type, 'both'] };
     if (query.sub_type) where.subType = query.sub_type;
@@ -2868,7 +2850,7 @@ export class FinanceService {
       createdByUser: actorId ? { connect: { id: toBigInt(actorId) } } : undefined,
       updatedByUser: actorId ? { connect: { id: toBigInt(actorId) } } : undefined
     };
-    if (dto.organization_id) data.organization = { connect: { id: this.parseId(dto.organization_id, 'organization_id') } };
+    if (dto.organization_id) data.organization = { connect: { id: parseBigIntId(dto.organization_id, 'organization_id') } };
 
     const contact = await this.drizzle.financeContact.create({
       data,
@@ -3066,7 +3048,7 @@ export class FinanceService {
   async listDonors(query: Record<string, any>) {
     const rows = await this.drizzle.financeDonor.findMany({
       where: {
-        ...(query.organization_id ? { organizationId: this.parseId(String(query.organization_id), 'organization_id') } : {}),
+        ...(query.organization_id ? { organizationId: parseBigIntId(String(query.organization_id), 'organization_id') } : {}),
         ...(query.is_active !== undefined ? { isActive: String(query.is_active) !== 'false' } : {})
       },
       orderBy: [{ name: 'asc' }]
@@ -3120,8 +3102,8 @@ export class FinanceService {
   async listFunds(query: Record<string, any>) {
     const rows = await this.drizzle.financeFund.findMany({
       where: {
-        ...(query.organization_id ? { organizationId: this.parseId(String(query.organization_id), 'organization_id') } : {}),
-        ...(query.project_id ? { projectId: this.parseId(String(query.project_id), 'project_id') } : {}),
+        ...(query.organization_id ? { organizationId: parseBigIntId(String(query.organization_id), 'organization_id') } : {}),
+        ...(query.project_id ? { projectId: parseBigIntId(String(query.project_id), 'project_id') } : {}),
         ...(query.restriction_type ? { restrictionType: String(query.restriction_type) } : {}),
         ...(query.is_active !== undefined ? { isActive: String(query.is_active) !== 'false' } : {})
       },
@@ -3189,8 +3171,8 @@ export class FinanceService {
   async listGrants(query: Record<string, any>) {
     const rows = await this.drizzle.financeGrant.findMany({
       where: {
-        ...(query.organization_id ? { organizationId: this.parseId(String(query.organization_id), 'organization_id') } : {}),
-        ...(query.project_id ? { projectId: this.parseId(String(query.project_id), 'project_id') } : {}),
+        ...(query.organization_id ? { organizationId: parseBigIntId(String(query.organization_id), 'organization_id') } : {}),
+        ...(query.project_id ? { projectId: parseBigIntId(String(query.project_id), 'project_id') } : {}),
         ...(query.status ? { status: String(query.status) } : {})
       },
       include: { donor: true, fund: true },
@@ -3273,9 +3255,9 @@ export class FinanceService {
   async listBudgets(query: Record<string, any>) {
     const rows = await this.drizzle.financeBudget.findMany({
       where: {
-        ...(query.organization_id ? { organizationId: this.parseId(String(query.organization_id), 'organization_id') } : {}),
-        ...(query.team_id ? { teamId: this.parseId(String(query.team_id), 'team_id') } : {}),
-        ...(query.project_id ? { projectId: this.parseId(String(query.project_id), 'project_id') } : {}),
+        ...(query.organization_id ? { organizationId: parseBigIntId(String(query.organization_id), 'organization_id') } : {}),
+        ...(query.team_id ? { teamId: parseBigIntId(String(query.team_id), 'team_id') } : {}),
+        ...(query.project_id ? { projectId: parseBigIntId(String(query.project_id), 'project_id') } : {}),
         ...(query.fund_id ? { fundId: String(query.fund_id) } : {}),
         ...(query.grant_id ? { grantId: String(query.grant_id) } : {}),
         ...(query.scope_type ? { scopeType: String(query.scope_type) } : {}),
@@ -3348,9 +3330,9 @@ export class FinanceService {
       where: {
         status: 'approved',
         currentActiveRevisionId: { not: null },
-        ...(query.organization_id ? { organizationId: this.parseId(String(query.organization_id), 'organization_id') } : {}),
-        ...(query.team_id ? { teamId: this.parseId(String(query.team_id), 'team_id') } : {}),
-        ...(query.project_id ? { projectId: this.parseId(String(query.project_id), 'project_id') } : {}),
+        ...(query.organization_id ? { organizationId: parseBigIntId(String(query.organization_id), 'organization_id') } : {}),
+        ...(query.team_id ? { teamId: parseBigIntId(String(query.team_id), 'team_id') } : {}),
+        ...(query.project_id ? { projectId: parseBigIntId(String(query.project_id), 'project_id') } : {}),
       },
       include: {
         currentActiveRevision: {
@@ -3627,7 +3609,7 @@ export class FinanceService {
         data: lines.map((line: any, index: number) => ({
           budgetRevisionId: revisionId,
           chartAccountId: line.chart_account_id || null,
-          projectId: line.project_id ? this.parseId(String(line.project_id), 'line project_id') : null,
+          projectId: line.project_id ? parseBigIntId(String(line.project_id), 'line project_id') : null,
           fundId: line.fund_id || null,
           grantId: line.grant_id || null,
           section: String(line.section || 'expenditure').trim(),
@@ -3662,7 +3644,7 @@ export class FinanceService {
         await tx.financeBudgetPortfolio.createMany({
           data: portfolio.map((entry: any, index: number) => ({
             budgetId: budget.id,
-            projectId: this.parseId(String(entry.project_id), 'portfolio project_id'),
+            projectId: parseBigIntId(String(entry.project_id), 'portfolio project_id'),
             fundId: entry.fund_id || null,
             grantId: entry.grant_id || null,
             funderName: entry.funder_name ? String(entry.funder_name).trim() : null,
@@ -3872,8 +3854,8 @@ export class FinanceService {
     const perPage = Math.min(200, Math.max(1, Number(query.per_page ?? 20)));
     const where: Drizzle.FinanceSalesInvoiceWhereInput = {};
     if (query.contactId) where.contactId = String(query.contactId);
-    if (query.organization_id) where.organizationId = this.parseId(String(query.organization_id), 'organization_id');
-    if (query.team_id) where.teamId = this.parseId(String(query.team_id), 'team_id');
+    if (query.organization_id) where.organizationId = parseBigIntId(String(query.organization_id), 'organization_id');
+    if (query.team_id) where.teamId = parseBigIntId(String(query.team_id), 'team_id');
     if (query.from || query.to) {
       where.invoiceDate = {
         ...(query.from ? { gte: new Date(String(query.from)) } : {}),
@@ -3981,8 +3963,8 @@ export class FinanceService {
         data: {
           invoiceNumber,
           contactId: contact.id,
-          organizationId: dto.organization_id ? this.parseId(dto.organization_id, 'organization_id') : null,
-          teamId: dto.team_id ? this.parseId(dto.team_id, 'team_id') : null,
+          organizationId: dto.organization_id ? parseBigIntId(dto.organization_id, 'organization_id') : null,
+          teamId: dto.team_id ? parseBigIntId(dto.team_id, 'team_id') : null,
           fundId: fund?.id ?? null,
           grantId: grant?.id ?? null,
           invoiceDate,
@@ -4074,8 +4056,8 @@ export class FinanceService {
     const perPage = Math.min(200, Math.max(1, Number(query.per_page ?? 20)));
     const where: Drizzle.FinanceBillHeaderWhereInput = {};
     if (query.contactId) where.contactId = String(query.contactId);
-    if (query.organization_id) where.organizationId = this.parseId(String(query.organization_id), 'organization_id');
-    if (query.team_id) where.teamId = this.parseId(String(query.team_id), 'team_id');
+    if (query.organization_id) where.organizationId = parseBigIntId(String(query.organization_id), 'organization_id');
+    if (query.team_id) where.teamId = parseBigIntId(String(query.team_id), 'team_id');
     if (query.status) where.status = String(query.status).toLowerCase();
     if (query.from || query.to) {
       where.billDate = {
@@ -4163,8 +4145,8 @@ export class FinanceService {
         data: {
           billNumber,
           contactId: contact.id,
-          organizationId: dto.organization_id ? this.parseId(dto.organization_id, 'organization_id') : null,
-          teamId: dto.team_id ? this.parseId(dto.team_id, 'team_id') : null,
+          organizationId: dto.organization_id ? parseBigIntId(dto.organization_id, 'organization_id') : null,
+          teamId: dto.team_id ? parseBigIntId(dto.team_id, 'team_id') : null,
           fundId: fund?.id ?? null,
           grantId: grant?.id ?? null,
           billDate,
@@ -5073,8 +5055,8 @@ export class FinanceService {
     const context = contextInput ?? (await this.buildReportContext(query));
     const rows = await this.drizzle.financeSalesInvoice.findMany({
       where: {
-        ...(query.organization_id ? { organizationId: this.parseId(String(query.organization_id), 'organization_id') } : {}),
-        ...(query.team_id ? { teamId: this.parseId(String(query.team_id), 'team_id') } : {})
+        ...(query.organization_id ? { organizationId: parseBigIntId(String(query.organization_id), 'organization_id') } : {}),
+        ...(query.team_id ? { teamId: parseBigIntId(String(query.team_id), 'team_id') } : {})
       },
       include: {
         contact: true,
@@ -5098,8 +5080,8 @@ export class FinanceService {
     const context = contextInput ?? (await this.buildReportContext(query));
     const rows = await this.drizzle.financeBillHeader.findMany({
       where: {
-        ...(query.organization_id ? { organizationId: this.parseId(String(query.organization_id), 'organization_id') } : {}),
-        ...(query.team_id ? { teamId: this.parseId(String(query.team_id), 'team_id') } : {})
+        ...(query.organization_id ? { organizationId: parseBigIntId(String(query.organization_id), 'organization_id') } : {}),
+        ...(query.team_id ? { teamId: parseBigIntId(String(query.team_id), 'team_id') } : {})
       },
       include: {
         contact: true,
@@ -5212,14 +5194,6 @@ export class FinanceService {
   }
 
 
-  private parseId(value: string, label: string): bigint {
-    try {
-      return toBigInt(value);
-    } catch {
-      throw new BadRequestException(`Invalid ${label}`);
-    }
-  }
-
   private resolveBudgetDates(
     startDateValue: string | undefined,
     endDateValue: string | undefined,
@@ -5284,8 +5258,8 @@ export class FinanceService {
     scopeType: string,
     dto: Record<string, any>
   ): Promise<{ organizationId: bigint | null; teamId: bigint | null }> {
-    const teamId = dto.team_id ? this.parseId(String(dto.team_id), 'team_id') : null;
-    const dtoOrganizationId = dto.organization_id ? this.parseId(String(dto.organization_id), 'organization_id') : null;
+    const teamId = dto.team_id ? parseBigIntId(String(dto.team_id), 'team_id') : null;
+    const dtoOrganizationId = dto.organization_id ? parseBigIntId(String(dto.organization_id), 'organization_id') : null;
 
     if (scopeType !== 'team' || !teamId) {
       return {
@@ -5331,7 +5305,7 @@ export class FinanceService {
   }
 
   private async ensureProjectExists(value: string, label: string) {
-    const projectId = this.parseId(value, label);
+    const projectId = parseBigIntId(value, label);
     const project = await this.drizzle.group.findUnique({ where: { id: projectId } });
     if (!project || project.type !== 'project') {
       throw new BadRequestException(`Invalid ${label}`);
@@ -6037,8 +6011,8 @@ export class FinanceService {
             lte: new Date(period.end_date)
           }
         },
-        ...(query.organization_id ? { organizationId: this.parseId(String(query.organization_id), 'organization_id') } : {}),
-        ...(query.team_id ? { teamId: this.parseId(String(query.team_id), 'team_id') } : {}),
+        ...(query.organization_id ? { organizationId: parseBigIntId(String(query.organization_id), 'organization_id') } : {}),
+        ...(query.team_id ? { teamId: parseBigIntId(String(query.team_id), 'team_id') } : {}),
         ...(query.fund_id ? { fundId: String(query.fund_id) } : {}),
         ...(query.grant_id ? { grantId: String(query.grant_id) } : {})
       },

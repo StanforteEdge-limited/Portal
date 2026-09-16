@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { and, asc, desc, eq, ilike, inArray, or, SQL } from 'drizzle-orm';
 import { DbService } from '$common/db/db.service';
 import { paginatedResponse } from '$common/helpers/paginated-response';
-import { toBigInt } from '$common/utils/ids';
+import { parseBigIntId, toBigInt } from '$common/utils/ids';
 import type { AppDb } from '$common/db/db.service';
 import type { GroupUserRole } from '$app/db/enums';
 import { organization } from '$modules/directory/organizations/model';
@@ -24,7 +24,7 @@ export class GroupsService {
       groupType ? eq(group.type, groupType) : inArray(group.type, ['team', 'department'])
     ];
     if (query.organization_id) {
-      const organizationId = this.parseId(String(query.organization_id), 'organization id');
+      const organizationId = parseBigIntId(String(query.organization_id), 'organization id');
       const mappings = await this.db.client
         .select({ groupId: groupOrganization.groupId })
         .from(groupOrganization)
@@ -52,7 +52,7 @@ export class GroupsService {
   }
 
   async create(createdBy: string, dto: CreateTeamDto) {
-    const createdById = this.parseId(createdBy, 'creator id');
+    const createdById = parseBigIntId(createdBy, 'creator id');
     const organizationIds = this.parseOrganizationIds(dto.organization_ids, dto.organization_id);
     const primaryOrganizationId = this.resolvePrimaryOrganizationId({
       explicitPrimary: dto.primary_organization_id,
@@ -90,14 +90,14 @@ export class GroupsService {
   }
 
   async get(id: string) {
-    const team = await this.findGroupWithDetails(this.parseId(id, 'team id'));
+    const team = await this.findGroupWithDetails(parseBigIntId(id, 'team id'));
     if (!team) throw new NotFoundException('Group not found');
     return this.serializeGroup(team);
   }
 
   async update(id: string, userId: string, dto: UpdateTeamDto) {
-    const teamId = this.parseId(id, 'team id');
-    const actor = this.parseId(userId, 'user id');
+    const teamId = parseBigIntId(id, 'team id');
+    const actor = parseBigIntId(userId, 'user id');
 
     const existing = await this.findGroup(teamId);
     if (!existing) throw new NotFoundException('Group not found');
@@ -135,9 +135,9 @@ export class GroupsService {
   }
 
   async addMember(id: string, actorId: string, dto: AddGroupMemberDto) {
-    const groupId = this.parseId(id, 'group id');
-    const actor = this.parseId(actorId, 'user id');
-    const userId = this.parseId(dto.user_id, 'user id');
+    const groupId = parseBigIntId(id, 'group id');
+    const actor = parseBigIntId(actorId, 'user id');
+    const userId = parseBigIntId(dto.user_id, 'user id');
 
     const role = this.mapMemberRole(dto.role);
 
@@ -167,8 +167,8 @@ export class GroupsService {
   }
 
   async removeMember(id: string, userId: string) {
-    const groupId = this.parseId(id, 'group id');
-    const memberId = this.parseId(userId, 'user id');
+    const groupId = parseBigIntId(id, 'group id');
+    const memberId = parseBigIntId(userId, 'user id');
 
     await this.db.client.delete(groupUser).where(and(eq(groupUser.groupId, groupId), eq(groupUser.userId, memberId)));
 
@@ -176,7 +176,7 @@ export class GroupsService {
   }
 
   async setOrganizations(id: string, dto: SetGroupOrganizationsDto) {
-    const groupId = this.parseId(id, 'group id');
+    const groupId = parseBigIntId(id, 'group id');
     await this.ensureGroupExists(groupId);
     const organizationIds = this.parseOrganizationIds(dto.organization_ids);
     const primaryOrganizationId = this.resolvePrimaryOrganizationId({
@@ -200,14 +200,14 @@ export class GroupsService {
   }
 
   async forUser(userId: string, query: { organization_id?: string }) {
-    const profileId = this.parseId(userId, 'user id');
+    const profileId = parseBigIntId(userId, 'user id');
 
     const memberships = await this.db.client
       .select()
       .from(groupUser)
       .where(eq(groupUser.userId, profileId))
       .orderBy(desc(groupUser.isPrimary));
-    const orgId = query.organization_id ? this.parseId(query.organization_id, 'organization id') : null;
+    const orgId = query.organization_id ? parseBigIntId(query.organization_id, 'organization id') : null;
 
     const hydrated = (await Promise.all(memberships.map(async (membership) => {
       const item = await this.findGroupWithDetails(membership.groupId);
@@ -230,8 +230,8 @@ export class GroupsService {
   }
 
   async setMemberScopes(id: string, userId: string, dto: SetGroupMemberScopesDto) {
-    const groupId = this.parseId(id, 'group id');
-    const memberId = this.parseId(userId, 'user id');
+    const groupId = parseBigIntId(id, 'group id');
+    const memberId = parseBigIntId(userId, 'user id');
     const organizationIds = this.parseOrganizationIds(dto.organization_ids);
     await this.ensureOrganizationsBelongToGroup(groupId, organizationIds);
 
@@ -253,14 +253,6 @@ export class GroupsService {
     if (role === 'lead') return 'moderator';
     if (role === 'manager') return 'admin';
     return 'member';
-  }
-
-  private parseId(value: string, label: string): bigint {
-    try {
-      return toBigInt(value);
-    } catch {
-      throw new BadRequestException(`Invalid ${label}`);
-    }
   }
 
   private serializeGroup(group: any) {
@@ -288,7 +280,7 @@ export class GroupsService {
 
   private parseOrganizationIds(values?: string[], singleValue?: string): bigint[] {
     const raw = values && values.length > 0 ? values : singleValue ? [singleValue] : [];
-    const unique = Array.from(new Set(raw.filter(Boolean).map((value) => this.parseId(String(value), 'organization id').toString())));
+    const unique = Array.from(new Set(raw.filter(Boolean).map((value) => parseBigIntId(String(value), 'organization id').toString())));
     return unique.map((value) => BigInt(value));
   }
 
@@ -298,9 +290,9 @@ export class GroupsService {
     organizationIds?: bigint[];
     existingPrimaryOrganizationId?: bigint;
   }): bigint | null {
-    const parsedExplicit = params.explicitPrimary ? this.parseId(params.explicitPrimary, 'primary organization id') : null;
+    const parsedExplicit = params.explicitPrimary ? parseBigIntId(params.explicitPrimary, 'primary organization id') : null;
     if (parsedExplicit) return parsedExplicit;
-    const parsedFallback = params.fallbackOrganizationId ? this.parseId(params.fallbackOrganizationId, 'organization id') : null;
+    const parsedFallback = params.fallbackOrganizationId ? parseBigIntId(params.fallbackOrganizationId, 'organization id') : null;
     if (parsedFallback) return parsedFallback;
     if (params.organizationIds && params.organizationIds.length > 0) return params.organizationIds[0];
     return params.existingPrimaryOrganizationId ?? null;

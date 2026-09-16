@@ -1,6 +1,7 @@
-import { Injectable, BadRequestException, NotFoundException, ConflictException } from '@nestjs/common';
-import { sql } from 'drizzle-orm';
-import { DrizzleService } from '$common/drizzle/drizzle.service';
+import { Injectable, BadRequestException, NotFoundException, ConflictException, Optional, UnauthorizedException } from '@nestjs/common';
+import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, lte, ne, or, sql, SQL } from 'drizzle-orm';
+import { DbService } from '$common/db/db.service';
+import { TenantContextService } from '$common/auth/tenant-context.service';
 import { DocumentGeneratorService } from '$common/documents/document-generator.service';
 import { DocumentIds } from '$common/documents/document.types';
 import { RequestPdfDocument } from '$modules/requests/requests/documents/request-pdf.document';
@@ -26,11 +27,32 @@ import { RetireRequestDto } from '$modules/requests/requests/dto/retire-request.
 import { CreateManualRequestDto } from '$modules/requests/requests/dto/create-manual-request.dto';
 import { DownloadRequestDto } from '$modules/requests/requests/dto/download-request.dto';
 import { toBigInt } from '$common/utils/ids';
+import { isLeaveRequestType, objectSchema, policyScopeMatches, policyScopeRank, resolveLeaveTypeKey } from '$common/utils/leave-policy';
 import { WorkflowService } from '$modules/requests/workflow/workflow.service';
 import { normalizeWorkflowStepApprover } from '$modules/requests/workflow/workflow-approvers';
 import { FormsService } from '$modules/requests/forms/forms.service';
 import { NotificationsService } from '$modules/notifications/notifications.service';
-import { GroupUserRole, Drizzle } from '$common/db/drizzle-compat';
+import { requestCategory, requestGroup, requestInstance, requestItem, requestItemFile, requestType } from './model';
+import { workflow, workflowHistory, workflowInstance, workflowStep, workflowStepApprover } from '$modules/requests/workflow/model';
+import {
+  financeAccount,
+  financeBudget,
+  financeBudgetCommitment,
+  financeBudgetRevision,
+  financeBudgetRevisionLine,
+  financePaymentVoucher,
+  financePaymentVoucherFile,
+  financePVDeduction,
+  financeRequestDeduction,
+} from '$modules/finance/finance/model';
+import { employeeProfile, leaveBalanceLedger } from '$modules/hr/hr/model';
+import { policy } from '$modules/requests/policies/model';
+import { group, groupUser } from '$modules/communication/groups/model';
+import { organization } from '$modules/directory/organizations/model';
+import { profile } from '$modules/identity/users/model';
+import { permission, role, rolePermission, userRole } from '$modules/identity/rbac/model';
+import { fileAsset } from '$modules/storage/model';
+import { tenantMembership, tenantOrganization } from '$modules/tenancy/model';
 
 const MANUAL_REQUEST_ID_MIN = BigInt(1);
 const MANUAL_REQUEST_ID_MAX = BigInt(99999);
@@ -51,138 +73,413 @@ type RequestNotificationSummary = {
 @Injectable()
 export class RequestsService {
   constructor(
-    private readonly drizzle: DrizzleService,
+    private readonly db: DbService,
     private readonly workflowService: WorkflowService,
     private readonly formsService: FormsService,
     private readonly notificationsService: NotificationsService,
     private readonly documentGenerator: DocumentGeneratorService,
+    @Optional() private readonly tenantContext?: TenantContextService,
   ) {}
 
+  private tenanted(column: any, tid: bigint | undefined) {
+    return tid === undefined ? undefined : eq(column, tid);
+  }
+
+  private templated(column: any, tid: bigint | undefined) {
+    return tid === undefined ? undefined : or(eq(column, tid), isNull(column));
+  }
+
+  private async profileScope(tid: bigint | undefined): Promise<SQL | undefined> {
+    if (tid === undefined) return undefined;
+    const rows = await this.db.client
+      .select({ profileId: tenantMembership.profileId })
+      .from(tenantMembership)
+      .where(and(eq(tenantMembership.tenantId, tid), eq(tenantMembership.status, 'active')));
+    return inArray(profile.id, rows.map((row) => row.profileId));
+  }
+
+  private async organizationScope(tid: bigint | undefined): Promise<SQL | undefined> {
+    if (tid === undefined) return undefined;
+    const rows = await this.db.client
+      .select({ organizationId: tenantOrganization.organizationId })
+      .from(tenantOrganization)
+      .where(eq(tenantOrganization.tenantId, tid));
+    return inArray(organization.id, rows.map((row) => row.organizationId));
+  }
+
+  private async requestTypeWithCategory(requestTypeId: string) {
+    const [type] = await this.db.client
+      .select()
+      .from(requestType)
+      .where(eq(requestType.id, requestTypeId))
+      .limit(1);
+    if (!type) return null;
+    const [category] = type.categoryId
+      ? await this.db.client
+          .select()
+          .from(requestCategory)
+          .where(eq(requestCategory.id, type.categoryId))
+          .limit(1)
+      : [];
+    return { ...type, category: category ?? null };
+  }
+
+  private async requestGroupById(id: string) {
+    const tid = this.tenantContext.currentTenantId();
+    const [row] = await this.db.client
+      .select()
+      .from(requestGroup)
+      .where(and(eq(requestGroup.id, id), this.tenanted(requestGroup.tenantId, tid)))
+      .limit(1);
+    return row ?? null;
+  }
+
+  private async fileAssetsByIds(ids: string[]) {
+    const tid = this.tenantContext.currentTenantId();
+    return this.db.client
+      .select()
+      .from(fileAsset)
+      .where(and(inArray(fileAsset.id, ids), this.tenanted(fileAsset.tenantId, tid)));
+  }
+
+  private async fetchRequestItems(requestId: bigint) {
+    const items = await this.db.client
+      .select()
+      .from(requestItem)
+      .where(eq(requestItem.requestId, requestId));
+    if (!items.length) return [];
+    const files = await this.db.client
+      .select()
+      .from(requestItemFile)
+      .where(
+        inArray(
+          requestItemFile.requestItemId,
+          items.map((item) => item.id)
+        )
+      )
+      .orderBy(asc(requestItemFile.sortOrder));
+    const assetIds = Array.from(
+      new Set([
+        ...items.flatMap((item) => (item.fileId ? [item.fileId] : [])),
+        ...files.map((file) => file.fileId),
+      ])
+    );
+    const assets = assetIds.length > 0 ? await this.fileAssetsByIds(assetIds) : [];
+    const assetMap = new Map(assets.map((asset) => [asset.id, asset]));
+    return items.map((item) => ({
+      ...item,
+      file: item.fileId ? (assetMap.get(item.fileId) ?? null) : null,
+      files: files
+        .filter((file) => file.requestItemId === item.id)
+        .map((file) => ({ ...file, file: assetMap.get(file.fileId) ?? null })),
+    }));
+  }
+
+  private async creatorForRequest(createdBy: bigint) {
+    const tid = this.tenantContext.currentTenantId();
+    const scope = await this.profileScope(tid);
+    const [row] = await this.db.client
+      .select({
+        id: profile.id,
+        username: profile.username,
+        email: profile.email,
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+      })
+      .from(profile)
+      .where(and(eq(profile.id, createdBy), scope))
+      .limit(1);
+    return row ?? null;
+  }
+
+  private async creatorLight(createdBy: bigint) {
+    const tid = this.tenantContext.currentTenantId();
+    const scope = await this.profileScope(tid);
+    const [row] = await this.db.client
+      .select({
+        username: profile.username,
+        email: profile.email,
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+      })
+      .from(profile)
+      .where(and(eq(profile.id, createdBy), scope))
+      .limit(1);
+    return row ?? null;
+  }
+
+  private async organizationForRequest(organizationId: bigint) {
+    const tid = this.tenantContext.currentTenantId();
+    const scope = await this.organizationScope(tid);
+    const [row] = await this.db.client
+      .select()
+      .from(organization)
+      .where(and(eq(organization.id, organizationId), scope))
+      .limit(1);
+    return row ?? null;
+  }
+
+  private async teamForRequest(teamId: bigint) {
+    const tid = this.tenantContext.currentTenantId();
+    const [row] = await this.db.client
+      .select({ id: group.id, name: group.name })
+      .from(group)
+      .where(and(eq(group.id, teamId), this.tenanted(group.tenantId, tid)))
+      .limit(1);
+    return row ?? null;
+  }
+
+  private async hydrateRequest(request: any) {
+    const [items, hydratedType, hydratedGroup, creator, organization, team] = await Promise.all([
+      this.fetchRequestItems(request.id),
+      request.requestTypeId ? this.requestTypeWithCategory(request.requestTypeId) : Promise.resolve(null),
+      request.groupId ? this.requestGroupById(request.groupId) : Promise.resolve(null),
+      request.createdBy != null ? this.creatorForRequest(request.createdBy) : Promise.resolve(null),
+      request.organizationId != null ? this.organizationForRequest(request.organizationId) : Promise.resolve(null),
+      request.teamId != null ? this.teamForRequest(request.teamId) : Promise.resolve(null),
+    ]);
+    return {
+      ...request,
+      items,
+      requestType: hydratedType,
+      group: hydratedGroup,
+      creator,
+      organization,
+      team,
+    };
+  }
+
+  private async workflowWithSteps(workflowId: string) {
+    const tid = this.tenantContext.currentTenantId();
+    const [wf] = await this.db.client
+      .select()
+      .from(workflow)
+      .where(and(eq(workflow.id, workflowId), this.templated(workflow.tenantId, tid)))
+      .limit(1);
+    if (!wf) return null;
+    const steps = await this.db.client
+      .select()
+      .from(workflowStep)
+      .where(eq(workflowStep.workflowId, wf.id))
+      .orderBy(asc(workflowStep.order));
+    return { ...wf, steps };
+  }
+
+  private async currentStepWithApprovers(stepId: string | null) {
+    if (!stepId) return null;
+    const tid = this.tenantContext.currentTenantId();
+    const [step] = await this.db.client
+      .select()
+      .from(workflowStep)
+      .where(and(eq(workflowStep.id, stepId), this.templated(workflowStep.tenantId, tid)))
+      .limit(1);
+    if (!step) return null;
+    const approvers = await this.db.client
+      .select()
+      .from(workflowStepApprover)
+      .where(eq(workflowStepApprover.stepId, stepId));
+    return { ...step, approvers };
+  }
+
+  private async workflowInstanceWithDetails(instanceId: string) {
+    const tid = this.tenantContext.currentTenantId();
+    const [instance] = await this.db.client
+      .select()
+      .from(workflowInstance)
+      .where(and(eq(workflowInstance.id, instanceId), this.templated(workflowInstance.tenantId, tid)))
+      .limit(1);
+    if (!instance) return null;
+    const [currentStep, history, wf] = await Promise.all([
+      this.currentStepWithApprovers(instance.currentStepId ?? null),
+      this.db.client
+        .select()
+        .from(workflowHistory)
+        .where(and(eq(workflowHistory.instanceId, instanceId), this.templated(workflowHistory.tenantId, tid)))
+        .orderBy(asc(workflowHistory.createdAt)),
+      instance.workflowId ? this.workflowWithSteps(instance.workflowId) : Promise.resolve(null),
+    ]);
+    return { ...instance, currentStep, history, workflow: wf };
+  }
+
+  private async budgetRevisionWithLines(revisionId: string) {
+    const [revision] = await this.db.client
+      .select()
+      .from(financeBudgetRevision)
+      .where(eq(financeBudgetRevision.id, revisionId))
+      .limit(1);
+    if (!revision) return null;
+    const lines = await this.db.client
+      .select()
+      .from(financeBudgetRevisionLine)
+      .where(eq(financeBudgetRevisionLine.budgetRevisionId, revision.id))
+      .orderBy(asc(financeBudgetRevisionLine.sortOrder));
+    return { ...revision, lines };
+  }
+
   async listGroups() {
-    const rows = await this.drizzle.requestGroup.findMany({ where: { isActive: true } });
+    const tid = this.tenantContext.currentTenantId();
+    const rows = await this.db.client
+      .select()
+      .from(requestGroup)
+      .where(and(eq(requestGroup.isActive, true), this.tenanted(requestGroup.tenantId, tid)));
     return paginatedResponse(rows, { page: 1, per_page: rows.length, total: rows.length });
   }
 
   async createGroup(dto: CreateGroupDto) {
     if (!dto.code) throw new BadRequestException('code is required');
-    return this.drizzle.requestGroup.create({
-      data: {
+    const tid = this.tenantContext.currentTenantId();
+    const [row] = await this.db.client
+      .insert(requestGroup)
+      .values({
         name: dto.name,
         code: dto.code,
-        description: dto.description
-      }
-    });
+        description: dto.description,
+        ...(tid !== undefined ? { tenantId: tid } : {}),
+      })
+      .returning();
+    return row;
   }
 
   async updateGroup(id: string, dto: UpdateGroupDto) {
-    return this.drizzle.requestGroup.update({
-      where: { id },
-      data: {
+    const tid = this.tenantContext.currentTenantId();
+    const [row] = await this.db.client
+      .update(requestGroup)
+      .set({
         name: dto.name,
         code: dto.code,
-        description: dto.description
-      }
-    });
+        description: dto.description,
+      })
+      .where(and(eq(requestGroup.id, id), this.tenanted(requestGroup.tenantId, tid)))
+      .returning();
+    return row;
   }
 
   async deleteGroup(id: string) {
-    await this.drizzle.requestGroup.delete({ where: { id } });
+    const tid = this.tenantContext.currentTenantId();
+    await this.db.client
+      .delete(requestGroup)
+      .where(and(eq(requestGroup.id, id), this.tenanted(requestGroup.tenantId, tid)));
     return { success: true };
   }
 
   async listCategories(groupId?: string) {
-    const where = groupId ? { groupId } : {};
-    const rows = await this.drizzle.requestCategory.findMany({
-      where,
-      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
-      include: { group: { select: { name: true } } },
-    });
-    return paginatedResponse(rows, { page: 1, per_page: rows.length, total: rows.length });
+    const tid = this.tenantContext.currentTenantId();
+    const rows = await this.db.client
+      .select()
+      .from(requestCategory)
+      .where(groupId ? eq(requestCategory.groupId, groupId) : undefined)
+      .orderBy(asc(requestCategory.sortOrder), asc(requestCategory.name));
+    const groupIds = Array.from(
+      new Set(rows.map((row) => row.groupId).filter((id): id is string => Boolean(id)))
+    );
+    const groupNames = groupIds.length
+      ? await this.db.client
+          .select({ id: requestGroup.id, name: requestGroup.name })
+          .from(requestGroup)
+          .where(and(inArray(requestGroup.id, groupIds), this.tenanted(requestGroup.tenantId, tid)))
+      : [];
+    const nameById = new Map(groupNames.map((g) => [g.id, g.name]));
+    const rowsWithGroup = rows.map((row) => ({
+      ...row,
+      group:
+        row.groupId && nameById.has(row.groupId) ? { name: nameById.get(row.groupId) ?? null } : null,
+    }));
+    return paginatedResponse(rowsWithGroup, { page: 1, per_page: rows.length, total: rows.length });
   }
 
   async createCategory(dto: CreateCategoryDto) {
-    const existing = await this.drizzle.requestCategory.findUnique({ where: { code: dto.code } });
+    const [existing] = await this.db.client
+      .select({ id: requestCategory.id })
+      .from(requestCategory)
+      .where(eq(requestCategory.code, dto.code))
+      .limit(1);
     if (existing) throw new ConflictException(`Category code "${dto.code}" already exists`);
-    return this.drizzle.requestCategory.create({
-      data: {
+    const [row] = await this.db.client
+      .insert(requestCategory)
+      .values({
         groupId: dto.group_id,
         name: dto.name,
         code: dto.code,
         description: dto.description,
         sortOrder: dto.sort_order ?? 0,
-      },
-    });
+      })
+      .returning();
+    return row;
   }
 
   async updateCategory(id: string, dto: UpdateCategoryDto) {
-    return this.drizzle.requestCategory.update({
-      where: { id },
-      data: {
+    const [row] = await this.db.client
+      .update(requestCategory)
+      .set({
         name: dto.name,
         code: dto.code,
         description: dto.description,
         isActive: dto.is_active,
         sortOrder: dto.sort_order,
-      },
-    });
+      })
+      .where(eq(requestCategory.id, id))
+      .returning();
+    return row;
   }
 
   async deleteCategory(id: string) {
-    await this.drizzle.requestCategory.delete({ where: { id } });
+    await this.db.client.delete(requestCategory).where(eq(requestCategory.id, id));
     return { success: true };
   }
 
   async listTypes(groupId?: string, categoryId?: string, includeInactive?: boolean, actorId?: string) {
-    const typeWhere: any = {
-      ...(includeInactive ? {} : { isActive: true })
-    };
+    const conditions: SQL[] = [];
+    if (!includeInactive) conditions.push(eq(requestType.isActive, true));
     if (categoryId) {
-      typeWhere.categoryId = categoryId;
+      conditions.push(eq(requestType.categoryId, categoryId));
     } else if (groupId) {
-      const categoryIds = (
-        await this.drizzle.requestCategory.findMany({
-          where: { groupId },
-          select: { id: true }
-        })
-      ).map((c) => c.id);
-      typeWhere.categoryId = { in: categoryIds };
+      const categories = await this.db.client
+        .select({ id: requestCategory.id })
+        .from(requestCategory)
+        .where(eq(requestCategory.groupId, groupId));
+      const categoryIds = categories.map((c) => c.id);
+      if (categoryIds.length > 0) {
+        conditions.push(inArray(requestType.categoryId, categoryIds));
+      } else {
+        conditions.push(sql`false`);
+      }
     }
-    let rows = await this.drizzle.requestType.findMany({
-      where: typeWhere,
-      include: { category: true }
-    });
+    const rows = await this.db.client.select().from(requestType).where(and(...conditions));
 
+    let result = rows;
     if (actorId) {
       const userRoles = await this.getActorRoleSlugs(actorId);
       if (!userRoles.has('admin')) {
-        rows = rows.filter((t) => {
+        result = rows.filter((t) => {
           if (!t.visibleToRoles || !Array.isArray(t.visibleToRoles) || t.visibleToRoles.length === 0) return true;
           return (t.visibleToRoles as string[]).some((role) => userRoles.has(role));
         });
       }
     }
 
-    return paginatedResponse(rows, { page: 1, per_page: rows.length, total: rows.length });
+    return paginatedResponse(result, { page: 1, per_page: result.length, total: result.length });
   }
 
   async getType(id: string) {
-    const type = await this.drizzle.requestType.findUnique({ where: { id } });
+    const [type] = await this.db.client
+      .select()
+      .from(requestType)
+      .where(eq(requestType.id, id))
+      .limit(1);
     if (!type) throw new NotFoundException('Request type not found');
     return type;
   }
 
   async createType(dto: CreateTypeDto, actorId?: string) {
-    const category = await this.drizzle.requestCategory.findUnique({
-      where: { id: dto.category_id },
-      select: { groupId: true }
-    });
+    const [category] = await this.db.client
+      .select({ groupId: requestCategory.groupId })
+      .from(requestCategory)
+      .where(eq(requestCategory.id, dto.category_id))
+      .limit(1);
     if (!category) throw new NotFoundException('Category not found');
 
     await this.assertRequestTypeGroupAccess(category.groupId, actorId);
-    const group = await this.drizzle.requestGroup.findUnique({
-      where: { id: category.groupId },
-      select: { code: true, name: true }
-    });
+    const group = await this.requestGroupById(category.groupId);
     const requiresCooApproval = this.requestTypeRequiresCooApproval({
       groupCode: group?.code ?? null,
       groupName: group?.name ?? null,
@@ -196,52 +493,53 @@ export class RequestsService {
       ? this.ensureApproverInApprovalFlow(dto.approval_flow_json, 'coo')
       : dto.approval_flow_json;
 
-    return this.drizzle.requestType.create({
-      data: {
+    const [row] = await this.db.client
+      .insert(requestType)
+      .values({
         categoryId: dto.category_id,
         name: dto.name,
         codePrefix: dto.code_prefix,
-        taxonomyKeys: dto.taxonomy_keys as Drizzle.InputJsonValue | undefined,
-        formSchema: dto.form_schema as Drizzle.InputJsonValue | undefined,
+        taxonomyKeys: dto.taxonomy_keys as any,
+        formSchema: dto.form_schema as any,
         description: dto.description,
         storageType: dto.storage_type ?? 'json',
         formId: dto.form_id,
-        approvalFlowJson: approvalFlowJson as Drizzle.InputJsonValue | undefined,
-        approvalLimit: dto.approval_limit,
+        approvalFlowJson: approvalFlowJson as any,
+        approvalLimit: dto.approval_limit == null ? null : String(dto.approval_limit),
         workflowType: dto.workflow_type ?? null,
         handlerRoleLabel: dto.handler_role_label ?? null,
-        visibleToRoles: dto.visible_to_roles as Drizzle.InputJsonValue | undefined,
+        visibleToRoles: dto.visible_to_roles as any,
         isActive: dto.is_active ?? true,
-      }
-    });
+      })
+      .returning();
+    return row;
   }
 
   async updateType(id: string, dto: UpdateTypeDto, actorId?: string) {
-    const existing = await this.drizzle.requestType.findUnique({
-      where: { id },
-      select: {
-        categoryId: true,
-        name: true,
-        codePrefix: true,
-        taxonomyKeys: true,
-        formSchema: true,
-        approvalFlowJson: true
-      }
-    });
+    const [existing] = await this.db.client
+      .select({
+        categoryId: requestType.categoryId,
+        name: requestType.name,
+        codePrefix: requestType.codePrefix,
+        taxonomyKeys: requestType.taxonomyKeys,
+        formSchema: requestType.formSchema,
+        approvalFlowJson: requestType.approvalFlowJson,
+      })
+      .from(requestType)
+      .where(eq(requestType.id, id))
+      .limit(1);
     if (!existing) throw new NotFoundException('Request type not found');
 
     const resolvedCategoryId = dto.category_id ?? existing.categoryId;
-    const category = await this.drizzle.requestCategory.findUnique({
-      where: { id: resolvedCategoryId },
-      select: { groupId: true }
-    });
+    const [category] = await this.db.client
+      .select({ groupId: requestCategory.groupId })
+      .from(requestCategory)
+      .where(eq(requestCategory.id, resolvedCategoryId))
+      .limit(1);
     if (!category) throw new NotFoundException('Category not found');
 
     await this.assertRequestTypeGroupAccess(category.groupId, actorId);
-    const group = await this.drizzle.requestGroup.findUnique({
-      where: { id: category.groupId },
-      select: { code: true, name: true }
-    });
+    const group = await this.requestGroupById(category.groupId);
 
     const mergedName = dto.name ?? existing.name;
     const mergedCodePrefix = dto.code_prefix ?? existing.codePrefix;
@@ -261,55 +559,56 @@ export class RequestsService {
       ? this.ensureApproverInApprovalFlow(mergedApprovalFlow, 'coo')
       : dto.approval_flow_json;
 
-    return this.drizzle.requestType.update({
-      where: { id },
-      data: {
+    const [row] = await this.db.client
+      .update(requestType)
+      .set({
         name: dto.name,
         categoryId: dto.category_id,
         codePrefix: dto.code_prefix,
-        taxonomyKeys: dto.taxonomy_keys as Drizzle.InputJsonValue | undefined,
-        formSchema:
-          dto.form_schema !== undefined
-            ? (dto.form_schema as Drizzle.InputJsonValue)
-            : undefined,
+        taxonomyKeys: dto.taxonomy_keys as any,
+        formSchema: dto.form_schema !== undefined ? (dto.form_schema as any) : undefined,
         description: dto.description,
         storageType: dto.storage_type,
         formId: dto.form_id,
-        approvalFlowJson:
-          normalizedApprovalFlow !== undefined
-            ? (normalizedApprovalFlow as Drizzle.InputJsonValue)
-            : undefined,
-        approvalLimit: dto.approval_limit,
+        approvalFlowJson: normalizedApprovalFlow !== undefined ? (normalizedApprovalFlow as any) : undefined,
+        approvalLimit: dto.approval_limit == null ? undefined : String(dto.approval_limit),
         isActive: dto.is_active,
         ...(dto.workflow_type !== undefined && { workflowType: dto.workflow_type }),
         ...(dto.handler_role_label !== undefined && { handlerRoleLabel: dto.handler_role_label }),
-        visibleToRoles: dto.visible_to_roles !== undefined ? (dto.visible_to_roles as Drizzle.InputJsonValue) : undefined,
-      }
-    });
+        visibleToRoles: dto.visible_to_roles !== undefined ? (dto.visible_to_roles as any) : undefined,
+      })
+      .where(eq(requestType.id, id))
+      .returning();
+    return row;
   }
 
   async deleteType(id: string, actorId?: string) {
-    const existing = await this.drizzle.requestType.findUnique({
-      where: { id },
-      select: { id: true, categoryId: true }
-    });
+    const [existing] = await this.db.client
+      .select({ id: requestType.id, categoryId: requestType.categoryId })
+      .from(requestType)
+      .where(eq(requestType.id, id))
+      .limit(1);
     if (!existing) throw new NotFoundException('Request type not found');
 
-    const category = await this.drizzle.requestCategory.findUnique({
-      where: { id: existing.categoryId },
-      select: { groupId: true }
-    });
+    const [category] = await this.db.client
+      .select({ groupId: requestCategory.groupId })
+      .from(requestCategory)
+      .where(eq(requestCategory.id, existing.categoryId))
+      .limit(1);
     if (!category) throw new NotFoundException('Category not found');
     await this.assertRequestTypeGroupAccess(category.groupId, actorId);
 
-    const usageCount = await this.drizzle.requestInstance.count({
-      where: { requestTypeId: existing.id }
-    });
+    const tid = this.tenantContext.currentTenantId();
+    const [usage] = await this.db.client
+      .select({ c: count() })
+      .from(requestInstance)
+      .where(and(eq(requestInstance.requestTypeId, existing.id), this.tenanted(requestInstance.tenantId, tid)));
+    const usageCount = Number(usage?.c ?? 0);
     if (usageCount > 0) {
       throw new BadRequestException('Cannot delete request type with existing requests. Set it inactive instead.');
     }
 
-    await this.drizzle.requestType.delete({ where: { id: existing.id } });
+    await this.db.client.delete(requestType).where(eq(requestType.id, existing.id));
     return { success: true };
   }
 
@@ -385,11 +684,13 @@ export class RequestsService {
   }
 
   private async getActorRoleSlugs(actorId: string) {
-    const roles = await this.drizzle.userRole.findMany({
-      where: { profileId: toBigInt(actorId) },
-      select: { role: { select: { slug: true } } }
-    });
-    return new Set(roles.map((item) => String(item.role.slug || '').toLowerCase()));
+    const tid = this.tenantContext.currentTenantId();
+    const rows = await this.db.client
+      .select({ slug: role.slug })
+      .from(userRole)
+      .innerJoin(role, eq(userRole.roleId, role.id))
+      .where(and(eq(userRole.profileId, toBigInt(actorId)), this.tenanted(userRole.tenantId, tid)));
+    return new Set(rows.map((row) => String(row.slug || '').toLowerCase()));
   }
 
   private normalizeItemFileIds(item: { file_id?: string | null; file_ids?: string[] | null }) {
@@ -405,7 +706,7 @@ export class RequestsService {
   }
 
   async createRequest(userId: string, dto: CreateRequestDto) {
-    const requestType = await this.drizzle.requestType.findUnique({ where: { id: dto.request_type_id }, include: { category: true } });
+    const requestType = await this.requestTypeWithCategory(dto.request_type_id);
     if (!requestType || !requestType.isActive) throw new BadRequestException('Invalid request type');
     await this.formsService.validateRequestTypePayload(requestType.id, dto.data);
     await this.validateLeaveRequestPayload(
@@ -431,7 +732,7 @@ export class RequestsService {
       if (invalid) throw new BadRequestException('Invalid item amount or quantity');
     }
 
-    const created = await this.drizzle.$transaction(async (tx) => {
+    const created = await this.db.client.transaction(async (tx) => {
       await this.ensureStaffRequestSequenceFloor(tx);
 
       const computedTotal = dto.items && dto.items.length
@@ -445,19 +746,20 @@ export class RequestsService {
         await this.ensureFileAssetsExist(tx, fileIds);
       }
 
-      const request = await tx.requestInstance.create({
-        data: {
+      const [request] = await tx
+        .insert(requestInstance)
+        .values({
           requestTypeId: requestType.id,
-          groupId: requestType.category.groupId,
+          groupId: requestType.category!.groupId,
           createdBy,
           organizationId: dto.organization_id ? toBigInt(dto.organization_id) : null,
           teamId: dto.team_id ? toBigInt(dto.team_id) : null,
           status: 'draft',
-          data: normalizedData,
-          totalAmount: computedTotal ?? dto.total_amount,
+          data: normalizedData as any,
+          totalAmount: String(computedTotal ?? dto.total_amount ?? 0),
           currency: dto.currency || 'NGN'
-        }
-      });
+        })
+        .returning();
       if (request.id < STAFF_REQUEST_ID_MIN) {
         throw new BadRequestException(
           `Automatic request ids must start from ${STAFF_REQUEST_ID_MIN.toString()}. Set request sequence before creating staff requests.`
@@ -466,13 +768,14 @@ export class RequestsService {
 
       if (dto.items && dto.items.length > 0) {
         for (const item of dto.items) {
-          const fileIds = this.normalizeItemFileIds(item);
-          const createdItem = await tx.requestItem.create({
-            data: {
+          const itemFileIds = this.normalizeItemFileIds(item);
+          const [createdItem] = await tx
+            .insert(requestItem)
+            .values({
               requestId: request.id,
-              fileId: fileIds[0] ?? null,
+              fileId: itemFileIds[0] ?? null,
               description: item.description,
-              amount: item.amount,
+              amount: String(item.amount),
               quantity: item.quantity ?? 1,
               categoryId: item.category_id ?? null,
               subcategoryId: item.subcategory_id ?? null,
@@ -481,16 +784,16 @@ export class RequestsService {
               bankName: item.bank_name ?? null,
               accountNumber: item.account_number ?? null,
               accountName: item.account_name ?? null
-            }
-          });
-          if (fileIds.length > 0) {
-            await tx.requestItemFile.createMany({
-              data: fileIds.map((fileId, index) => ({
+            })
+            .returning();
+          if (itemFileIds.length > 0) {
+            await tx.insert(requestItemFile).values(
+              itemFileIds.map((fileId, index) => ({
                 requestItemId: createdItem.id,
                 fileId,
                 sortOrder: index
               }))
-            });
+            );
           }
         }
       }
@@ -504,25 +807,40 @@ export class RequestsService {
   }
 
   async createManualEntry(userId: string, dto: CreateManualRequestDto) {
-    const requestType = await this.drizzle.requestType.findUnique({ where: { id: dto.request_type_id }, include: { category: true } });
+    const requestType = await this.requestTypeWithCategory(dto.request_type_id);
     if (!requestType || !requestType.isActive) throw new BadRequestException('Invalid request type');
 
-    const staff = await this.drizzle.profile.findUnique({
-      where: { id: toBigInt(dto.staff_id) },
-      select: { id: true, email: true, username: true, firstName: true, lastName: true }
-    });
+    const tid = this.tenantContext.currentTenantId();
+    const staffScope = await this.profileScope(tid);
+    const [staff] = await this.db.client
+      .select({
+        id: profile.id,
+        email: profile.email,
+        username: profile.username,
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+      })
+      .from(profile)
+      .where(and(eq(profile.id, toBigInt(dto.staff_id)), staffScope))
+      .limit(1);
     if (!staff) throw new BadRequestException('Invalid staff_id');
 
     if (dto.team_id) {
-      const team = await this.drizzle.group.findUnique({ where: { id: toBigInt(dto.team_id) }, select: { id: true } });
+      const [team] = await this.db.client
+        .select({ id: group.id })
+        .from(group)
+        .where(and(eq(group.id, toBigInt(dto.team_id)), this.tenanted(group.tenantId, tid)))
+        .limit(1);
       if (!team) throw new BadRequestException('Invalid team_id');
     }
     if (dto.organization_id) {
-      const organization = await this.drizzle.organization.findUnique({
-        where: { id: toBigInt(dto.organization_id) },
-        select: { id: true }
-      });
-      if (!organization) throw new BadRequestException('Invalid organization_id');
+      const orgScope = await this.organizationScope(tid);
+      const [orgRow] = await this.db.client
+        .select({ id: organization.id })
+        .from(organization)
+        .where(and(eq(organization.id, toBigInt(dto.organization_id)), orgScope))
+        .limit(1);
+      if (!orgRow) throw new BadRequestException('Invalid organization_id');
     }
 
     const itemFileIds = (dto.items ?? []).flatMap((i) => this.normalizeItemFileIds(i));
@@ -531,7 +849,7 @@ export class RequestsService {
       .flatMap((x) => x.retirement_file_ids ?? [])
       .filter((x): x is string => Boolean(x));
     const allFileIds = Array.from(new Set([...itemFileIds, ...voucherEvidenceIds, ...retirementIds]));
-    if (allFileIds.length) await this.ensureFileAssetsExist(this.drizzle, allFileIds);
+    if (allFileIds.length) await this.ensureFileAssetsExist(this.db.client, allFileIds);
     const paidFromAccountIds = Array.from(
       new Set(
         (dto.disbursements ?? [])
@@ -540,10 +858,18 @@ export class RequestsService {
       )
     );
     if (paidFromAccountIds.length > 0) {
-      const count = await this.drizzle.financeAccount.count({
-        where: { id: { in: paidFromAccountIds }, isActive: true }
-      });
-      if (count !== paidFromAccountIds.length) throw new BadRequestException('Invalid paid_from_account_id');
+      const [accountCountRow] = await this.db.client
+        .select({ c: count() })
+        .from(financeAccount)
+        .where(
+          and(
+            inArray(financeAccount.id, paidFromAccountIds),
+            eq(financeAccount.isActive, true),
+            this.tenanted(financeAccount.tenantId, tid)
+          )
+        );
+      const accountCount = Number(accountCountRow?.c ?? 0);
+      if (accountCount !== paidFromAccountIds.length) throw new BadRequestException('Invalid paid_from_account_id');
     }
     const itemsTotal = (dto.items ?? []).reduce(
       (sum, item) => sum + Number(item.amount) * Number(item.quantity ?? 1),
@@ -556,11 +882,14 @@ export class RequestsService {
     const explicitRequestId = dto.request_id ? toBigInt(dto.request_id) : null;
     if (explicitRequestId) {
       this.assertManualRequestIdRange(explicitRequestId);
-      const taken = await this.drizzle.requestInstance.findUnique({ where: { id: explicitRequestId }, select: { id: true } });
+      const [taken] = await this.db.client
+        .select({ id: requestInstance.id })
+        .from(requestInstance)
+        .where(and(eq(requestInstance.id, explicitRequestId), this.tenanted(requestInstance.tenantId, tid)))
+        .limit(1);
       if (taken) throw new BadRequestException(`request_id ${dto.request_id} already exists`);
     }
 
-    // Pre-generate PV numbers for disbursements that don't have one
     let pvSeqOffset = 0;
     const resolvedDisbursements: NonNullable<typeof dto.disbursements> = [];
     for (const row of (dto.disbursements ?? [])) {
@@ -570,10 +899,17 @@ export class RequestsService {
       } else {
         const disbDate = row.disbursed_at ? new Date(row.disbursed_at) : createdAt;
         const year = disbDate.getFullYear();
-        const count = await this.drizzle.financePaymentVoucher.count({
-          where: { disbursedAt: { gte: new Date(year, 0, 1), lt: new Date(year + 1, 0, 1) } }
-        });
-        resolvedDisbursements.push({ ...row, voucher_number: `PV/${year}/${String(count + 1 + pvSeqOffset++).padStart(3, '0')}` });
+        const [pvCountRow] = await this.db.client
+          .select({ c: count() })
+          .from(financePaymentVoucher)
+          .where(
+            and(
+              gte(financePaymentVoucher.disbursedAt, new Date(year, 0, 1)),
+              lt(financePaymentVoucher.disbursedAt, new Date(year + 1, 0, 1))
+            )
+          );
+        const pvCount = Number(pvCountRow?.c ?? 0);
+        resolvedDisbursements.push({ ...row, voucher_number: `PV/${year}/${String(pvCount + 1 + pvSeqOffset++).padStart(3, '0')}` });
       }
     }
 
@@ -591,48 +927,51 @@ export class RequestsService {
       imported_by: userId
     };
     const status = (dto.status ?? 'completed') as any;
-    const created = await this.drizzle.$transaction(async (tx) => {
-      const request = await tx.requestInstance.create({
-        data: {
+    const created = await this.db.client.transaction(async (tx) => {
+      const [request] = await tx
+        .insert(requestInstance)
+        .values({
           ...(explicitRequestId ? { id: explicitRequestId } : {}),
+          ...(tid !== undefined ? { tenantId: tid } : {}),
           requestTypeId: requestType.id,
-          groupId: requestType.category.groupId,
+          groupId: requestType.category!.groupId,
           createdBy: staff.id,
           teamId: dto.team_id ? toBigInt(dto.team_id) : null,
           organizationId: dto.organization_id ? toBigInt(dto.organization_id) : null,
           status,
-          data: baseData as Drizzle.InputJsonValue,
-          totalAmount,
+          data: baseData as any,
+          totalAmount: String(totalAmount),
           currency: dto.currency || 'NGN',
           createdAt,
           updatedAt: createdAt
-        }
-      });
+        })
+        .returning();
 
       if (dto.items?.length) {
         for (const item of dto.items) {
-          const fileIds = this.normalizeItemFileIds(item);
-          const createdItem = await tx.requestItem.create({
-            data: {
+          const itemFileIds = this.normalizeItemFileIds(item);
+          const [createdItem] = await tx
+            .insert(requestItem)
+            .values({
               requestId: request.id,
               description: item.description,
-              amount: item.amount,
+              amount: String(item.amount),
               quantity: item.quantity ?? 1,
               notes: item.notes ?? null,
-              fileId: fileIds[0] ?? null,
+              fileId: itemFileIds[0] ?? null,
               bankName: item.bank_name ?? null,
               accountNumber: item.account_number ?? null,
               accountName: item.account_name ?? null
-            }
-          });
-          if (fileIds.length > 0) {
-            await tx.requestItemFile.createMany({
-              data: fileIds.map((fileId, index) => ({
+            })
+            .returning();
+          if (itemFileIds.length > 0) {
+            await tx.insert(requestItemFile).values(
+              itemFileIds.map((fileId, index) => ({
                 requestItemId: createdItem.id,
                 fileId,
                 sortOrder: index
               }))
-            });
+            );
           }
         }
       }
@@ -648,12 +987,13 @@ export class RequestsService {
           const totalDeducted = deductions.reduce((s, d) => s + Number(d.deduction_amount), 0);
           const grossAmt = row.gross_amount != null ? Number(row.gross_amount) : amount;
           const netAmt = row.net_amount != null ? Number(row.net_amount) : (deductions.length > 0 ? grossAmt - totalDeducted : null);
-          const createdVoucher = await tx.financePaymentVoucher.create({
-            data: {
+          const [createdVoucher] = await tx
+            .insert(financePaymentVoucher)
+            .values({
               requestId: request.id,
               voucherNumber: row.voucher_number!,
-              amount,
-              retiredAmount,
+              amount: String(amount),
+              retiredAmount: String(retiredAmount),
               retirementStatus: row.retirement_status ?? (retiredAmount > 0 ? (retiredAmount >= amount ? 'retired' : 'partial') : 'not_retired'),
               method: row.method ?? null,
               transactionRef: row.transaction_ref ?? null,
@@ -664,8 +1004,8 @@ export class RequestsService {
               retiredAt: retiredAmount > 0 ? disbursedAt : null,
               verifiedAt: row.retirement_status === 'verified' ? disbursedAt : null,
               contactId: row.contact_id ?? null,
-              grossAmount: deductions.length > 0 ? grossAmt : null,
-              netAmount: netAmt,
+              grossAmount: deductions.length > 0 ? String(grossAmt) : null,
+              netAmount: netAmt == null ? null : String(netAmt),
               metadata: {
                 retirement_file_ids: row.retirement_file_ids ?? [],
                 ...(row.refund_amount != null || row.refund_method || row.refund_reference ? {
@@ -676,42 +1016,43 @@ export class RequestsService {
                     refund_date: row.refund_date ?? null,
                   }
                 } : {})
-              } as Drizzle.InputJsonValue
-            }
-          });
+              } as any
+            })
+            .returning();
           if (evidenceFileIds.length > 0) {
-            await tx.financePaymentVoucherFile.createMany({
-              data: evidenceFileIds.map((fileId, index) => ({
+            await tx.insert(financePaymentVoucherFile).values(
+              evidenceFileIds.map((fileId, index) => ({
                 voucherId: createdVoucher.id,
                 fileId,
                 fileKind: 'evidence',
                 sortOrder: index
               }))
-            });
+            );
           }
           if (deductions.length > 0) {
-            await tx.financePVDeduction.createMany({
-              data: deductions.map((d) => ({
+            await tx.insert(financePVDeduction).values(
+              deductions.map((d) => ({
                 paymentVoucherId: createdVoucher.id,
                 deductionTypeId: d.deduction_type_id,
-                rate: d.rate,
-                grossAmount: Number(d.gross_amount),
-                deductionAmount: d.deduction_amount,
+                rate: String(d.rate),
+                grossAmount: String(Number(d.gross_amount)),
+                deductionAmount: String(d.deduction_amount),
                 createdBy: toBigInt(userId),
+                updatedAt: new Date(),
               }))
-            });
-            await tx.financeRequestDeduction.createMany({
-              data: deductions.map((d) => ({
+            );
+            await tx.insert(financeRequestDeduction).values(
+              deductions.map((d) => ({
                 requestId: request.id,
                 deductionTypeId: d.deduction_type_id,
-                amount: Number(d.deduction_amount),
-                rate: d.rate,
-                grossAmount: Number(d.gross_amount),
+                amount: String(Number(d.deduction_amount)),
+                rate: String(d.rate),
+                grossAmount: String(Number(d.gross_amount)),
                 status: 'pending',
                 createdBy: toBigInt(userId),
                 updatedAt: new Date(),
               }))
-            });
+            );
           }
         }
       }
@@ -727,27 +1068,36 @@ export class RequestsService {
   }
 
   async updateManualEntry(id: string, userId: string, dto: CreateManualRequestDto) {
-    const requestType = await this.drizzle.requestType.findUnique({ where: { id: dto.request_type_id }, include: { category: true } });
+    const requestType = await this.requestTypeWithCategory(dto.request_type_id);
     if (!requestType || !requestType.isActive) throw new BadRequestException('Invalid request type');
 
     const existing = await this.getRequestOrThrow(id);
 
-    const staff = await this.drizzle.profile.findUnique({
-      where: { id: toBigInt(dto.staff_id) },
-      select: { id: true }
-    });
+    const tid = this.tenantContext.currentTenantId();
+    const staffScope = await this.profileScope(tid);
+    const [staff] = await this.db.client
+      .select({ id: profile.id })
+      .from(profile)
+      .where(and(eq(profile.id, toBigInt(dto.staff_id)), staffScope))
+      .limit(1);
     if (!staff) throw new BadRequestException('Invalid staff_id');
 
     if (dto.team_id) {
-      const team = await this.drizzle.group.findUnique({ where: { id: toBigInt(dto.team_id) }, select: { id: true } });
+      const [team] = await this.db.client
+        .select({ id: group.id })
+        .from(group)
+        .where(and(eq(group.id, toBigInt(dto.team_id)), this.tenanted(group.tenantId, tid)))
+        .limit(1);
       if (!team) throw new BadRequestException('Invalid team_id');
     }
     if (dto.organization_id) {
-      const organization = await this.drizzle.organization.findUnique({
-        where: { id: toBigInt(dto.organization_id) },
-        select: { id: true }
-      });
-      if (!organization) throw new BadRequestException('Invalid organization_id');
+      const orgScope = await this.organizationScope(tid);
+      const [orgRow] = await this.db.client
+        .select({ id: organization.id })
+        .from(organization)
+        .where(and(eq(organization.id, toBigInt(dto.organization_id)), orgScope))
+        .limit(1);
+      if (!orgRow) throw new BadRequestException('Invalid organization_id');
     }
 
     const itemFileIds = (dto.items ?? []).flatMap((i) => this.normalizeItemFileIds(i));
@@ -756,7 +1106,7 @@ export class RequestsService {
       .flatMap((x) => x.retirement_file_ids ?? [])
       .filter((x): x is string => Boolean(x));
     const allFileIds = Array.from(new Set([...itemFileIds, ...voucherEvidenceIds, ...retirementIds]));
-    if (allFileIds.length) await this.ensureFileAssetsExist(this.drizzle, allFileIds);
+    if (allFileIds.length) await this.ensureFileAssetsExist(this.db.client, allFileIds);
     const paidFromAccountIds = Array.from(
       new Set(
         (dto.disbursements ?? [])
@@ -765,10 +1115,18 @@ export class RequestsService {
       )
     );
     if (paidFromAccountIds.length > 0) {
-      const count = await this.drizzle.financeAccount.count({
-        where: { id: { in: paidFromAccountIds }, isActive: true }
-      });
-      if (count !== paidFromAccountIds.length) throw new BadRequestException('Invalid paid_from_account_id');
+      const [accountCountRow] = await this.db.client
+        .select({ c: count() })
+        .from(financeAccount)
+        .where(
+          and(
+            inArray(financeAccount.id, paidFromAccountIds),
+            eq(financeAccount.isActive, true),
+            this.tenanted(financeAccount.tenantId, tid)
+          )
+        );
+      const accountCount = Number(accountCountRow?.c ?? 0);
+      if (accountCount !== paidFromAccountIds.length) throw new BadRequestException('Invalid paid_from_account_id');
     }
     const itemsTotal = (dto.items ?? []).reduce(
       (sum, item) => sum + Number(item.amount) * Number(item.quantity ?? 1),
@@ -783,14 +1141,14 @@ export class RequestsService {
       this.assertManualRequestIdRange(desiredRequestId);
     }
     if (isRequestIdChanged) {
-      const taken = await this.drizzle.requestInstance.findUnique({
-        where: { id: desiredRequestId },
-        select: { id: true }
-      });
+      const [taken] = await this.db.client
+        .select({ id: requestInstance.id })
+        .from(requestInstance)
+        .where(and(eq(requestInstance.id, desiredRequestId), this.tenanted(requestInstance.tenantId, tid)))
+        .limit(1);
       if (taken) throw new BadRequestException(`request_id ${dto.request_id} already exists`);
     }
 
-    // Pre-generate PV numbers for disbursements that don't have one
     let pvSeqOffsetU = 0;
     const resolvedDisbursements: NonNullable<typeof dto.disbursements> = [];
     for (const row of (dto.disbursements ?? [])) {
@@ -800,10 +1158,17 @@ export class RequestsService {
       } else {
         const disbDate = row.disbursed_at ? new Date(row.disbursed_at) : createdAt;
         const year = disbDate.getFullYear();
-        const count = await this.drizzle.financePaymentVoucher.count({
-          where: { disbursedAt: { gte: new Date(year, 0, 1), lt: new Date(year + 1, 0, 1) } }
-        });
-        resolvedDisbursements.push({ ...row, voucher_number: `PV/${year}/${String(count + 1 + pvSeqOffsetU++).padStart(3, '0')}` });
+        const [pvCountRow] = await this.db.client
+          .select({ c: count() })
+          .from(financePaymentVoucher)
+          .where(
+            and(
+              gte(financePaymentVoucher.disbursedAt, new Date(year, 0, 1)),
+              lt(financePaymentVoucher.disbursedAt, new Date(year + 1, 0, 1))
+            )
+          );
+        const pvCount = Number(pvCountRow?.c ?? 0);
+        resolvedDisbursements.push({ ...row, voucher_number: `PV/${year}/${String(pvCount + 1 + pvSeqOffsetU++).padStart(3, '0')}` });
       }
     }
 
@@ -821,75 +1186,66 @@ export class RequestsService {
       imported_by: userId
     };
     const status = (dto.status ?? existing.status) as any;
-    await this.drizzle.$transaction(async (tx) => {
+    const requestFields = {
+      requestTypeId: requestType.id,
+      groupId: requestType.category!.groupId,
+      createdBy: staff.id,
+      teamId: dto.team_id ? toBigInt(dto.team_id) : null,
+      organizationId: dto.organization_id ? toBigInt(dto.organization_id) : null,
+      status,
+      data: baseData as any,
+      totalAmount: String(totalAmount),
+      currency: dto.currency || existing.currency || 'NGN',
+      createdAt,
+      updatedAt: new Date()
+    };
+    await this.db.client.transaction(async (tx) => {
       if (isRequestIdChanged) {
-        await tx.requestInstance.create({
-          data: {
-            id: desiredRequestId,
-            requestTypeId: requestType.id,
-            groupId: requestType.category.groupId,
-            createdBy: staff.id,
-            teamId: dto.team_id ? toBigInt(dto.team_id) : null,
-            organizationId: dto.organization_id ? toBigInt(dto.organization_id) : null,
-            workflowInstanceId: null,
-            status,
-            data: baseData as Drizzle.InputJsonValue,
-            totalAmount,
-            currency: dto.currency || existing.currency || 'NGN',
-            createdAt,
-            updatedAt: new Date()
-          }
+        await tx.insert(requestInstance).values({
+          ...(tid !== undefined ? { tenantId: tid } : {}),
+          id: desiredRequestId,
+          workflowInstanceId: null,
+          ...requestFields
         });
       } else {
-        await tx.requestInstance.update({
-          where: { id: existing.id },
-          data: {
-            requestTypeId: requestType.id,
-            groupId: requestType.category.groupId,
-            createdBy: staff.id,
-            teamId: dto.team_id ? toBigInt(dto.team_id) : null,
-            organizationId: dto.organization_id ? toBigInt(dto.organization_id) : null,
-            status,
-            data: baseData as Drizzle.InputJsonValue,
-            totalAmount,
-            currency: dto.currency || existing.currency || 'NGN',
-            createdAt,
-            updatedAt: new Date()
-          }
-        });
+        await tx
+          .update(requestInstance)
+          .set(requestFields as any)
+          .where(and(eq(requestInstance.id, existing.id), this.tenanted(requestInstance.tenantId, tid)));
       }
 
-      await tx.requestItem.deleteMany({ where: { requestId: existing.id } });
+      await tx.delete(requestItem).where(eq(requestItem.requestId, existing.id));
       if (dto.items?.length) {
         for (const item of dto.items) {
           const fileIds = this.normalizeItemFileIds(item);
-          const createdItem = await tx.requestItem.create({
-            data: {
+          const [createdItem] = await tx
+            .insert(requestItem)
+            .values({
               requestId: desiredRequestId,
               description: item.description,
-              amount: item.amount,
+              amount: String(item.amount),
               quantity: item.quantity ?? 1,
               notes: item.notes ?? null,
               fileId: fileIds[0] ?? null,
               bankName: item.bank_name ?? null,
               accountNumber: item.account_number ?? null,
               accountName: item.account_name ?? null
-            }
-          });
+            })
+            .returning();
           if (fileIds.length > 0) {
-            await tx.requestItemFile.createMany({
-              data: fileIds.map((fileId, index) => ({
+            await tx.insert(requestItemFile).values(
+              fileIds.map((fileId, index) => ({
                 requestItemId: createdItem.id,
                 fileId,
                 sortOrder: index
               }))
-            });
+            );
           }
         }
       }
 
-      await tx.financePaymentVoucher.deleteMany({ where: { requestId: existing.id } });
-      await tx.financeRequestDeduction.deleteMany({ where: { requestId: existing.id } });
+      await tx.delete(financePaymentVoucher).where(eq(financePaymentVoucher.requestId, existing.id));
+      await tx.delete(financeRequestDeduction).where(eq(financeRequestDeduction.requestId, existing.id));
       if (resolvedDisbursements.length) {
         for (const row of resolvedDisbursements) {
           const amount = Number(row.amount);
@@ -901,12 +1257,13 @@ export class RequestsService {
           const totalDeducted = deductions.reduce((s, d) => s + Number(d.deduction_amount), 0);
           const grossAmt = row.gross_amount != null ? Number(row.gross_amount) : amount;
           const netAmt = row.net_amount != null ? Number(row.net_amount) : (deductions.length > 0 ? grossAmt - totalDeducted : null);
-          const createdVoucher = await tx.financePaymentVoucher.create({
-            data: {
+          const [createdVoucher] = await tx
+            .insert(financePaymentVoucher)
+            .values({
               requestId: desiredRequestId,
               voucherNumber: row.voucher_number!,
-              amount,
-              retiredAmount,
+              amount: String(amount),
+              retiredAmount: String(retiredAmount),
               retirementStatus: row.retirement_status ?? (retiredAmount > 0 ? (retiredAmount >= amount ? 'retired' : 'partial') : 'not_retired'),
               method: row.method ?? null,
               transactionRef: row.transaction_ref ?? null,
@@ -917,8 +1274,8 @@ export class RequestsService {
               retiredAt: retiredAmount > 0 ? disbursedAt : null,
               verifiedAt: row.retirement_status === 'verified' ? disbursedAt : null,
               contactId: row.contact_id ?? null,
-              grossAmount: deductions.length > 0 ? grossAmt : null,
-              netAmount: netAmt,
+              grossAmount: deductions.length > 0 ? String(grossAmt) : null,
+              netAmount: netAmt == null ? null : String(netAmt),
               metadata: {
                 retirement_file_ids: row.retirement_file_ids ?? [],
                 ...(row.refund_amount != null || row.refund_method || row.refund_reference ? {
@@ -929,48 +1286,49 @@ export class RequestsService {
                     refund_date: row.refund_date ?? null,
                   }
                 } : {})
-              } as Drizzle.InputJsonValue
-            }
-          });
+              } as any
+            })
+            .returning();
           if (evidenceFileIds.length > 0) {
-            await tx.financePaymentVoucherFile.createMany({
-              data: evidenceFileIds.map((fileId, index) => ({
+            await tx.insert(financePaymentVoucherFile).values(
+              evidenceFileIds.map((fileId, index) => ({
                 voucherId: createdVoucher.id,
                 fileId,
                 fileKind: 'evidence',
                 sortOrder: index
               }))
-            });
+            );
           }
           if (deductions.length > 0) {
-            await tx.financePVDeduction.createMany({
-              data: deductions.map((d) => ({
+            await tx.insert(financePVDeduction).values(
+              deductions.map((d) => ({
                 paymentVoucherId: createdVoucher.id,
                 deductionTypeId: d.deduction_type_id,
-                rate: d.rate,
-                grossAmount: Number(d.gross_amount),
-                deductionAmount: d.deduction_amount,
+                rate: String(d.rate),
+                grossAmount: String(Number(d.gross_amount)),
+                deductionAmount: String(d.deduction_amount),
                 createdBy: toBigInt(userId),
-              }))
-            });
-            await tx.financeRequestDeduction.createMany({
-              data: deductions.map((d) => ({
+                updatedAt: new Date(),
+              })) as any
+            );
+            await tx.insert(financeRequestDeduction).values(
+              deductions.map((d) => ({
                 requestId: desiredRequestId,
                 deductionTypeId: d.deduction_type_id,
-                amount: Number(d.deduction_amount),
-                rate: d.rate,
-                grossAmount: Number(d.gross_amount),
+                amount: String(Number(d.deduction_amount)),
+                rate: String(d.rate),
+                grossAmount: String(Number(d.gross_amount)),
                 status: 'pending',
                 createdBy: toBigInt(userId),
                 updatedAt: new Date(),
-              }))
-            });
+              })) as any
+            );
           }
         }
       }
 
       if (isRequestIdChanged) {
-        await tx.requestInstance.delete({ where: { id: existing.id } });
+        await tx.delete(requestInstance).where(eq(requestInstance.id, existing.id));
         await this.ensureStaffRequestSequenceFloor(tx);
       }
     });
@@ -988,7 +1346,10 @@ export class RequestsService {
       throw new BadRequestException('Only manual-import requests can be deleted from manual entry');
     }
 
-    await this.drizzle.requestInstance.delete({ where: { id: existing.id } });
+    const tid = this.tenantContext.currentTenantId();
+    await this.db.client
+      .delete(requestInstance)
+      .where(and(eq(requestInstance.id, existing.id), this.tenanted(requestInstance.tenantId, tid)));
     return { success: true };
   }
 
@@ -1001,16 +1362,15 @@ export class RequestsService {
       return { exists: false };
     }
 
-    const where: Drizzle.RequestInstanceWhereInput = {
-      ...(requestTypeId ? { requestTypeId } : {}),
-      ...(excludeId ? { id: { not: toBigInt(excludeId) } } : {}),
-      id: toBigInt(raw)
-    };
+    const conditions: (SQL | undefined)[] = [];
+    if (requestTypeId) conditions.push(eq(requestInstance.requestTypeId, requestTypeId));
+    conditions.push(eq(requestInstance.id, toBigInt(raw)));
 
-    const found = await this.drizzle.requestInstance.findFirst({
-      where,
-      select: { id: true }
-    });
+    const [found] = await this.db.client
+      .select({ id: requestInstance.id })
+      .from(requestInstance)
+      .where(and(...conditions))
+      .limit(1);
     return { exists: Boolean(found), request_id: found?.id?.toString() ?? null };
   }
 
@@ -1023,17 +1383,19 @@ export class RequestsService {
       return { exists: false };
     }
 
-    const found = await this.drizzle.financePaymentVoucher.findFirst({
-      where: {
-        voucherNumber: raw,
-        ...(excludeRequestId ? { requestId: { not: toBigInt(excludeRequestId) } } : {})
-      },
-      select: {
-        id: true,
-        requestId: true,
-        voucherNumber: true
-      }
-    });
+    const conditions: (SQL | undefined)[] = [];
+    if (excludeRequestId) conditions.push(ne(financePaymentVoucher.requestId, toBigInt(excludeRequestId)));
+    conditions.push(eq(financePaymentVoucher.voucherNumber, raw));
+
+    const [found] = await this.db.client
+      .select({
+        id: financePaymentVoucher.id,
+        requestId: financePaymentVoucher.requestId,
+        voucherNumber: financePaymentVoucher.voucherNumber
+      })
+      .from(financePaymentVoucher)
+      .where(and(...conditions))
+      .limit(1);
 
     return {
       exists: Boolean(found),
@@ -1067,18 +1429,18 @@ export class RequestsService {
     // If workflow exists, request is now in generic approval stage.
     if (workflowStart.instanceId) {
       const nextStatus = workflowStart.workflowStatus === 'approved' ? 'cleared' : 'approval';
-      await this.drizzle.requestInstance.update({
-        where: { id: request.id },
-        data: {
+      await this.db.client
+        .update(requestInstance)
+        .set({
           status: nextStatus as any,
           data: this.withStateEvent(request.data, {
             from: 'sent',
             to: nextStatus,
             action: workflowStart.workflowStatus === 'approved' ? 'workflow_auto_approved' : 'workflow_start',
             by: userId
-          })
-        }
-      });
+          }) as any
+        })
+        .where(and(eq(requestInstance.id, request.id), this.tenanted(requestInstance.tenantId, this.tenantContext.currentTenantId())));
     }
 
     const submittedRequest = await this.getRequestOrThrow(id);
@@ -1154,10 +1516,11 @@ export class RequestsService {
           throw error;
         }
 
-        const currentInstance = await this.drizzle.workflowInstance.findUnique({
-          where: { id: request.workflowInstanceId },
-          select: { status: true }
-        });
+        const [currentInstance] = await this.db.client
+          .select({ status: workflowInstance.status })
+          .from(workflowInstance)
+          .where(and(eq(workflowInstance.id, request.workflowInstanceId), this.templated(workflowInstance.tenantId, this.tenantContext.currentTenantId())))
+          .limit(1);
 
         if (currentInstance?.status === 'rejected' || currentInstance?.status === 'cancelled') {
           throw new BadRequestException('Workflow is already closed and cannot be approved');
@@ -1167,10 +1530,10 @@ export class RequestsService {
       }
 
       if (stepResult.status === 'pending') {
-        await this.drizzle.requestInstance.update({
-          where: { id: request.id },
-          data: { status: 'approval' }
-        });
+        await this.db.client
+          .update(requestInstance)
+          .set({ status: 'approval' })
+          .where(and(eq(requestInstance.id, request.id), this.tenanted(requestInstance.tenantId, this.tenantContext.currentTenantId())));
         const formattedRequestNumber = await this.getFormattedRequestNumber(request.id);
         await this.notifyCurrentApprovers(
           request.id,
@@ -1258,10 +1621,11 @@ export class RequestsService {
           throw error;
         }
 
-        const currentInstance = await this.drizzle.workflowInstance.findUnique({
-          where: { id: request.workflowInstanceId },
-          select: { status: true }
-        });
+        const [currentInstance] = await this.db.client
+          .select({ status: workflowInstance.status })
+          .from(workflowInstance)
+          .where(and(eq(workflowInstance.id, request.workflowInstanceId), this.templated(workflowInstance.tenantId, this.tenantContext.currentTenantId())))
+          .limit(1);
 
         if (currentInstance?.status === 'approved') {
           throw new BadRequestException('Workflow is already approved and cannot be rejected');
@@ -1342,10 +1706,11 @@ export class RequestsService {
             throw error;
           }
 
-          const currentInstance = await this.drizzle.workflowInstance.findUnique({
-            where: { id: request.workflowInstanceId },
-            select: { status: true }
-          });
+          const [currentInstance] = await this.db.client
+            .select({ status: workflowInstance.status })
+            .from(workflowInstance)
+            .where(and(eq(workflowInstance.id, request.workflowInstanceId), this.templated(workflowInstance.tenantId, this.tenantContext.currentTenantId())))
+            .limit(1);
 
           if (currentInstance?.status === 'approved') {
             throw new BadRequestException('Workflow is already approved and cannot be returned for edit');
@@ -1353,9 +1718,9 @@ export class RequestsService {
         }
       }
 
-      const updated = await this.drizzle.requestInstance.update({
-        where: { id: request.id },
-        data: {
+      const [updated] = await this.db.client
+        .update(requestInstance)
+        .set({
           status: 'returned',
           workflowInstanceId: null,
           data: this.withStateEvent(request.data, {
@@ -1364,9 +1729,10 @@ export class RequestsService {
             by: userId,
             action: 'return',
             comment: reason
-          })
-        }
-      });
+          }) as any
+        })
+        .where(and(eq(requestInstance.id, request.id), this.tenanted(requestInstance.tenantId, this.tenantContext.currentTenantId())))
+        .returning();
 
       await this.syncBudgetCommitmentForRequest(updated);
 
@@ -1403,10 +1769,7 @@ export class RequestsService {
         error,
       });
 
-      const current = await this.drizzle.requestInstance.findUnique({
-        where: { id: request.id },
-        include: this.documentGenerator.getRequestInclude()
-      });
+      const current = await this.hydrateRequest(await this.getRequestOrThrow(id));
 
       if (current?.status === 'returned') {
         const serialized = this.serializeRequest(current);
@@ -1423,47 +1786,55 @@ export class RequestsService {
     const limit = filters.per_page ? Math.max(1, parseInt(String(filters.per_page), 10)) : 1000;
     const skip = (page - 1) * limit;
 
-    const where: Drizzle.RequestInstanceWhereInput = {};
+    const conditions: (SQL | undefined)[] = [];
 
-    if (filters.id) where.id = toBigInt(filters.id);
-    if (filters.group_id) where.groupId = filters.group_id;
-    if (filters.type_id || filters.request_type_id) where.requestTypeId = filters.type_id || filters.request_type_id;
+    const scope = this.tenanted(requestInstance.tenantId, this.tenantContext.currentTenantId());
+    if (scope) conditions.push(scope);
+    if (filters.id) conditions.push(eq(requestInstance.id, toBigInt(filters.id)));
+    if (filters.group_id) conditions.push(eq(requestInstance.groupId, filters.group_id));
+    if (filters.type_id || filters.request_type_id) conditions.push(eq(requestInstance.requestTypeId, filters.type_id || filters.request_type_id));
     if (filters.status) {
       if (typeof filters.status === 'string' && filters.status.includes(',')) {
-        where.status = { in: filters.status.split(',') };
+        conditions.push(inArray(requestInstance.status, filters.status.split(',') as any));
       } else {
-        where.status = filters.status;
+        conditions.push(eq(requestInstance.status, filters.status as any));
       }
     }
-    if (filters.created_by) where.createdBy = toBigInt(filters.created_by);
+    if (filters.created_by) conditions.push(eq(requestInstance.createdBy, toBigInt(filters.created_by)));
     if (filters.request_number) {
       const raw = String(filters.request_number).trim();
-      if (/^\d+$/.test(raw)) where.id = toBigInt(raw);
+      if (/^\d+$/.test(raw)) conditions.push(eq(requestInstance.id, toBigInt(raw)));
     }
-    
     if (filters.family) {
-      where.requestType = { workflowType: filters.family };
+      conditions.push(
+        inArray(
+          requestInstance.requestTypeId,
+          this.db.client.select({ id: requestType.id }).from(requestType).where(eq(requestType.workflowType, filters.family))
+        )
+      );
     }
 
     // If no view-all permission, restrict to current user (handled by PermissionsGuard upstream)
     if (filters.only_mine === 'true') {
-      where.createdBy = toBigInt(userId);
+      conditions.push(eq(requestInstance.createdBy, toBigInt(userId)));
     }
 
     const [total, data] = await Promise.all([
-      this.drizzle.requestInstance.count({ where }),
-      this.drizzle.requestInstance.findMany({
-        where,
-        include: this.documentGenerator.getRequestInclude(),
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: limit,
-      })
+      this.db.client.select({ c: count() }).from(requestInstance).where(and(...conditions)).execute(),
+      this.db.client
+        .select()
+        .from(requestInstance)
+        .where(and(...conditions))
+        .orderBy(desc(requestInstance.createdAt))
+        .limit(limit)
+        .offset(skip)
+        .execute()
     ]);
 
     const items = await Promise.all(
       data.map(async (item) => {
-        const ser = this.serializeRequest(item);
+        const hydrated = await this.hydrateRequest(item);
+        const ser = this.serializeRequest(hydrated);
         if (item.workflowInstanceId) {
           ser.approvals = await this.getApprovalSummary(item.workflowInstanceId);
         } else {
@@ -1472,16 +1843,13 @@ export class RequestsService {
         return ser;
       })
     );
-    return paginatedResponse(items, { page, per_page: limit, total });
+    return paginatedResponse(items, { page, per_page: limit, total: Number(total[0]?.c ?? 0) });
   }
 
   async getRequest(id: string, _userId: string): Promise<RequestResponseDto> {
-    const request = await this.drizzle.requestInstance.findUnique({
-      where: { id: toBigInt(id) },
-      include: this.documentGenerator.getRequestInclude()
-    });
-    if (!request) throw new NotFoundException('Request not found');
-    const serialized = this.serializeRequest(request);
+    const request = await this.getRequestOrThrow(id);
+    const hydrated = await this.hydrateRequest(request);
+    const serialized = this.serializeRequest(hydrated);
     if (request.workflowInstanceId) {
       serialized.approvals = await this.getApprovalSummary(request.workflowInstanceId);
     } else {
@@ -1523,15 +1891,16 @@ export class RequestsService {
 
     if (dto.data) {
       await this.formsService.validateRequestTypePayload(request.requestTypeId, dto.data);
-      const requestType = await this.drizzle.requestType.findUnique({
-        where: { id: request.requestTypeId },
-        select: { name: true, taxonomyKeys: true, formSchema: true }
-      });
+      const [lightType] = await this.db.client
+        .select({ name: requestType.name, taxonomyKeys: requestType.taxonomyKeys, formSchema: requestType.formSchema })
+        .from(requestType)
+        .where(eq(requestType.id, request.requestTypeId))
+        .limit(1);
       await this.validateLeaveRequestPayload(
         {
-          name: requestType?.name ?? null,
-          taxonomyKeys: requestType?.taxonomyKeys as string[] | null | undefined,
-          formSchema: requestType?.formSchema ?? null
+          name: lightType?.name ?? null,
+          taxonomyKeys: lightType?.taxonomyKeys as string[] | null | undefined,
+          formSchema: lightType?.formSchema ?? null
         },
         dto.data,
         userId
@@ -1550,7 +1919,7 @@ export class RequestsService {
     });
     const normalizedData = this.withBudgetSelection(nextDataSource ?? {}, budgetSelection);
 
-    const updated = await this.drizzle.$transaction(async (tx) => {
+    const updated = await this.db.client.transaction(async (tx) => {
       const computedTotal = dto.items && dto.items.length
         ? dto.items.reduce((sum, item) => sum + (item.amount * (item.quantity ?? 1)), 0)
         : undefined;
@@ -1562,28 +1931,30 @@ export class RequestsService {
         await this.ensureFileAssetsExist(tx, fileIds);
       }
 
-        const updated = await tx.requestInstance.update({
-          where: { id: request.id },
-          data: {
-            data: normalizedData,
-            teamId: dto.team_id ? toBigInt(dto.team_id) : request.teamId,
-            organizationId: dto.organization_id ? toBigInt(dto.organization_id) : request.organizationId,
-            totalAmount: computedTotal ?? dto.total_amount ?? request.totalAmount,
-            currency: dto.currency ?? request.currency
-          }
-      });
+      const [updated] = await tx
+        .update(requestInstance)
+        .set({
+          data: normalizedData as any,
+          teamId: dto.team_id ? toBigInt(dto.team_id) : request.teamId,
+          organizationId: dto.organization_id ? toBigInt(dto.organization_id) : request.organizationId,
+          totalAmount: computedTotal !== undefined ? String(computedTotal) : dto.total_amount !== undefined ? String(dto.total_amount) : request.totalAmount,
+          currency: dto.currency ?? request.currency
+        })
+        .where(and(eq(requestInstance.id, request.id), this.tenanted(requestInstance.tenantId, this.tenantContext.currentTenantId())))
+        .returning();
 
       if (dto.items) {
-        await tx.requestItem.deleteMany({ where: { requestId: request.id } });
+        await tx.delete(requestItem).where(eq(requestItem.requestId, request.id));
         if (dto.items.length > 0) {
           for (const item of dto.items) {
             const fileIds = this.normalizeItemFileIds(item);
-            const createdItem = await tx.requestItem.create({
-              data: {
+            const [createdItem] = await tx
+              .insert(requestItem)
+              .values({
                 requestId: request.id,
                 fileId: fileIds[0] ?? null,
                 description: item.description,
-                amount: item.amount,
+                amount: String(item.amount),
                 quantity: item.quantity ?? 1,
                 categoryId: item.category_id ?? null,
                 subcategoryId: item.subcategory_id ?? null,
@@ -1592,16 +1963,16 @@ export class RequestsService {
                 bankName: item.bank_name ?? null,
                 accountNumber: item.account_number ?? null,
                 accountName: item.account_name ?? null
-              }
-            });
+              })
+              .returning();
             if (fileIds.length > 0) {
-              await tx.requestItemFile.createMany({
-                data: fileIds.map((fileId, index) => ({
+              await tx.insert(requestItemFile).values(
+                fileIds.map((fileId, index) => ({
                   requestItemId: createdItem.id,
                   fileId,
                   sortOrder: index
                 }))
-              });
+              );
             }
           }
         }
@@ -1624,7 +1995,9 @@ export class RequestsService {
       throw new BadRequestException('Only draft requests can be deleted');
     }
 
-    await this.drizzle.requestInstance.delete({ where: { id: request.id } });
+    await this.db.client
+      .delete(requestInstance)
+      .where(and(eq(requestInstance.id, request.id), this.tenanted(requestInstance.tenantId, this.tenantContext.currentTenantId())));
     return { success: true };
   }
 
@@ -1632,13 +2005,11 @@ export class RequestsService {
     const page = Math.max(1, Number(filters.page) || 1);
     const perPage = Math.min(100, Math.max(1, Number(filters.per_page) || 20));
 
-    const data = await this.drizzle.requestInstance.findMany({
-      where: {
-        workflowInstanceId: { not: null }
-      },
-      include: this.documentGenerator.getRequestInclude(),
-      orderBy: { createdAt: 'desc' }
-    });
+    const data = await this.db.client
+      .select()
+      .from(requestInstance)
+      .where(and(isNotNull(requestInstance.workflowInstanceId), this.tenanted(requestInstance.tenantId, this.tenantContext.currentTenantId())))
+      .orderBy(desc(requestInstance.createdAt));
 
     const userIdBigInt = toBigInt(userId);
     const instanceIds = data
@@ -1646,14 +2017,18 @@ export class RequestsService {
       .filter((id): id is string => Boolean(id));
     const myHistory =
       instanceIds.length > 0
-        ? await this.drizzle.workflowHistory.findMany({
-            where: {
-              instanceId: { in: instanceIds },
-              performedBy: userIdBigInt,
-              action: { in: ['approve', 'reject'] }
-            },
-            orderBy: { createdAt: 'desc' }
-          })
+        ? await this.db.client
+            .select()
+            .from(workflowHistory)
+            .where(
+              and(
+                inArray(workflowHistory.instanceId, instanceIds),
+                eq(workflowHistory.performedBy, userIdBigInt),
+                inArray(workflowHistory.action, ['approve', 'reject']),
+                this.templated(workflowHistory.tenantId, this.tenantContext.currentTenantId())
+              )
+            )
+            .orderBy(desc(workflowHistory.createdAt))
         : [];
     const myActionByInstance = new Map<string, 'approve' | 'reject'>();
     for (const row of myHistory) {
@@ -1664,7 +2039,8 @@ export class RequestsService {
 
     const serialized = await Promise.all(
       data.map(async (item) => {
-        const ser = this.serializeRequest(item);
+        const hydrated = await this.hydrateRequest(item);
+        const ser = this.serializeRequest(hydrated);
         if (item.workflowInstanceId) {
           ser.approvals = await this.getApprovalSummary(item.workflowInstanceId);
         } else {
@@ -1712,29 +2088,33 @@ export class RequestsService {
     const year = Number(query.year ?? new Date().getFullYear());
     const leaveTypeKey = query.leave_type_key ? String(query.leave_type_key).trim().toLowerCase() : undefined;
 
-    const where: Drizzle.LeaveBalanceLedgerWhereInput = {
-      userId: actorId,
-      periodYear: year,
-      ...(leaveTypeKey ? { leaveTypeKey } : {})
-    };
+    const conditions: (SQL | undefined)[] = [
+      eq(leaveBalanceLedger.userId, actorId),
+      eq(leaveBalanceLedger.periodYear, year),
+      this.tenanted(leaveBalanceLedger.tenantId, this.tenantContext.currentTenantId())
+    ];
+    if (leaveTypeKey) conditions.push(eq(leaveBalanceLedger.leaveTypeKey, leaveTypeKey));
 
-    const [rows, aggregate] = await this.drizzle.$transaction([
-      this.drizzle.leaveBalanceLedger.findMany({
-        where,
-        orderBy: { createdAt: 'asc' }
-      }),
-      this.drizzle.leaveBalanceLedger.groupBy({
-        by: ['leaveTypeKey'],
-        where,
-        orderBy: { leaveTypeKey: 'asc' },
-        _sum: { deltaDays: true }
-      })
+    const [rows, aggregate] = await Promise.all([
+      this.db.client
+        .select()
+        .from(leaveBalanceLedger)
+        .where(and(...conditions))
+        .orderBy(asc(leaveBalanceLedger.createdAt))
+        .execute(),
+      this.db.client
+        .select({ leaveTypeKey: leaveBalanceLedger.leaveTypeKey, sum: sql<string>`sum(${leaveBalanceLedger.deltaDays})` })
+        .from(leaveBalanceLedger)
+        .where(and(...conditions))
+        .groupBy(leaveBalanceLedger.leaveTypeKey)
+        .orderBy(asc(leaveBalanceLedger.leaveTypeKey))
+        .execute()
     ]);
 
     const entitlements = await this.resolveLeaveEntitlements(actorId, year);
     const aggregateByKey = new Map<string, number>();
     for (const entry of aggregate) {
-      aggregateByKey.set(entry.leaveTypeKey, Number(entry._sum?.deltaDays ?? 0));
+      aggregateByKey.set(entry.leaveTypeKey, Number(entry.sum ?? 0));
     }
 
     const summaryKeys = new Set<string>([
@@ -1777,9 +2157,10 @@ export class RequestsService {
   async getApprovalHistory(id: string, _userId: string) {
     const request = await this.getRequestOrThrow(id);
     if (!request.workflowInstanceId) return [];
-    return this.drizzle.workflowHistory.findMany({
-      where: { instanceId: request.workflowInstanceId }
-    });
+    return this.db.client
+      .select()
+      .from(workflowHistory)
+      .where(and(eq(workflowHistory.instanceId, request.workflowInstanceId), this.templated(workflowHistory.tenantId, this.tenantContext.currentTenantId())));
   }
 
   async getRequestThread(id: string, _userId: string) {
@@ -1905,35 +2286,37 @@ export class RequestsService {
     if (request.createdBy !== toBigInt(userId)) {
       throw new BadRequestException('Only owner can confirm disbursement');
     }
-    const voucher = await this.drizzle.financePaymentVoucher.findFirst({
-      where: { requestId: request.id, id: voucherId }
-    });
+    const [voucher] = await this.db.client
+      .select()
+      .from(financePaymentVoucher)
+      .where(and(eq(financePaymentVoucher.requestId, request.id), eq(financePaymentVoucher.id, voucherId)))
+      .limit(1);
     if (!voucher) throw new NotFoundException('Payment voucher not found');
 
     const metadata =
       voucher.metadata && typeof voucher.metadata === 'object' && !Array.isArray(voucher.metadata)
         ? ({ ...(voucher.metadata as Record<string, unknown>) } as Record<string, unknown>)
         : {};
-    await this.drizzle.financePaymentVoucher.update({
-      where: { id: voucher.id },
-      data: {
+    await this.db.client
+      .update(financePaymentVoucher)
+      .set({
         metadata: {
           ...metadata,
           confirmed_by: userId,
           confirmed_at: new Date().toISOString()
-        } as Drizzle.InputJsonValue
-      }
-    });
+        } as any
+      })
+      .where(eq(financePaymentVoucher.id, voucher.id));
     await this.logWorkflowEvent(request.workflowInstanceId, 'pv_confirmed', userId, {
       request_id: request.id.toString(),
       voucher_id: voucher.id,
       voucher_number: voucher.voucherNumber
     });
 
-    const vouchers = await this.drizzle.financePaymentVoucher.findMany({
-      where: { requestId: request.id },
-      select: { amount: true, grossAmount: true }
-    });
+    const vouchers = await this.db.client
+      .select({ amount: financePaymentVoucher.amount, grossAmount: financePaymentVoucher.grossAmount })
+      .from(financePaymentVoucher)
+      .where(eq(financePaymentVoucher.requestId, request.id));
     const requestTotal = Number(request.totalAmount ?? 0);
     const totalDisbursed = vouchers.reduce((sum, v) => {
       const val = v.grossAmount !== null ? Number(v.grossAmount) : Number(v.amount);
@@ -1981,17 +2364,17 @@ export class RequestsService {
     }
 
     if (dto.retirement_file_ids?.length) {
-      await this.ensureFileAssetsExist(this.drizzle, dto.retirement_file_ids);
+      await this.ensureFileAssetsExist(this.db.client, dto.retirement_file_ids);
     }
 
     if (request.status === 'retired') {
       const resetWhere = dto.voucher_id
-        ? { requestId: request.id, id: dto.voucher_id }
-        : { requestId: request.id };
-      await this.drizzle.financePaymentVoucher.updateMany({
-        where: resetWhere,
-        data: { retiredAmount: 0, retirementStatus: 'not_retired' }
-      });
+        ? and(eq(financePaymentVoucher.requestId, request.id), eq(financePaymentVoucher.id, dto.voucher_id))
+        : eq(financePaymentVoucher.requestId, request.id);
+      await this.db.client
+        .update(financePaymentVoucher)
+        .set({ retiredAmount: '0', retirementStatus: 'not_retired' })
+        .where(resetWhere);
     }
 
     const retirementResult = await this.applyRetirementToPaymentVouchers(request.id, dto);
@@ -1999,9 +2382,9 @@ export class RequestsService {
     const nextStatus = shouldMarkRetired ? 'retired' : request.status;
     const retirementAction = shouldMarkRetired ? 'retire' : 'retire_partial';
 
-    const updated = await this.drizzle.requestInstance.update({
-      where: { id: request.id },
-      data: {
+    const [updated] = await this.db.client
+      .update(requestInstance)
+      .set({
         status: nextStatus as any,
         data: this.withRetirementData(
           this.withStateEvent(request.data, {
@@ -2012,9 +2395,10 @@ export class RequestsService {
             comment: dto.notes
           }),
           dto
-        )
-      }
-    });
+        ) as any
+      })
+      .where(and(eq(requestInstance.id, request.id), this.tenanted(requestInstance.tenantId, this.tenantContext.currentTenantId())))
+      .returning();
     await this.syncBudgetCommitmentForRequest(updated);
     for (const touched of retirementResult.touched_vouchers) {
       await this.logWorkflowEvent(request.workflowInstanceId, 'pv_retired', userId, {
@@ -2055,10 +2439,11 @@ export class RequestsService {
 
   async verifyRetirement(id: string, _userId: string) {
     const request = await this.getRequestOrThrow(id);
-    const vouchers = await this.drizzle.financePaymentVoucher.findMany({
-      where: { requestId: request.id },
-      orderBy: { disbursedAt: 'asc' }
-    });
+    const vouchers = await this.db.client
+      .select()
+      .from(financePaymentVoucher)
+      .where(eq(financePaymentVoucher.requestId, request.id))
+      .orderBy(asc(financePaymentVoucher.disbursedAt));
     if (vouchers.length === 0) {
       throw new BadRequestException('No payment vouchers found for this request');
     }
@@ -2082,24 +2467,24 @@ export class RequestsService {
       const refund = (breakdown.refund ?? {}) as Record<string, unknown>;
       return sum + (typeof refund.refund_amount === 'number' ? refund.refund_amount : 0);
     }, 0);
-    const deductionAgg = await this.drizzle.financeRequestDeduction.aggregate({
-      where: { requestId: request.id },
-      _sum: { amount: true }
-    });
-    const totalDeducted = Number(deductionAgg._sum.amount ?? 0);
+    const [deductionAggRow] = await this.db.client
+      .select({ sum: sql<string>`coalesce(sum(${financeRequestDeduction.amount}), 0)` })
+      .from(financeRequestDeduction)
+      .where(eq(financeRequestDeduction.requestId, request.id));
+    const totalDeducted = Number(deductionAggRow?.sum ?? 0);
     if (retirementOutstanding - totalDeducted - totalRefunded > 0.009) {
       throw new BadRequestException('Cannot complete request until all payment vouchers are fully retired');
     }
 
     const vouchersToVerify = vouchers.filter((voucher) => voucher.retirementStatus === 'retired');
     if (vouchersToVerify.length > 0) {
-      await this.drizzle.financePaymentVoucher.updateMany({
-        where: { id: { in: vouchersToVerify.map((voucher) => voucher.id) } },
-        data: {
+      await this.db.client
+        .update(financePaymentVoucher)
+        .set({
           retirementStatus: 'verified',
           verifiedAt: new Date()
-        }
-      });
+        })
+        .where(inArray(financePaymentVoucher.id, vouchersToVerify.map((voucher) => voucher.id)));
     }
 
     const hasUnverified = vouchers.some(
@@ -2154,15 +2539,13 @@ export class RequestsService {
       throw new BadRequestException('budget_id and budget_line_id must be provided together');
     }
 
-    const budget = await this.drizzle.financeBudget.findUnique({
-      where: { id: String(data.budget_id) },
-      include: {
-        currentActiveRevision: {
-          include: { lines: true },
-        },
-      },
-    });
-    if (!budget || budget.status !== 'approved' || !budget.currentActiveRevision) {
+    const [budget] = await this.db.client
+      .select()
+      .from(financeBudget)
+      .where(and(eq(financeBudget.id, String(data.budget_id)), this.tenanted(financeBudget.tenantId, this.tenantContext.currentTenantId())))
+      .limit(1);
+    const activeRevision = budget ? await this.budgetRevisionWithLines(budget.currentActiveRevisionId) : null;
+    if (!budget || budget.status !== 'approved' || !activeRevision) {
       throw new BadRequestException('Selected budget is not approved');
     }
     if (budget.teamId && context.team_id !== budget.teamId.toString()) {
@@ -2175,12 +2558,12 @@ export class RequestsService {
       throw new BadRequestException('Budget scope does not match request project');
     }
 
-    const line = budget.currentActiveRevision.lines.find((entry) => entry.id === String(data.budget_line_id));
+    const line = activeRevision.lines.find((entry) => entry.id === String(data.budget_line_id));
     if (!line) throw new BadRequestException('Invalid budget_line_id');
 
     return {
       budgetId: budget.id,
-      budgetRevisionId: budget.currentActiveRevision.id,
+      budgetRevisionId: activeRevision.id,
       budgetLineId: line.id,
       amount: Number(line.totalAmount ?? line.amount ?? 0),
     };
@@ -2188,19 +2571,19 @@ export class RequestsService {
 
   private withBudgetSelection(data: Record<string, any>, selection: { budgetId: string; budgetRevisionId: string; budgetLineId: string } | null) {
     const base = { ...data } as Record<string, unknown>;
-    if (!selection) return base as Drizzle.InputJsonValue;
+    if (!selection) return base;
     return {
       ...base,
       budget_id: selection.budgetId,
       budget_revision_id: selection.budgetRevisionId,
       budget_line_id: selection.budgetLineId,
-    } as Drizzle.InputJsonValue;
+    };
   }
 
   private async syncBudgetCommitmentForRequest(request: {
     id: bigint;
     status: string;
-    totalAmount?: Drizzle.Decimal | number | null;
+    totalAmount?: string | number | null;
     data?: unknown;
   }) {
     const data = request.data && typeof request.data === 'object' && !Array.isArray(request.data)
@@ -2208,10 +2591,10 @@ export class RequestsService {
       : {};
 
     if (!data.budget_id || !data.budget_line_id || !data.budget_revision_id) {
-      await this.drizzle.financeBudgetCommitment.updateMany({
-        where: { requestId: request.id },
-        data: { status: 'released', actualizedAmount: null },
-      });
+      await this.db.client
+        .update(financeBudgetCommitment)
+        .set({ status: 'released', actualizedAmount: null })
+        .where(eq(financeBudgetCommitment.requestId, request.id));
       return;
     }
 
@@ -2223,51 +2606,48 @@ export class RequestsService {
         : 'released';
     const amount = Number(request.totalAmount ?? 0);
 
-    await this.drizzle.financeBudgetCommitment.upsert({
-      where: {
-        unique_request_budget_line_commitment: {
-          requestId: request.id,
-          budgetLineId: String(data.budget_line_id),
-        },
-      },
-      update: {
-        status,
-        committedAmount: amount,
-        actualizedAmount: status === 'consumed' ? amount : null,
-      },
-      create: {
+    await this.db.client
+      .insert(financeBudgetCommitment)
+      .values({
         budgetId: String(data.budget_id),
         budgetRevisionId: String(data.budget_revision_id),
         budgetLineId: String(data.budget_line_id),
         requestId: request.id,
         status,
-        committedAmount: amount,
-        actualizedAmount: status === 'consumed' ? amount : null,
-      },
-    });
+        committedAmount: String(amount),
+        actualizedAmount: status === 'consumed' ? String(amount) : null,
+      })
+      .onConflictDoUpdate({
+        target: [financeBudgetCommitment.requestId, financeBudgetCommitment.budgetLineId],
+        set: {
+          status,
+          committedAmount: String(amount),
+          actualizedAmount: status === 'consumed' ? String(amount) : null,
+        },
+      });
   }
 
   private async getRequestOrThrow(id: string) {
-    const request = await this.drizzle.requestInstance.findUnique({
-      where: { id: toBigInt(id) }
-    });
+    const [request] = await this.db.client
+      .select()
+      .from(requestInstance)
+      .where(and(eq(requestInstance.id, toBigInt(id)), this.tenanted(requestInstance.tenantId, this.tenantContext.currentTenantId())))
+      .limit(1);
     if (!request) throw new NotFoundException('Request not found');
     return request;
   }
 
   private async hasEligibleHandoverColleague(userId: bigint): Promise<boolean> {
-    const memberships = await this.drizzle.groupUser.findMany({
-      where: { userId },
-      select: { groupId: true }
-    });
+    const memberships = await this.db.client
+      .select({ groupId: groupUser.groupId })
+      .from(groupUser)
+      .where(eq(groupUser.userId, userId));
     if (!memberships.length) return false;
-    const colleague = await this.drizzle.groupUser.findFirst({
-      where: {
-        groupId: { in: memberships.map((m) => m.groupId) },
-        userId: { not: userId }
-      },
-      select: { id: true }
-    });
+    const [colleague] = await this.db.client
+      .select({ id: groupUser.id })
+      .from(groupUser)
+      .where(and(inArray(groupUser.groupId, memberships.map((m) => m.groupId)), ne(groupUser.userId, userId)))
+      .limit(1);
     return Boolean(colleague);
   }
 
@@ -2276,7 +2656,7 @@ export class RequestsService {
     data: unknown,
     userId: string
   ) {
-    if (!this.isLeaveRequestType(requestType?.name ?? null, (requestType?.taxonomyKeys as string[] | null) ?? null, requestType?.formSchema)) {
+    if (!isLeaveRequestType(requestType?.name ?? null, (requestType?.taxonomyKeys as string[] | null) ?? null, requestType?.formSchema)) {
       return;
     }
     if (!data || typeof data !== 'object' || Array.isArray(data)) {
@@ -2337,31 +2717,30 @@ export class RequestsService {
     const leave = await this.getLeaveRequestMeta(requestId);
     if (!leave) return;
 
-    const existingDebit = await this.drizzle.leaveBalanceLedger.findFirst({
-      where: {
-        sourceRequestId: requestId,
-        entryType: 'request_debit'
-      }
-    });
-    if (existingDebit) return;
+    const existingDebit = await this.db.client
+      .select()
+      .from(leaveBalanceLedger)
+      .where(and(eq(leaveBalanceLedger.sourceRequestId, requestId), eq(leaveBalanceLedger.entryType, 'request_debit'), this.tenanted(leaveBalanceLedger.tenantId, this.tenantContext.currentTenantId())))
+      .limit(1);
+    if (existingDebit[0]) return;
 
     await this.ensureLeaveBalanceForApproval(requestId);
 
-    await this.drizzle.leaveBalanceLedger.create({
-      data: {
-        userId: leave.user_id,
-        leaveTypeKey: leave.leave_type_key,
-        periodYear: leave.period_year,
-        deltaDays: -leave.days_requested,
-        entryType: 'request_debit',
-        sourceRequestId: requestId,
-        notes: `Leave approved for request ${requestId.toString()}`,
-        createdBy: toBigInt(actorId),
-        metadata: {
-          request_id: requestId.toString(),
-          leave_type_key: leave.leave_type_key
-        } as Drizzle.InputJsonValue
-      }
+    const tid = this.tenantContext.currentTenantId();
+    await this.db.client.insert(leaveBalanceLedger).values({
+      ...(tid !== undefined ? { tenantId: tid } : {}),
+      userId: leave.user_id,
+      leaveTypeKey: leave.leave_type_key,
+      periodYear: leave.period_year,
+      deltaDays: String(-leave.days_requested),
+      entryType: 'request_debit',
+      sourceRequestId: requestId,
+      notes: `Leave approved for request ${requestId.toString()}`,
+      createdBy: toBigInt(actorId),
+      metadata: {
+        request_id: requestId.toString(),
+        leave_type_key: leave.leave_type_key
+      } as any
     });
   }
 
@@ -2369,33 +2748,36 @@ export class RequestsService {
     const leave = await this.getLeaveRequestMeta(requestId);
     if (!leave) return;
 
-    const existingDebit = await this.drizzle.leaveBalanceLedger.findFirst({
-      where: {
-        sourceRequestId: requestId,
-        entryType: 'request_debit'
-      }
-    });
-    if (existingDebit) return;
+    const existingDebit = await this.db.client
+      .select()
+      .from(leaveBalanceLedger)
+      .where(and(eq(leaveBalanceLedger.sourceRequestId, requestId), eq(leaveBalanceLedger.entryType, 'request_debit'), this.tenanted(leaveBalanceLedger.tenantId, this.tenantContext.currentTenantId())))
+      .limit(1);
+    if (existingDebit[0]) return;
 
-    const request = await this.drizzle.requestInstance.findUnique({
-      where: { id: requestId },
-      select: { data: true }
-    });
+    const [request] = await this.db.client
+      .select({ data: requestInstance.data })
+      .from(requestInstance)
+      .where(and(eq(requestInstance.id, requestId), this.tenanted(requestInstance.tenantId, this.tenantContext.currentTenantId())))
+      .limit(1);
     const requestData = request?.data && typeof request.data === 'object' && !Array.isArray(request.data) ? (request.data as any) : {};
     if (requestData.is_special_request === true) return;
 
     const entitlements = await this.resolveLeaveEntitlements(leave.user_id, leave.period_year);
     const entitledDays = Number(entitlements[leave.leave_type_key] ?? 0);
 
-    const aggregate = await this.drizzle.leaveBalanceLedger.aggregate({
-      where: {
-        userId: leave.user_id,
-        leaveTypeKey: leave.leave_type_key,
-        periodYear: leave.period_year
-      },
-      _sum: { deltaDays: true }
-    });
-    const ledgerDelta = Number(aggregate._sum.deltaDays ?? 0);
+    const [aggregateRow] = await this.db.client
+      .select({ sum: sql<string>`coalesce(sum(${leaveBalanceLedger.deltaDays}), 0)` })
+      .from(leaveBalanceLedger)
+      .where(
+        and(
+          eq(leaveBalanceLedger.userId, leave.user_id),
+          eq(leaveBalanceLedger.leaveTypeKey, leave.leave_type_key),
+          eq(leaveBalanceLedger.periodYear, leave.period_year),
+          this.tenanted(leaveBalanceLedger.tenantId, this.tenantContext.currentTenantId())
+        )
+      );
+    const ledgerDelta = Number(aggregateRow?.sum ?? 0);
     const availableDays = entitledDays + ledgerDelta;
     if (availableDays < leave.days_requested) {
       throw new BadRequestException(
@@ -2405,37 +2787,36 @@ export class RequestsService {
   }
 
   private async revertLeaveDebitIfNeeded(requestId: bigint, actorId: string, reason: string) {
-    const debit = await this.drizzle.leaveBalanceLedger.findFirst({
-      where: {
-        sourceRequestId: requestId,
-        entryType: 'request_debit'
-      }
-    });
-    if (!debit) return;
+    const [debit] = await this.db.client
+      .select()
+      .from(leaveBalanceLedger)
+      .where(and(eq(leaveBalanceLedger.sourceRequestId, requestId), eq(leaveBalanceLedger.entryType, 'request_debit'), this.tenanted(leaveBalanceLedger.tenantId, this.tenantContext.currentTenantId())))
+      .limit(1);
+    const debitRow = debit ?? null;
+    if (!debitRow) return;
 
-    const existingReversal = await this.drizzle.leaveBalanceLedger.findFirst({
-      where: {
-        sourceRequestId: requestId,
-        entryType: 'reversal'
-      }
-    });
+    const [existingReversal] = await this.db.client
+      .select()
+      .from(leaveBalanceLedger)
+      .where(and(eq(leaveBalanceLedger.sourceRequestId, requestId), eq(leaveBalanceLedger.entryType, 'reversal'), this.tenanted(leaveBalanceLedger.tenantId, this.tenantContext.currentTenantId())))
+      .limit(1);
     if (existingReversal) return;
 
-    await this.drizzle.leaveBalanceLedger.create({
-      data: {
-        userId: debit.userId,
-        leaveTypeKey: debit.leaveTypeKey,
-        periodYear: debit.periodYear,
-        deltaDays: Math.abs(Number(debit.deltaDays)),
-        entryType: 'reversal',
-        sourceRequestId: requestId,
-        notes: `Leave debit reversed: ${reason}`,
-        createdBy: toBigInt(actorId),
-        metadata: {
-          request_id: requestId.toString(),
-          reason
-        } as Drizzle.InputJsonValue
-      }
+    const tid = this.tenantContext.currentTenantId();
+    await this.db.client.insert(leaveBalanceLedger).values({
+      ...(tid !== undefined ? { tenantId: tid } : {}),
+      userId: debitRow.userId,
+      leaveTypeKey: debitRow.leaveTypeKey,
+      periodYear: debitRow.periodYear,
+      deltaDays: String(Math.abs(Number(debitRow.deltaDays))),
+      entryType: 'reversal',
+      sourceRequestId: requestId,
+      notes: `Leave debit reversed: ${reason}`,
+      createdBy: toBigInt(actorId),
+      metadata: {
+        request_id: requestId.toString(),
+        reason
+      } as any
     });
   }
 
@@ -2445,15 +2826,22 @@ export class RequestsService {
     days_requested: number;
     period_year: number;
   } | null> {
-    const request = await this.drizzle.requestInstance.findUnique({
-      where: { id: requestId },
-      include: {
-        requestType: { select: { name: true, taxonomyKeys: true, formSchema: true } }
-      }
-    });
-    if (!request) return null;
+    const [raw] = await this.db.client
+      .select()
+      .from(requestInstance)
+      .where(and(eq(requestInstance.id, requestId), this.tenanted(requestInstance.tenantId, this.tenantContext.currentTenantId())))
+      .limit(1);
+    if (!raw) return null;
+    const [lightType] = raw.requestTypeId
+      ? await this.db.client
+          .select({ name: requestType.name, taxonomyKeys: requestType.taxonomyKeys, formSchema: requestType.formSchema })
+          .from(requestType)
+          .where(eq(requestType.id, raw.requestTypeId))
+          .limit(1)
+      : [];
+    const request = { ...raw, requestType: lightType ?? null };
     if (
-      !this.isLeaveRequestType(
+      !isLeaveRequestType(
         request.requestType?.name ?? null,
         request.requestType?.taxonomyKeys as string[] | null,
         request.requestType?.formSchema ?? null
@@ -2466,11 +2854,7 @@ export class RequestsService {
       request.data && typeof request.data === 'object' && !Array.isArray(request.data)
         ? (request.data as Record<string, unknown>)
         : {};
-    const leaveTypeRaw = this.resolveLeaveTypeKey(
-      data,
-      request.requestType?.name ?? null,
-      request.requestType?.formSchema ?? null
-    );
+    const leaveTypeRaw = resolveLeaveTypeKey(request.requestType?.name ?? null, request.requestType?.formSchema ?? null, data);
 
     let daysRequested = Number(data.days_requested ?? data.days ?? 0);
     if (!Number.isFinite(daysRequested) || daysRequested <= 0) {
@@ -2510,25 +2894,29 @@ export class RequestsService {
     const now = new Date();
     const context = userId ? await this.resolvePolicyContextForUser(userId) : null;
 
-    const rows = await this.drizzle.policy.findMany({
-      where: {
-        module: 'leave',
-        policyKey: { in: ['leave_entitlements', 'entitlement'] },
-        NOT: { scopeType: 'global' },
-        isActive: true,
-        OR: [{ effectiveFrom: null }, { effectiveFrom: { lte: now } }],
-        AND: [{ OR: [{ effectiveTo: null }, { effectiveTo: { gte: now } }] }]
-      },
-      orderBy: [{ scopeType: 'asc' }, { priority: 'asc' }, { createdAt: 'asc' }]
-    });
+    const rows = await this.db.client
+      .select()
+      .from(policy)
+      .where(
+        and(
+          eq(policy.module, 'leave'),
+          inArray(policy.policyKey, ['leave_entitlements', 'entitlement']),
+          ne(policy.scopeType, 'global'),
+          eq(policy.isActive, true),
+          or(isNull(policy.effectiveFrom), lte(policy.effectiveFrom, now)),
+          or(isNull(policy.effectiveTo), gte(policy.effectiveTo, now)),
+          this.templated(policy.tenantId, this.tenantContext.currentTenantId())
+        )
+      )
+      .orderBy(asc(policy.scopeType), asc(policy.priority), asc(policy.createdAt));
 
     const matched = rows
       .filter((row) => {
         if (!context) return row.scopeType === 'global';
-        return this.policyScopeMatches(row.scopeType, row.scopeId, context);
+        return policyScopeMatches(row.scopeType, row.scopeId, context);
       })
       .sort((a, b) => {
-        const rankDelta = this.policyScopeRank(a.scopeType) - this.policyScopeRank(b.scopeType);
+        const rankDelta = policyScopeRank(a.scopeType) - policyScopeRank(b.scopeType);
         if (rankDelta !== 0) return rankDelta;
         if (a.priority !== b.priority) return a.priority - b.priority;
         return a.createdAt.getTime() - b.createdAt.getTime();
@@ -2548,18 +2936,19 @@ export class RequestsService {
 
     if (userId && Number.isFinite(year) && year > 2000) {
       const previousYear = year - 1;
-      const previousDeltaRows = await this.drizzle.leaveBalanceLedger.groupBy({
-        by: ['leaveTypeKey'],
-        where: {
-          userId,
-          periodYear: previousYear
-        },
-        _sum: {
-          deltaDays: true
-        }
-      });
+      const previousDeltaRows = await this.db.client
+        .select({ leaveTypeKey: leaveBalanceLedger.leaveTypeKey, sum: sql<string>`sum(${leaveBalanceLedger.deltaDays})` })
+        .from(leaveBalanceLedger)
+        .where(
+          and(
+            eq(leaveBalanceLedger.userId, userId),
+            eq(leaveBalanceLedger.periodYear, previousYear),
+            this.tenanted(leaveBalanceLedger.tenantId, this.tenantContext.currentTenantId())
+          )
+        )
+        .groupBy(leaveBalanceLedger.leaveTypeKey);
       const previousDeltaByKey = new Map(
-        previousDeltaRows.map((row) => [row.leaveTypeKey, Number(row._sum?.deltaDays ?? 0)])
+        previousDeltaRows.map((row) => [row.leaveTypeKey, Number(row.sum ?? 0)])
       );
       const baseEntitlements = { ...entitlements };
 
@@ -2575,57 +2964,18 @@ export class RequestsService {
     return entitlements;
   }
 
-  private isLeaveRequestType(name: string | null, taxonomyKeys: string[] | null, formSchema: unknown) {
-    const normalizedName = String(name ?? '').toLowerCase();
-    const normalizedCategory = String(taxonomyKeys?.[0] ?? '').toLowerCase();
-    const schema =
-      formSchema && typeof formSchema === 'object' && !Array.isArray(formSchema)
-        ? (formSchema as Record<string, unknown>)
-        : {};
-    const schemaLeaveTypeKey = String(schema.leave_type_key ?? '').trim().toLowerCase();
-    return (
-      normalizedCategory.includes('leave') ||
-      normalizedName.includes('leave') ||
-      schemaLeaveTypeKey.length > 0
-    );
-  }
-
-  private resolveLeaveTypeKey(data: Record<string, unknown>, requestTypeName: string | null, formSchema: unknown) {
-    const schema =
-      formSchema && typeof formSchema === 'object' && !Array.isArray(formSchema)
-        ? (formSchema as Record<string, unknown>)
-        : {};
-    const fromPayload = String(data.leave_type_key ?? data.leave_type ?? '').trim().toLowerCase();
-    if (fromPayload) return fromPayload;
-    const fromSchema = String(schema.leave_type_key ?? '').trim().toLowerCase();
-    if (fromSchema) return fromSchema;
-    const fromName = String(requestTypeName ?? '')
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '_')
-      .replace(/^_+|_+$/g, '');
-    return fromName || 'annual_leave';
-  }
-
   private async getDefaultLeaveRulesFromRequestTypes() {
-    const types = await this.drizzle.requestType.findMany({
-      where: { isActive: true },
-      select: {
-        name: true,
-        taxonomyKeys: true,
-        formSchema: true
-      }
-    });
+    const types = await this.db.client
+      .select({ name: requestType.name, taxonomyKeys: requestType.taxonomyKeys, formSchema: requestType.formSchema })
+      .from(requestType)
+      .where(eq(requestType.isActive, true));
 
     const defaults: Record<string, number> = {};
     const carryoverCaps: Record<string, number> = {};
     for (const type of types) {
-      if (!this.isLeaveRequestType(type.name, type.taxonomyKeys as string[] | null, type.formSchema)) continue;
-      const schema =
-        type.formSchema && typeof type.formSchema === 'object' && !Array.isArray(type.formSchema)
-          ? (type.formSchema as Record<string, unknown>)
-          : {};
-      const key = this.resolveLeaveTypeKey({}, type.name, schema);
+      if (!isLeaveRequestType(type.name, type.taxonomyKeys as string[] | null, type.formSchema)) continue;
+      const schema = objectSchema(type.formSchema);
+      const key = resolveLeaveTypeKey(type.name, schema);
       if (!key) continue;
       const entitled = Number(schema.entitled_days_per_year ?? 0);
       defaults[key] = Number.isFinite(entitled) && entitled > 0 ? entitled : 0;
@@ -2640,48 +2990,30 @@ export class RequestsService {
   }
 
   private async resolvePolicyContextForUser(userId: bigint) {
-    const [profile, primaryTeam] = await this.drizzle.$transaction([
-      this.drizzle.profile.findUnique({
-        where: { id: userId },
-        include: {
-          employeeProfile: { select: { employmentType: true } }
-        }
-      }),
-      this.drizzle.groupUser.findFirst({
-        where: { userId, isPrimary: true },
-        select: { groupId: true }
-      })
-    ]);
+    const tid = this.tenantContext.currentTenantId();
+    const profileScope = await this.profileScope(tid);
+    const [profileRow] = await this.db.client
+      .select({ id: profile.id, primaryOrganizationId: profile.primaryOrganizationId })
+      .from(profile)
+      .where(and(eq(profile.id, userId), profileScope))
+      .limit(1);
+    const [employee] = await this.db.client
+      .select({ employmentType: employeeProfile.employmentType })
+      .from(employeeProfile)
+      .where(and(eq(employeeProfile.userId, userId), this.tenanted(employeeProfile.tenantId, tid)))
+      .limit(1);
+    const [primaryTeam] = await this.db.client
+      .select({ groupId: groupUser.groupId })
+      .from(groupUser)
+      .where(and(eq(groupUser.userId, userId), eq(groupUser.isPrimary, true)))
+      .limit(1);
 
     return {
       user_id: userId.toString(),
-      organization_id: profile?.primaryOrganizationId?.toString(),
+      organization_id: profileRow?.primaryOrganizationId?.toString(),
       team_id: primaryTeam?.groupId?.toString(),
-      staff_type: profile?.employeeProfile?.employmentType ?? undefined
+      staff_type: employee?.employmentType ?? undefined
     };
-  }
-
-  private policyScopeMatches(
-    scopeType: string,
-    scopeId: string | null,
-    context: { organization_id?: string; team_id?: string; staff_type?: string; user_id?: string }
-  ) {
-    if (scopeType === 'global') return true;
-    if (!scopeId) return false;
-    if (scopeType === 'organization') return context.organization_id === scopeId;
-    if (scopeType === 'team') return context.team_id === scopeId;
-    if (scopeType === 'staff_type') return context.staff_type === scopeId;
-    if (scopeType === 'user') return context.user_id === scopeId;
-    return false;
-  }
-
-  private policyScopeRank(scopeType: string) {
-    if (scopeType === 'global') return 0;
-    if (scopeType === 'organization') return 1;
-    if (scopeType === 'team') return 2;
-    if (scopeType === 'staff_type') return 3;
-    if (scopeType === 'user') return 4;
-    return 99;
   }
 
   private serializeRequest(request: any): RequestResponseDto {
@@ -2795,18 +3127,22 @@ export class RequestsService {
   }
 
   private async getFormattedRequestNumber(requestId: bigint): Promise<string> {
-    const request = await this.drizzle.requestInstance.findUnique({
-      where: { id: requestId },
-      select: {
-        id: true,
-        createdAt: true,
-        data: true,
-        requestType: { select: { codePrefix: true } }
-      }
-    });
+    const [request] = await this.db.client
+      .select({ id: requestInstance.id, createdAt: requestInstance.createdAt, requestTypeId: requestInstance.requestTypeId })
+      .from(requestInstance)
+      .where(and(eq(requestInstance.id, requestId), this.tenanted(requestInstance.tenantId, this.tenantContext.currentTenantId())))
+      .limit(1);
     if (!request) return `REQ/${new Date().getFullYear()}/${requestId.toString()}`;
 
-    return this.getRequestNumber(request.requestType?.codePrefix, request.createdAt.getFullYear(), request.id);
+    const [lightType] = request.requestTypeId
+      ? await this.db.client
+          .select({ codePrefix: requestType.codePrefix })
+          .from(requestType)
+          .where(eq(requestType.id, request.requestTypeId))
+          .limit(1)
+      : [];
+
+    return this.getRequestNumber(lightType?.codePrefix ?? undefined, request.createdAt.getFullYear(), request.id);
   }
 
   private getRequestThreadKey(requestNumber: string): string {
@@ -2845,23 +3181,21 @@ export class RequestsService {
   }
 
   private async getRequestNotificationSummary(requestId: bigint): Promise<RequestNotificationSummary> {
-    const request = await this.drizzle.requestInstance.findUnique({
-      where: { id: requestId },
-      select: {
-        id: true,
-        createdAt: true,
-        data: true,
-        currency: true,
-        totalAmount: true,
-        items: { select: { amount: true, quantity: true } },
-        requestType: { select: { name: true, codePrefix: true, taxonomyKeys: true, formSchema: true } },
-        creator: {
-          select: { firstName: true, lastName: true, username: true, email: true }
-        }
-      }
-    });
+    const [raw] = await this.db.client
+      .select({
+        id: requestInstance.id,
+        createdAt: requestInstance.createdAt,
+        data: requestInstance.data,
+        currency: requestInstance.currency,
+        totalAmount: requestInstance.totalAmount,
+        requestTypeId: requestInstance.requestTypeId,
+        createdBy: requestInstance.createdBy,
+      })
+      .from(requestInstance)
+      .where(and(eq(requestInstance.id, requestId), this.tenanted(requestInstance.tenantId, this.tenantContext.currentTenantId())))
+      .limit(1);
 
-    if (!request) {
+    if (!raw) {
       return {
         requestNumber: `REQ/${new Date().getFullYear()}/${requestId.toString()}`,
         requestTypeName: 'Request',
@@ -2871,6 +3205,20 @@ export class RequestsService {
         primaryMetricValue: '-'
       };
     }
+
+    const [lightType] = raw.requestTypeId
+      ? await this.db.client
+          .select({ name: requestType.name, codePrefix: requestType.codePrefix, taxonomyKeys: requestType.taxonomyKeys, formSchema: requestType.formSchema })
+          .from(requestType)
+          .where(eq(requestType.id, raw.requestTypeId))
+          .limit(1)
+      : [];
+    const creator = raw.createdBy != null ? await this.creatorLight(raw.createdBy) : null;
+    const items = await this.db.client
+      .select({ amount: requestItem.amount, quantity: requestItem.quantity })
+      .from(requestItem)
+      .where(eq(requestItem.requestId, raw.id));
+    const request = { ...raw, requestType: lightType ?? null, creator, items };
 
     const requestNumber = this.getRequestNumber(
       request.requestType?.codePrefix,
@@ -2886,7 +3234,7 @@ export class RequestsService {
       request.data && typeof request.data === 'object' && !Array.isArray(request.data)
         ? (request.data as Record<string, unknown>)
         : {};
-    const isLeaveRequest = this.isLeaveRequestType(
+    const isLeaveRequest = isLeaveRequestType(
       request.requestType?.name ?? null,
       request.requestType?.taxonomyKeys as string[] | null,
       request.requestType?.formSchema
@@ -2972,28 +3320,12 @@ export class RequestsService {
   }
 
   private async getApprovalSummary(instanceId: string) {
-    const instance = await this.drizzle.workflowInstance.findUnique({
-      where: { id: instanceId },
-      include: {
-        currentStep: {
-          include: {
-            approvers: true
-          }
-        },
-        history: {
-          orderBy: { createdAt: 'asc' }
-        },
-        workflow: {
-          include: {
-            steps: true
-          }
-        }
-      }
-    });
+    const instance = await this.workflowInstanceWithDetails(instanceId);
 
     if (!instance) return { done: [], pending: [] };
 
-    const stepMap = new Map(instance.workflow.steps.map((step) => [step.id, step.name]));
+    const steps = instance.workflow?.steps ?? [];
+    const stepMap = new Map(steps.map((step) => [step.id, step.name]));
     const performerIds = Array.from(
       new Set(
         instance.history
@@ -3001,12 +3333,13 @@ export class RequestsService {
           .filter((id): id is string => Boolean(id))
       )
     );
+    const scope = await this.profileScope(this.tenantContext.currentTenantId());
     const performers =
       performerIds.length > 0
-        ? await this.drizzle.profile.findMany({
-            where: { id: { in: (performerIds as string[]).map((id) => toBigInt(id)) } },
-            select: { id: true, username: true, email: true, firstName: true, lastName: true }
-          })
+        ? await this.db.client
+            .select({ id: profile.id, username: profile.username, email: profile.email, firstName: profile.firstName, lastName: profile.lastName })
+            .from(profile)
+            .where(and(inArray(profile.id, (performerIds as string[]).map((id) => toBigInt(id))), scope))
         : [];
     const performerMap = new Map<string, { name: string; email: string | null }>(
       performers.map((user) => {
@@ -3036,9 +3369,7 @@ export class RequestsService {
           }))
         : [];
 
-    const required_steps = instance.workflow.steps
-      .sort((a, b) => a.order - b.order)
-      .map((step) => ({
+    const required_steps = steps.sort((a, b) => a.order - b.order).map((step) => ({
         step: step.name,
         role: (step.config as Record<string, any>)?.role ?? null,
         approver: (step.config as Record<string, any>)?.approver ?? null,
@@ -3047,11 +3378,12 @@ export class RequestsService {
     return { done, pending, required_steps };
   }
 
-  private async ensureFileAssetsExist(tx: Drizzle.TransactionClient | DrizzleService, fileIds: string[]) {
-    const count = await tx.fileAsset.count({
-      where: { id: { in: fileIds } }
-    });
-    if (count !== fileIds.length) {
+  private async ensureFileAssetsExist(tx: any, fileIds: string[]) {
+    const [row] = await tx
+      .select({ c: count() })
+      .from(fileAsset)
+      .where(and(inArray(fileAsset.id, fileIds), this.tenanted(fileAsset.tenantId, this.tenantContext.currentTenantId())));
+    if (Number(row?.c ?? 0) !== fileIds.length) {
       throw new BadRequestException('One or more request item files are invalid');
     }
   }
@@ -3062,9 +3394,9 @@ export class RequestsService {
     actorId: string,
     details?: { action?: string; comment?: string }
   ) {
-    return this.drizzle.requestInstance.update({
-      where: { id: request.id },
-      data: {
+    const [row] = await this.db.client
+      .update(requestInstance)
+      .set({
         status: nextStatus as any,
         data: this.withStateEvent(request.data, {
           from: request.status,
@@ -3072,15 +3404,17 @@ export class RequestsService {
           by: actorId,
           action: details?.action,
           comment: details?.comment
-        })
-      }
-    });
+        }) as any
+      })
+      .where(and(eq(requestInstance.id, request.id), this.tenanted(requestInstance.tenantId, this.tenantContext.currentTenantId())))
+      .returning();
+    return row;
   }
 
   private withStateEvent(
     data: unknown,
     event: { from: string; to: string; by: string; action?: string; comment?: string }
-  ): Drizzle.InputJsonValue {
+  ): Record<string, unknown> {
     const base =
       data && typeof data === 'object' && !Array.isArray(data)
         ? ({ ...(data as Record<string, unknown>) } as Record<string, unknown>)
@@ -3097,10 +3431,10 @@ export class RequestsService {
     return {
       ...base,
       state_events: [...existing, stateEvent]
-    } as Drizzle.InputJsonValue;
+    };
   }
 
-  private withRetirementData(data: Drizzle.InputJsonValue, dto: RetireRequestDto): Drizzle.InputJsonValue {
+  private withRetirementData(data: Record<string, unknown>, dto: RetireRequestDto): Record<string, unknown> {
     const base =
       data && typeof data === 'object' && !Array.isArray(data)
         ? ({ ...(data as Record<string, unknown>) } as Record<string, unknown>)
@@ -3115,17 +3449,18 @@ export class RequestsService {
         breakdown: dto.breakdown ?? null,
         submitted_at: new Date().toISOString()
       }
-    } as Drizzle.InputJsonValue;
+    };
   }
 
   private async applyRetirementToPaymentVouchers(requestId: bigint, dto: RetireRequestDto) {
     const voucherWhere = dto.voucher_id
-      ? { requestId, id: dto.voucher_id }
-      : { requestId };
-    const vouchers = await this.drizzle.financePaymentVoucher.findMany({
-      where: voucherWhere,
-      orderBy: { disbursedAt: 'asc' }
-    });
+      ? and(eq(financePaymentVoucher.requestId, requestId), eq(financePaymentVoucher.id, dto.voucher_id))
+      : eq(financePaymentVoucher.requestId, requestId);
+    const vouchers = await this.db.client
+      .select()
+      .from(financePaymentVoucher)
+      .where(voucherWhere)
+      .orderBy(asc(financePaymentVoucher.disbursedAt));
     if (vouchers.length === 0) {
       if (dto.voucher_id) throw new BadRequestException('Selected voucher does not exist on this request');
       return { outstanding_after: 0, touched_vouchers: [] as Array<{ id: string; voucher_number: string; allocated: number }> };
@@ -3140,7 +3475,10 @@ export class RequestsService {
     }
     let remaining = dto.retired_amount ?? totalVoucherBalance;
     if (remaining <= 0) {
-      const allVouchers = await this.drizzle.financePaymentVoucher.findMany({ where: { requestId } });
+      const allVouchers = await this.db.client
+        .select()
+        .from(financePaymentVoucher)
+        .where(eq(financePaymentVoucher.requestId, requestId));
       const outstanding = allVouchers.reduce(
         (sum, voucher) => sum + Math.max(0, Number(voucher.amount) - Number(voucher.retiredAmount)),
         0
@@ -3161,10 +3499,10 @@ export class RequestsService {
       const nextStatus =
         nextRetired >= voucherAmount ? 'retired' : nextRetired > 0 ? 'partial' : 'not_retired';
 
-      await this.drizzle.financePaymentVoucher.update({
-        where: { id: voucher.id },
-        data: {
-          retiredAmount: nextRetired,
+      await this.db.client
+        .update(financePaymentVoucher)
+        .set({
+          retiredAmount: String(nextRetired),
           retirementStatus: nextStatus,
           retiredAt: new Date(),
           metadata: {
@@ -3174,15 +3512,18 @@ export class RequestsService {
             retirement_notes: dto.notes ?? null,
             retirement_file_ids: dto.retirement_file_ids ?? [],
             breakdown: dto.breakdown ?? null
-          } as Drizzle.InputJsonValue
-        }
-      });
+          } as any
+        })
+        .where(eq(financePaymentVoucher.id, voucher.id));
       touched.push({ id: voucher.id, voucher_number: voucher.voucherNumber, allocated: allocate });
 
       remaining -= allocate;
     }
 
-    const allVouchers = await this.drizzle.financePaymentVoucher.findMany({ where: { requestId } });
+    const allVouchers = await this.db.client
+      .select()
+      .from(financePaymentVoucher)
+      .where(eq(financePaymentVoucher.requestId, requestId));
     const outstanding = allVouchers.reduce(
       (sum, voucher) => sum + Math.max(0, Number(voucher.amount) - Number(voucher.retiredAmount)),
       0
@@ -3191,19 +3532,23 @@ export class RequestsService {
   }
 
   private async isPendingApprovalForUser(requestId: string, userId: string) {
-    const request = await this.drizzle.requestInstance.findUnique({
-      where: { id: toBigInt(requestId) },
-      select: { workflowInstanceId: true, teamId: true, status: true }
-    });
+    const [request] = await this.db.client
+      .select({ workflowInstanceId: requestInstance.workflowInstanceId, teamId: requestInstance.teamId, status: requestInstance.status })
+      .from(requestInstance)
+      .where(and(eq(requestInstance.id, toBigInt(requestId)), this.tenanted(requestInstance.tenantId, this.tenantContext.currentTenantId())))
+      .limit(1);
     if (!request?.workflowInstanceId || !['sent', 'approval'].includes(request.status)) return false;
 
-    const instance = await this.drizzle.workflowInstance.findUnique({
-      where: { id: request.workflowInstanceId },
-      include: { currentStep: { include: { approvers: true } } }
-    });
-    if (!instance || instance.status !== 'pending' || !instance.currentStep) return false;
+    const [instance] = await this.db.client
+      .select()
+      .from(workflowInstance)
+      .where(and(eq(workflowInstance.id, request.workflowInstanceId), this.templated(workflowInstance.tenantId, this.tenantContext.currentTenantId())))
+      .limit(1);
+    if (!instance || instance.status !== 'pending' || !instance.currentStepId) return false;
+    const currentStep = await this.currentStepWithApprovers(instance.currentStepId);
+    if (!currentStep) return false;
 
-    for (const approver of instance.currentStep.approvers) {
+    for (const approver of currentStep.approvers) {
       if (await this.userMatchesCurrentApprover({ approverType: approver.approverType, approverId: approver.approverId }, request.teamId, userId)) return true;
     }
 
@@ -3216,19 +3561,23 @@ export class RequestsService {
   }
 
   private async listCurrentApproverUserIds(requestId: bigint): Promise<string[]> {
-    const request = await this.drizzle.requestInstance.findUnique({
-      where: { id: requestId },
-      select: { teamId: true, workflowInstanceId: true }
-    });
+    const [request] = await this.db.client
+      .select({ teamId: requestInstance.teamId, workflowInstanceId: requestInstance.workflowInstanceId })
+      .from(requestInstance)
+      .where(and(eq(requestInstance.id, requestId), this.tenanted(requestInstance.tenantId, this.tenantContext.currentTenantId())))
+      .limit(1);
     if (!request?.workflowInstanceId) return [];
-    const instance = await this.drizzle.workflowInstance.findUnique({
-      where: { id: request.workflowInstanceId },
-      include: { currentStep: { include: { approvers: true } } }
-    });
-    if (!instance?.currentStep || instance.status !== 'pending') return [];
+    const [instance] = await this.db.client
+      .select()
+      .from(workflowInstance)
+      .where(and(eq(workflowInstance.id, request.workflowInstanceId), this.templated(workflowInstance.tenantId, this.tenantContext.currentTenantId())))
+      .limit(1);
+    if (!instance?.currentStepId || instance.status !== 'pending') return [];
+    const currentStep = await this.currentStepWithApprovers(instance.currentStepId);
+    if (!currentStep) return [];
 
     const userIds = new Set<string>();
-    for (const approver of instance.currentStep.approvers) {
+    for (const approver of currentStep.approvers) {
       const currentIds = await this.listUsersForCurrentApprover(
         { approverType: approver.approverType, approverId: approver.approverId },
         request.teamId,
@@ -3253,15 +3602,11 @@ export class RequestsService {
       (approverType === 'role' && approverId === 'team_lead')
     ) {
       if (!teamId) return false;
-      return (
-        (await this.drizzle.groupUser.count({
-          where: {
-            groupId: teamId,
-            userId: toBigInt(userId),
-            role: GroupUserRole.moderator,
-          },
-        })) > 0
-      );
+      const [row] = await this.db.client
+        .select({ c: count() })
+        .from(groupUser)
+        .where(and(eq(groupUser.groupId, teamId), eq(groupUser.userId, toBigInt(userId)), eq(groupUser.role, 'moderator')));
+      return Number(row?.c ?? 0) > 0;
     }
 
     if (
@@ -3269,24 +3614,19 @@ export class RequestsService {
       (approverType === 'role' && (approverId === 'team_lead_or_manager' || approverId === 'manager'))
     ) {
       if (teamId) {
-        const leadOrManager = await this.drizzle.groupUser.count({
-          where: {
-            groupId: teamId,
-            userId: toBigInt(userId),
-            role: { in: [GroupUserRole.moderator, GroupUserRole.admin] },
-          },
-        });
-        if (leadOrManager > 0) return true;
+        const [row] = await this.db.client
+          .select({ c: count() })
+          .from(groupUser)
+          .where(and(eq(groupUser.groupId, teamId), eq(groupUser.userId, toBigInt(userId)), inArray(groupUser.role, ['moderator', 'admin'])));
+        if (Number(row?.c ?? 0) > 0) return true;
       }
 
-      return (
-        (await this.drizzle.userRole.count({
-          where: {
-            profileId: toBigInt(userId),
-            role: { slug: 'manager' },
-          },
-        })) > 0
-      );
+      const [row] = await this.db.client
+        .select({ c: count() })
+        .from(userRole)
+        .innerJoin(role, eq(userRole.roleId, role.id))
+        .where(and(eq(userRole.profileId, toBigInt(userId)), eq(role.slug, 'manager'), this.tenanted(userRole.tenantId, this.tenantContext.currentTenantId())));
+      return Number(row?.c ?? 0) > 0;
     }
 
     if (approverType === 'office' || approverType === 'role') {
@@ -3294,13 +3634,12 @@ export class RequestsService {
         approverType === 'role' && approverId === 'accountant'
           ? ['accountant', 'finance_manager']
           : [approverId];
-      const hasRole = await this.drizzle.userRole.count({
-        where: {
-          profileId: toBigInt(userId),
-          role: { slug: { in: roleSlugs } },
-        },
-      });
-      if (hasRole > 0) return true;
+      const [row] = await this.db.client
+        .select({ c: count() })
+        .from(userRole)
+        .innerJoin(role, eq(userRole.roleId, role.id))
+        .where(and(eq(userRole.profileId, toBigInt(userId)), inArray(role.slug, roleSlugs), this.tenanted(userRole.tenantId, this.tenantContext.currentTenantId())));
+      if (Number(row?.c ?? 0) > 0) return true;
     }
 
     if (
@@ -3316,17 +3655,14 @@ export class RequestsService {
               ? 'hr.approve'
               : approverId;
 
-      const hasPermission = await this.drizzle.rolePermission.count({
-        where: {
-          permission: { slug: permissionSlug },
-          role: {
-            users: {
-              some: { profileId: toBigInt(userId) },
-            },
-          },
-        },
-      });
-      if (hasPermission > 0) return true;
+      const [row] = await this.db.client
+        .select({ c: count() })
+        .from(rolePermission)
+        .innerJoin(permission, eq(rolePermission.permissionId, permission.id))
+        .innerJoin(role, eq(rolePermission.roleId, role.id))
+        .innerJoin(userRole, eq(userRole.roleId, role.id))
+        .where(and(eq(permission.slug, permissionSlug), eq(userRole.profileId, toBigInt(userId)), this.tenanted(userRole.tenantId, this.tenantContext.currentTenantId())));
+      if (Number(row?.c ?? 0) > 0) return true;
 
 
     }
@@ -3347,10 +3683,10 @@ export class RequestsService {
       (approverType === 'role' && approverId === 'team_lead')
     ) {
       if (!teamId) return [];
-      const rows = await this.drizzle.groupUser.findMany({
-        where: { groupId: teamId, role: GroupUserRole.moderator },
-        select: { userId: true },
-      });
+      const rows = await this.db.client
+        .select({ userId: groupUser.userId })
+        .from(groupUser)
+        .where(and(eq(groupUser.groupId, teamId), eq(groupUser.role, 'moderator')));
       return rows.map((row) => row.userId.toString());
     }
 
@@ -3360,17 +3696,18 @@ export class RequestsService {
     ) {
       const ids = new Set<string>();
       if (teamId) {
-        const rows = await this.drizzle.groupUser.findMany({
-          where: { groupId: teamId, role: { in: [GroupUserRole.moderator, GroupUserRole.admin] } },
-          select: { userId: true },
-        });
+        const rows = await this.db.client
+          .select({ userId: groupUser.userId })
+          .from(groupUser)
+          .where(and(eq(groupUser.groupId, teamId), inArray(groupUser.role, ['moderator', 'admin'])));
         for (const row of rows) ids.add(row.userId.toString());
       }
 
-      const managers = await this.drizzle.userRole.findMany({
-        where: { role: { slug: 'manager' } },
-        select: { profileId: true },
-      });
+      const managers = await this.db.client
+        .select({ profileId: userRole.profileId })
+        .from(userRole)
+        .innerJoin(role, eq(userRole.roleId, role.id))
+        .where(and(eq(role.slug, 'manager'), this.tenanted(userRole.tenantId, this.tenantContext.currentTenantId())));
       for (const row of managers) ids.add(row.profileId.toString());
       return Array.from(ids);
     }
@@ -3382,10 +3719,11 @@ export class RequestsService {
         approverType === 'role' && approverId === 'accountant'
           ? ['accountant', 'finance_manager']
           : [approverId];
-      const directRoleUsers = await this.drizzle.userRole.findMany({
-        where: { role: { slug: { in: roleSlugs } } },
-        select: { profileId: true },
-      });
+      const directRoleUsers = await this.db.client
+        .select({ profileId: userRole.profileId })
+        .from(userRole)
+        .innerJoin(role, eq(userRole.roleId, role.id))
+        .where(and(inArray(role.slug, roleSlugs), this.tenanted(userRole.tenantId, this.tenantContext.currentTenantId())));
       for (const row of directRoleUsers) ids.add(row.profileId.toString());
     }
 
@@ -3401,16 +3739,13 @@ export class RequestsService {
             : approverId === 'hr'
               ? 'hr.approve'
               : approverId;
-      const permissionUsers = await this.drizzle.userRole.findMany({
-        where: {
-          role: {
-            permissions: {
-              some: { permission: { slug: permissionSlug } },
-            },
-          },
-        },
-        select: { profileId: true },
-      });
+      const permissionUsers = await this.db.client
+        .select({ profileId: userRole.profileId })
+        .from(userRole)
+        .innerJoin(role, eq(userRole.roleId, role.id))
+        .innerJoin(rolePermission, eq(rolePermission.roleId, role.id))
+        .innerJoin(permission, eq(rolePermission.permissionId, permission.id))
+        .where(and(eq(permission.slug, permissionSlug), this.tenanted(userRole.tenantId, this.tenantContext.currentTenantId())));
       for (const row of permissionUsers) ids.add(row.profileId.toString());
     }
 
@@ -3460,18 +3795,19 @@ export class RequestsService {
   ) {
     let instanceId = workflowInstanceId;
     if (!instanceId) {
-      const request = await this.drizzle.requestInstance.findUnique({
-        where: { id: requestId },
-        select: { workflowInstanceId: true }
-      });
-      instanceId = request?.workflowInstanceId;
+      const [requestRow] = await this.db.client
+        .select({ workflowInstanceId: requestInstance.workflowInstanceId })
+        .from(requestInstance)
+        .where(and(eq(requestInstance.id, requestId), this.tenanted(requestInstance.tenantId, this.tenantContext.currentTenantId())))
+        .limit(1);
+      instanceId = requestRow?.workflowInstanceId;
     }
     if (!instanceId) return;
 
-    const history = await this.drizzle.workflowHistory.findMany({
-      where: { instanceId },
-      select: { performedBy: true }
-    });
+    const history = await this.db.client
+      .select({ performedBy: workflowHistory.performedBy })
+      .from(workflowHistory)
+      .where(eq(workflowHistory.instanceId, instanceId));
 
     const previousApprovers = Array.from(new Set(history.map(h => h.performedBy?.toString()).filter((x): x is string => !!x)));
     if (!previousApprovers.length) return;
@@ -3508,18 +3844,16 @@ export class RequestsService {
     data?: Record<string, unknown>
   ) {
     if (!instanceId) return;
-    await this.drizzle.workflowHistory.create({
-      data: {
+    await this.db.client.insert(workflowHistory).values({
         instanceId,
         action,
         performedBy: toBigInt(performedBy),
-        data: (data ?? {}) as Drizzle.InputJsonValue
-      }
+        data: (data ?? {}) as any
     });
   }
 
-  private async ensureStaffRequestSequenceFloor(db: Drizzle.TransactionClient | DrizzleService) {
+  private async ensureStaffRequestSequenceFloor(db: { execute: (query: SQL) => Promise<unknown> }) {
     const floor = (STAFF_REQUEST_SEQUENCE_START - BigInt(1)).toString();
-    await db.$executeRaw(sql`SELECT setval(pg_get_serial_sequence('sta_request_instances','id'), GREATEST((SELECT COALESCE(MAX(id), 1) FROM sta_request_instances), CAST(${floor} AS bigint)), true)`);
+    await db.execute(sql`SELECT setval(pg_get_serial_sequence('sta_request_instances','id'), GREATEST((SELECT COALESCE(MAX(id), 1) FROM sta_request_instances), CAST(${floor} AS bigint)), true)`);
   }
 }

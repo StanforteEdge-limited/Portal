@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
-import { DrizzleService } from '$common/drizzle/drizzle.service';
+import { SQL, and, asc, count, desc, eq, ilike, inArray, ne, or } from 'drizzle-orm';
+import { DbService } from '$common/db/db.service';
 import { toBigInt } from '$common/utils/ids';
 import { UpdateProfileDto } from '$modules/identity/users/dto/update-profile.dto';
 import { CreateUserDto } from '$modules/identity/users/dto/create-user.dto';
@@ -13,44 +14,29 @@ import { MailService } from '$common/mail/mail.service';
 import { MailQueueService } from '$common/mail/mail-queue.service';
 import { generateUniqueUsername, makeUsernameSeed } from '$common/utils/username';
 import { paginatedResponse } from '$common/helpers/paginated-response';
-import { Drizzle } from '$common/db/drizzle-compat';
 import { TenantContext } from '$common/auth/tenant-context';
 import { TenantContextService } from '$common/auth/tenant-context.service';
+import { profile } from '$modules/identity/users/model';
+import { organization as organizationTable, profileOrganization } from '$modules/directory/organizations/model';
+import { tenantMembership, tenantOrganization } from '$modules/tenancy/model';
+import { role as roleTable, userRole as userRoleTable } from '$modules/identity/rbac/model';
+import { group as groupTable, groupUser } from '$modules/communication/groups/model';
+import { project as projectTable, projectMember } from '$modules/operations/projects/model';
+import { employeeProfile, employeeMeta, onboardingProgress } from '$modules/hr/hr/model';
+import { fileAsset } from '$modules/storage/model';
+import { token as tokenTable } from '$modules/identity/auth/model';
 
 @Injectable()
 export class UsersService {
   constructor(
-    private readonly drizzle: DrizzleService,
+    private readonly db: DbService,
     private readonly mailService: MailService,
     private readonly mailQueue: MailQueueService,
     private readonly tenantContext: TenantContextService
   ) {}
 
-  async getMyProfile(profileId: string, tenant?: TenantContext) {
-    const user = await this.drizzle.profile.findUnique({
-      where: { id: toBigInt(profileId) },
-      include: {
-        organizations: {
-          include: { organization: true }
-        },
-        groups: { include: { group: true } },
-        projectMemberships: {
-          include: { project: true }
-        },
-        employeeProfile: {
-          include: {
-            manager: {
-              select: { id: true, firstName: true, lastName: true, email: true }
-            }
-          }
-        },
-        employeeMeta: true,
-        onboardingProgress: true,
-        signatureFile: { select: { publicUrl: true, storagePath: true } }
-      }
-    });
-
-    if (!user) throw new NotFoundException('Profile not found');
+async getMyProfile(profileId: string, tenant?: TenantContext) {
+    const user = await this.enrichProfile(toBigInt(profileId));
     if (!tenant) return this.serializeProfile(user);
 
     return this.serializeProfile({
@@ -67,19 +53,30 @@ export class UsersService {
 
   async updateMyProfile(profileId: string, dto: UpdateProfileDto, tenant?: TenantContext) {
     const parsedProfileId = toBigInt(profileId);
-    if (tenant && !(await this.drizzle.tenantMembership.findFirst({
-      where: { tenantId: tenant.tenantId, profileId: parsedProfileId, status: 'active' },
-    }))) {
-      throw new NotFoundException('Profile not found');
+    if (tenant) {
+      const [membership] = await this.db.client
+        .select({ id: tenantMembership.id })
+        .from(tenantMembership)
+        .where(
+          and(
+            eq(tenantMembership.tenantId, tenant.tenantId),
+            eq(tenantMembership.profileId, parsedProfileId),
+            eq(tenantMembership.status, 'active'),
+          ),
+        )
+        .limit(1);
+      if (!membership) throw new NotFoundException('Profile not found');
     }
-    const existing = await this.drizzle.profile.findUnique({
-      where: { id: parsedProfileId }
-    });
+    const [existing] = await this.db.client
+      .select()
+      .from(profile)
+      .where(eq(profile.id, parsedProfileId))
+      .limit(1);
     if (!existing) throw new NotFoundException('Profile not found');
 
-    const updated = await this.drizzle.profile.update({
-      where: { id: existing.id },
-      data: {
+    await this.db.client
+      .update(profile)
+      .set({
         firstName: dto.first_name ?? existing.firstName,
         lastName: dto.last_name ?? existing.lastName,
         dateOfBirth: dto.date_of_birth ? new Date(dto.date_of_birth) : existing.dateOfBirth,
@@ -95,29 +92,11 @@ export class UsersService {
         occupation: dto.occupation ?? existing.occupation,
         ...(dto.signature_file_id !== undefined
           ? { signatureFileId: dto.signature_file_id || null }
-          : {})
-      },
-      include: {
-        organizations: {
-          include: { organization: true }
-        },
-        groups: { include: { group: true } },
-        projectMemberships: {
-          include: { project: true }
-        },
-        employeeProfile: {
-          include: {
-            manager: {
-              select: { id: true, firstName: true, lastName: true, email: true }
-            }
-          }
-        },
-        employeeMeta: true,
-        onboardingProgress: true,
-        signatureFile: { select: { publicUrl: true, storagePath: true } }
-      }
-    });
-    return this.serializeProfile(updated);
+          : {}),
+      })
+      .where(eq(profile.id, existing.id));
+
+    return this.serializeProfile(await this.enrichProfile(existing.id));
   }
 
   async listUsers(filters: Record<string, any>, tenant?: TenantContext) {
@@ -125,43 +104,45 @@ export class UsersService {
     const perPage = Number(filters.per_page ?? 15);
     const skip = (page - 1) * perPage;
 
-    const where: Drizzle.ProfileWhereInput = {};
+    const conditions: SQL[] = [];
     if (filters.search) {
-      where.OR = [
-        { username: { contains: filters.search, mode: 'insensitive' } },
-        { email: { contains: filters.search, mode: 'insensitive' } },
-        { firstName: { contains: filters.search, mode: 'insensitive' } },
-        { lastName: { contains: filters.search, mode: 'insensitive' } }
-      ];
+      const search = `%${String(filters.search)}%`;
+      conditions.push(
+        or(
+          ilike(profile.username, search),
+          ilike(profile.email, search),
+          ilike(profile.firstName, search),
+          ilike(profile.lastName, search),
+        ) as SQL,
+      );
     }
-    if (filters.type) where.type = filters.type;
-    if (filters.status) where.status = filters.status;
+    if (filters.type) conditions.push(eq(profile.type, String(filters.type)));
+    if (filters.status) conditions.push(eq(profile.status, String(filters.status)));
     if (tenant) {
-      const memberships = await this.drizzle.tenantMembership.findMany({
-        where: { tenantId: tenant.tenantId, status: 'active' },
-        select: { profileId: true },
-      });
-      where.id = { in: memberships.map((membership) => membership.profileId) };
+      const memberships = await this.db.client
+        .select({ profileId: tenantMembership.profileId })
+        .from(tenantMembership)
+        .where(and(eq(tenantMembership.tenantId, tenant.tenantId), eq(tenantMembership.status, 'active')));
+      conditions.push(inArray(profile.id, memberships.map((membership) => membership.profileId)));
     }
 
-    const [data, total] = await this.drizzle.$transaction([
-      this.drizzle.profile.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: perPage
-      }),
-      this.drizzle.profile.count({ where })
-    ]);
+    const where = conditions.length ? and(...conditions) : undefined;
 
-    return paginatedResponse(data.map((row) => this.serializeUserSummary(row)), { page, per_page: perPage, total });
+    const [rows, totalResult] = await Promise.all([
+      this.db.client.select().from(profile).where(where).orderBy(desc(profile.createdAt)).limit(perPage).offset(skip),
+      this.db.client.select({ count: count() }).from(profile).where(where),
+    ]);
+    const total = totalResult[0]?.count ?? 0;
+
+    return paginatedResponse(rows.map((row) => this.serializeUserSummary(row)), { page, per_page: perPage, total });
   }
 
   async createUser(dto: CreateUserDto, tenant?: TenantContext) {
     const email = dto.email.trim().toLowerCase();
-    const existing = await this.tenantContext.runSystem('users.createUser.emailCheck', () =>
-      this.drizzle.profile.findUnique({ where: { email } }),
-    );
+    const existing = await this.tenantContext.runSystem('users.createUser.emailCheck', async () => {
+      const [row] = await this.db.client.select().from(profile).where(eq(profile.email, email)).limit(1);
+      return row ?? null;
+    });
     if (existing) throw new BadRequestException('Email already exists');
     const shouldSetPassword = dto.set_password ?? Boolean(dto.password);
     if (shouldSetPassword && !dto.password) {
@@ -188,15 +169,23 @@ export class UsersService {
       throw new BadRequestException('Primary organization is required for staff');
     }
     if (primaryOrganizationId) {
-      const organization = await this.drizzle.organization.findUnique({
-        where: { id: primaryOrganizationId },
-        select: { id: true }
-      });
+      const [organization] = await this.db.client
+        .select({ id: organizationTable.id })
+        .from(organizationTable)
+        .where(eq(organizationTable.id, primaryOrganizationId))
+        .limit(1);
       if (!organization) throw new BadRequestException('Organization not found');
       if (tenant) {
-        const mapping = await this.drizzle.tenantOrganization.findFirst({
-          where: { tenantId: tenant.tenantId, organizationId: primaryOrganizationId },
-        });
+        const [mapping] = await this.db.client
+          .select()
+          .from(tenantOrganization)
+          .where(
+            and(
+              eq(tenantOrganization.tenantId, tenant.tenantId),
+              eq(tenantOrganization.organizationId, primaryOrganizationId),
+            ),
+          )
+          .limit(1);
         if (!mapping) throw new BadRequestException('Organization does not belong to the active tenant');
       }
     }
@@ -206,21 +195,24 @@ export class UsersService {
       : await generateUniqueUsername(
           makeUsernameSeed(dto.first_name, dto.last_name, email.split('@')[0]),
           async (candidate) =>
-            Boolean(await this.drizzle.profile.findFirst({ where: { username: candidate } }))
+            Boolean((await this.db.client.select().from(profile).where(eq(profile.username, candidate)).limit(1))[0])
         );
     if (requestedUsername) {
-      const usernameExists = await this.drizzle.profile.findFirst({
-        where: { username }
-      });
-      if (usernameExists) throw new BadRequestException('Username already exists');
+      const usernameExists = await this.db.client
+        .select()
+        .from(profile)
+        .where(eq(profile.username, username))
+        .limit(1);
+      if (usernameExists[0]) throw new BadRequestException('Username already exists');
     }
 
     const passwordHash = shouldSetPassword && dto.password ? await bcrypt.hash(dto.password, 12) : null;
     const roleSlugs = Array.from(new Set(dto.roles?.map((r) => r.trim()).filter(Boolean) ?? []));
 
-    const user = await this.drizzle.$transaction(async (tx) => {
-      const user = await tx.profile.create({
-        data: {
+    const user = await this.db.client.transaction(async (tx) => {
+      const [createdUser] = await tx
+        .insert(profile)
+        .values({
           username,
           email,
           passwordHash,
@@ -228,51 +220,54 @@ export class UsersService {
           status: effectiveStatus,
           firstName: dto.first_name,
           lastName: dto.last_name,
-          primaryOrganizationId
-        }
-      });
+          primaryOrganizationId,
+        })
+        .returning();
 
       if (primaryOrganizationId) {
-        await tx.profileOrganization.create({
-          data: {
-            profileId: user.id,
-            organizationId: primaryOrganizationId,
-            tenantId: tenant?.tenantId,
-            isPrimary: true,
-            createdAt: new Date()
-          }
+        await tx.insert(profileOrganization).values({
+          profileId: createdUser.id,
+          organizationId: primaryOrganizationId,
+          tenantId: tenant?.tenantId,
+          isPrimary: true,
+          createdAt: new Date(),
         });
       }
       if (tenant) {
-        await tx.tenantMembership.create({
-          data: { tenantId: tenant.tenantId, profileId: user.id, status: 'active', isOwner: false },
+        await tx.insert(tenantMembership).values({
+          tenantId: tenant.tenantId,
+          profileId: createdUser.id,
+          status: 'active',
+          isOwner: false,
         });
       }
 
       if (roleSlugs.length > 0) {
-        const roles = await tx.role.findMany({
-          where: { slug: { in: roleSlugs }, isActive: true },
-          select: { id: true, slug: true }
-        });
+        const roles = await tx
+          .select({ id: roleTable.id, slug: roleTable.slug })
+          .from(roleTable)
+          .where(and(inArray(roleTable.slug, roleSlugs), eq(roleTable.isActive, true)));
         if (roles.length !== roleSlugs.length) {
           const found = new Set(roles.map((r) => r.slug));
           const missing = roleSlugs.filter((slug) => !found.has(slug));
           throw new BadRequestException(`Unknown role(s): ${missing.join(', ')}`);
         }
 
-        await tx.userRole.createMany({
-          data: roles.map((role, index) => ({
-            profileId: user.id,
-            roleId: role.id,
-            tenantId: tenant?.tenantId,
-            organizationId: null,
-            isPrimaryRole: index === 0
-          })),
-          skipDuplicates: true
-        });
+        await tx
+          .insert(userRoleTable)
+          .values(
+            roles.map((role, index) => ({
+              profileId: createdUser.id,
+              roleId: role.id,
+              tenantId: tenant?.tenantId as bigint,
+              organizationId: null,
+              isPrimaryRole: index === 0,
+            })),
+          )
+          .onConflictDoNothing();
       }
 
-      return user;
+      return createdUser;
     });
 
     if (shouldSendInvite) {
@@ -282,7 +277,7 @@ export class UsersService {
           id: user.id,
           email: user.email,
           firstName: user.firstName,
-          lastName: user.lastName
+          lastName: user.lastName,
         },
         inviteToken,
         expiresAt
@@ -294,7 +289,7 @@ export class UsersService {
         id: user.id,
         email: user.email,
         firstName: user.firstName,
-        lastName: user.lastName
+        lastName: user.lastName,
       });
     }
 
@@ -303,24 +298,42 @@ export class UsersService {
 
   async getUserById(userId: string, tenant?: TenantContext) {
     const profileId = toBigInt(userId);
-    if (tenant && !(await this.drizzle.tenantMembership.findFirst({
-      where: { tenantId: tenant.tenantId, profileId, status: 'active' },
-    }))) throw new NotFoundException('User not found');
-    const user = await this.drizzle.profile.findUnique({
-      where: { id: profileId }
-    });
+    if (tenant) {
+      const [membership] = await this.db.client
+        .select({ id: tenantMembership.id })
+        .from(tenantMembership)
+        .where(
+          and(
+            eq(tenantMembership.tenantId, tenant.tenantId),
+            eq(tenantMembership.profileId, profileId),
+            eq(tenantMembership.status, 'active'),
+          ),
+        )
+        .limit(1);
+      if (!membership) throw new NotFoundException('User not found');
+    }
+    const [user] = await this.db.client.select().from(profile).where(eq(profile.id, profileId)).limit(1);
     if (!user) throw new NotFoundException('User not found');
     return this.serializeUserDetail(user);
   }
 
   async updateUser(userId: string, dto: UpdateUserDto, tenant?: TenantContext) {
     const profileId = toBigInt(userId);
-    if (tenant && !(await this.drizzle.tenantMembership.findFirst({
-      where: { tenantId: tenant.tenantId, profileId, status: 'active' },
-    }))) throw new NotFoundException('User not found');
-    const existing = await this.drizzle.profile.findUnique({
-      where: { id: profileId }
-    });
+    if (tenant) {
+      const [membership] = await this.db.client
+        .select({ id: tenantMembership.id })
+        .from(tenantMembership)
+        .where(
+          and(
+            eq(tenantMembership.tenantId, tenant.tenantId),
+            eq(tenantMembership.profileId, profileId),
+            eq(tenantMembership.status, 'active'),
+          ),
+        )
+        .limit(1);
+      if (!membership) throw new NotFoundException('User not found');
+    }
+    const [existing] = await this.db.client.select().from(profile).where(eq(profile.id, profileId)).limit(1);
     if (!existing) throw new NotFoundException('User not found');
 
     const shouldSetPassword = dto.set_password === true || Boolean(dto.password);
@@ -335,9 +348,10 @@ export class UsersService {
       nextEmail = dto.email.trim().toLowerCase();
       if (!nextEmail) throw new BadRequestException('Email is required');
       if (nextEmail !== existing.email) {
-        const emailExists = await this.tenantContext.runSystem('users.updateUser.emailCheck', () =>
-          this.drizzle.profile.findUnique({ where: { email: nextEmail } }),
-        );
+        const emailExists = await this.tenantContext.runSystem('users.updateUser.emailCheck', async () => {
+          const [row] = await this.db.client.select().from(profile).where(eq(profile.email, nextEmail)).limit(1);
+          return row ?? null;
+        });
         if (emailExists && emailExists.id !== existing.id) {
           throw new BadRequestException('Email already exists');
         }
@@ -352,16 +366,22 @@ export class UsersService {
           makeUsernameSeed(existing.firstName, existing.lastName, nextEmail.split('@')[0]),
           async (candidate) =>
             Boolean(
-              await this.drizzle.profile.findFirst({
-                where: { username: candidate, id: { not: existing.id } }
-              })
+              (
+                await this.db.client
+                  .select()
+                  .from(profile)
+                  .where(and(eq(profile.username, candidate), ne(profile.id, existing.id)))
+                  .limit(1)
+              )[0]
             )
         );
       } else {
-        const usernameExists = await this.drizzle.profile.findFirst({
-          where: { username: requestedUsername, id: { not: existing.id } }
-        });
-        if (usernameExists) throw new BadRequestException('Username already exists');
+        const usernameExists = await this.db.client
+          .select()
+          .from(profile)
+          .where(and(eq(profile.username, requestedUsername), ne(profile.id, existing.id)))
+          .limit(1);
+        if (usernameExists[0]) throw new BadRequestException('Username already exists');
         nextUsername = requestedUsername;
       }
     }
@@ -388,10 +408,11 @@ export class UsersService {
     }
 
     if (nextPrimaryOrganizationId) {
-      const organization = await this.drizzle.organization.findUnique({
-        where: { id: nextPrimaryOrganizationId },
-        select: { id: true }
-      });
+      const [organization] = await this.db.client
+        .select({ id: organizationTable.id })
+        .from(organizationTable)
+        .where(eq(organizationTable.id, nextPrimaryOrganizationId))
+        .limit(1);
       if (!organization) throw new BadRequestException('Organization not found');
     }
 
@@ -404,10 +425,10 @@ export class UsersService {
 
     const passwordHash = shouldSetPassword && dto.password ? await bcrypt.hash(dto.password, 12) : undefined;
 
-    const user = await this.drizzle.$transaction(async (tx) => {
-      const updated = await tx.profile.update({
-        where: { id: existing.id },
-        data: {
+    const user = await this.db.client.transaction(async (tx) => {
+      const [updated] = await tx
+        .update(profile)
+        .set({
           username: nextUsername,
           email: nextEmail,
           firstName: dto.first_name ?? existing.firstName,
@@ -415,31 +436,26 @@ export class UsersService {
           type: nextType,
           status: nextStatus,
           primaryOrganizationId: nextPrimaryOrganizationId,
-          ...(passwordHash ? { passwordHash } : {})
-        }
-      });
+          ...(passwordHash ? { passwordHash } : {}),
+        })
+        .where(eq(profile.id, existing.id))
+        .returning();
 
       if (dto.primary_organization_id !== undefined) {
-        await tx.profileOrganization.updateMany({
-          where: { profileId: existing.id },
-          data: { isPrimary: false }
-        });
+        await tx.update(profileOrganization).set({ isPrimary: false }).where(eq(profileOrganization.profileId, existing.id));
         if (nextPrimaryOrganizationId) {
-          await tx.profileOrganization.upsert({
-            where: {
-              profile_org_unique: {
-                profileId: existing.id,
-                organizationId: nextPrimaryOrganizationId
-              }
-            },
-            update: { isPrimary: true },
-            create: {
+          await tx
+            .insert(profileOrganization)
+            .values({
               profileId: existing.id,
               organizationId: nextPrimaryOrganizationId,
               isPrimary: true,
-              createdAt: new Date()
-            }
-          });
+              createdAt: new Date(),
+            })
+            .onConflictDoUpdate({
+              target: [profileOrganization.profileId, profileOrganization.organizationId],
+              set: { isPrimary: true },
+            });
         }
       }
 
@@ -453,7 +469,7 @@ export class UsersService {
           id: user.id,
           email: user.email,
           firstName: user.firstName,
-          lastName: user.lastName
+          lastName: user.lastName,
         },
         inviteToken,
         expiresAt
@@ -465,7 +481,7 @@ export class UsersService {
         id: user.id,
         email: user.email,
         firstName: user.firstName,
-        lastName: user.lastName
+        lastName: user.lastName,
       });
     }
 
@@ -474,50 +490,74 @@ export class UsersService {
 
   async getUserRoles(userId: string, tenant?: TenantContext) {
     const profileId = toBigInt(userId);
-    const user = await this.drizzle.profile.findUnique({
-      where: { id: profileId },
-      select: { id: true, email: true, username: true }
-    });
+    const [user] = await this.db.client
+      .select({ id: profile.id, email: profile.email, username: profile.username })
+      .from(profile)
+      .where(eq(profile.id, profileId))
+      .limit(1);
     if (!user) throw new NotFoundException('User not found');
     if (tenant) {
-      const membership = await this.drizzle.tenantMembership.findFirst({
-        where: { tenantId: tenant.tenantId, profileId, status: 'active' },
-      });
+      const [membership] = await this.db.client
+        .select({ id: tenantMembership.id })
+        .from(tenantMembership)
+        .where(
+          and(
+            eq(tenantMembership.tenantId, tenant.tenantId),
+            eq(tenantMembership.profileId, profileId),
+            eq(tenantMembership.status, 'active'),
+          ),
+        )
+        .limit(1);
       if (!membership) throw new NotFoundException('User not found');
     }
 
-    const userRoles = await this.drizzle.userRole.findMany({
-      where: tenant ? { profileId, tenantId: tenant.tenantId } : { profileId },
-      include: { role: true },
-      orderBy: [{ isPrimaryRole: 'desc' }, { assignedAt: 'asc' }]
-    });
+    const userRoles = await this.db.client
+      .select({ userRole: userRoleTable, role: roleTable })
+      .from(userRoleTable)
+      .leftJoin(roleTable, eq(userRoleTable.roleId, roleTable.id))
+      .where(
+        and(
+          eq(userRoleTable.profileId, profileId),
+          tenant ? eq(userRoleTable.tenantId, tenant.tenantId) : undefined,
+        ),
+      )
+      .orderBy(desc(userRoleTable.isPrimaryRole), asc(userRoleTable.assignedAt));
 
     return {
       user: {
         id: user.id.toString(),
         email: user.email,
-        username: user.username
+        username: user.username,
       },
       roles: userRoles.map((row) => ({
-        id: row.role.id.toString(),
-        slug: row.role.slug,
-        name: row.role.name,
-        is_primary: row.isPrimaryRole
-      }))
+        id: row.role?.id?.toString() ?? '',
+        slug: row.role?.slug ?? '',
+        name: row.role?.name ?? '',
+        is_primary: row.userRole.isPrimaryRole,
+      })),
     };
   }
 
   async setUserRoles(userId: string, dto: AssignUserRolesDto, tenant?: TenantContext) {
     const profileId = toBigInt(userId);
-    const user = await this.drizzle.profile.findUnique({
-      where: { id: profileId },
-      select: { id: true, email: true, username: true }
-    });
+    const [user] = await this.db.client
+      .select({ id: profile.id, email: profile.email, username: profile.username })
+      .from(profile)
+      .where(eq(profile.id, profileId))
+      .limit(1);
     if (!user) throw new NotFoundException('User not found');
     if (tenant) {
-      const membership = await this.drizzle.tenantMembership.findFirst({
-        where: { tenantId: tenant.tenantId, profileId, status: 'active' },
-      });
+      const [membership] = await this.db.client
+        .select({ id: tenantMembership.id })
+        .from(tenantMembership)
+        .where(
+          and(
+            eq(tenantMembership.tenantId, tenant.tenantId),
+            eq(tenantMembership.profileId, profileId),
+            eq(tenantMembership.status, 'active'),
+          ),
+        )
+        .limit(1);
       if (!membership) throw new NotFoundException('User not found');
     }
 
@@ -526,10 +566,10 @@ export class UsersService {
       throw new BadRequestException('At least one role is required');
     }
 
-    const roles = await this.drizzle.role.findMany({
-      where: { slug: { in: roleSlugs }, isActive: true },
-      select: { id: true, slug: true, name: true }
-    });
+    const roles = await this.db.client
+      .select({ id: roleTable.id, slug: roleTable.slug, name: roleTable.name })
+      .from(roleTable)
+      .where(and(inArray(roleTable.slug, roleSlugs), eq(roleTable.isActive, true)));
 
     if (roles.length !== roleSlugs.length) {
       const found = new Set(roles.map((r) => r.slug));
@@ -537,41 +577,46 @@ export class UsersService {
       throw new BadRequestException(`Unknown role(s): ${missing.join(', ')}`);
     }
 
-    await this.drizzle.$transaction(async (tx) => {
-      await tx.userRole.deleteMany({ where: tenant ? { profileId, tenantId: tenant.tenantId } : { profileId } });
-      await tx.userRole.createMany({
-        data: roles.map((role, index) => ({
-          profileId,
-          roleId: role.id,
-          tenantId: tenant?.tenantId,
-          organizationId: null,
-          isPrimaryRole: index === 0
-        })),
-        skipDuplicates: true
-      });
+    await this.db.client.transaction(async (tx) => {
+      await tx
+        .delete(userRoleTable)
+        .where(and(eq(userRoleTable.profileId, profileId), tenant ? eq(userRoleTable.tenantId, tenant.tenantId) : undefined));
+      await tx
+        .insert(userRoleTable)
+        .values(
+          roles.map((role, index) => ({
+            profileId,
+            roleId: role.id,
+            tenantId: tenant?.tenantId as bigint,
+            organizationId: null,
+            isPrimaryRole: index === 0,
+          })),
+        )
+        .onConflictDoNothing();
     });
 
     return {
       user: {
         id: user.id.toString(),
         email: user.email,
-        username: user.username
+        username: user.username,
       },
       roles: roles.map((role, index) => ({
         id: role.id.toString(),
         slug: role.slug,
         name: role.name,
-        is_primary: index === 0
-      }))
+        is_primary: index === 0,
+      })),
     };
   }
 
   async inviteUser(userId: string, dto: InviteUserDto, tenantId?: bigint) {
     const profileId = toBigInt(userId);
-    const user = await this.drizzle.profile.findUnique({
-      where: { id: profileId },
-      select: { id: true, email: true, firstName: true, lastName: true }
-    });
+    const [user] = await this.db.client
+      .select({ id: profile.id, email: profile.email, firstName: profile.firstName, lastName: profile.lastName })
+      .from(profile)
+      .where(eq(profile.id, profileId))
+      .limit(1);
     if (!user) throw new NotFoundException('User not found');
 
     const { inviteToken, expiresAt } = await this.issueInvite(user.id, 'invited', tenantId);
@@ -579,8 +624,68 @@ export class UsersService {
 
     return {
       success: true,
-      expires_at: expiresAt.toISOString()
+      expires_at: expiresAt.toISOString(),
     };
+  }
+
+  async sendResetLink(userId: string, dto: InviteUserDto, tenant?: TenantContext) {
+    const profileId = toBigInt(userId);
+    const [user] = await this.db.client
+      .select({ id: profile.id, email: profile.email, firstName: profile.firstName, lastName: profile.lastName })
+      .from(profile)
+      .where(eq(profile.id, profileId))
+      .limit(1);
+    if (!user) throw new NotFoundException('User not found');
+    if (tenant) {
+      const [membership] = await this.db.client
+        .select({ id: tenantMembership.id })
+        .from(tenantMembership)
+        .where(
+          and(
+            eq(tenantMembership.tenantId, tenant.tenantId),
+            eq(tenantMembership.profileId, profileId),
+            eq(tenantMembership.status, 'active'),
+          ),
+        )
+        .limit(1);
+      if (!membership) throw new NotFoundException('User not found');
+    }
+
+    const resetToken = randomToken(32);
+    const tokenHash = sha256(resetToken);
+    const expiresAt = new Date(Date.now() + 1000 * 60 * 30);
+
+    await this.db.client.transaction(async (tx) => {
+      await tx.delete(tokenTable).where(and(eq(tokenTable.profileId, profileId), eq(tokenTable.type, 'reset')));
+      await tx.insert(tokenTable).values({
+        id: randomToken(24),
+        profileId,
+        type: 'reset',
+        tokenHash,
+        expiresAt,
+      });
+    });
+
+    const portalUrl = this.resolvePortalUrl();
+    const resetLink = `${portalUrl}/reset-password?token=${encodeURIComponent(resetToken)}`;
+    const displayName = `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || user.email;
+
+    await this.mailQueue.enqueue({
+      to: user.email,
+      subject: 'Reset your StanforteEdge password',
+      text: `${displayName},\n\nYour administrator requested a password reset. Use this link to set a new password:\n${resetLink}\n\n${dto.message ?? ''}`.trim(),
+      html: `<p>Hello ${displayName},</p><p>Your administrator requested a password reset. Use this link to set a new password:</p><p><a href="${resetLink}">${resetLink}</a></p>${dto.message ? `<p>${dto.message}</p>` : ''}<p>This link expires in 30 minutes.</p>`,
+      template: 'reset_password',
+      templateContext: {
+        subject: 'Reset your StanforteEdge password',
+        displayName,
+        resetUrl: resetLink,
+      },
+      threadKey: `admin-reset-${user.id.toString()}`,
+      userId: user.id,
+    });
+
+    return { success: true, expires_at: expiresAt.toISOString() };
   }
 
   private resolvePortalUrl() {
@@ -592,38 +697,33 @@ export class UsersService {
     const tokenHash = sha256(inviteToken);
     const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7);
 
-    await this.drizzle.$transaction(async (tx) => {
-      await tx.token.deleteMany({
-        where: { profileId, type: 'invite' }
+    await this.db.client.transaction(async (tx) => {
+      await tx.delete(tokenTable).where(and(eq(tokenTable.profileId, profileId), eq(tokenTable.type, 'invite')));
+      await tx.insert(tokenTable).values({
+        id: randomToken(24),
+        profileId,
+        tenantId,
+        type: 'invite',
+        tokenHash,
+        expiresAt,
       });
-      await tx.token.create({
-        data: {
-          id: randomToken(24),
-          profileId,
-          tenantId,
-          type: 'invite',
-          tokenHash,
-          expiresAt
-        }
-      });
-      await tx.profile.update({
-        where: { id: profileId },
-        data: { status }
-      });
-      await tx.onboardingProgress.upsert({
-        where: { userId: profileId },
-        update: {
-          status: 'invited',
-          currentStep: 'invite',
-          dueDate: expiresAt
-        },
-        create: {
+      await tx.update(profile).set({ status }).where(eq(profile.id, profileId));
+      await tx
+        .insert(onboardingProgress)
+        .values({
           userId: profileId,
           status: 'invited',
           currentStep: 'invite',
-          dueDate: expiresAt
-        }
-      });
+          dueDate: expiresAt,
+        })
+        .onConflictDoUpdate({
+          target: onboardingProgress.userId,
+          set: {
+            status: 'invited',
+            currentStep: 'invite',
+            dueDate: expiresAt,
+          },
+        });
     });
 
     return { inviteToken, expiresAt };
@@ -650,10 +750,10 @@ export class UsersService {
         displayName,
         inviteUrl: inviteLink,
         expiresOn: expiresAt.toDateString(),
-        message: message?.trim() || undefined
+        message: message?.trim() || undefined,
       },
       threadKey: `invite-${user.id.toString()}`,
-      userId: user.id
+      userId: user.id,
     });
   }
 
@@ -670,11 +770,66 @@ export class UsersService {
       templateContext: {
         subject: 'Welcome to StanforteEdge Portal',
         displayName,
-        portalUrl: `${portalUrl}/login`
+        portalUrl: `${portalUrl}/login`,
       },
       threadKey: `welcome-${user.id.toString()}`,
-      userId: user.id
+      userId: user.id,
     });
+  }
+
+  private async enrichProfile(userId: bigint): Promise<any> {
+    const [user] = await this.db.client.select().from(profile).where(eq(profile.id, userId)).limit(1);
+    if (!user) throw new NotFoundException('Profile not found');
+
+    const [orgRows, groupRows, projectRows, employeeRows, metaRows, onboardingRows, signatureRows] = await Promise.all([
+      this.db.client
+        .select({ membership: profileOrganization, organization: organizationTable })
+        .from(profileOrganization)
+        .leftJoin(organizationTable, eq(profileOrganization.organizationId, organizationTable.id))
+        .where(eq(profileOrganization.profileId, userId)),
+      this.db.client
+        .select({ membership: groupUser, group: groupTable })
+        .from(groupUser)
+        .leftJoin(groupTable, eq(groupUser.groupId, groupTable.id))
+        .where(eq(groupUser.userId, userId)),
+      this.db.client
+        .select({ membership: projectMember, project: projectTable })
+        .from(projectMember)
+        .leftJoin(projectTable, eq(projectMember.projectId, projectTable.id))
+        .where(eq(projectMember.userId, userId)),
+      this.db.client.select().from(employeeProfile).where(eq(employeeProfile.userId, userId)).limit(1),
+      this.db.client.select().from(employeeMeta).where(eq(employeeMeta.userId, userId)),
+      this.db.client.select().from(onboardingProgress).where(eq(onboardingProgress.userId, userId)).limit(1),
+      user.signatureFileId
+        ? this.db.client
+            .select({ publicUrl: fileAsset.publicUrl, storagePath: fileAsset.storagePath })
+            .from(fileAsset)
+            .where(eq(fileAsset.id, user.signatureFileId))
+            .limit(1)
+        : (Promise.resolve([]) as Promise<Array<{ publicUrl: string | null; storagePath: string }>>),
+    ]);
+
+    const emp = employeeRows[0];
+    let manager: { id: bigint; firstName: string | null; lastName: string | null; email: string | null } | null = null;
+    if (emp?.managerUserId) {
+      const [m] = await this.db.client
+        .select({ id: profile.id, firstName: profile.firstName, lastName: profile.lastName, email: profile.email })
+        .from(profile)
+        .where(eq(profile.id, emp.managerUserId))
+        .limit(1);
+      manager = m ?? null;
+    }
+
+    return {
+      ...user,
+      organizations: orgRows.map((row) => ({ ...row.membership, organization: row.organization })),
+      groups: groupRows.map((row) => ({ ...row.membership, group: row.group })),
+      projectMemberships: projectRows.map((row) => ({ ...row.membership, project: row.project })),
+      employeeProfile: emp ? { ...emp, manager } : null,
+      employeeMeta: metaRows,
+      onboardingProgress: onboardingRows[0] ?? null,
+      signatureFile: signatureRows[0] ?? null,
+    };
   }
 
   private serializeProfile(user: any): ProfileResponseDto {
@@ -754,7 +909,7 @@ export class UsersService {
                     id: user.employeeProfile.manager.id.toString(),
                     first_name: user.employeeProfile.manager.firstName ?? null,
                     last_name: user.employeeProfile.manager.lastName ?? null,
-                    email: user.employeeProfile.manager.email ?? null
+                    email: user.employeeProfile.manager.email ?? null,
                   },
             primary_team:
               (() => {

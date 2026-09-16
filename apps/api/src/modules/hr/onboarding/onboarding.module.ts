@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
-import { DrizzleModule } from '$common/drizzle/drizzle.module';
+import { DbModule } from '$common/db/db.module';
 import { OnboardingController } from './onboarding.controller';
 import { OnboardingService } from './onboarding.service';
 
 @Module({
-  imports: [DrizzleModule],
+  imports: [DbModule],
   controllers: [OnboardingController],
   providers: [OnboardingService],
   exports: [OnboardingService]

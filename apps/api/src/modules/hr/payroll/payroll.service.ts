@@ -1,5 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { Drizzle } from '$common/db/drizzle-compat';
+import Decimal from 'decimal.js';
+import type { SQL } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gt, gte, ilike, inArray, isNull, isNotNull, like, lt, lte, ne, not, or, sql } from 'drizzle-orm';
 import JSZip from 'jszip';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { PdfService } from '$common/pdf/pdf.service';
@@ -7,7 +9,10 @@ import { existsSync, readFileSync } from 'node:fs';
 import { extname, resolve } from 'node:path';
 import { MailService } from '$common/mail/mail.service';
 import { StorageService } from '$modules/storage/storage.service';
-import { DrizzleService } from '$common/drizzle/drizzle.service';
+import { DbService } from '$common/db/db.service';
+import { RepositoryService } from '$common/db/repository.service';
+import { Drizzle } from '$common/db/drizzle-compat';
+import { TenantContextService } from '$common/auth/tenant-context.service';
 import { toBigInt } from '$common/utils/ids';
 import { NotificationsService } from '$modules/notifications/notifications.service';
 import { CreatePayrollRunDto } from '$modules/hr/payroll/dto/create-payroll-run.dto';
@@ -22,27 +27,196 @@ import { UpsertPayrollSettingDto } from '$modules/hr/payroll/dto/upsert-payroll-
 import { UpsertPayrollTaxTableDto } from '$modules/hr/payroll/dto/upsert-payroll-tax-table.dto';
 import { UpsertPayrollWorkerDto } from '$modules/hr/payroll/dto/upsert-payroll-worker.dto';
 import { paginatedResponse } from '$common/helpers/paginated-response';
+import {
+  payrollAccountingPosting,
+  payrollComponent,
+  payrollImportJob,
+  payrollImportRow,
+  payrollLoan,
+  payrollLoanRepayment,
+  payrollNotificationPreference,
+  payrollPayslipDistribution,
+  payrollRun,
+  payrollRunEvent,
+  payrollRunItem,
+  payrollRunItemAllocation,
+  payrollRunItemLine,
+  payrollRunTimesheetAllocation,
+  payrollSetting,
+  payrollTaxBand,
+  payrollTaxTable,
+  payrollWorker,
+  payrollWorkerAllocation,
+  payrollWorkerProfile,
+  payrollWorkerProfileComponent,
+} from './model';
+import { group } from '$modules/communication/groups/model';
+import { organization } from '$modules/directory/organizations/model';
+import { projectTimesheetEntry } from '$modules/operations/tasks/model';
+import { profile } from '$modules/identity/users/model';
+import { notification } from '$modules/notifications/model';
+import { tenantMembership, tenantOrganization } from '$modules/tenancy/model';
+import {
+  financeAccount,
+  financeChartAccount,
+  financeFund,
+  financeGrant,
+  financeJournalEntry,
+  financeJournalLine,
+  financeReportingPeriod,
+} from '$modules/finance/finance/model';
+import type { NewPayrollComponent } from './model';
 
 @Injectable()
 export class PayrollService {
   constructor(
-    private readonly drizzle: DrizzleService,
+    private readonly drizzle: RepositoryService,
+    private readonly db: DbService,
+    private readonly tenantContext: TenantContextService,
     private readonly notificationsService: NotificationsService,
     private readonly mailService: MailService,
     private readonly pdfService: PdfService,
     private readonly storageService: StorageService
   ) {}
 
+  private runInclude() {
+    return {
+      items: {
+        include: {
+          worker: true,
+          lines: { include: { component: true } },
+          allocations: true,
+          timesheetAllocations: true,
+        },
+      },
+      postings: true,
+      organization: true,
+      paidFromAccount: true,
+    };
+  }
+
+  private workerInclude() {
+    return {
+      profiles: { include: { components: { include: { component: true } }, allocations: true } },
+      organization: true,
+    };
+  }
+
+  private toScale(value: string | number | Decimal | null | undefined): string | null {
+    if (value === null || value === undefined) return null;
+    return value instanceof Decimal ? value.toString() : String(value);
+  }
+
+  private toScaleOrZero(value: string | number | Decimal | null | undefined): string {
+    return this.toScale(value) ?? '0';
+  }
+
+  private combine(...conds: Array<SQL | undefined>): SQL | undefined {
+    const present = conds.filter((c): c is SQL => c !== undefined);
+    return present.length ? and(...present) : undefined;
+  }
+
+  private async countTable(table: any, conds: Array<SQL | undefined>): Promise<number> {
+    const rows = await this.db.client.select({ c: count() }).from(table).where(this.combine(...conds));
+    return rows[0]?.c ?? 0;
+  }
+
+  private async hydrateTaxTable(tableId: string): Promise<any> {
+    const tableRows = await this.db.client.select().from(payrollTaxTable).where(eq(payrollTaxTable.id, tableId)).limit(1);
+    const table = tableRows[0];
+    if (!table) return null;
+    const bands = await this.db.client.select().from(payrollTaxBand).where(eq(payrollTaxBand.tableId, tableId)).orderBy(asc(payrollTaxBand.sortOrder));
+    return { ...table, bands };
+  }
+
+  private async hydrateSetting(row: any): Promise<any> {
+    if (!row) return row;
+    const [organizationRow, expenseAccount, cashAccount, employeeTaxTable] = await Promise.all([
+      row.organizationId
+        ? this.db.client.select({ id: organization.id, name: organization.name }).from(organization).where(eq(organization.id, row.organizationId)).limit(1).then((r) => r[0])
+        : Promise.resolve(null),
+      row.defaultExpenseAccountId
+        ? this.db.client.select({ id: financeAccount.id, code: financeAccount.code, name: financeAccount.name }).from(financeAccount).where(eq(financeAccount.id, row.defaultExpenseAccountId)).limit(1).then((r) => r[0])
+        : Promise.resolve(null),
+      row.defaultCashAccountId
+        ? this.db.client.select({ id: financeAccount.id, code: financeAccount.code, name: financeAccount.name }).from(financeAccount).where(eq(financeAccount.id, row.defaultCashAccountId)).limit(1).then((r) => r[0])
+        : Promise.resolve(null),
+      row.employeeTaxTableId ? this.hydrateTaxTable(row.employeeTaxTableId) : Promise.resolve(null),
+    ]);
+    return { ...row, organization: organizationRow, defaultExpenseAccount: expenseAccount, defaultCashAccount: cashAccount, employeeTaxTable };
+  }
+
+  private async attachTaxBands(rows: any[]) {
+    if (!rows.length) return rows;
+    const ids = rows.map((r: any) => r.id);
+    const bands = await this.db.client.select().from(payrollTaxBand).where(inArray(payrollTaxBand.tableId, ids)).orderBy(asc(payrollTaxBand.sortOrder));
+    const byTable = new Map<string, any[]>();
+    for (const b of bands) {
+      const list = byTable.get(b.tableId) ?? [];
+      list.push(b);
+      byTable.set(b.tableId, list);
+    }
+    return rows.map((r: any) => ({ ...r, bands: byTable.get(r.id) ?? [] }));
+  }
+
+  private async hydrateLoan(row: any): Promise<any> {
+    if (!row) return row;
+    const [workerRow, componentRow, repaymentRows] = await Promise.all([
+      row.workerId
+        ? this.db.client.select({ id: payrollWorker.id, fullName: payrollWorker.fullName, workerType: payrollWorker.workerType, email: payrollWorker.email }).from(payrollWorker).where(eq(payrollWorker.id, row.workerId)).limit(1).then((r) => r[0])
+        : Promise.resolve(null),
+      row.componentId
+        ? this.db.client.select({ id: payrollComponent.id, code: payrollComponent.code, name: payrollComponent.name }).from(payrollComponent).where(eq(payrollComponent.id, row.componentId)).limit(1).then((r) => r[0])
+        : Promise.resolve(null),
+      this.db.client.select().from(payrollLoanRepayment).where(eq(payrollLoanRepayment.loanId, row.id)).orderBy(desc(payrollLoanRepayment.createdAt)).limit(24),
+    ]);
+    return { ...row, worker: workerRow, component: componentRow, repayments: repaymentRows };
+  }
+
+  private async hydrateProjectTimesheet(row: any): Promise<any> {
+    if (!row) return row;
+    const [workerRow, componentRow, organizationRow, fundRow, grantRow, runRow] = await Promise.all([
+      row.workerId
+        ? this.db.client.select({ id: payrollWorker.id, fullName: payrollWorker.fullName, workerType: payrollWorker.workerType, email: payrollWorker.email }).from(payrollWorker).where(eq(payrollWorker.id, row.workerId)).limit(1).then((r) => r[0])
+        : Promise.resolve(null),
+      row.componentId
+        ? this.db.client.select({ id: payrollComponent.id, code: payrollComponent.code, name: payrollComponent.name }).from(payrollComponent).where(eq(payrollComponent.id, row.componentId)).limit(1).then((r) => r[0])
+        : Promise.resolve(null),
+      row.organizationId
+        ? this.db.client.select({ id: organization.id, name: organization.name }).from(organization).where(eq(organization.id, row.organizationId)).limit(1).then((r) => r[0])
+        : Promise.resolve(null),
+      row.fundId
+        ? this.db.client.select({ id: financeFund.id, code: financeFund.code, name: financeFund.name }).from(financeFund).where(eq(financeFund.id, row.fundId)).limit(1).then((r) => r[0])
+        : Promise.resolve(null),
+      row.grantId
+        ? this.db.client.select({ id: financeGrant.id, code: financeGrant.code, name: financeGrant.name }).from(financeGrant).where(eq(financeGrant.id, row.grantId)).limit(1).then((r) => r[0])
+        : Promise.resolve(null),
+      row.syncedRunId
+        ? this.db.client.select({ id: payrollRun.id, name: payrollRun.name, year: payrollRun.year, month: payrollRun.month, status: payrollRun.status }).from(payrollRun).where(eq(payrollRun.id, row.syncedRunId)).limit(1).then((r) => r[0])
+        : Promise.resolve(null),
+    ]);
+    return { ...row, worker: workerRow, component: componentRow, organization: organizationRow, fund: fundRow, grant: grantRow, syncedRun: runRow };
+  }
+
   async summary(query: Record<string, any> = {}) {
     const orgFilter = query.organization_id ? { organizationId: toBigInt(String(query.organization_id)) } : {};
-    const [workers, activeWorkers, consultants, components, runs, latestRun] = await this.drizzle.$transaction([
-      this.drizzle.payrollWorker.count({ where: orgFilter }),
-      this.drizzle.payrollWorker.count({ where: { status: 'active', ...orgFilter } }),
-      this.drizzle.payrollWorker.count({ where: { workerType: 'consultant', ...orgFilter } }),
-      this.drizzle.payrollComponent.count({ where: { isActive: true } }),
-      this.drizzle.payrollRun.count({ where: orgFilter }),
-      this.drizzle.payrollRun.findFirst({ where: orgFilter, orderBy: [{ year: 'desc' }, { month: 'desc' }] })
+    const tid = this.tenantContext.currentTenantId();
+    const workerScope = tid ? eq(payrollWorker.tenantId, tid) : undefined;
+    const runScope = tid ? eq(payrollRun.tenantId, tid) : undefined;
+    const orgWorkerScope = 'organizationId' in orgFilter ? eq(payrollWorker.organizationId, orgFilter.organizationId as bigint) : undefined;
+    const orgRunScope = 'organizationId' in orgFilter ? eq(payrollRun.organizationId, orgFilter.organizationId as bigint) : undefined;
+    const rows = await Promise.all([
+      this.countTable(payrollWorker, [workerScope, orgWorkerScope]),
+      this.countTable(payrollWorker, [workerScope, orgWorkerScope, eq(payrollWorker.status, 'active')]),
+      this.countTable(payrollWorker, [workerScope, orgWorkerScope, eq(payrollWorker.workerType, 'consultant')]),
+      this.countTable(payrollComponent, [eq(payrollComponent.isActive, true)]),
+      this.countTable(payrollRun, [runScope, orgRunScope]),
+      this.db.client.select().from(payrollRun)
+        .where(this.combine(runScope, orgRunScope))
+        .orderBy(desc(payrollRun.year), desc(payrollRun.month))
+        .limit(1)
     ]);
+    const [workers, activeWorkers, consultants, components, runs, latestRun] = rows;
 
     return {
       workers,
@@ -50,34 +224,64 @@ export class PayrollService {
       consultants,
       active_components: components,
       runs,
-      latest_run: latestRun ? this.serializeRunSummary(latestRun) : null
+      latest_run: latestRun.length ? this.serializeRunSummary(latestRun[0]) : null
     };
   }
 
   async listMyPayslips(userId: string, query: Record<string, any>) {
     const page = Math.max(1, Number(query.page ?? 1));
     const perPage = Math.min(50, Math.max(1, Number(query.per_page ?? 20)));
-    const worker = await this.drizzle.payrollWorker.findFirst({
-      where: { profileId: toBigInt(userId) },
-      select: { id: true }
-    });
+    const tid = this.tenantContext.currentTenantId();
+    const workerRows = await this.db.client.select({ id: payrollWorker.id }).from(payrollWorker)
+      .where(this.combine(eq(payrollWorker.profileId, toBigInt(userId)), tid ? eq(payrollWorker.tenantId, tid) : undefined))
+      .limit(1);
+    const worker = workerRows[0];
     if (!worker) {
       return paginatedResponse([], { page, per_page: perPage, total: 0 });
     }
 
-    const [rows, total] = await this.drizzle.$transaction([
-      this.drizzle.payrollRunItem.findMany({
-        where: { workerId: worker.id },
-        include: {
-          run: true,
-          payslipDistributions: { orderBy: { createdAt: 'desc' }, take: 5 },
-        },
-        orderBy: [{ run: { year: 'desc' } }, { run: { month: 'desc' } }],
-        skip: (page - 1) * perPage,
-        take: perPage,
-      }),
-      this.drizzle.payrollRunItem.count({ where: { workerId: worker.id } }),
+    const [pageRows, total] = await Promise.all([
+      this.db.client
+        .select({
+          id: payrollRunItem.id,
+          runId: payrollRunItem.runId,
+          grossPay: payrollRunItem.grossPay,
+          totalDeductions: payrollRunItem.totalDeductions,
+          netPay: payrollRunItem.netPay,
+          paymentStatus: payrollRunItem.paymentStatus,
+          paymentReference: payrollRunItem.paymentReference,
+          run: {
+            id: payrollRun.id,
+            name: payrollRun.name,
+            year: payrollRun.year,
+            month: payrollRun.month,
+            status: payrollRun.status,
+            currency: payrollRun.currency,
+          },
+        })
+        .from(payrollRunItem)
+        .innerJoin(payrollRun, eq(payrollRun.id, payrollRunItem.runId))
+        .where(eq(payrollRunItem.workerId, worker.id))
+        .orderBy(desc(payrollRun.year), desc(payrollRun.month))
+        .limit(perPage)
+        .offset((page - 1) * perPage),
+      this.countTable(payrollRunItem, [eq(payrollRunItem.workerId, worker.id)]),
     ]);
+
+    const itemIds = pageRows.map((row) => row.id);
+    const distributions: Record<string, any[]> = {};
+    if (itemIds.length) {
+      const dists = await this.db.client.select().from(payrollPayslipDistribution)
+        .where(inArray(payrollPayslipDistribution.runItemId, itemIds))
+        .orderBy(desc(payrollPayslipDistribution.createdAt));
+      for (const dist of dists) {
+        if (!dist.runItemId) continue;
+        const list = distributions[dist.runItemId] ?? [];
+        if (list.length < 5) list.push(dist);
+        distributions[dist.runItemId] = list;
+      }
+    }
+    const rows = pageRows.map((row) => ({ ...row, payslipDistributions: distributions[row.id] ?? [] }));
 
     return paginatedResponse(rows.map((row) => ({
       id: row.id,
@@ -103,23 +307,43 @@ export class PayrollService {
   }
 
   async getMyPayslipDetails(userId: string, runId: string, itemId: string) {
-    const worker = await this.drizzle.payrollWorker.findFirst({
-      where: { profileId: toBigInt(userId) },
-      select: { id: true }
-    });
+    const tid = this.tenantContext.currentTenantId();
+    const workerRows = await this.db.client.select({ id: payrollWorker.id }).from(payrollWorker)
+      .where(this.combine(eq(payrollWorker.profileId, toBigInt(userId)), tid ? eq(payrollWorker.tenantId, tid) : undefined))
+      .limit(1);
+    const worker = workerRows[0];
     if (!worker) throw new NotFoundException('Payslip not found');
 
-    const row = await this.drizzle.payrollRunItem.findFirst({
-      where: { id: itemId, runId, workerId: worker.id },
-      include: {
-        run: true,
-        worker: true,
-        organization: { select: { id: true, name: true } },
-        lines: { include: { component: true }, orderBy: { createdAt: 'asc' } },
-        payslipDistributions: { orderBy: { createdAt: 'desc' }, take: 5 },
-      }
-    });
+    const itemRows = await this.db.client.select().from(payrollRunItem)
+      .where(and(eq(payrollRunItem.id, itemId), eq(payrollRunItem.runId, runId), eq(payrollRunItem.workerId, worker.id)))
+      .limit(1);
+    const row = itemRows[0] as any;
     if (!row) throw new NotFoundException('Payslip not found');
+
+    const [run, workerRow, organizationRow, lines, distributions] = await Promise.all([
+      this.db.client.select().from(payrollRun).where(eq(payrollRun.id, runId)).limit(1).then((r) => r[0]),
+      this.db.client.select().from(payrollWorker).where(eq(payrollWorker.id, row.workerId)).limit(1).then((r) => r[0]),
+      row.organizationId
+        ? this.db.client.select({ id: organization.id, name: organization.name }).from(organization).where(eq(organization.id, row.organizationId)).limit(1).then((r) => r[0])
+        : Promise.resolve(null),
+      this.db.client
+        .select({ line: payrollRunItemLine, component: { id: payrollComponent.id, name: payrollComponent.name } })
+        .from(payrollRunItemLine)
+        .innerJoin(payrollComponent, eq(payrollComponent.id, payrollRunItemLine.componentId))
+        .where(eq(payrollRunItemLine.runItemId, row.id))
+        .orderBy(asc(payrollRunItemLine.createdAt))
+        .then((r) => r.map((entry) => ({ ...entry.line, component: entry.component }))),
+      this.db.client.select().from(payrollPayslipDistribution)
+        .where(eq(payrollPayslipDistribution.runItemId, row.id))
+        .orderBy(desc(payrollPayslipDistribution.createdAt))
+        .limit(5),
+    ]);
+
+    row.run = run;
+    row.worker = workerRow;
+    row.organization = organizationRow;
+    row.lines = lines;
+    row.payslipDistributions = distributions;
 
     const earnings = row.lines
       .filter((line) => line.lineType === 'earning')
@@ -164,14 +388,11 @@ export class PayrollService {
   }
 
   async generateMyPayslip(userId: string, runId: string, itemId: string) {
-    const row = await this.drizzle.payrollRunItem.findFirst({
-      where: {
-        id: itemId,
-        runId,
-        worker: { profileId: toBigInt(userId) },
-      },
-      select: { id: true }
-    });
+    const matchRows = await this.db.client.select({ id: payrollRunItem.id }).from(payrollRunItem)
+      .innerJoin(payrollWorker, eq(payrollWorker.id, payrollRunItem.workerId))
+      .where(and(eq(payrollRunItem.id, itemId), eq(payrollRunItem.runId, runId), eq(payrollWorker.profileId, toBigInt(userId))))
+      .limit(1);
+    const row = matchRows[0];
     if (!row) throw new NotFoundException('Payslip not found');
     return this.generateRunItemPayslip(runId, itemId);
   }
@@ -188,7 +409,8 @@ export class PayrollService {
 
   async updateMyProjectTimesheet(userId: string, id: string, dto: any) {
     const worker = await this.resolveWorkerForUser(userId);
-    const row = await this.drizzle.projectTimesheetEntry.findUnique({ where: { id } });
+    const entryRows = await this.db.client.select().from(projectTimesheetEntry).where(eq(projectTimesheetEntry.id, id)).limit(1);
+    const row = entryRows[0];
     if (!row || row.workerId !== worker.id) throw new NotFoundException('Project timesheet entry not found');
     if (!['draft', 'rejected'].includes(row.status)) {
       throw new BadRequestException('Only draft or rejected timesheets can be edited');
@@ -198,7 +420,8 @@ export class PayrollService {
 
   async submitMyProjectTimesheet(userId: string, id: string) {
     const worker = await this.resolveWorkerForUser(userId);
-    const row = await this.drizzle.projectTimesheetEntry.findUnique({ where: { id } });
+    const entryRows = await this.db.client.select().from(projectTimesheetEntry).where(eq(projectTimesheetEntry.id, id)).limit(1);
+    const row = entryRows[0];
     if (!row || row.workerId !== worker.id) throw new NotFoundException('Project timesheet entry not found');
     if (!['draft', 'rejected'].includes(row.status)) {
       throw new BadRequestException('Only draft or rejected timesheets can be submitted');
@@ -216,59 +439,77 @@ export class PayrollService {
 
     const orgFilter = query.organization_id ? { organizationId: toBigInt(String(query.organization_id)) } : {};
 
-    const [approvals, corrections, payments, importJobs, failedDistributions, notifications] = await this.drizzle.$transaction([
-      this.drizzle.payrollRun.findMany({
-        where: canManage ? { status: 'under_review', ...orgFilter } : { status: 'under_review', preparedById: actorId, ...orgFilter },
-        orderBy: [{ year: 'desc' }, { month: 'desc' }],
-        take: 10,
-        include: { items: true, _count: { select: { items: true } } }
-      }),
-      this.drizzle.payrollRun.findMany({
-        where: canManage
-          ? { status: 'rejected', ...orgFilter }
-          : { status: 'rejected', OR: [{ preparedById: actorId }, { reviewedById: actorId }, { approvedById: actorId }], ...orgFilter },
-        orderBy: [{ updatedAt: 'desc' }],
-        take: 10,
-        include: { items: true, _count: { select: { items: true } } }
-      }),
-      this.drizzle.payrollRun.findMany({
-        where: canManage ? { status: 'approved', ...orgFilter } : { status: 'approved', preparedById: actorId, ...orgFilter },
-        orderBy: [{ updatedAt: 'desc' }],
-        take: 10,
-        include: { items: true, _count: { select: { items: true } } }
-      }),
-      this.drizzle.payrollImportJob.findMany({
-        where: canManage
-          ? { status: { in: ['partial', 'failed'] } }
-          : { uploadedBy: actorId, status: { in: ['partial', 'failed'] } },
-        orderBy: [{ createdAt: 'desc' }],
-        take: 10,
-        include: { _count: { select: { rows: true } } }
-      }),
-      this.drizzle.payrollPayslipDistribution.findMany({
-        where: canManage
-          ? { status: { in: ['failed', 'skipped'] } }
-          : { OR: [{ sentBy: actorId }, { run: { preparedById: actorId } }], status: { in: ['failed', 'skipped'] } },
-        orderBy: [{ createdAt: 'desc' }],
-        take: 20,
-        include: {
-          run: true,
-          worker: { select: { id: true, fullName: true, email: true, workerType: true } }
-        }
-      }),
-      this.drizzle.notification.findMany({
-        where: {
-          userId: actorId,
-          OR: [
-            { notifiableType: 'payroll_run' },
-            { notifiableType: 'payroll_import_job' },
-            { type: { startsWith: 'payroll.' } },
-          ]
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 20,
-      }),
+    const tid = this.tenantContext.currentTenantId();
+    const runScope = tid ? eq(payrollRun.tenantId, tid) : undefined;
+    const orgRunScope = 'organizationId' in orgFilter ? eq(payrollRun.organizationId, (orgFilter as any).organizationId) : undefined;
+
+    const fetchRuns = async (status: string, personCond: SQL | undefined, newest: boolean) => {
+      const where = this.combine(runScope, orgRunScope, eq(payrollRun.status, status), personCond);
+      const rows = newest
+        ? await this.db.client.select().from(payrollRun).where(where).orderBy(desc(payrollRun.year), desc(payrollRun.month)).limit(10)
+        : await this.db.client.select().from(payrollRun).where(where).orderBy(desc(payrollRun.updatedAt)).limit(10);
+      return rows as any[];
+    };
+
+    const [approvals, corrections, payments, importJobs, failedDistributions, notifications] = await Promise.all([
+      fetchRuns('under_review', canManage ? undefined : eq(payrollRun.preparedById, actorId), true),
+      fetchRuns('rejected', canManage ? undefined : or(eq(payrollRun.preparedById, actorId), eq(payrollRun.reviewedById, actorId), eq(payrollRun.approvedById, actorId)), false),
+      fetchRuns('approved', canManage ? undefined : eq(payrollRun.preparedById, actorId), false),
+      this.db.client.select().from(payrollImportJob)
+        .where(this.combine(canManage ? undefined : eq(payrollImportJob.uploadedBy, actorId), inArray(payrollImportJob.status, ['partial', 'failed'])))
+        .orderBy(desc(payrollImportJob.createdAt))
+        .limit(10)
+        .then((rows) => rows as any[]),
+      (async () => {
+        const distRows = await this.db.client
+          .select({
+            dist: payrollPayslipDistribution,
+            run: { id: payrollRun.id, name: payrollRun.name, status: payrollRun.status },
+            worker: { id: payrollWorker.id, fullName: payrollWorker.fullName, email: payrollWorker.email, workerType: payrollWorker.workerType },
+          })
+          .from(payrollPayslipDistribution)
+          .leftJoin(payrollRun, eq(payrollRun.id, payrollPayslipDistribution.runId))
+          .leftJoin(payrollWorker, eq(payrollWorker.id, payrollPayslipDistribution.workerId))
+          .where(this.combine(
+            canManage ? undefined : or(eq(payrollPayslipDistribution.sentBy, actorId), eq(payrollRun.preparedById, actorId)),
+            inArray(payrollPayslipDistribution.status, ['failed', 'skipped']),
+          ))
+          .orderBy(desc(payrollPayslipDistribution.createdAt))
+          .limit(20);
+        return distRows.map(({ dist, run, worker }) => ({ ...dist, run, worker }));
+      })(),
+      this.db.client.select().from(notification)
+        .where(this.combine(
+          eq(notification.userId, actorId),
+          tid ? eq(notification.tenantId, tid) : undefined,
+          or(eq(notification.notifiableType, 'payroll_run'), eq(notification.notifiableType, 'payroll_import_job'), like(notification.type, 'payroll.%')),
+        ))
+        .orderBy(desc(notification.createdAt))
+        .limit(20),
     ]);
+
+    const allRuns = [...approvals, ...corrections, ...payments];
+    const runIds = Array.from(new Set(allRuns.map((run: any) => run.id)));
+    const itemsByRun: Record<string, any[]> = {};
+    if (runIds.length) {
+      const runItems = await this.db.client.select().from(payrollRunItem).where(inArray(payrollRunItem.runId, runIds));
+      for (const item of runItems) {
+        (itemsByRun[item.runId] ??= []).push(item);
+      }
+    }
+    for (const run of allRuns) {
+      run.items = itemsByRun[run.id] ?? [];
+      run._count = { items: run.items.length };
+    }
+
+    const jobIds = importJobs.map((job: any) => job.id);
+    const jobRowCounts = jobIds.length
+      ? await this.db.client.select({ jobId: payrollImportRow.jobId, c: count() }).from(payrollImportRow).where(inArray(payrollImportRow.jobId, jobIds)).groupBy(payrollImportRow.jobId)
+      : [];
+    const jobCountMap = new Map(jobRowCounts.map((r) => [r.jobId, Number(r.c)]));
+    for (const job of importJobs as any[]) {
+      job._count = { rows: jobCountMap.get(job.id) ?? 0 };
+    }
 
     return {
       approvals: approvals.map((row) => ({ ...this.serializeRunSummary(row), link: `/app/finance/payroll/runs?run_id=${row.id}` })),
@@ -311,114 +552,114 @@ export class PayrollService {
 
   async getSettings(query: Record<string, any>) {
     const organizationId = query.organization_id ? this.parseBigInt(query.organization_id, 'organization id') : null;
-    const row = await this.drizzle.payrollSetting.findFirst({
-      where: organizationId ? { organizationId } : {},
-      include: {
-        organization: { select: { id: true, name: true } },
-        defaultExpenseAccount: { select: { id: true, code: true, name: true } },
-        defaultCashAccount: { select: { id: true, code: true, name: true } },
-        employeeTaxTable: { include: { bands: { orderBy: { sortOrder: 'asc' } } } },
-      }
-    });
+    const settingRows = await this.db.client.select().from(payrollSetting)
+      .where(organizationId ? eq(payrollSetting.organizationId, organizationId) : isNull(payrollSetting.organizationId))
+      .limit(1);
+    const row = await this.hydrateSetting(settingRows[0] ?? null);
     return row ? this.serializeSetting(row) : null;
   }
 
   async getNotificationPreferences(userId: string) {
-    const row = await this.drizzle.payrollNotificationPreference.findUnique({
-      where: { userId: toBigInt(userId) }
-    });
+    const prefRows = await this.db.client.select().from(payrollNotificationPreference).where(eq(payrollNotificationPreference.userId, toBigInt(userId))).limit(1);
+    const row = prefRows[0] ?? null;
     return this.serializeNotificationPreferences(row);
   }
 
   async upsertNotificationPreferences(userId: string, payload: Record<string, any>) {
     const config = this.normalizeNotificationPreferenceConfig(payload);
-    const row = await this.drizzle.payrollNotificationPreference.upsert({
-      where: { userId: toBigInt(userId) },
-      create: { userId: toBigInt(userId), config: config as Drizzle.InputJsonValue },
-      update: { config: config as Drizzle.InputJsonValue },
-    });
+    const existingRows = await this.db.client.select().from(payrollNotificationPreference).where(eq(payrollNotificationPreference.userId, toBigInt(userId))).limit(1);
+    const existing = existingRows[0];
+    let row: any;
+    if (existing) {
+      const updated = await this.db.client.update(payrollNotificationPreference)
+        .set({ config })
+        .where(eq(payrollNotificationPreference.id, existing.id))
+        .returning();
+      row = updated[0];
+    } else {
+      const created = await this.db.client.insert(payrollNotificationPreference)
+        .values({ userId: toBigInt(userId), config })
+        .returning();
+      row = created[0];
+    }
     return this.serializeNotificationPreferences(row);
   }
 
   async upsertSettings(dto: UpsertPayrollSettingDto, actorId?: string) {
     const organizationId = dto.organization_id ? this.parseBigInt(dto.organization_id, 'organization id') : null;
-    const existing = await this.drizzle.payrollSetting.findFirst({ where: organizationId ? { organizationId } : { organizationId: null } });
-    const payload: Drizzle.PayrollSettingUncheckedCreateInput | Drizzle.PayrollSettingUncheckedUpdateInput = {
+    const existingRows = await this.db.client.select().from(payrollSetting)
+      .where(organizationId ? eq(payrollSetting.organizationId, organizationId) : isNull(payrollSetting.organizationId))
+      .limit(1);
+    const existing = existingRows[0];
+    const payload = {
       organizationId,
       defaultExpenseAccountId: dto.default_expense_account_id || null,
       defaultCashAccountId: dto.default_cash_account_id || null,
       employeeTaxTableId: dto.employee_tax_table_id || null,
-      config: (dto.config || {}) as Drizzle.InputJsonValue,
+      config: dto.config || {},
       updatedBy: actorId ? toBigInt(actorId) : null,
     };
-    const row = existing
-      ? await this.drizzle.payrollSetting.update({
-          where: { id: existing.id },
-          data: payload,
-          include: {
-            organization: { select: { id: true, name: true } },
-            defaultExpenseAccount: { select: { id: true, code: true, name: true } },
-            defaultCashAccount: { select: { id: true, code: true, name: true } },
-            employeeTaxTable: { include: { bands: { orderBy: { sortOrder: 'asc' } } } },
-          }
-        })
-      : await this.drizzle.payrollSetting.create({
-          data: payload as Drizzle.PayrollSettingUncheckedCreateInput,
-          include: {
-            organization: { select: { id: true, name: true } },
-            defaultExpenseAccount: { select: { id: true, code: true, name: true } },
-            defaultCashAccount: { select: { id: true, code: true, name: true } },
-            employeeTaxTable: { include: { bands: { orderBy: { sortOrder: 'asc' } } } },
-          }
-        });
+    let base: any = null;
+    if (existing) {
+      const updated = await this.db.client.update(payrollSetting)
+        .set(payload)
+        .where(eq(payrollSetting.id, existing.id))
+        .returning();
+      base = updated[0] ?? null;
+    } else {
+      const created = await this.db.client.insert(payrollSetting)
+        .values(payload)
+        .returning();
+      base = created[0] ?? null;
+    }
+    const row = await this.hydrateSetting(base);
     return this.serializeSetting(row);
   }
 
   async listTaxTables(query: Record<string, any>) {
     const organizationId = query.organization_id ? this.parseBigInt(query.organization_id, 'organization id') : null;
-    const rows = await this.drizzle.payrollTaxTable.findMany({
-      where: {
-        ...(organizationId ? { OR: [{ organizationId }, { organizationId: null }] } : {}),
-        ...(query.status ? { status: String(query.status) } : {}),
-        ...(query.worker_type ? { workerType: String(query.worker_type) } : {}),
-      },
-      include: {
-        bands: { orderBy: { sortOrder: 'asc' } },
-      },
-      orderBy: [{ status: 'asc' }, { effectiveFrom: 'desc' }, { name: 'asc' }],
-    });
-    const items = rows.map((row) => this.serializeTaxTable(row));
-    return paginatedResponse(items, { page: 1, per_page: items.length, total: items.length });
+    const rows = await this.db.client.select().from(payrollTaxTable)
+      .where(this.combine(
+        organizationId ? or(eq(payrollTaxTable.organizationId, organizationId), isNull(payrollTaxTable.organizationId)) : undefined,
+        query.status ? eq(payrollTaxTable.status, String(query.status)) : undefined,
+        query.worker_type ? eq(payrollTaxTable.workerType, String(query.worker_type)) : undefined,
+      ))
+      .orderBy(asc(payrollTaxTable.status), desc(payrollTaxTable.effectiveFrom), asc(payrollTaxTable.name));
+    const items = await this.attachTaxBands(rows);
+    return paginatedResponse(items.map((row) => this.serializeTaxTable(row)), { page: 1, per_page: items.length, total: items.length });
   }
 
   async createTaxTable(dto: UpsertPayrollTaxTableDto) {
-    const row = await this.drizzle.payrollTaxTable.create({
-      data: {
-        ...this.mapTaxTableDto(dto),
-        bands: {
-          create: this.mapTaxBandDtos(dto.bands || []),
-        },
-      },
-      include: { bands: { orderBy: { sortOrder: 'asc' } } },
+    const row = await this.db.client.transaction(async (tx) => {
+      const created = await tx.insert(payrollTaxTable).values(this.mapTaxTableDto(dto)).returning();
+      const table = created[0];
+      const bands = this.mapTaxBandDtos(dto.bands || []);
+      if (bands.length) {
+        await tx.insert(payrollTaxBand).values(bands.map((b) => ({ ...b, tableId: table.id })));
+      }
+      const bandRows = await tx.select().from(payrollTaxBand).where(eq(payrollTaxBand.tableId, table.id)).orderBy(asc(payrollTaxBand.sortOrder));
+      return { ...table, bands: bandRows };
     });
     return this.serializeTaxTable(row);
   }
 
   async updateTaxTable(id: string, dto: UpsertPayrollTaxTableDto) {
-    const existing = await this.drizzle.payrollTaxTable.findUnique({ where: { id } });
+    const existingRows = await this.db.client.select().from(payrollTaxTable).where(eq(payrollTaxTable.id, id)).limit(1);
+    const existing = existingRows[0];
     if (!existing) throw new NotFoundException('Payroll tax table not found');
-    const row = await this.drizzle.$transaction(async (tx) => {
-      await tx.payrollTaxBand.deleteMany({ where: { tableId: id } });
-      return tx.payrollTaxTable.update({
-        where: { id },
-        data: {
-          ...this.mapTaxTableDto(dto),
-          bands: {
-            create: this.mapTaxBandDtos(dto.bands || []),
-          },
-        },
-        include: { bands: { orderBy: { sortOrder: 'asc' } } },
-      });
+    const row = await this.db.client.transaction(async (tx) => {
+      await tx.delete(payrollTaxBand).where(eq(payrollTaxBand.tableId, id));
+      const updated = await tx.update(payrollTaxTable)
+        .set(this.mapTaxTableDto(dto))
+        .where(eq(payrollTaxTable.id, id))
+        .returning();
+      const table = updated[0];
+      const bands = this.mapTaxBandDtos(dto.bands || []);
+      if (bands.length) {
+        await tx.insert(payrollTaxBand).values(bands.map((b) => ({ ...b, tableId: table.id })));
+      }
+      const bandRows = await tx.select().from(payrollTaxBand).where(eq(payrollTaxBand.tableId, id)).orderBy(asc(payrollTaxBand.sortOrder));
+      return { ...table, bands: bandRows };
     });
     return this.serializeTaxTable(row);
   }
@@ -426,317 +667,233 @@ export class PayrollService {
   async listWorkers(query: Record<string, any>) {
     const page = Math.max(1, Number(query.page ?? 1));
     const perPage = Math.min(100, Math.max(1, Number(query.per_page ?? 20)));
-    const where: Drizzle.PayrollWorkerWhereInput = {};
-
+    const tid = this.tenantContext.currentTenantId();
+    const conds: Array<SQL | undefined> = [
+      tid ? eq(payrollWorker.tenantId, tid) : undefined,
+      query.worker_type ? eq(payrollWorker.workerType, String(query.worker_type)) : undefined,
+      query.status ? eq(payrollWorker.status, String(query.status)) : undefined,
+      query.organization_id ? eq(payrollWorker.organizationId, toBigInt(String(query.organization_id))) : undefined,
+    ];
     if (query.search) {
-      where.OR = [
-        { fullName: { contains: String(query.search), mode: 'insensitive' } },
-        { email: { contains: String(query.search), mode: 'insensitive' } },
-        { staffCode: { contains: String(query.search), mode: 'insensitive' } }
-      ];
+      const term = String(query.search);
+      conds.push(or(
+        ilike(payrollWorker.fullName, `%${term}%`),
+        ilike(payrollWorker.email, `%${term}%`),
+        ilike(payrollWorker.staffCode, `%${term}%`)
+      ));
     }
-    if (query.worker_type) where.workerType = String(query.worker_type);
-    if (query.status) where.status = String(query.status);
-    if (query.organization_id) where.organizationId = toBigInt(String(query.organization_id));
-
-    const [rows, total] = await this.drizzle.$transaction([
-      this.drizzle.payrollWorker.findMany({
-        where,
-        include: this.workerInclude(),
-        orderBy: [{ fullName: 'asc' }],
-        skip: (page - 1) * perPage,
-        take: perPage
-      }),
-      this.drizzle.payrollWorker.count({ where })
+    const [rows, total] = await Promise.all([
+      this.db.client.select().from(payrollWorker)
+        .where(this.combine(...conds))
+        .orderBy(asc(payrollWorker.fullName))
+        .limit(perPage)
+        .offset((page - 1) * perPage),
+      this.countTable(payrollWorker, conds),
     ]);
-
-    return paginatedResponse(rows.map((row) => this.serializeWorker(row)), { page, per_page: perPage, total });
+    const hydrated = await Promise.all(rows.map((row) => this.hydrateWorker(row)));
+    return paginatedResponse(hydrated.map((row) => this.serializeWorker(row)), { page, per_page: perPage, total });
   }
 
   async getWorker(id: string) {
-    const row = await this.drizzle.payrollWorker.findUnique({ where: { id }, include: this.workerInclude() });
+    const tid = this.tenantContext.currentTenantId();
+    const rows = await this.db.client.select().from(payrollWorker)
+      .where(this.combine(eq(payrollWorker.id, id), tid ? eq(payrollWorker.tenantId, tid) : undefined))
+      .limit(1);
+    const row = rows[0];
     if (!row) throw new NotFoundException('Payroll worker not found');
-    return this.serializeWorker(row);
+    return this.serializeWorker(await this.hydrateWorker(row));
   }
 
   async createWorker(dto: UpsertPayrollWorkerDto, actorId?: string) {
-    return this.drizzle.$transaction(async (tx) => {
-      const worker = await tx.payrollWorker.create({
-        data: this.mapWorkerDto(dto),
-      });
+    const tid = this.tenantContext.currentTenantId();
+    return this.db.client.transaction(async (tx) => {
+      const created = await tx.insert(payrollWorker).values({ ...this.mapWorkerDto(dto), tenantId: tid ?? null }).returning();
+      const worker = created[0];
       await this.syncWorkerChildrenTx(tx, worker.id, dto);
-      const row = await tx.payrollWorker.findUnique({ where: { id: worker.id }, include: this.workerInclude() });
-      return this.serializeWorker(row!);
+      return this.serializeWorker(await this.hydrateWorker(worker));
     });
   }
 
   async updateWorker(id: string, dto: UpsertPayrollWorkerDto, actorId?: string) {
-    const existing = await this.drizzle.payrollWorker.findUnique({ where: { id } });
+    const tid = this.tenantContext.currentTenantId();
+    const existingRows = await this.db.client.select().from(payrollWorker)
+      .where(this.combine(eq(payrollWorker.id, id), tid ? eq(payrollWorker.tenantId, tid) : undefined))
+      .limit(1);
+    const existing = existingRows[0];
     if (!existing) throw new NotFoundException('Payroll worker not found');
-    return this.drizzle.$transaction(async (tx) => {
-      await tx.payrollWorker.update({ where: { id }, data: this.mapWorkerDto(dto) });
+    return this.db.client.transaction(async (tx) => {
+      const updated = await tx.update(payrollWorker).set(this.mapWorkerDto(dto))
+        .where(this.combine(eq(payrollWorker.id, id), tid ? eq(payrollWorker.tenantId, tid) : undefined))
+        .returning();
+      const worker = updated[0];
       await this.syncWorkerChildrenTx(tx, id, dto);
-      const row = await tx.payrollWorker.findUnique({ where: { id }, include: this.workerInclude() });
-      return this.serializeWorker(row!);
+      return this.serializeWorker(await this.hydrateWorker(worker));
     });
   }
 
   async deleteWorker(id: string) {
-    const existing = await this.drizzle.payrollWorker.findUnique({ where: { id } });
+    const tid = this.tenantContext.currentTenantId();
+    const existingRows = await this.db.client.select().from(payrollWorker)
+      .where(this.combine(eq(payrollWorker.id, id), tid ? eq(payrollWorker.tenantId, tid) : undefined))
+      .limit(1);
+    const existing = existingRows[0];
     if (!existing) throw new NotFoundException('Payroll worker not found');
 
     // Prevent removal if worker is in an active (non-draft/non-rejected) run
-    const activeRunItems = await this.drizzle.payrollRunItem.count({
-      where: {
-        workerId: id,
-        run: { status: { notIn: ['draft', 'rejected'] } },
-      },
-    });
+    const activeRunCounts = await this.db.client.select({ c: count() }).from(payrollRunItem)
+      .innerJoin(payrollRun, eq(payrollRun.id, payrollRunItem.runId))
+      .where(and(eq(payrollRunItem.workerId, id), not(inArray(payrollRun.status, ['draft', 'rejected']))));
+    const activeRunItems = activeRunCounts[0]?.c ?? 0;
     if (activeRunItems > 0) {
       throw new BadRequestException(
         'Cannot remove worker — they are included in an active payroll run. Deactivate them instead.'
       );
     }
 
-    const usage = await this.drizzle.$transaction([
-      this.drizzle.payrollRunItem.count({ where: { workerId: id } }),
-      this.drizzle.projectTimesheetEntry.count({ where: { workerId: id } }),
-      this.drizzle.payrollLoan.count({ where: { workerId: id } }),
-      this.drizzle.payrollRunTimesheetAllocation.count({ where: { workerId: id } }),
-      this.drizzle.payrollPayslipDistribution.count({ where: { workerId: id } }),
+    const usage = await Promise.all([
+      this.countTable(payrollRunItem, [eq(payrollRunItem.workerId, id)]),
+      this.countTable(projectTimesheetEntry, [eq(projectTimesheetEntry.workerId, id)]),
+      this.countTable(payrollLoan, [eq(payrollLoan.workerId, id)]),
+      this.countTable(payrollRunTimesheetAllocation, [eq(payrollRunTimesheetAllocation.workerId, id)]),
+      this.countTable(payrollPayslipDistribution, [eq(payrollPayslipDistribution.workerId, id)]),
     ]);
 
     const totalUsage = usage.reduce((sum, count) => sum + count, 0);
     if (totalUsage > 0) {
-      await this.drizzle.payrollWorker.update({
-        where: { id },
-        data: { status: 'inactive' },
-      });
+      await this.db.client.update(payrollWorker).set({ status: 'inactive' })
+        .where(this.combine(eq(payrollWorker.id, id), tid ? eq(payrollWorker.tenantId, tid) : undefined));
       return { action: 'deactivated', reason: 'worker has payroll history and was marked inactive instead of deleted' };
     }
 
-    await this.drizzle.payrollWorker.delete({ where: { id } });
+    await this.db.client.delete(payrollWorker)
+      .where(this.combine(eq(payrollWorker.id, id), tid ? eq(payrollWorker.tenantId, tid) : undefined));
     return { action: 'deleted' };
   }
 
   async listLoans(query: Record<string, any>) {
-    const rows = await this.drizzle.payrollLoan.findMany({
-      where: {
-        ...(query.worker_id ? { workerId: String(query.worker_id) } : {}),
-        ...(query.status ? { status: String(query.status) } : {}),
-        ...(query.loan_type ? { loanType: String(query.loan_type) } : {}),
-      },
-      include: {
-        worker: { select: { id: true, fullName: true, workerType: true, email: true } },
-        component: { select: { id: true, code: true, name: true } },
-        repayments: { orderBy: { createdAt: 'desc' }, take: 24 },
-      },
-      orderBy: [{ status: 'asc' }, { issuedDate: 'desc' }]
-    });
-    const items = rows.map((row) => this.serializeLoan(row));
+    const rows = await this.db.client.select().from(payrollLoan)
+      .where(this.combine(
+        query.worker_id ? eq(payrollLoan.workerId, String(query.worker_id)) : undefined,
+        query.status ? eq(payrollLoan.status, String(query.status)) : undefined,
+        query.loan_type ? eq(payrollLoan.loanType, String(query.loan_type)) : undefined,
+      ))
+      .orderBy(asc(payrollLoan.status), desc(payrollLoan.issuedDate));
+    const hydrated = await Promise.all(rows.map((row) => this.hydrateLoan(row)));
+    const items = hydrated.map((row) => this.serializeLoan(row));
     return paginatedResponse(items, { page: 1, per_page: items.length, total: items.length });
   }
 
   async createLoan(dto: any) {
-    const row = await this.drizzle.payrollLoan.create({
-      data: {
-        workerId: dto.worker_id,
-        componentId: dto.component_id || null,
-        requestId: dto.request_id ? BigInt(String(dto.request_id)) : null,
-        loanType: dto.loan_type,
-        title: dto.title,
-        principalAmount: dto.principal_amount,
-        outstandingAmount: dto.principal_amount,
-        issuedDate: new Date(dto.issued_date),
-        startRecoveryDate: new Date(dto.start_recovery_date),
-        monthlyRecoveryAmount: dto.monthly_recovery_amount ?? null,
-        recoveryRate: dto.recovery_rate ?? null,
-        status: dto.status || 'active',
-        notes: dto.notes || null,
-      },
-      include: {
-        worker: { select: { id: true, fullName: true, workerType: true, email: true } },
-        component: { select: { id: true, code: true, name: true } },
-        repayments: { orderBy: { createdAt: 'desc' }, take: 24 },
-      }
-    });
-    return this.serializeLoan(row);
+    const created = await this.db.client.insert(payrollLoan).values({
+      workerId: dto.worker_id,
+      componentId: dto.component_id || null,
+      requestId: dto.request_id ? BigInt(String(dto.request_id)) : null,
+      loanType: dto.loan_type,
+      title: dto.title,
+      principalAmount: this.toScaleOrZero(dto.principal_amount),
+      outstandingAmount: this.toScaleOrZero(dto.principal_amount),
+      issuedDate: new Date(dto.issued_date),
+      startRecoveryDate: new Date(dto.start_recovery_date),
+      monthlyRecoveryAmount: dto.monthly_recovery_amount == null ? null : this.toScale(dto.monthly_recovery_amount),
+      recoveryRate: dto.recovery_rate == null ? null : this.toScale(dto.recovery_rate),
+      status: dto.status || 'active',
+      notes: dto.notes || null,
+    }).returning().then((r) => r[0]);
+    return this.serializeLoan(await this.hydrateLoan(created));
   }
 
   async updateLoan(id: string, dto: any) {
-    const existing = await this.drizzle.payrollLoan.findUnique({ where: { id } });
+    const existingRows = await this.db.client.select().from(payrollLoan).where(eq(payrollLoan.id, id)).limit(1);
+    const existing = existingRows[0];
     if (!existing) throw new NotFoundException('Payroll loan not found');
-    const row = await this.drizzle.payrollLoan.update({
-      where: { id },
-      data: {
-        workerId: dto.worker_id,
-        componentId: dto.component_id || null,
-        requestId: dto.request_id ? BigInt(String(dto.request_id)) : null,
-        loanType: dto.loan_type,
-        title: dto.title,
-        principalAmount: dto.principal_amount,
-        issuedDate: new Date(dto.issued_date),
-        startRecoveryDate: new Date(dto.start_recovery_date),
-        monthlyRecoveryAmount: dto.monthly_recovery_amount ?? null,
-        recoveryRate: dto.recovery_rate ?? null,
-        status: dto.status || existing.status,
-        notes: dto.notes || null,
-      },
-      include: {
-        worker: { select: { id: true, fullName: true, workerType: true, email: true } },
-        component: { select: { id: true, code: true, name: true } },
-        repayments: { orderBy: { createdAt: 'desc' }, take: 24 },
-      }
-    });
-    return this.serializeLoan(row);
+    const updated = await this.db.client.update(payrollLoan).set({
+      workerId: dto.worker_id,
+      componentId: dto.component_id || null,
+      requestId: dto.request_id ? BigInt(String(dto.request_id)) : null,
+      loanType: dto.loan_type,
+      title: dto.title,
+      principalAmount: dto.principal_amount == null ? undefined : this.toScale(dto.principal_amount),
+      issuedDate: new Date(dto.issued_date),
+      startRecoveryDate: new Date(dto.start_recovery_date),
+      monthlyRecoveryAmount: dto.monthly_recovery_amount == null ? null : this.toScale(dto.monthly_recovery_amount),
+      recoveryRate: dto.recovery_rate == null ? null : this.toScale(dto.recovery_rate),
+      status: dto.status || existing.status,
+      notes: dto.notes || null,
+    }).where(eq(payrollLoan.id, id)).returning().then((r) => r[0]);
+    return this.serializeLoan(await this.hydrateLoan(updated));
   }
 
   async logManualRepayment(id: string, amount: number, notes?: string) {
-    const existing = await this.drizzle.payrollLoan.findUnique({ where: { id } });
+    const existingRows = await this.db.client.select().from(payrollLoan).where(eq(payrollLoan.id, id)).limit(1);
+    const existing = existingRows[0];
     if (!existing) throw new NotFoundException('Payroll loan not found');
 
     const newOutstanding = Number(existing.outstandingAmount || 0) - amount;
 
-    const row = await this.drizzle.$transaction(async (tx) => {
-      await tx.payrollLoanRepayment.create({
-        data: {
-          loanId: id,
-          amount,
-          notes: notes || 'Manual repayment',
-        }
+    const row = await this.db.client.transaction(async (tx) => {
+      await tx.insert(payrollLoanRepayment).values({
+        loanId: id,
+        amount: this.toScale(amount),
+        notes: notes || 'Manual repayment',
       });
-      return tx.payrollLoan.update({
-        where: { id },
-        data: {
-          outstandingAmount: newOutstanding,
-          status: newOutstanding <= 0 ? 'completed' : existing.status,
-        },
-        include: {
-          worker: { select: { id: true, fullName: true, workerType: true, email: true } },
-          component: { select: { id: true, code: true, name: true } },
-          repayments: { orderBy: { createdAt: 'desc' }, take: 24 },
-        }
-      });
+      const updated = await tx.update(payrollLoan).set({
+        outstandingAmount: this.toScale(newOutstanding),
+        status: newOutstanding <= 0 ? 'completed' : existing.status,
+      }).where(eq(payrollLoan.id, id)).returning().then((r) => r[0]);
+      return this.hydrateLoan(updated);
     });
 
     return this.serializeLoan(row);
   }
 
   async listProjectTimesheets(query: Record<string, any>) {
-    const rows = await this.drizzle.projectTimesheetEntry.findMany({
-      where: {
-        ...(query.worker_id ? { workerId: String(query.worker_id) } : {}),
-        ...(query.status ? { status: String(query.status) } : {}),
-        ...(query.project_id ? { projectId: this.parseBigInt(String(query.project_id), 'project id') } : {}),
-      },
-      include: {
-        worker: { select: { id: true, fullName: true, workerType: true, email: true } },
-        component: { select: { id: true, code: true, name: true } },
-        organization: { select: { id: true, name: true } },
-        fund: { select: { id: true, code: true, name: true } },
-        grant: { select: { id: true, code: true, name: true } },
-        syncedRun: { select: { id: true, name: true, year: true, month: true, status: true } },
-      },
-      orderBy: [{ workDate: 'desc' }, { createdAt: 'desc' }]
-    });
-    const items = rows.map((row) => this.serializeProjectTimesheet(row));
+    const rows = await this.db.client.select().from(projectTimesheetEntry)
+      .where(this.combine(
+        query.worker_id ? eq(projectTimesheetEntry.workerId, String(query.worker_id)) : undefined,
+        query.status ? eq(projectTimesheetEntry.status, String(query.status)) : undefined,
+        query.project_id ? eq(projectTimesheetEntry.projectId, this.parseBigInt(String(query.project_id), 'project id')) : undefined,
+      ))
+      .orderBy(desc(projectTimesheetEntry.workDate), desc(projectTimesheetEntry.createdAt));
+    const hydrated = await Promise.all(rows.map((row) => this.hydrateProjectTimesheet(row)));
+    const items = hydrated.map((row) => this.serializeProjectTimesheet(row));
     return paginatedResponse(items, { page: 1, per_page: items.length, total: items.length });
   }
 
   async createProjectTimesheet(dto: any, actorId?: string) {
-    const row = await this.drizzle.projectTimesheetEntry.create({
-      data: this.mapProjectTimesheetDto(dto, actorId),
-      include: {
-        worker: { select: { id: true, fullName: true, workerType: true, email: true } },
-        component: { select: { id: true, code: true, name: true } },
-        organization: { select: { id: true, name: true } },
-        fund: { select: { id: true, code: true, name: true } },
-        grant: { select: { id: true, code: true, name: true } },
-        syncedRun: { select: { id: true, name: true, year: true, month: true, status: true } },
-      }
-    });
-    return this.serializeProjectTimesheet(row);
+    const created = await this.db.client.insert(projectTimesheetEntry).values(this.mapProjectTimesheetDto(dto, actorId)).returning().then((r) => r[0]);
+    return this.serializeProjectTimesheet(await this.hydrateProjectTimesheet(created));
   }
 
   async updateProjectTimesheet(id: string, dto: any, actorId?: string) {
-    const existing = await this.drizzle.projectTimesheetEntry.findUnique({ where: { id } });
+    const existingRows = await this.db.client.select().from(projectTimesheetEntry).where(eq(projectTimesheetEntry.id, id)).limit(1);
+    const existing = existingRows[0];
     if (!existing) throw new NotFoundException('Project timesheet entry not found');
-    const row = await this.drizzle.projectTimesheetEntry.update({
-      where: { id },
-      data: this.mapProjectTimesheetDto(dto, actorId, true),
-      include: {
-        worker: { select: { id: true, fullName: true, workerType: true, email: true } },
-        component: { select: { id: true, code: true, name: true } },
-        organization: { select: { id: true, name: true } },
-        fund: { select: { id: true, code: true, name: true } },
-        grant: { select: { id: true, code: true, name: true } },
-        syncedRun: { select: { id: true, name: true, year: true, month: true, status: true } },
-      }
-    });
-    return this.serializeProjectTimesheet(row);
+    const updated = await this.db.client.update(projectTimesheetEntry).set(this.mapProjectTimesheetDto(dto, actorId, true))
+      .where(eq(projectTimesheetEntry.id, id)).returning().then((r) => r[0]);
+    return this.serializeProjectTimesheet(await this.hydrateProjectTimesheet(updated));
   }
 
   async submitProjectTimesheet(id: string) {
-    const row = await this.drizzle.projectTimesheetEntry.update({
-      where: { id },
-      data: { status: 'submitted' },
-      include: {
-        worker: { select: { id: true, fullName: true, workerType: true, email: true } },
-        component: { select: { id: true, code: true, name: true } },
-        organization: { select: { id: true, name: true } },
-        fund: { select: { id: true, code: true, name: true } },
-        grant: { select: { id: true, code: true, name: true } },
-        syncedRun: { select: { id: true, name: true, year: true, month: true, status: true } },
-      }
-    });
-    return this.serializeProjectTimesheet(row);
+    const updated = await this.db.client.update(projectTimesheetEntry).set({ status: 'submitted' })
+      .where(eq(projectTimesheetEntry.id, id)).returning().then((r) => r[0]);
+    return this.serializeProjectTimesheet(await this.hydrateProjectTimesheet(updated));
   }
 
   async approveProjectTimesheet(id: string, actorId?: string) {
-    const row = await this.drizzle.projectTimesheetEntry.update({
-      where: { id },
-      data: { status: 'approved', approvedBy: actorId ? toBigInt(actorId) : null, approvedAt: new Date() },
-      include: {
-        worker: { select: { id: true, fullName: true, workerType: true, email: true } },
-        component: { select: { id: true, code: true, name: true } },
-        organization: { select: { id: true, name: true } },
-        fund: { select: { id: true, code: true, name: true } },
-        grant: { select: { id: true, code: true, name: true } },
-        syncedRun: { select: { id: true, name: true, year: true, month: true, status: true } },
-      }
-    });
-    await this.syncApprovedTimesheetsToPayrollRun(row.workerId, row.workDate);
-    const refreshed = await this.drizzle.projectTimesheetEntry.findUnique({
-      where: { id },
-      include: {
-        worker: { select: { id: true, fullName: true, workerType: true, email: true } },
-        component: { select: { id: true, code: true, name: true } },
-        organization: { select: { id: true, name: true } },
-        fund: { select: { id: true, code: true, name: true } },
-        grant: { select: { id: true, code: true, name: true } },
-        syncedRun: { select: { id: true, name: true, year: true, month: true, status: true } },
-      }
-    });
-    return this.serializeProjectTimesheet(refreshed!);
+    const updated = await this.db.client.update(projectTimesheetEntry).set({ status: 'approved', approvedBy: actorId ? toBigInt(actorId) : null, approvedAt: new Date() })
+      .where(eq(projectTimesheetEntry.id, id)).returning().then((r) => r[0]);
+    await this.syncApprovedTimesheetsToPayrollRun(updated.workerId, updated.workDate);
+    return this.serializeProjectTimesheet(await this.hydrateProjectTimesheet(updated));
   }
 
   async rejectProjectTimesheet(id: string) {
-    const existing = await this.drizzle.projectTimesheetEntry.findUnique({ where: { id } });
+    const existingRows = await this.db.client.select().from(projectTimesheetEntry).where(eq(projectTimesheetEntry.id, id)).limit(1);
+    const existing = existingRows[0];
     if (!existing) throw new NotFoundException('Project timesheet entry not found');
-    const row = await this.drizzle.projectTimesheetEntry.update({
-      where: { id },
-      data: { status: 'rejected' },
-      include: {
-        worker: { select: { id: true, fullName: true, workerType: true, email: true } },
-        component: { select: { id: true, code: true, name: true } },
-        organization: { select: { id: true, name: true } },
-        fund: { select: { id: true, code: true, name: true } },
-        grant: { select: { id: true, code: true, name: true } },
-        syncedRun: { select: { id: true, name: true, year: true, month: true, status: true } },
-      }
-    });
-    await this.syncApprovedTimesheetsToPayrollRun(existing.workerId, existing.workDate);
-    return this.serializeProjectTimesheet(row);
+    const updated = await this.db.client.update(projectTimesheetEntry).set({ status: 'rejected' })
+      .where(eq(projectTimesheetEntry.id, id)).returning().then((r) => r[0]);
+    await this.syncApprovedTimesheetsToPayrollRun(updated.workerId, updated.workDate);
+    return this.serializeProjectTimesheet(await this.hydrateProjectTimesheet(updated));
   }
 
   async listComponents(query: Record<string, any>) {
@@ -2566,7 +2723,7 @@ export class PayrollService {
     return this.serializeImportJob(completedJob);
   }
 
-  private mapWorkerDto(dto: UpsertPayrollWorkerDto): Drizzle.PayrollWorkerUncheckedCreateInput {
+  private mapWorkerDto(dto: UpsertPayrollWorkerDto) {
     return {
       profileId: dto.profile_id ? this.parseBigInt(dto.profile_id, 'profile id') : null,
       organizationId: dto.organization_id ? this.parseBigInt(dto.organization_id, 'organization id') : null,
@@ -2578,8 +2735,8 @@ export class PayrollService {
       workerType: dto.worker_type,
       payBasis: dto.pay_basis || 'monthly_fixed',
       allocationMode: dto.allocation_mode || 'fixed',
-      hybridFixedPercent: dto.hybrid_fixed_percent ?? 0,
-      standardHoursPerDay: dto.standard_hours_per_day ?? 8,
+      hybridFixedPercent: this.toScaleOrZero(dto.hybrid_fixed_percent),
+      standardHoursPerDay: this.toScaleOrZero(dto.standard_hours_per_day),
       fullName: dto.full_name,
       email: dto.email || null,
       staffCode: dto.staff_code || null,
@@ -2593,89 +2750,81 @@ export class PayrollService {
       startDate: dto.start_date ? new Date(dto.start_date) : null,
       endDate: dto.end_date ? new Date(dto.end_date) : null,
       notes: dto.notes || null,
-      metadata: (dto.metadata || {}) as Drizzle.InputJsonValue,
+      metadata: dto.metadata || {},
     };
   }
 
-  private async syncWorkerChildrenTx(tx: Drizzle.TransactionClient, workerId: string, dto: UpsertPayrollWorkerDto) {
+  private async syncWorkerChildrenTx(tx: any, workerId: string, dto: UpsertPayrollWorkerDto) {
     if (dto.profile) {
       const effectiveFrom = new Date(dto.profile.effective_from);
-      const existingProfile = await tx.payrollWorkerProfile.findFirst({
-        where: { workerId, effectiveFrom },
-        orderBy: { createdAt: 'desc' },
-      });
+      const existingProfiles = await tx.select().from(payrollWorkerProfile)
+        .where(and(eq(payrollWorkerProfile.workerId, workerId), eq(payrollWorkerProfile.effectiveFrom, effectiveFrom)))
+        .orderBy(desc(payrollWorkerProfile.createdAt))
+        .limit(1);
+      const existingProfile = existingProfiles[0];
 
       if (existingProfile) {
-        await tx.payrollWorkerProfileComponent.deleteMany({ where: { profileId: existingProfile.id } });
-        await tx.payrollWorkerProfile.update({
-          where: { id: existingProfile.id },
-          data: {
-            payFrequency: dto.profile.pay_frequency || 'monthly',
-            baseAmount: dto.profile.base_amount ?? 0,
-            paymentMode: dto.profile.payment_mode || null,
-            effectiveFrom,
-            effectiveTo: dto.profile.effective_to ? new Date(dto.profile.effective_to) : null,
-            components: dto.profile.components?.length
-              ? {
-                  create: dto.profile.components.map((row) => ({
-                    componentId: row.component_id,
-                    amount: row.amount ?? null,
-                    rate: row.rate ?? null,
-                    formula: row.formula || null,
-                    isEnabled: row.is_enabled ?? true,
-                  }))
-                }
-              : undefined,
-          },
-        });
+        await tx.delete(payrollWorkerProfileComponent).where(eq(payrollWorkerProfileComponent.profileId, existingProfile.id));
+        await tx.update(payrollWorkerProfile).set({
+          payFrequency: dto.profile.pay_frequency || 'monthly',
+          baseAmount: this.toScaleOrZero(dto.profile.base_amount),
+          paymentMode: dto.profile.payment_mode || null,
+          effectiveFrom,
+          effectiveTo: dto.profile.effective_to ? new Date(dto.profile.effective_to) : null,
+        }).where(eq(payrollWorkerProfile.id, existingProfile.id));
+        if (dto.profile.components?.length) {
+          await tx.insert(payrollWorkerProfileComponent).values(dto.profile.components.map((row) => ({
+            profileId: existingProfile.id,
+            componentId: row.component_id,
+            amount: row.amount == null ? null : this.toScale(row.amount),
+            rate: row.rate == null ? null : this.toScale(row.rate),
+            formula: row.formula || null,
+            isEnabled: row.is_enabled ?? true,
+          })));
+        }
       } else {
-        await tx.payrollWorkerProfile.create({
-          data: {
-            workerId,
-            payFrequency: dto.profile.pay_frequency || 'monthly',
-            baseAmount: dto.profile.base_amount ?? 0,
-            paymentMode: dto.profile.payment_mode || null,
-            effectiveFrom,
-            effectiveTo: dto.profile.effective_to ? new Date(dto.profile.effective_to) : null,
-            components: dto.profile.components?.length
-              ? {
-                  create: dto.profile.components.map((row) => ({
-                    componentId: row.component_id,
-                    amount: row.amount ?? null,
-                    rate: row.rate ?? null,
-                    formula: row.formula || null,
-                    isEnabled: row.is_enabled ?? true,
-                  }))
-                }
-              : undefined,
-          }
-        });
+        const createdProfile = await tx.insert(payrollWorkerProfile).values({
+          workerId,
+          payFrequency: dto.profile.pay_frequency || 'monthly',
+          baseAmount: this.toScaleOrZero(dto.profile.base_amount),
+          paymentMode: dto.profile.payment_mode || null,
+          effectiveFrom,
+          effectiveTo: dto.profile.effective_to ? new Date(dto.profile.effective_to) : null,
+        }).returning().then((r) => r[0]);
+        if (dto.profile.components?.length) {
+          await tx.insert(payrollWorkerProfileComponent).values(dto.profile.components.map((row) => ({
+            profileId: createdProfile.id,
+            componentId: row.component_id,
+            amount: row.amount == null ? null : this.toScale(row.amount),
+            rate: row.rate == null ? null : this.toScale(row.rate),
+            formula: row.formula || null,
+            isEnabled: row.is_enabled ?? true,
+          })));
+        }
       }
     }
 
     if (dto.allocations) {
-      await tx.payrollWorkerAllocation.deleteMany({ where: { workerId } });
+      await tx.delete(payrollWorkerAllocation).where(eq(payrollWorkerAllocation.workerId, workerId));
       if (dto.allocations.length) {
         const totalPercent = dto.allocations.reduce((sum, row) => sum + Number(row.allocation_percent ?? 0), 0);
         if (Math.abs(totalPercent - 100) > 0.01) throw new BadRequestException('Worker allocations must total 100');
-        await tx.payrollWorkerAllocation.createMany({
-          data: dto.allocations.map((row, index) => ({
-            workerId,
-            organizationId: row.organization_id ? this.parseBigInt(row.organization_id, 'organization id') : null,
-            teamId: row.team_id ? this.parseBigInt(row.team_id, 'team id') : null,
-            projectId: row.project_id ? this.parseBigInt(row.project_id, 'project id') : null,
-            fundId: row.fund_id || null,
-            grantId: row.grant_id || null,
-            allocationPercent: row.allocation_percent ?? 100,
-            allocationAmount: row.allocation_amount ?? null,
-            sortOrder: index,
-          }))
-        });
+        await tx.insert(payrollWorkerAllocation).values(dto.allocations.map((row, index) => ({
+          workerId,
+          organizationId: row.organization_id ? this.parseBigInt(row.organization_id, 'organization id') : null,
+          teamId: row.team_id ? this.parseBigInt(row.team_id, 'team id') : null,
+          projectId: row.project_id ? this.parseBigInt(row.project_id, 'project id') : null,
+          fundId: row.fund_id || null,
+          grantId: row.grant_id || null,
+          allocationPercent: this.toScaleOrZero(row.allocation_percent ?? 100),
+          allocationAmount: row.allocation_amount == null ? null : this.toScale(row.allocation_amount),
+          sortOrder: index,
+        })));
       }
     }
   }
 
-  private mapComponentDto(dto: UpsertPayrollComponentDto): Drizzle.PayrollComponentUncheckedCreateInput {
+  private mapComponentDto(dto: UpsertPayrollComponentDto) {
     return {
       chartAccountId: dto.chart_account_id || null,
       code: dto.code.trim().toLowerCase(),
@@ -2683,7 +2832,7 @@ export class PayrollService {
       componentType: dto.component_type,
       calculationType: dto.calculation_type || 'fixed',
       paidBy: dto.paid_by || 'employee',
-      employerSharePercent: dto.employer_share_percent ?? 0,
+      employerSharePercent: this.toScaleOrZero(dto.employer_share_percent),
       isTaxable: dto.is_taxable ?? false,
       affectsNetPay: dto.affects_net_pay ?? true,
       isStatutory: dto.is_statutory ?? false,
@@ -2691,91 +2840,184 @@ export class PayrollService {
     };
   }
 
-  private workerInclude() {
+  private profileSelect() {
     return {
-      profile: { select: { id: true, firstName: true, lastName: true, email: true, username: true } },
-      organization: { select: { id: true, name: true } },
-      defaultFund: { select: { id: true, code: true, name: true } },
-      defaultGrant: { select: { id: true, code: true, name: true } },
-      taxTable: { include: { bands: { orderBy: { sortOrder: 'asc' } } } },
-      profiles: {
-        include: {
-          components: { include: { component: { include: { chartAccount: { select: { id: true, code: true, name: true } } } } } }
-        },
-        orderBy: [{ effectiveFrom: 'desc' }, { createdAt: 'desc' }]
-      },
-      allocations: {
-        include: {
-          organization: { select: { id: true, name: true } },
-          fund: { select: { id: true, code: true, name: true } },
-          grant: { select: { id: true, code: true, name: true } },
-        },
-        orderBy: { sortOrder: 'asc' }
-      },
-      timesheetAllocations: {
-        include: {
-          organization: { select: { id: true, name: true } },
-          fund: { select: { id: true, code: true, name: true } },
-          grant: { select: { id: true, code: true, name: true } },
-        },
-        orderBy: [{ approvedAt: 'desc' }, { sortOrder: 'asc' }]
-      },
-    } satisfies Drizzle.PayrollWorkerInclude;
+      id: profile.id,
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      email: profile.email,
+      username: profile.username,
+    };
   }
 
-  private runInclude() {
+  private async attachDimensions(rows: any[]) {
+    if (!rows.length) return rows;
+    const orgIds = Array.from(new Set(rows.map((r) => r.organizationId).filter((v): v is bigint => v != null)));
+    const fundIds = Array.from(new Set(rows.map((r) => r.fundId).filter((v): v is string => v != null)));
+    const grantIds = Array.from(new Set(rows.map((r) => r.grantId).filter((v): v is string => v != null)));
+    const [orgs, funds, grants] = await Promise.all([
+      orgIds.length ? this.db.client.select({ id: organization.id, name: organization.name }).from(organization).where(inArray(organization.id, orgIds)) : Promise.resolve([]),
+      fundIds.length ? this.db.client.select({ id: financeFund.id, code: financeFund.code, name: financeFund.name }).from(financeFund).where(inArray(financeFund.id, fundIds)) : Promise.resolve([]),
+      grantIds.length ? this.db.client.select({ id: financeGrant.id, code: financeGrant.code, name: financeGrant.name }).from(financeGrant).where(inArray(financeGrant.id, grantIds)) : Promise.resolve([]),
+    ]);
+    const orgMap = new Map(orgs.map((o) => [String(o.id), o]));
+    const fundMap = new Map(funds.map((f) => [String(f.id), f]));
+    const grantMap = new Map(grants.map((g) => [String(g.id), g]));
+    return rows.map((r) => ({
+      ...r,
+      organization: r.organizationId != null ? orgMap.get(String(r.organizationId)) ?? null : null,
+      fund: r.fundId != null ? fundMap.get(String(r.fundId)) ?? null : null,
+      grant: r.grantId != null ? grantMap.get(String(r.grantId)) ?? null : null,
+    }));
+  }
+
+  private async attachComponentDetails(rows: any[]) {
+    if (!rows.length) return rows;
+    const componentIds = Array.from(new Set(rows.map((r) => r.componentId).filter((v): v is string => v != null)));
+    const components = componentIds.length
+      ? await this.db.client.select().from(payrollComponent).where(inArray(payrollComponent.id, componentIds))
+      : ([] as any[]);
+    const componentMap = new Map(components.map((c) => [c.id, c]));
+    const chartAccountIds = Array.from(new Set(components.map((c) => c.chartAccountId).filter((v): v is string => v != null)));
+    const accounts = chartAccountIds.length
+      ? await this.db.client.select({ id: financeChartAccount.id, code: financeChartAccount.code, name: financeChartAccount.name }).from(financeChartAccount).where(inArray(financeChartAccount.id, chartAccountIds))
+      : ([] as any[]);
+    const accountMap = new Map(accounts.map((a) => [a.id, a]));
+    return rows.map((r) => {
+      const component = componentMap.get(r.componentId);
+      if (!component) return r;
+      return { ...r, component: { ...component, chartAccount: component.chartAccountId ? (accountMap.get(component.chartAccountId) ?? null) : null } };
+    });
+  }
+
+  private async hydrateWorker(row: any): Promise<any> {
+    if (!row) return row;
+    const [profileRow, organizationRow, defaultFund, defaultGrant, taxTable, profiles, allocationsRows, timesheetRows] = await Promise.all([
+      row.profileId ? this.db.client.select(this.profileSelect()).from(profile).where(eq(profile.id, row.profileId)).limit(1).then((r) => r[0]) : Promise.resolve(null),
+      row.organizationId ? this.db.client.select({ id: organization.id, name: organization.name }).from(organization).where(eq(organization.id, row.organizationId)).limit(1).then((r) => r[0]) : Promise.resolve(null),
+      row.defaultFundId ? this.db.client.select({ id: financeFund.id, code: financeFund.code, name: financeFund.name }).from(financeFund).where(eq(financeFund.id, row.defaultFundId)).limit(1).then((r) => r[0]) : Promise.resolve(null),
+      row.defaultGrantId ? this.db.client.select({ id: financeGrant.id, code: financeGrant.code, name: financeGrant.name }).from(financeGrant).where(eq(financeGrant.id, row.defaultGrantId)).limit(1).then((r) => r[0]) : Promise.resolve(null),
+      row.taxTableId ? this.hydrateTaxTable(row.taxTableId) : Promise.resolve(null),
+      this.db.client.select().from(payrollWorkerProfile).where(eq(payrollWorkerProfile.workerId, row.id)).orderBy(desc(payrollWorkerProfile.effectiveFrom), desc(payrollWorkerProfile.createdAt)),
+      this.db.client.select().from(payrollWorkerAllocation).where(eq(payrollWorkerAllocation.workerId, row.id)).orderBy(asc(payrollWorkerAllocation.sortOrder)),
+      this.db.client.select().from(payrollRunTimesheetAllocation).where(eq(payrollRunTimesheetAllocation.workerId, row.id)).orderBy(desc(payrollRunTimesheetAllocation.approvedAt), asc(payrollRunTimesheetAllocation.sortOrder)),
+    ]);
+
+    const profileIds = profiles.map((p) => p.id);
+    const profileComponents = profileIds.length
+      ? await this.db.client.select().from(payrollWorkerProfileComponent).where(inArray(payrollWorkerProfileComponent.profileId, profileIds))
+      : ([] as any[]);
+    const componentsByProfile = new Map<string, any[]>();
+    for (const pc of profileComponents) {
+      const list = componentsByProfile.get(pc.profileId) ?? [];
+      list.push(pc);
+      componentsByProfile.set(pc.profileId, list);
+    }
+
+    const [allocations, timesheetAllocations] = await Promise.all([
+      this.attachDimensions(allocationsRows),
+      this.attachDimensions(timesheetRows),
+    ]);
+
+    const hydratedProfiles = (await Promise.all(
+      profiles.map(async (p) => ({
+        ...p,
+        components: await this.attachComponentDetails(componentsByProfile.get(p.id) ?? []),
+      })),
+    )) as any[];
+
     return {
-      organization: { select: { id: true, name: true } },
-      paidFromAccount: { select: { id: true, name: true, code: true } },
-      preparedBy: { select: { id: true, firstName: true, lastName: true, email: true, username: true } },
-      reviewedBy: { select: { id: true, firstName: true, lastName: true, email: true, username: true } },
-      approvedBy: { select: { id: true, firstName: true, lastName: true, email: true, username: true } },
-      postings: { include: { journalEntry: { select: { id: true, entryNo: true, entryDate: true } } } },
-      events: {
-        include: {
-          actor: { select: { id: true, firstName: true, lastName: true, email: true, username: true } },
-        },
-        orderBy: { createdAt: 'desc' }
-      },
-      payslipDistributions: {
-        include: {
-          worker: { select: { id: true, fullName: true, email: true, workerType: true } },
-          sentByUser: { select: { id: true, firstName: true, lastName: true, email: true, username: true } },
-          runItem: { select: { id: true, paymentStatus: true } },
-        },
-        orderBy: { createdAt: 'desc' }
-      },
-      timesheetAllocations: {
-        include: {
-          worker: { select: { id: true, fullName: true, workerType: true } },
-          organization: { select: { id: true, name: true } },
-          fund: { select: { id: true, code: true, name: true } },
-          grant: { select: { id: true, code: true, name: true } },
-        },
-        orderBy: [{ workerId: 'asc' }, { sortOrder: 'asc' }]
-      },
-      items: {
-        include: {
-          worker: { select: { id: true, profileId: true, fullName: true, workerType: true, email: true, staffCode: true } },
-          organization: { select: { id: true, name: true } },
-          fund: { select: { id: true, code: true, name: true } },
-          grant: { select: { id: true, code: true, name: true } },
-          lines: { include: { component: { include: { chartAccount: { select: { id: true, code: true, name: true } } } } } },
-          allocations: {
-            include: {
-              organization: { select: { id: true, name: true } },
-              fund: { select: { id: true, code: true, name: true } },
-              grant: { select: { id: true, code: true, name: true } },
-            },
-            orderBy: { sortOrder: 'asc' }
-          },
-          payslipDistributions: {
-            orderBy: { createdAt: 'desc' }
-          }
-        },
-        orderBy: { worker: { fullName: 'asc' } }
-      }
-    } satisfies Drizzle.PayrollRunInclude;
+      ...row,
+      profile: profileRow,
+      organization: organizationRow,
+      defaultFund,
+      defaultGrant,
+      taxTable,
+      profiles: hydratedProfiles,
+      allocations,
+      timesheetAllocations,
+    };
+  }
+
+  private async hydrateRun(row: any): Promise<any> {
+    if (!row) return row;
+    const [organizationRow, paidFromAccount, preparedBy, reviewedBy, approvedBy, postings, events, distributionRows, timesheetRows, itemRows] = await Promise.all([
+      row.organizationId ? this.db.client.select({ id: organization.id, name: organization.name }).from(organization).where(eq(organization.id, row.organizationId)).limit(1).then((r) => r[0]) : Promise.resolve(null),
+      row.paidFromAccountId ? this.db.client.select({ id: financeAccount.id, code: financeAccount.code, name: financeAccount.name }).from(financeAccount).where(eq(financeAccount.id, row.paidFromAccountId)).limit(1).then((r) => r[0]) : Promise.resolve(null),
+      row.preparedById ? this.db.client.select(this.profileSelect()).from(profile).where(eq(profile.id, row.preparedById)).limit(1).then((r) => r[0]) : Promise.resolve(null),
+      row.reviewedById ? this.db.client.select(this.profileSelect()).from(profile).where(eq(profile.id, row.reviewedById)).limit(1).then((r) => r[0]) : Promise.resolve(null),
+      row.approvedById ? this.db.client.select(this.profileSelect()).from(profile).where(eq(profile.id, row.approvedById)).limit(1).then((r) => r[0]) : Promise.resolve(null),
+      this.db.client.select().from(payrollAccountingPosting).where(eq(payrollAccountingPosting.runId, row.id)),
+      this.db.client.select().from(payrollRunEvent).where(eq(payrollRunEvent.runId, row.id)).orderBy(desc(payrollRunEvent.createdAt)),
+      this.db.client.select().from(payrollPayslipDistribution).where(eq(payrollPayslipDistribution.runId, row.id)).orderBy(desc(payrollPayslipDistribution.createdAt)),
+      this.db.client.select().from(payrollRunTimesheetAllocation).where(eq(payrollRunTimesheetAllocation.runId, row.id)).orderBy(asc(payrollRunTimesheetAllocation.workerId), asc(payrollRunTimesheetAllocation.sortOrder)),
+      this.db.client.select().from(payrollRunItem).where(eq(payrollRunItem.runId, row.id)),
+    ]);
+
+    const journalEntryIds = Array.from(new Set(postings.map((p) => p.journalEntryId)));
+    const eventActorIds = Array.from(new Set(events.map((e) => e.actorId).filter((v): v is bigint => v != null)));
+    const distWorkerIds = Array.from(new Set(distributionRows.map((d) => d.workerId).filter((v): v is string => v != null)));
+    const distSenderIds = Array.from(new Set(distributionRows.map((d) => d.sentBy).filter((v): v is bigint => v != null)));
+    const distRunItemIds = Array.from(new Set(distributionRows.map((d) => d.runItemId).filter((v): v is string => v != null)));
+    const itemWorkerIds = Array.from(new Set(itemRows.map((i) => i.workerId)));
+
+    const [journalEntries, eventActors, distWorkers, distSenders, distRunItems, itemWorkers, timesheetAllocations, items, itemLineRows, itemAllocationRows] = await Promise.all([
+      journalEntryIds.length ? this.db.client.select({ id: financeJournalEntry.id, entryNo: financeJournalEntry.entryNo, entryDate: financeJournalEntry.entryDate }).from(financeJournalEntry).where(inArray(financeJournalEntry.id, journalEntryIds)) : Promise.resolve([]),
+      eventActorIds.length ? this.db.client.select(this.profileSelect()).from(profile).where(inArray(profile.id, eventActorIds)) : Promise.resolve([]),
+      distWorkerIds.length ? this.db.client.select({ id: payrollWorker.id, fullName: payrollWorker.fullName, email: payrollWorker.email, workerType: payrollWorker.workerType }).from(payrollWorker).where(inArray(payrollWorker.id, distWorkerIds)) : Promise.resolve([]),
+      distSenderIds.length ? this.db.client.select(this.profileSelect()).from(profile).where(inArray(profile.id, distSenderIds)) : Promise.resolve([]),
+      distRunItemIds.length ? this.db.client.select({ id: payrollRunItem.id, paymentStatus: payrollRunItem.paymentStatus }).from(payrollRunItem).where(inArray(payrollRunItem.id, distRunItemIds)) : Promise.resolve([]),
+      itemWorkerIds.length ? this.db.client.select({ id: payrollWorker.id, profileId: payrollWorker.profileId, fullName: payrollWorker.fullName, workerType: payrollWorker.workerType, email: payrollWorker.email, staffCode: payrollWorker.staffCode }).from(payrollWorker).where(inArray(payrollWorker.id, itemWorkerIds)) : Promise.resolve([]),
+      this.attachDimensions(timesheetRows),
+      this.attachDimensions(itemRows),
+      itemRows.length ? this.db.client.select().from(payrollRunItemLine).where(inArray(payrollRunItemLine.runItemId, itemRows.map((i) => i.id))).orderBy(asc(payrollRunItemLine.createdAt)) : Promise.resolve([]),
+      itemRows.length ? this.db.client.select().from(payrollRunItemAllocation).where(inArray(payrollRunItemAllocation.runItemId, itemRows.map((i) => i.id))).orderBy(asc(payrollRunItemAllocation.sortOrder)) : Promise.resolve([]),
+    ]);
+
+    const journalMap = new Map(journalEntries.map((j) => [j.id, j]));
+    const actorMap = new Map(eventActors.map((a) => [String(a.id), a]));
+    const distWorkerMap = new Map(distWorkers.map((w) => [w.id, w]));
+    const distSenderMap = new Map(distSenders.map((s) => [String(s.id), s]));
+    const distRunItemMap = new Map(distRunItems.map((i) => [i.id, i]));
+    const itemWorkerMap = new Map(itemWorkers.map((w) => [w.id, w]));
+    const linesByItem = new Map<string, any[]>();
+    for (const line of await this.attachComponentDetails(itemLineRows)) {
+      const list = linesByItem.get(line.runItemId) ?? [];
+      list.push(line);
+      linesByItem.set(line.runItemId, list);
+    }
+    const allocsByItem = new Map<string, any[]>();
+    for (const alloc of itemAllocationRows) {
+      const list = allocsByItem.get(alloc.runItemId) ?? [];
+      list.push(alloc);
+      allocsByItem.set(alloc.runItemId, list);
+    }
+
+    return {
+      ...row,
+      organization: organizationRow,
+      paidFromAccount,
+      preparedBy,
+      reviewedBy,
+      approvedBy,
+      postings: postings.map((p) => ({ ...p, journalEntry: journalMap.get(p.journalEntryId) ?? null })),
+      events: events.map((e) => ({ ...e, actor: e.actorId ? (actorMap.get(String(e.actorId)) ?? null) : null })),
+      payslipDistributions: distributionRows.map((d) => ({
+        ...d,
+        worker: d.workerId ? (distWorkerMap.get(d.workerId) ?? null) : null,
+        sentByUser: d.sentBy ? (distSenderMap.get(String(d.sentBy)) ?? null) : null,
+        runItem: d.runItemId ? (distRunItemMap.get(d.runItemId) ?? null) : null,
+      })),
+      timesheetAllocations,
+      items: items
+        .map((item) => ({
+          ...item,
+          worker: item.workerId ? (itemWorkerMap.get(item.workerId) ?? null) : null,
+          lines: linesByItem.get(item.id) ?? [],
+          allocations: allocsByItem.get(item.id) ?? [],
+        }))
+        .sort((a, b) => (a.worker?.fullName ?? '').localeCompare(b.worker?.fullName ?? '')),
+    };
   }
 
   private serializeWorker(row: any) {
@@ -3156,7 +3398,7 @@ export class PayrollService {
     };
   }
 
-  private mapTaxTableDto(dto: UpsertPayrollTaxTableDto): Drizzle.PayrollTaxTableUncheckedCreateInput {
+  private mapTaxTableDto(dto: UpsertPayrollTaxTableDto) {
     return {
       organizationId: dto.organization_id ? this.parseBigInt(dto.organization_id, 'organization id') : null,
       name: dto.name,
@@ -3166,9 +3408,9 @@ export class PayrollService {
       status: dto.status || 'active',
       effectiveFrom: new Date(dto.effective_from),
       effectiveTo: dto.effective_to ? new Date(dto.effective_to) : null,
-      fixedReliefAmount: dto.fixed_relief_amount ?? 0,
-      grossReliefRate: dto.gross_relief_rate ?? 0,
-      minimumReliefAmount: dto.minimum_relief_amount ?? 0,
+      fixedReliefAmount: this.toScaleOrZero(dto.fixed_relief_amount),
+      grossReliefRate: this.toScaleOrZero(dto.gross_relief_rate),
+      minimumReliefAmount: this.toScaleOrZero(dto.minimum_relief_amount),
       pensionReliefEnabled: dto.pension_relief_enabled ?? true,
     };
   }
@@ -3176,35 +3418,34 @@ export class PayrollService {
   private mapTaxBandDtos(rows: Array<{ lower_bound?: number; upper_bound?: number | null; rate: number; sort_order?: number }>) {
     return rows
       .map((row, index) => ({
-        lowerBound: row.lower_bound ?? 0,
-        upperBound: row.upper_bound == null ? null : row.upper_bound,
-        rate: row.rate,
+        lowerBound: this.toScaleOrZero(row.lower_bound),
+        upperBound: row.upper_bound == null ? null : this.toScale(row.upper_bound),
+        rate: this.toScaleOrZero(row.rate),
         sortOrder: row.sort_order ?? index,
       }))
-      .sort((a, b) => a.sortOrder - b.sortOrder || a.lowerBound - b.lowerBound);
+      .sort((a, b) => a.sortOrder - b.sortOrder || Number(a.lowerBound) - Number(b.lowerBound));
   }
 
   private async resolveWorkerForUser(userId: string) {
-    const worker = await this.drizzle.payrollWorker.findFirst({
-      where: { profileId: toBigInt(userId) },
-      select: { id: true, fullName: true, workerType: true },
-    });
+    const worker = await this.db.client.select({ id: payrollWorker.id, fullName: payrollWorker.fullName, workerType: payrollWorker.workerType })
+      .from(payrollWorker)
+      .where(eq(payrollWorker.profileId, toBigInt(userId)))
+      .limit(1)
+      .then((r) => r[0]);
     if (!worker) throw new NotFoundException('Payroll worker profile not found for this user');
     return worker;
   }
 
   private async resolveEmployeeTaxTableTx(
-    tx: Drizzle.TransactionClient,
+    tx: any,
     input: { workerTaxTableId?: string | null; settingTaxTableId?: string | null; organizationId?: bigint | null },
     cache?: Map<string, any | null>
   ) {
     const lookupById = async (id: string | null | undefined) => {
       if (!id) return null;
       if (cache?.has(id)) return cache.get(id) ?? null;
-      const row = await tx.payrollTaxTable.findUnique({
-        where: { id },
-        include: { bands: { orderBy: { sortOrder: 'asc' } } },
-      });
+      const base = await tx.select().from(payrollTaxTable).where(eq(payrollTaxTable.id, id)).limit(1).then((r) => r[0]);
+      const row = base ? await this.hydrateTaxTable(base.id) : null;
       cache?.set(id, row ?? null);
       return row;
     };
@@ -3213,24 +3454,26 @@ export class PayrollService {
     if (direct) return direct;
 
     const today = new Date();
-    const row = await tx.payrollTaxTable.findFirst({
-      where: {
-        status: 'active',
-        workerType: { in: ['employee', 'all'] },
-        OR: input.organizationId ? [{ organizationId: input.organizationId }, { organizationId: null }] : [{ organizationId: null }],
-        effectiveFrom: { lte: today },
-        AND: [{ OR: [{ effectiveTo: null }, { effectiveTo: { gte: today } }] }],
-      },
-      include: { bands: { orderBy: { sortOrder: 'asc' } } },
-      orderBy: [{ organizationId: 'desc' }, { effectiveFrom: 'desc' }],
-    });
+    const row = await tx.select().from(payrollTaxTable)
+      .where(and(
+        eq(payrollTaxTable.status, 'active'),
+        inArray(payrollTaxTable.workerType, ['employee', 'all']),
+        input.organizationId
+          ? or(eq(payrollTaxTable.organizationId, input.organizationId), isNull(payrollTaxTable.organizationId))
+          : isNull(payrollTaxTable.organizationId),
+        lte(payrollTaxTable.effectiveFrom, today),
+        or(isNull(payrollTaxTable.effectiveTo), gte(payrollTaxTable.effectiveTo, today)),
+      ))
+      .orderBy(desc(payrollTaxTable.organizationId), desc(payrollTaxTable.effectiveFrom))
+      .limit(1)
+      .then((r) => r[0]);
     if (row && cache) cache.set(row.id, row);
     return row;
   }
 
   private calculateEmployeePaye(input: {
     grossPay: number;
-    lines: Array<{ componentId: string; lineType: string; amount: Drizzle.Decimal; affectsNetPay?: boolean }>;
+    lines: Array<{ componentId: string; lineType: string; amount: Decimal; affectsNetPay?: boolean }>;
     componentsById: Map<string, any>;
     taxTable: any | null;
     fallbackRate: number;
@@ -3304,7 +3547,7 @@ export class PayrollService {
     }) || null;
   }
 
-  private mapProjectTimesheetDto(dto: any, actorId?: string, preserveCreator = false): Drizzle.ProjectTimesheetEntryUncheckedCreateInput {
+  private mapProjectTimesheetDto(dto: any, actorId?: string, preserveCreator = false) {
     return {
       workerId: dto.worker_id,
       componentId: dto.component_id || null,
@@ -3314,7 +3557,7 @@ export class PayrollService {
       fundId: dto.fund_id || null,
       grantId: dto.grant_id || null,
       workDate: new Date(dto.work_date),
-      hours: dto.hours,
+      hours: this.toScaleOrZero(dto.hours),
       description: dto.description || null,
       status: dto.status || 'draft',
       createdBy: preserveCreator ? undefined : (actorId ? toBigInt(actorId) : undefined),
@@ -4129,7 +4372,7 @@ export class PayrollService {
     return item ? { itemId: item.id, runId: run.id } : null;
   }
 
-  private async resolveOrganizationLookup(client: Drizzle.TransactionClient | DrizzleService, value: string) {
+  private async resolveOrganizationLookup(client: Drizzle.TransactionClient | RepositoryService, value: string) {
     const trimmed = String(value || '').trim();
     if (!trimmed) return null;
     if (/^\d+$/.test(trimmed)) {
@@ -4140,7 +4383,7 @@ export class PayrollService {
     return match?.id ?? null;
   }
 
-  private async resolveTeamLookup(client: Drizzle.TransactionClient | DrizzleService, value: string) {
+  private async resolveTeamLookup(client: Drizzle.TransactionClient | RepositoryService, value: string) {
     const trimmed = String(value || '').trim();
     if (!trimmed) return null;
     if (/^\d+$/.test(trimmed)) {
@@ -4151,7 +4394,7 @@ export class PayrollService {
     return match?.id ?? null;
   }
 
-  private async resolveFundLookup(client: Drizzle.TransactionClient | DrizzleService, value: string) {
+  private async resolveFundLookup(client: Drizzle.TransactionClient | RepositoryService, value: string) {
     const trimmed = String(value || '').trim();
     if (!trimmed) return null;
     const match = await client.financeFund.findFirst({
@@ -4162,7 +4405,7 @@ export class PayrollService {
     return match?.id ?? null;
   }
 
-  private async resolveGrantLookup(client: Drizzle.TransactionClient | DrizzleService, value: string) {
+  private async resolveGrantLookup(client: Drizzle.TransactionClient | RepositoryService, value: string) {
     const trimmed = String(value || '').trim();
     if (!trimmed) return null;
     const match = await client.financeGrant.findFirst({
@@ -4173,7 +4416,7 @@ export class PayrollService {
     return match?.id ?? null;
   }
 
-  private async resolveFinanceAccountLookup(client: Drizzle.TransactionClient | DrizzleService, value: string) {
+  private async resolveFinanceAccountLookup(client: Drizzle.TransactionClient | RepositoryService, value: string) {
     const trimmed = String(value || '').trim();
     if (!trimmed) return null;
     const match = await client.financeAccount.findFirst({

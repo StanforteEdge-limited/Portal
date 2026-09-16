@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { SQL, and, count, desc, eq } from 'drizzle-orm';
 import { DbService } from '$common/db/db.service';
 import { TenantContextService } from '$common/auth/tenant-context.service';
-import { toBigInt } from '$common/utils/ids';
+import { parseBigIntId, toBigInt } from '$common/utils/ids';
 import { CreateAcknowledgementDto } from '$modules/requests/acknowledgements/dto/create-acknowledgement.dto';
 import { ListAcknowledgementsDto } from '$modules/requests/acknowledgements/dto/list-acknowledgements.dto';
 import { RevokeAcknowledgementDto } from '$modules/requests/acknowledgements/dto/revoke-acknowledgement.dto';
@@ -27,7 +27,7 @@ export class AcknowledgementsService {
   }
 
   async acknowledge(profileId: string, dto: CreateAcknowledgementDto) {
-    const userId = this.parseId(profileId, 'profile id');
+    const userId = parseBigIntId(profileId, 'profile id');
     const subjectType = dto.subject_type.trim().toLowerCase();
     const subjectId = dto.subject_id.trim();
     const version = (dto.version ?? 'current').trim();
@@ -53,7 +53,7 @@ export class AcknowledgementsService {
     }
 
     const data: NewAcknowledgement = {
-      tenantId: this.currentTenantId(),
+      tenantId: this.tenantContext.currentTenantId(),
       userId,
       subjectType,
       subjectId,
@@ -121,9 +121,9 @@ export class AcknowledgementsService {
 
     if (query.user_id) {
       if (!allowUserFilter) {
-        conditions.push(eq(acknowledgement.userId, this.parseId(String(query.user_id), 'user_id')));
+        conditions.push(eq(acknowledgement.userId, parseBigIntId(String(query.user_id), 'user_id')));
       } else {
-        conditions.push(eq(acknowledgement.userId, this.parseId(String(query.user_id), 'user_id')));
+        conditions.push(eq(acknowledgement.userId, parseBigIntId(String(query.user_id), 'user_id')));
       }
     }
     const where = and(...conditions);
@@ -196,21 +196,8 @@ export class AcknowledgementsService {
     };
   }
 
-  private parseId(value: string, label: string): bigint {
-    try {
-      return toBigInt(value);
-    } catch {
-      throw new BadRequestException(`Invalid ${label}`);
-    }
-  }
-
-  private currentTenantId() {
-    const context = this.tenantContext.get();
-    return context && context.scope !== 'system' ? context.tenantId : undefined;
-  }
-
   private acknowledgementConditions(): SQL[] {
-    const tenantId = this.currentTenantId();
+    const tenantId = this.tenantContext.currentTenantId();
     return tenantId ? [eq(acknowledgement.tenantId, tenantId)] : [];
   }
 

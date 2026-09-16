@@ -2,7 +2,8 @@ ALTER TABLE "sta_role_permissions" ADD PRIMARY KEY ("role_id","permission_id");-
 ALTER TABLE "sta_user_roles" ALTER COLUMN "tenant_id" SET NOT NULL;--> statement-breakpoint
 ALTER TABLE "sta_documents" ALTER COLUMN "tenant_id" SET NOT NULL;--> statement-breakpoint
 ALTER TABLE "sta_file_assets" ALTER COLUMN "tenant_id" SET NOT NULL;--> statement-breakpoint
-ALTER TABLE "sta_form_submissions" ALTER COLUMN "organization_id" SET DATA TYPE bigint USING "organization_id"::bigint;--> statement-breakpoint
+ALTER TABLE "sta_form_submissions" DROP COLUMN "organization_id";--> statement-breakpoint
+ALTER TABLE "sta_form_submissions" ADD COLUMN "organization_id" bigint;--> statement-breakpoint
 ALTER TABLE "sta_tokens" ADD CONSTRAINT "sta_tokens_profile_id_sta_profiles_id_fkey" FOREIGN KEY ("profile_id") REFERENCES "sta_profiles"("id") ON DELETE CASCADE;--> statement-breakpoint
 ALTER TABLE "sta_tokens" ADD CONSTRAINT "sta_tokens_tenant_id_sta_tenants_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "sta_tenants"("id") ON DELETE CASCADE;--> statement-breakpoint
 ALTER TABLE "sta_role_permissions" ADD CONSTRAINT "sta_role_permissions_role_id_sta_roles_id_fkey" FOREIGN KEY ("role_id") REFERENCES "sta_roles"("id") ON DELETE CASCADE;--> statement-breakpoint

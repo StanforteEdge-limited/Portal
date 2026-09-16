@@ -263,6 +263,7 @@ export function AdminOrganizationSlideOver({ org, onClose, onSaved }: Props) {
                 placeholder="https://example.com/logo.png or a generated upload URL"
               />
             </div>
+          </div>
             <div className="border-t border-slate-100 my-4 pt-4">
               <h4 className="text-sm font-semibold text-slate-800 mb-3">Corporate Metadata</h4>
             <div className="space-y-4">

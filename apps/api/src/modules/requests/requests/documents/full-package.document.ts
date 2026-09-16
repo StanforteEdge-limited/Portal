@@ -78,17 +78,7 @@ export class FullPackageDocument implements Document<FullPackageContext> {
     };
 
     for (const item of request.items) {
-      const files = Array.from(
-        new Map(
-          [
-            ...(item.files ?? []).map((a: any) => a.file).filter(Boolean),
-            item.file ?? null,
-          ]
-            .filter(Boolean)
-            .map((f: any) => [f.id, f]),
-        ).values(),
-      ) as any[];
-      for (const file of files) {
+      for (const file of this.engine.uniqueFilesFromRequestItem(item)) {
         await addFile(file, `request/attachments/${file.fileName}`);
       }
     }
@@ -113,9 +103,9 @@ export class FullPackageDocument implements Document<FullPackageContext> {
       if (voucher.metadata && typeof voucher.metadata === 'object' && !Array.isArray(voucher.metadata)) {
         const retirementIds = (voucher.metadata as Record<string, unknown>).retirement_file_ids;
         if (Array.isArray(retirementIds)) {
-          const retirementFiles = await this.engine.drizzle.fileAsset.findMany({
-            where: { id: { in: retirementIds.filter((x): x is string => typeof x === 'string') } },
-          });
+          const retirementFiles = await this.engine.fetchFileAssetsByIds(
+            retirementIds.filter((x): x is string => typeof x === 'string'),
+          );
           for (const file of retirementFiles) {
             await addFile(file, `retirements/${voucherZipName}/${file.fileName}`);
           }

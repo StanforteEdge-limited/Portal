@@ -3,7 +3,7 @@ import { SQL, and, count, desc, eq, ilike, or } from 'drizzle-orm';
 import { DbService } from '$common/db/db.service';
 import { TenantContextService } from '$common/auth/tenant-context.service';
 import { paginatedResponse } from '$common/helpers/paginated-response';
-import { toBigInt } from '$common/utils/ids';
+import { parseBigIntId } from '$common/utils/ids';
 import { CreateContactDto } from '$modules/directory/contacts/dto/create-contact.dto';
 import { UpdateContactDto } from '$modules/directory/contacts/dto/update-contact.dto';
 import { contact } from './model';
@@ -26,7 +26,7 @@ export class ContactsService {
       conditions.push(or(ilike(contact.email, search), ilike(contact.firstName, search), ilike(contact.lastName, search)) as SQL);
     }
     if (query.status) conditions.push(eq(contact.status, String(query.status)));
-    if (query.organization_id) conditions.push(eq(contact.organizationId, this.parseId(query.organization_id, 'organization id')));
+    if (query.organization_id) conditions.push(eq(contact.organizationId, parseBigIntId(query.organization_id, 'organization id')));
     const where = and(...conditions);
 
     const [rows, totalRows] = await Promise.all([
@@ -46,7 +46,7 @@ export class ContactsService {
   }
 
   async get(id: string) {
-    const row = await this.findContactWithOrganization(this.parseId(id, 'contact id'));
+    const row = await this.findContactWithOrganization(parseBigIntId(id, 'contact id'));
     if (!row) throw new NotFoundException('Contact not found');
     return row;
   }
@@ -57,13 +57,13 @@ export class ContactsService {
     const emailExists = await this.findContactByEmail(email);
     if (emailExists) throw new BadRequestException('Email already exists');
 
-    const organizationId = dto.organization_id ? this.parseId(dto.organization_id, 'organization id') : null;
+    const organizationId = dto.organization_id ? parseBigIntId(dto.organization_id, 'organization id') : null;
     if (organizationId) {
       const org = await this.findOrganization(organizationId);
       if (!org) throw new NotFoundException('Organization not found');
     }
 
-    const tenantId = this.currentTenantId();
+    const tenantId = this.tenantContext.currentTenantId();
     if (!tenantId) throw new BadRequestException('Tenant context is required to create a contact');
 
     const [created] = await this.db.client
@@ -83,7 +83,7 @@ export class ContactsService {
   }
 
   async update(id: string, dto: UpdateContactDto) {
-    const contactId = this.parseId(id, 'contact id');
+    const contactId = parseBigIntId(id, 'contact id');
     const existing = await this.findContact(contactId);
     if (!existing) throw new NotFoundException('Contact not found');
 
@@ -109,21 +109,8 @@ export class ContactsService {
     return this.get(id);
   }
 
-  private parseId(value: string, label: string): bigint {
-    try {
-      return toBigInt(value);
-    } catch {
-      throw new BadRequestException(`Invalid ${label}`);
-    }
-  }
-
-  private currentTenantId() {
-    const context = this.tenantContext.get();
-    return context && context.scope !== 'system' ? context.tenantId : undefined;
-  }
-
   private contactConditions(): SQL[] {
-    const tenantId = this.currentTenantId();
+    const tenantId = this.tenantContext.currentTenantId();
     return tenantId ? [eq(contact.tenantId, tenantId)] : [];
   }
 

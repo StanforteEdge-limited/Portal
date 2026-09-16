@@ -1,3 +1,5 @@
+import { BadRequestException } from '@nestjs/common';
+
 export function toBigInt(value: string | number | bigint): bigint {
   if (typeof value === 'bigint') return value;
   if (typeof value === 'number') {
@@ -13,4 +15,12 @@ export function toBigInt(value: string | number | bigint): bigint {
     throw new Error('Identifier must be a positive integer string');
   }
   return BigInt(value);
+}
+
+export function parseBigIntId(value: string | number | bigint, label: string): bigint {
+  try {
+    return toBigInt(value);
+  } catch {
+    throw new BadRequestException(`Invalid ${label}`);
+  }
 }

@@ -1,5 +1,5 @@
 import { defineRelationsPart } from 'drizzle-orm';
-import { bigint, bigserial, index, pgTable, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
+import { AnyPgColumn, bigint, bigserial, index, pgTable, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
 import { tenant } from '$modules/tenancy/model';
 import { profile } from '$modules/identity/users/model';
 import { fileAsset } from '$modules/storage/model';
@@ -38,7 +38,7 @@ export const chatMessage = pgTable("sta_chat_messages", {
   conversationId: bigint("conversation_id", { mode: 'bigint' }).notNull().references(() => chatConversation.id, { onDelete: 'cascade' }),
   senderProfileId: bigint("sender_profile_id", { mode: 'bigint' }).notNull().references(() => profile.id, { onDelete: 'cascade' }),
   body: text("body"),
-  replyToMessageId: bigint("reply_to_message_id", { mode: 'bigint' }).references(() => chatMessage.id, { onDelete: 'set null' }),
+  replyToMessageId: bigint("reply_to_message_id", { mode: 'bigint' }).references((): AnyPgColumn => chatMessage.id, { onDelete: 'set null' }),
   createdAt: timestamp("created_at", { mode: 'date', precision: 6 }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: 'date', precision: 6 }).notNull().$onUpdate(() => new Date()),
 }, (table) => [

@@ -91,7 +91,7 @@ export class TaxonomyService {
     const [created] = await this.db.client
       .insert(taxonomy)
       .values({
-        tenantId: this.currentTenantId(),
+        tenantId: this.tenantContext.currentTenantId(),
         key,
         name: dto.name.trim(),
         description: dto.description,
@@ -155,7 +155,7 @@ export class TaxonomyService {
       if (terms.length > 0) {
         await tx.insert(taxonomyTerm).values(
           terms.map((term, index) => ({
-            tenantId: this.currentTenantId(),
+            tenantId: this.tenantContext.currentTenantId(),
             taxonomyId,
             value: term.toLowerCase().replace(/\s+/g, '_'),
             label: term,
@@ -256,7 +256,7 @@ export class TaxonomyService {
     const [created] = await this.db.client
       .insert(taxonomyTerm)
       .values({
-        tenantId: this.currentTenantId(),
+        tenantId: this.tenantContext.currentTenantId(),
         taxonomyId: existingTaxonomy.id,
         value,
         label: label.slice(0, 120),
@@ -350,7 +350,7 @@ export class TaxonomyService {
         await tx
           .insert(taxonomyTagAssignment)
           .values(filteredTermIds.map((termId) => ({
-            tenantId: this.currentTenantId(),
+            tenantId: this.tenantContext.currentTenantId(),
             taxonomyId: existingTaxonomy.id,
             termId,
             entityType: normalizedEntityType,
@@ -413,7 +413,7 @@ export class TaxonomyService {
     const [created] = await this.db.client
       .insert(taxonomy)
       .values({
-        tenantId: this.currentTenantId(),
+        tenantId: this.tenantContext.currentTenantId(),
         key,
         name: key
           .split('_')
@@ -437,33 +437,28 @@ export class TaxonomyService {
     }
   }
 
-  private currentTenantId() {
-    const context = this.tenantContext.get();
-    return context && context.scope !== 'system' ? context.tenantId : undefined;
-  }
-
-  private taxonomyReadConditions(): SQL[] {
-    const tenantId = this.currentTenantId();
+private taxonomyReadConditions(): SQL[] {
+    const tenantId = this.tenantContext.currentTenantId();
     return tenantId ? [or(eq(taxonomy.tenantId, tenantId), isNull(taxonomy.tenantId)) as SQL] : [];
   }
 
   private taxonomyWriteConditions(): SQL[] {
-    const tenantId = this.currentTenantId();
+    const tenantId = this.tenantContext.currentTenantId();
     return tenantId ? [eq(taxonomy.tenantId, tenantId)] : [];
   }
 
   private taxonomyTermReadConditions(): SQL[] {
-    const tenantId = this.currentTenantId();
+    const tenantId = this.tenantContext.currentTenantId();
     return tenantId ? [or(eq(taxonomyTerm.tenantId, tenantId), isNull(taxonomyTerm.tenantId)) as SQL] : [];
   }
 
   private taxonomyTermWriteConditions(): SQL[] {
-    const tenantId = this.currentTenantId();
+    const tenantId = this.tenantContext.currentTenantId();
     return tenantId ? [eq(taxonomyTerm.tenantId, tenantId)] : [];
   }
 
   private taxonomyTagAssignmentReadConditions(): SQL[] {
-    const tenantId = this.currentTenantId();
+    const tenantId = this.tenantContext.currentTenantId();
     return tenantId ? [eq(taxonomyTagAssignment.tenantId, tenantId)] : [];
   }
 
@@ -472,12 +467,12 @@ export class TaxonomyService {
   }
 
   private formFieldReadConditions(): SQL[] {
-    const tenantId = this.currentTenantId();
+    const tenantId = this.tenantContext.currentTenantId();
     return tenantId ? [or(eq(formField.tenantId, tenantId), isNull(formField.tenantId)) as SQL] : [];
   }
 
   private requestGroupConditions(): SQL[] {
-    const tenantId = this.currentTenantId();
+    const tenantId = this.tenantContext.currentTenantId();
     return tenantId ? [eq(requestGroup.tenantId, tenantId)] : [];
   }
 

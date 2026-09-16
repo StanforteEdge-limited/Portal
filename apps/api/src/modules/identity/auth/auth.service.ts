@@ -2,7 +2,8 @@ import { Injectable, NotFoundException, UnauthorizedException, BadRequestExcepti
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import type { Response } from 'express';
-import { DrizzleService } from '$common/drizzle/drizzle.service';
+import { and, asc, eq, ilike, inArray } from 'drizzle-orm';
+import { DbService } from '$common/db/db.service';
 import { LoginDto } from '$modules/identity/auth/dto/login.dto';
 import { ChangePasswordDto } from '$modules/identity/auth/dto/change-password.dto';
 import { RefreshDto } from '$modules/identity/auth/dto/refresh.dto';
@@ -21,6 +22,12 @@ import {
   clearAuthCookieOptions,
   parseCookieHeader
 } from '$common/auth/cookies';
+import { profile as profileTable } from '$modules/identity/users/model';
+import { organization as organizationTable, profileOrganization as profileOrganizationTable } from '$modules/directory/organizations/model';
+import { tenant as tenantTable, tenantMembership as tenantMembershipTable, tenantOrganization as tenantOrganizationTable } from '$modules/tenancy/model';
+import { token as tokenTable } from '$modules/identity/auth/model';
+import { onboardingProgress as onboardingProgressTable } from '$modules/hr/hr/model';
+import { role as roleTable, permission as permissionTable, rolePermission as rolePermissionTable, userRole as userRoleTable } from '$modules/identity/rbac/model';
 
 const ACCESS_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m';
 const REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '30d';
@@ -28,7 +35,7 @@ const REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '30d';
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly drizzle: DrizzleService,
+    private readonly db: DbService,
     private readonly jwt: JwtService,
     private readonly mailService: MailService,
     private readonly mailQueue: MailQueueService
@@ -37,7 +44,11 @@ export class AuthService {
   async login(dto: LoginDto, res?: Response): Promise<LoginResponseDto> {
     const email = dto.email.trim().toLowerCase();
     const organizationCode = dto.organization?.trim();
-    const profile = await this.drizzle.profile.findUnique({ where: { email } });
+    const [profile] = await this.db.client
+      .select()
+      .from(profileTable)
+      .where(eq(profileTable.email, email))
+      .limit(1);
     if (!profile) this.throwUnauthorized('Invalid credentials', 'AUTH_INVALID_CREDENTIALS');
 
     // SECURITY: Account Lockout Check
@@ -63,10 +74,11 @@ export class AuthService {
 
     const primaryOrgId = profile.primaryOrganizationId;
     if (primaryOrgId) {
-      const primaryOrg = await this.drizzle.organization.findUnique({
-        where: { id: primaryOrgId },
-        select: { metadata: true }
-      });
+      const [primaryOrg] = await this.db.client
+        .select({ metadata: organizationTable.metadata })
+        .from(organizationTable)
+        .where(eq(organizationTable.id, primaryOrgId))
+        .limit(1);
       const domains = this.extractAllowedLoginDomains(primaryOrg?.metadata);
       if (domains.length > 0) {
         const domain = email.split('@')[1]?.toLowerCase() ?? '';
@@ -85,13 +97,13 @@ export class AuthService {
       const attempts = profile.failedLoginAttempts + 1;
       const lockoutUntil = attempts >= 3 ? new Date(Date.now() + 15 * 60 * 1000) : null;
       
-      await this.drizzle.profile.update({
-        where: { id: profile.id },
-        data: { 
+      await this.db.client
+        .update(profileTable)
+        .set({
           failedLoginAttempts: attempts,
           lockoutUntil
-        }
-      });
+        })
+        .where(eq(profileTable.id, profile.id));
 
       this.throwUnauthorized('Invalid credentials', 'AUTH_INVALID_CREDENTIALS');
     }
@@ -102,14 +114,14 @@ export class AuthService {
     const tokens = await this.issueTokens(profile.id, tenantContext.tenantId, authContext.permissions, authContext.roles);
     this.setAuthCookies(res, tokens.accessToken, tokens.refreshToken, tokens.expiresIn);
 
-    await this.drizzle.profile.update({
-      where: { id: profile.id },
-      data: { 
+    await this.db.client
+      .update(profileTable)
+      .set({
         lastLogin: new Date(),
         failedLoginAttempts: 0,
         lockoutUntil: null
-      }
-    });
+      })
+      .where(eq(profileTable.id, profile.id));
 
     return {
       user: {
@@ -151,15 +163,24 @@ export class AuthService {
     organizationCode?: string
   ): Promise<{ id: bigint; name: string; code: string; metadata: unknown } | null> {
     if (organizationCode) {
-      const org = await this.drizzle.organization.findFirst({
-        where: { code: { equals: organizationCode, mode: 'insensitive' } },
-        select: { id: true, name: true, code: true, metadata: true }
-      });
+      const [org] = await this.db.client
+        .select({
+          id: organizationTable.id,
+          name: organizationTable.name,
+          code: organizationTable.code,
+          metadata: organizationTable.metadata
+        })
+        .from(organizationTable)
+        .where(ilike(organizationTable.code, organizationCode))
+        .limit(1);
       if (!org) return null;
-      const membership = await this.drizzle.profileOrganization.findFirst({
-        where: { profileId, organizationId: org.id },
-        select: { id: true }
-      });
+      const [membership] = await this.db.client
+        .select({ id: profileOrganizationTable.id })
+        .from(profileOrganizationTable)
+        .where(
+          and(eq(profileOrganizationTable.profileId, profileId), eq(profileOrganizationTable.organizationId, org.id))
+        )
+        .limit(1);
       if (!membership && primaryOrganizationId !== org.id) return null;
       return org;
     }
@@ -167,24 +188,36 @@ export class AuthService {
     const domain = email.split('@')[1]?.toLowerCase() ?? '';
 
     if (primaryOrganizationId) {
-      const primary = await this.drizzle.organization.findUnique({
-        where: { id: primaryOrganizationId },
-        select: { id: true, name: true, code: true, metadata: true }
-      });
+      const [primary] = await this.db.client
+        .select({
+          id: organizationTable.id,
+          name: organizationTable.name,
+          code: organizationTable.code,
+          metadata: organizationTable.metadata
+        })
+        .from(organizationTable)
+        .where(eq(organizationTable.id, primaryOrganizationId))
+        .limit(1);
       if (primary) {
         const domains = this.extractAllowedLoginDomains(primary.metadata);
         if (domains.length === 0 || domains.includes(domain)) return primary;
       }
     }
 
-    const memberships = await this.drizzle.profileOrganization.findMany({
-      where: { profileId },
-      select: {
-        organization: { select: { id: true, name: true, code: true, metadata: true } }
-      }
-    });
+    const memberships = await this.db.client
+      .select({
+        org: {
+          id: organizationTable.id,
+          name: organizationTable.name,
+          code: organizationTable.code,
+          metadata: organizationTable.metadata
+        }
+      })
+      .from(profileOrganizationTable)
+      .leftJoin(organizationTable, eq(profileOrganizationTable.organizationId, organizationTable.id))
+      .where(eq(profileOrganizationTable.profileId, profileId));
     const candidates = memberships
-      .map((entry) => entry.organization)
+      .map((entry) => entry.org)
       .filter((org) => {
         const domains = this.extractAllowedLoginDomains(org.metadata);
         return domains.length === 0 || domains.includes(domain);
@@ -195,11 +228,17 @@ export class AuthService {
   }
 
   async status(userId: string): Promise<AuthStatusResponseDto> {
-    const profile = await this.drizzle.profile.findUnique({
-      where: { id: toBigInt(userId) },
-      include: { onboardingProgress: true }
-    });
+    const [profile] = await this.db.client
+      .select()
+      .from(profileTable)
+      .where(eq(profileTable.id, toBigInt(userId)))
+      .limit(1);
     if (!profile) throw new NotFoundException('User not found');
+    const [onboarding] = await this.db.client
+      .select()
+      .from(onboardingProgressTable)
+      .where(eq(onboardingProgressTable.userId, profile.id))
+      .limit(1);
     const tenantContext = await this.resolveTenantContext(profile.id, profile.primaryOrganizationId);
     const authContext = await this.buildAuthContext(profile.id, tenantContext?.tenantId);
     return {
@@ -210,7 +249,7 @@ export class AuthService {
       status: profile.status,
       roles: authContext.roles,
       permissions: authContext.permissions,
-      onboarding_status: profile.onboardingProgress?.status,
+      onboarding_status: onboarding?.status,
       tenant: tenantContext
         ? { id: tenantContext.tenantId.toString(), name: tenantContext.name, slug: tenantContext.slug }
         : undefined
@@ -218,13 +257,18 @@ export class AuthService {
   }
 
   async listTenants(userId: string) {
-    const memberships = await this.drizzle.tenantMembership.findMany({
-      where: { profileId: toBigInt(userId), status: 'active' },
-      orderBy: { joinedAt: 'asc' },
-    });
+    const memberships = await this.db.client
+      .select()
+      .from(tenantMembershipTable)
+      .where(and(eq(tenantMembershipTable.profileId, toBigInt(userId)), eq(tenantMembershipTable.status, 'active')))
+      .orderBy(asc(tenantMembershipTable.joinedAt));
     const tenants = await Promise.all(
       memberships.map(async (membership) => {
-        const tenant = await this.drizzle.tenant.findUnique({ where: { id: membership.tenantId } });
+        const [tenant] = await this.db.client
+          .select()
+          .from(tenantTable)
+          .where(eq(tenantTable.id, membership.tenantId))
+          .limit(1);
         if (!tenant || tenant.status !== 'active') return null;
         return {
           id: tenant.id.toString(),
@@ -260,7 +304,9 @@ export class AuthService {
   }
 
   async logout(userId: string, res?: Response) {
-    await this.drizzle.token.deleteMany({ where: { profileId: toBigInt(userId), type: 'refresh' } });
+    await this.db.client
+      .delete(tokenTable)
+      .where(and(eq(tokenTable.profileId, toBigInt(userId)), eq(tokenTable.type, 'refresh')));
     this.clearAuthCookies(res);
     return { success: true };
   }
@@ -270,7 +316,11 @@ export class AuthService {
       throw new BadRequestException('Passwords do not match');
     }
 
-    const profile = await this.drizzle.profile.findUnique({ where: { id: toBigInt(userId) } });
+    const [profile] = await this.db.client
+      .select()
+      .from(profileTable)
+      .where(eq(profileTable.id, toBigInt(userId)))
+      .limit(1);
     if (!profile) this.throwUnauthorized('Invalid credentials', 'AUTH_INVALID_CREDENTIALS');
     if (!profile.passwordHash) {
       this.throwUnauthorized('Password is not set. Use invite/reset flow first.', 'AUTH_PASSWORD_NOT_SET');
@@ -280,12 +330,12 @@ export class AuthService {
     if (!ok) this.throwUnauthorized('Invalid credentials', 'AUTH_INVALID_CREDENTIALS');
 
     const newHash = await bcrypt.hash(dto.new_password, 12);
-    await this.drizzle.profile.update({
-      where: { id: profile.id },
-      data: { passwordHash: newHash }
-    });
+    await this.db.client
+      .update(profileTable)
+      .set({ passwordHash: newHash })
+      .where(eq(profileTable.id, profile.id));
 
-    await this.drizzle.token.deleteMany({ where: { profileId: profile.id } });
+    await this.db.client.delete(tokenTable).where(eq(tokenTable.profileId, profile.id));
 
     return { success: true };
   }
@@ -296,13 +346,15 @@ export class AuthService {
     if (!refreshToken) this.throwUnauthorized('Invalid refresh token', 'AUTH_REFRESH_INVALID');
 
     const tokenHash = sha256(refreshToken);
-    const tokenRow = await this.drizzle.token.findFirst({
-      where: { tokenHash, type: 'refresh' }
-    });
+    const [tokenRow] = await this.db.client
+      .select()
+      .from(tokenTable)
+      .where(and(eq(tokenTable.tokenHash, tokenHash), eq(tokenTable.type, 'refresh')))
+      .limit(1);
 
     if (!tokenRow) this.throwUnauthorized('Invalid refresh token', 'AUTH_REFRESH_INVALID');
     if (tokenRow.expiresAt.getTime() < Date.now()) {
-      await this.drizzle.token.delete({ where: { id: tokenRow.id } });
+      await this.db.client.delete(tokenTable).where(eq(tokenTable.id, tokenRow.id));
       this.throwUnauthorized('Refresh token expired', 'AUTH_REFRESH_EXPIRED');
     }
 
@@ -311,7 +363,7 @@ export class AuthService {
     const authContext = await this.buildAuthContext(tokenRow.profileId, tenantContext.tenantId);
 
     // Rotate refresh token
-    await this.drizzle.token.delete({ where: { id: tokenRow.id } });
+    await this.db.client.delete(tokenTable).where(eq(tokenTable.id, tokenRow.id));
     const tokens = await this.issueTokens(tokenRow.profileId, tenantContext.tenantId, authContext.permissions, authContext.roles);
     this.setAuthCookies(res, tokens.accessToken, tokens.refreshToken, tokens.expiresIn);
 
@@ -323,25 +375,27 @@ export class AuthService {
 
   async forgotPassword(dto: ForgotPasswordDto) {
     const email = dto.email.trim().toLowerCase();
-    const profile = await this.drizzle.profile.findUnique({ where: { email } });
+    const [profile] = await this.db.client
+      .select()
+      .from(profileTable)
+      .where(eq(profileTable.email, email))
+      .limit(1);
     if (!profile) return { success: true };
 
     const resetToken = randomToken(32);
     const tokenHash = sha256(resetToken);
     const expiresAt = new Date(Date.now() + 1000 * 60 * 30);
 
-    await this.drizzle.$transaction(async (tx) => {
-      await tx.token.deleteMany({
-        where: { profileId: profile.id, type: 'reset' }
-      });
-      await tx.token.create({
-        data: {
-          id: randomToken(24),
-          profileId: profile.id,
-          type: 'reset',
-          tokenHash,
-          expiresAt
-        }
+    await this.db.client.transaction(async (tx) => {
+      await tx
+        .delete(tokenTable)
+        .where(and(eq(tokenTable.profileId, profile.id), eq(tokenTable.type, 'reset')));
+      await tx.insert(tokenTable).values({
+        id: randomToken(24),
+        profileId: profile.id,
+        type: 'reset',
+        tokenHash,
+        expiresAt
       });
     });
 
@@ -367,24 +421,23 @@ export class AuthService {
 
   async resetPassword(dto: ResetPasswordDto) {
     const tokenHash = sha256(dto.token);
-    const tokenRow = await this.drizzle.token.findFirst({
-      where: { tokenHash, type: 'reset' }
-    });
+    const [tokenRow] = await this.db.client
+      .select()
+      .from(tokenTable)
+      .where(and(eq(tokenTable.tokenHash, tokenHash), eq(tokenTable.type, 'reset')))
+      .limit(1);
 
     if (!tokenRow) this.throwUnauthorized('Invalid reset token', 'AUTH_RESET_TOKEN_INVALID');
     if (tokenRow.expiresAt.getTime() < Date.now()) {
-      await this.drizzle.token.delete({ where: { id: tokenRow.id } });
+      await this.db.client.delete(tokenTable).where(eq(tokenTable.id, tokenRow.id));
       this.throwUnauthorized('Reset token expired', 'AUTH_RESET_TOKEN_EXPIRED');
     }
 
     const newHash = await bcrypt.hash(dto.new_password, 12);
 
-    await this.drizzle.$transaction(async (tx) => {
-      await tx.profile.update({
-        where: { id: tokenRow.profileId },
-        data: { passwordHash: newHash }
-      });
-      await tx.token.deleteMany({ where: { profileId: tokenRow.profileId } });
+    await this.db.client.transaction(async (tx) => {
+      await tx.update(profileTable).set({ passwordHash: newHash }).where(eq(profileTable.id, tokenRow.profileId));
+      await tx.delete(tokenTable).where(eq(tokenTable.profileId, tokenRow.profileId));
     });
 
     return { success: true };
@@ -396,39 +449,48 @@ export class AuthService {
     }
 
     const tokenHash = sha256(dto.token);
-    const tokenRow = await this.drizzle.token.findFirst({
-      where: { tokenHash, type: 'invite' }
-    });
+    const [tokenRow] = await this.db.client
+      .select()
+      .from(tokenTable)
+      .where(and(eq(tokenTable.tokenHash, tokenHash), eq(tokenTable.type, 'invite')))
+      .limit(1);
 
     if (!tokenRow) this.throwUnauthorized('Invalid invite token', 'AUTH_INVITE_TOKEN_INVALID');
     if (tokenRow.expiresAt.getTime() < Date.now()) {
-      await this.drizzle.token.delete({ where: { id: tokenRow.id } });
+      await this.db.client.delete(tokenTable).where(eq(tokenTable.id, tokenRow.id));
       this.throwUnauthorized('Invite token expired', 'AUTH_INVITE_TOKEN_EXPIRED');
     }
     if (tokenRow.tenantId) {
-      const membership = await this.drizzle.tenantMembership.findFirst({
-        where: { tenantId: tokenRow.tenantId, profileId: tokenRow.profileId, status: 'active' },
-      });
+      const [membership] = await this.db.client
+        .select()
+        .from(tenantMembershipTable)
+        .where(
+          and(
+            eq(tenantMembershipTable.tenantId, tokenRow.tenantId),
+            eq(tenantMembershipTable.profileId, tokenRow.profileId),
+            eq(tenantMembershipTable.status, 'active')
+          )
+        )
+        .limit(1);
       if (!membership) this.throwUnauthorized('Tenant invitation is no longer active', 'AUTH_INVITE_MEMBERSHIP_INVALID');
     }
 
     const passwordHash = await bcrypt.hash(dto.new_password, 12);
-    await this.drizzle.$transaction(async (tx) => {
-      await tx.profile.update({
-        where: { id: tokenRow.profileId },
-        data: { passwordHash, status: 'active' }
-      });
-      await tx.onboardingProgress.upsert({
-        where: { userId: tokenRow.profileId },
-        update: { status: 'accepted', currentStep: 'profile' },
-        create: { userId: tokenRow.profileId, status: 'accepted', currentStep: 'profile' }
-      });
-      await tx.token.deleteMany({
-        where: {
-          profileId: tokenRow.profileId,
-          type: { in: ['invite'] }
-        }
-      });
+    await this.db.client.transaction(async (tx) => {
+      await tx
+        .update(profileTable)
+        .set({ passwordHash, status: 'active' })
+        .where(eq(profileTable.id, tokenRow.profileId));
+      await tx
+        .insert(onboardingProgressTable)
+        .values({ userId: tokenRow.profileId, status: 'accepted', currentStep: 'profile' })
+        .onConflictDoUpdate({
+          target: onboardingProgressTable.userId,
+          set: { status: 'accepted', currentStep: 'profile' }
+        });
+      await tx
+        .delete(tokenTable)
+        .where(and(eq(tokenTable.profileId, tokenRow.profileId), eq(tokenTable.type, 'invite')));
     });
 
     return { success: true };
@@ -468,7 +530,11 @@ export class AuthService {
       const email = payload?.email?.trim().toLowerCase();
       if (!email) return `${appUrl}/login?error=google_no_email`;
 
-      const profile = await this.drizzle.profile.findUnique({ where: { email } });
+      const [profile] = await this.db.client
+        .select()
+        .from(profileTable)
+        .where(eq(profileTable.email, email))
+        .limit(1);
       if (!profile) return `${appUrl}/login?error=no_account`;
 
       if (profile.lockoutUntil && profile.lockoutUntil > new Date()) {
@@ -482,10 +548,10 @@ export class AuthService {
       const issued = await this.issueTokens(profile.id, tenantContext.tenantId, authContext.permissions, authContext.roles);
       this.setAuthCookies(res, issued.accessToken, issued.refreshToken, issued.expiresIn);
 
-      await this.drizzle.profile.update({
-        where: { id: profile.id },
-        data: { lastLogin: new Date(), failedLoginAttempts: 0, lockoutUntil: null },
-      });
+      await this.db.client
+        .update(profileTable)
+        .set({ lastLogin: new Date(), failedLoginAttempts: 0, lockoutUntil: null })
+        .where(eq(profileTable.id, profile.id));
 
       return `${appUrl}/`;
     } catch {
@@ -497,7 +563,11 @@ export class AuthService {
     const profileId = payload?.sub ? toBigInt(payload.sub) : null;
     if (!profileId) return null;
 
-    const profile = await this.drizzle.profile.findUnique({ where: { id: profileId } });
+    const [profile] = await this.db.client
+      .select()
+      .from(profileTable)
+      .where(eq(profileTable.id, profileId))
+      .limit(1);
     if (!profile || profile.status !== 'active') return null;
 
     // Always resolve fresh roles/permissions from DB so RBAC changes apply immediately
@@ -538,15 +608,13 @@ export class AuthService {
     const tokenHash = sha256(refreshToken);
     const expiresAt = this.parseExpiresIn(REFRESH_EXPIRES_IN);
 
-    await this.drizzle.token.create({
-      data: {
-        id: randomToken(24),
-        profileId,
-        tenantId,
-        type: 'refresh',
-        tokenHash,
-        expiresAt
-      }
+    await this.db.client.insert(tokenTable).values({
+      id: randomToken(24),
+      profileId,
+      tenantId,
+      type: 'refresh',
+      tokenHash,
+      expiresAt
     });
 
     return {
@@ -590,23 +658,43 @@ export class AuthService {
     organizationId?: bigint | null,
     requestedTenantId?: bigint | null,
   ) {
-    const tenantOrganizationWhere = organizationId
-      ? { organizationId }
-      : requestedTenantId
-        ? { tenantId: requestedTenantId }
-        : undefined;
-    const tenantOrganization = tenantOrganizationWhere
-      ? await this.drizzle.tenantOrganization.findFirst({ where: tenantOrganizationWhere })
-      : null;
+    let tenantOrganization: { tenantId: bigint; organizationId: bigint } | null = null;
+    if (organizationId != null) {
+      const [row] = await this.db.client
+        .select({ tenantId: tenantOrganizationTable.tenantId, organizationId: tenantOrganizationTable.organizationId })
+        .from(tenantOrganizationTable)
+        .where(eq(tenantOrganizationTable.organizationId, organizationId))
+        .limit(1);
+      tenantOrganization = row ?? null;
+    } else if (requestedTenantId != null) {
+      const [row] = await this.db.client
+        .select({ tenantId: tenantOrganizationTable.tenantId, organizationId: tenantOrganizationTable.organizationId })
+        .from(tenantOrganizationTable)
+        .where(eq(tenantOrganizationTable.tenantId, requestedTenantId))
+        .limit(1);
+      tenantOrganization = row ?? null;
+    }
     const tenantId = tenantOrganization?.tenantId ?? requestedTenantId;
     if (!tenantId) return null;
 
-    const membership = await this.drizzle.tenantMembership.findFirst({
-      where: { tenantId, profileId, status: 'active' },
-    });
+    const [membership] = await this.db.client
+      .select()
+      .from(tenantMembershipTable)
+      .where(
+        and(
+          eq(tenantMembershipTable.tenantId, tenantId),
+          eq(tenantMembershipTable.profileId, profileId),
+          eq(tenantMembershipTable.status, 'active')
+        )
+      )
+      .limit(1);
     if (!membership) return null;
 
-    const tenant = await this.drizzle.tenant.findUnique({ where: { id: tenantId } });
+    const [tenant] = await this.db.client
+      .select()
+      .from(tenantTable)
+      .where(eq(tenantTable.id, tenantId))
+      .limit(1);
     if (!tenant) return null;
     if (tenant.status !== 'active' && !membership.isOwner) return null;
     return {
@@ -647,35 +735,41 @@ export class AuthService {
   }
 
   private async getUserRoles(profileId: bigint, tenantId?: bigint): Promise<string[]> {
-    const roles = await this.drizzle.userRole.findMany({
-      where: tenantId ? { profileId, tenantId } : { profileId },
-      include: { role: true }
-    });
-    return roles.map((r) => r.role.slug);
+    const rows = await this.db.client
+      .select({ userRole: userRoleTable, role: roleTable })
+      .from(userRoleTable)
+      .leftJoin(roleTable, eq(userRoleTable.roleId, roleTable.id))
+      .where(and(eq(userRoleTable.profileId, profileId), tenantId ? eq(userRoleTable.tenantId, tenantId) : undefined));
+    return rows.map((r) => r.role?.slug ?? '');
   }
 
   private async getUserPermissions(profileId: bigint, roles?: string[], tenantId?: bigint): Promise<string[]> {
-    const profile = await this.drizzle.profile.findUnique({
-      where: { id: profileId },
-      select: { type: true }
-    });
+    const [profile] = await this.db.client
+      .select({ type: profileTable.type })
+      .from(profileTable)
+      .where(eq(profileTable.id, profileId))
+      .limit(1);
 
     const roleSlugs = roles ?? (await this.getUserRoles(profileId, tenantId));
     if (roleSlugs.includes('administrator') || roleSlugs.includes('admin')) return ['*'];
 
-    const roleIds = await this.drizzle.role.findMany({
-      where: { slug: { in: roleSlugs } },
-      select: { id: true }
-    });
+    const roleIds = await this.db.client
+      .select({ id: roleTable.id })
+      .from(roleTable)
+      .where(inArray(roleTable.slug, roleSlugs));
 
     if (roleIds.length === 0) return [];
 
-    const perms = await this.drizzle.rolePermission.findMany({
-      where: { roleId: { in: roleIds.map((r) => r.id) } },
-      include: { permission: true }
-    });
+    const idList = roleIds.map((r) => r.id);
+    const perms = idList.length
+      ? await this.db.client
+          .select({ permission: permissionTable })
+          .from(rolePermissionTable)
+          .leftJoin(permissionTable, eq(rolePermissionTable.permissionId, permissionTable.id))
+          .where(inArray(rolePermissionTable.roleId, idList))
+      : ([] as any[]);
 
-    const slugs = perms.map((p) => p.permission.slug);
+    const slugs = perms.map((p) => p.permission?.slug ?? '');
     if (profile && ['staff', 'employee'].includes(String(profile.type || '').toLowerCase())) {
       slugs.push('attendance.clock', 'attendance.view_self');
     }

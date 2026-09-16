@@ -1,6 +1,8 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { Drizzle } from '$common/db/drizzle-compat';
-import { DrizzleService } from '$common/drizzle/drizzle.service';
+import { SQL, and, asc, count, desc, eq, gte, ilike, inArray, isNull, lte, or } from 'drizzle-orm';
+import { Decimal } from 'decimal.js';
+import { DbService } from '$common/db/db.service';
+import { TenantContextService } from '$common/auth/tenant-context.service';
 import { paginatedResponse } from '$common/helpers/paginated-response';
 import { toBigInt } from '$common/utils/ids';
 import { NotificationsService } from '$modules/notifications/notifications.service';
@@ -9,6 +11,20 @@ import { CreateAttendanceExceptionDto } from '$modules/hr/hr/dto/create-attendan
 import { ReviewAttendanceCorrectionDto } from '$modules/hr/hr/dto/review-attendance-correction.dto';
 import { ReviewAttendanceExceptionDto } from '$modules/hr/hr/dto/review-attendance-exception.dto';
 import { UpsertOfficeLocationDto } from '$modules/hr/hr/dto/upsert-office-location.dto';
+import {
+  attendanceCorrection,
+  attendanceDaily,
+  attendanceEntry,
+  attendanceException,
+  attendanceHoliday,
+  employeeMeta,
+  employeeProfile,
+} from './model';
+import { officeLocation, organization, organizationOfficeLocation, profileOrganization } from '$modules/directory/organizations/model';
+import { profile } from '$modules/identity/users/model';
+import { groupUser } from '$modules/communication/groups/model';
+import { policy } from '$modules/requests/policies/model';
+import { requestInstance, requestType } from '$modules/requests/requests/model';
 
 type AttendanceMode = 'onsite' | 'remote' | 'field';
 type GeofenceStatus = 'inside' | 'outside' | 'unknown' | 'not_applicable';
@@ -48,9 +64,15 @@ export class AttendanceService {
   private readonly logger = new Logger(AttendanceService.name);
 
   constructor(
-    private readonly drizzle: DrizzleService,
+    private readonly db: DbService,
+    private readonly tenantContext: TenantContextService,
     private readonly notifications: NotificationsService,
   ) {}
+
+private tenantCond(column: any): SQL | undefined {
+    const tid = this.tenantContext.currentTenantId();
+    return tid ? eq(column, tid) : undefined;
+  }
 
   async clockIn(
     userId: string,
@@ -65,6 +87,7 @@ export class AttendanceService {
     }
   ) {
     const actorId = toBigInt(userId);
+    const tid = this.tenantContext.currentTenantId();
     const at = payload?.at ? new Date(payload.at) : new Date();
     if (Number.isNaN(at.getTime())) throw new BadRequestException('Invalid attendance time');
     const profile = await this.getProfileContext(actorId);
@@ -72,10 +95,11 @@ export class AttendanceService {
     this.assertTimestampAllowed(at, policy, payload?.source);
 
     const workDate = this.toWorkDate(at);
-    const entries = await this.drizzle.attendanceEntry.findMany({
-      where: { userId: actorId, workDate },
-      orderBy: { entryAt: 'asc' }
-    });
+    const entries = await this.db.client
+      .select()
+      .from(attendanceEntry)
+      .where(and(eq(attendanceEntry.userId, actorId), eq(attendanceEntry.workDate, workDate), this.tenantCond(attendanceEntry.tenantId)))
+      .orderBy(asc(attendanceEntry.entryAt));
     const openClockIn = this.getOpenClockIn(entries);
     if (openClockIn && !policy.allow_multiple_open_sessions) {
       throw new BadRequestException('You are already clocked in for this day');
@@ -106,24 +130,23 @@ export class AttendanceService {
       longitude: payload?.longitude
     });
 
-    await this.drizzle.attendanceEntry.create({
-      data: {
-        userId: actorId,
-        entryType: 'clock_in',
-        entryAt: at,
-        workDate,
-        attendanceMode: effectiveMode,
-        officeLocationId: officeLocation?.id ?? null,
-        latitude: payload?.latitude ?? null,
-        longitude: payload?.longitude ?? null,
-        geofenceStatus,
-        source: payload?.source ?? 'web',
-        createdBy: actorId,
-        metadata: {
-          ip: this.getIp(req),
-          user_agent: this.getUserAgent(req)
-        } as Drizzle.InputJsonValue
-      }
+    await this.db.client.insert(attendanceEntry).values({
+      userId: actorId,
+      entryType: 'clock_in',
+      entryAt: at,
+      workDate,
+      attendanceMode: effectiveMode,
+      officeLocationId: officeLocation?.id ?? null,
+      latitude: payload?.latitude != null ? String(payload.latitude) : null,
+      longitude: payload?.longitude != null ? String(payload.longitude) : null,
+      geofenceStatus,
+      source: payload?.source ?? 'web',
+      createdBy: actorId,
+      metadata: {
+        ip: this.getIp(req),
+        user_agent: this.getUserAgent(req)
+      },
+      ...(tid ? { tenantId: tid } : {})
     });
 
     const daily = await this.recomputeDay(actorId, workDate, profile, policy);
@@ -148,6 +171,7 @@ export class AttendanceService {
     }
   ) {
     const actorId = toBigInt(userId);
+    const tid = this.tenantContext.currentTenantId();
     const at = payload?.at ? new Date(payload.at) : new Date();
     if (Number.isNaN(at.getTime())) throw new BadRequestException('Invalid attendance time');
     const profile = await this.getProfileContext(actorId);
@@ -158,16 +182,16 @@ export class AttendanceService {
       new Date(Date.now() - policy.max_past_days * 24 * 60 * 60000)
     );
 
-    const entries = await this.drizzle.attendanceEntry.findMany({
-      where: {
-        userId: actorId,
-        workDate: {
-          gte: lookbackStart,
-          lte: workDate
-        }
-      },
-      orderBy: [{ workDate: 'desc' }, { entryAt: 'asc' }]
-    });
+    const entries = await this.db.client
+      .select()
+      .from(attendanceEntry)
+      .where(and(
+        eq(attendanceEntry.userId, actorId),
+        gte(attendanceEntry.workDate, lookbackStart),
+        lte(attendanceEntry.workDate, workDate),
+        this.tenantCond(attendanceEntry.tenantId)
+      ))
+      .orderBy(desc(attendanceEntry.workDate), asc(attendanceEntry.entryAt));
 
     const todayEntries = entries.filter(
       (e) => this.workDateKey(e.workDate) === this.workDateKey(workDate)
@@ -186,43 +210,45 @@ export class AttendanceService {
         ? (openClockIn.attendanceMode as AttendanceMode)
         : this.resolveExpectedMode(profile, workDate, policy);
 
-    let officeLocation: { id: bigint; latitude: Drizzle.Decimal | number; longitude: Drizzle.Decimal | number; radiusMeters: number } | null = null;
+    let resolvedOfficeLocation: { id: bigint; latitude: Decimal | number | string; longitude: Decimal | number | string; radiusMeters: number } | null = null;
     if (payload?.office_location_id && effectiveMode === 'onsite') {
-      officeLocation = await this.resolveOfficeLocationForAttendance({
+      resolvedOfficeLocation = await this.resolveOfficeLocationForAttendance({
         profile,
         requestedOfficeLocationId: payload.office_location_id,
         attendanceMode: effectiveMode
       });
     } else if (openClockIn.officeLocationId && effectiveMode === 'onsite') {
-      officeLocation = await this.drizzle.officeLocation.findUnique({
-        where: { id: openClockIn.officeLocationId }
-      });
+      const rows = await this.db.client
+        .select()
+        .from(officeLocation)
+        .where(eq(officeLocation.id, openClockIn.officeLocationId))
+        .limit(1);
+      resolvedOfficeLocation = rows[0] ?? null;
     }
     const geofenceStatus = this.evaluateGeofence({
       attendanceMode: effectiveMode,
-      officeLocation,
+      officeLocation: resolvedOfficeLocation,
       latitude: payload?.latitude,
       longitude: payload?.longitude
     });
 
-    await this.drizzle.attendanceEntry.create({
-      data: {
-        userId: actorId,
-        entryType: 'clock_out',
-        entryAt: at,
-        workDate: openClockIn.workDate ?? workDate,
-        attendanceMode: effectiveMode,
-        officeLocationId: officeLocation?.id ?? openClockIn.officeLocationId ?? null,
-        latitude: payload?.latitude ?? null,
-        longitude: payload?.longitude ?? null,
-        geofenceStatus,
-        source: payload?.source ?? 'web',
-        createdBy: actorId,
-        metadata: {
-          ip: this.getIp(req),
-          user_agent: this.getUserAgent(req)
-        } as Drizzle.InputJsonValue
-      }
+    await this.db.client.insert(attendanceEntry).values({
+      userId: actorId,
+      entryType: 'clock_out',
+      entryAt: at,
+      workDate: openClockIn.workDate ?? workDate,
+      attendanceMode: effectiveMode,
+      officeLocationId: resolvedOfficeLocation?.id ?? openClockIn.officeLocationId ?? null,
+      latitude: payload?.latitude != null ? String(payload.latitude) : null,
+      longitude: payload?.longitude != null ? String(payload.longitude) : null,
+      geofenceStatus,
+      source: payload?.source ?? 'web',
+      createdBy: actorId,
+      metadata: {
+        ip: this.getIp(req),
+        user_agent: this.getUserAgent(req)
+      },
+      ...(tid ? { tenantId: tid } : {})
     });
 
     const daily = await this.recomputeDay(actorId, openClockIn.workDate ?? workDate, profile, policy);
@@ -243,29 +269,47 @@ export class AttendanceService {
     const toDate = this.toWorkDate(to);
 
     const [entries, daily, policy, corrections, exceptions, officeLocations] = await Promise.all([
-      this.drizzle.attendanceEntry.findMany({
-        where: {
-          userId: actorId,
-          workDate: { gte: fromDate, lte: toDate }
-        },
-        orderBy: [{ workDate: 'desc' }, { entryAt: 'asc' }]
-      }),
-      this.drizzle.attendanceDaily.findMany({
-        where: {
-          userId: actorId,
-          workDate: { gte: fromDate, lte: toDate }
-        },
-        orderBy: { workDate: 'desc' }
-      }),
+      this.db.client
+        .select()
+        .from(attendanceEntry)
+        .where(and(
+          eq(attendanceEntry.userId, actorId),
+          gte(attendanceEntry.workDate, fromDate),
+          lte(attendanceEntry.workDate, toDate),
+          this.tenantCond(attendanceEntry.tenantId)
+        ))
+        .orderBy(desc(attendanceEntry.workDate), asc(attendanceEntry.entryAt)),
+      this.db.client
+        .select()
+        .from(attendanceDaily)
+        .where(and(
+          eq(attendanceDaily.userId, actorId),
+          gte(attendanceDaily.workDate, fromDate),
+          lte(attendanceDaily.workDate, toDate),
+          this.tenantCond(attendanceDaily.tenantId)
+        ))
+        .orderBy(desc(attendanceDaily.workDate)),
       this.resolveAttendancePolicy(actorId, profile),
-      this.drizzle.attendanceCorrection.findMany({
-        where: { userId: actorId, workDate: { gte: fromDate, lte: toDate } },
-        orderBy: { requestedAt: 'desc' }
-      }),
-      this.drizzle.attendanceException.findMany({
-        where: { userId: actorId, workDate: { gte: fromDate, lte: toDate } },
-        orderBy: { createdAt: 'desc' }
-      }),
+      this.db.client
+        .select()
+        .from(attendanceCorrection)
+        .where(and(
+          eq(attendanceCorrection.userId, actorId),
+          gte(attendanceCorrection.workDate, fromDate),
+          lte(attendanceCorrection.workDate, toDate),
+          this.tenantCond(attendanceCorrection.tenantId)
+        ))
+        .orderBy(desc(attendanceCorrection.requestedAt)),
+      this.db.client
+        .select()
+        .from(attendanceException)
+        .where(and(
+          eq(attendanceException.userId, actorId),
+          gte(attendanceException.workDate, fromDate),
+          lte(attendanceException.workDate, toDate),
+          this.tenantCond(attendanceException.tenantId)
+        ))
+        .orderBy(desc(attendanceException.createdAt)),
       this.listAllowedOfficeLocations(profile)
     ]);
 
@@ -324,14 +368,18 @@ export class AttendanceService {
     const fromDate = this.toWorkDate(from);
     const toDate = this.toWorkDate(to);
 
-    const rows = await this.drizzle.attendanceDaily.groupBy({
-      by: ['status'],
-      where: { workDate: { gte: fromDate, lte: toDate } },
-      _count: { _all: true }
-    });
+    const rows = await this.db.client
+      .select({ status: attendanceDaily.status, value: count() })
+      .from(attendanceDaily)
+      .where(and(
+        gte(attendanceDaily.workDate, fromDate),
+        lte(attendanceDaily.workDate, toDate),
+        this.tenantCond(attendanceDaily.tenantId)
+      ))
+      .groupBy(attendanceDaily.status);
 
     const summary: Record<string, number> = {};
-    for (const row of rows) summary[row.status] = row._count?._all ?? 0;
+    for (const row of rows) summary[row.status] = Number(row.value ?? 0);
     return {
       from: fromDate,
       to: toDate,
@@ -354,30 +402,38 @@ export class AttendanceService {
     const orgId = query.org_id ? toBigInt(String(query.org_id)) : null;
     const teamId = query.team_id ? toBigInt(String(query.team_id)) : null;
 
-    const where: Drizzle.AttendanceDailyWhereInput = {
-      workDate: { gte: fromDate, lte: toDate },
-      ...(status ? { status } : {}),
-      ...(userId ? { userId } : {})
-    };
+    const conds: SQL[] = [
+      gte(attendanceDaily.workDate, fromDate),
+      lte(attendanceDaily.workDate, toDate),
+      ...(status ? [eq(attendanceDaily.status, status)] : []),
+      ...(userId ? [eq(attendanceDaily.userId, userId)] : [])
+    ];
 
-    if (orgId || teamId) {
-      where.user = {};
-      if (orgId) {
-        where.user.organizations = { some: { organizationId: orgId } };
-      }
-      if (teamId) {
-        where.user.groups = { some: { groupId: teamId } };
-      }
+    if (orgId) {
+      const orgUsers = await this.db.client
+        .select({ profileId: profileOrganization.profileId })
+        .from(profileOrganization)
+        .where(eq(profileOrganization.organizationId, orgId));
+      conds.push(inArray(attendanceDaily.userId, orgUsers.map((row) => row.profileId)));
     }
+    if (teamId) {
+      const teamUsers = await this.db.client
+        .select({ userId: groupUser.userId })
+        .from(groupUser)
+        .where(eq(groupUser.groupId, teamId));
+      conds.push(inArray(attendanceDaily.userId, teamUsers.map((row) => row.userId)));
+    }
+    const where = and(...conds);
 
     const [total, dailyRows] = await Promise.all([
-      this.drizzle.attendanceDaily.count({ where }),
-      this.drizzle.attendanceDaily.findMany({
-        where,
-        orderBy: [{ workDate: 'desc' }, { userId: 'asc' }],
-        skip,
-        take: limit
-      })
+      this.db.client.select({ value: count() }).from(attendanceDaily).where(where),
+      this.db.client
+        .select()
+        .from(attendanceDaily)
+        .where(where)
+        .orderBy(desc(attendanceDaily.workDate), asc(attendanceDaily.userId))
+        .limit(limit)
+        .offset(skip)
     ]);
 
     if (dailyRows.length === 0) {
@@ -385,19 +441,19 @@ export class AttendanceService {
     }
 
     const userIds = Array.from(new Set<string>(dailyRows.map((row) => row.userId.toString())));
-    const profiles = await this.drizzle.profile.findMany({
-      where: { id: { in: userIds.map((id) => toBigInt(id)) } },
-      select: { id: true, email: true, username: true, firstName: true, lastName: true }
-    });
+    const profiles = await this.db.client
+      .select({ id: profile.id, email: profile.email, username: profile.username, firstName: profile.firstName, lastName: profile.lastName })
+      .from(profile)
+      .where(userIds.length ? inArray(profile.id, userIds.map((id) => toBigInt(id))) : undefined);
     const profileMap = new Map(
-      profiles.map((profile) => [
-        profile.id.toString(),
+      profiles.map((profileRow) => [
+        profileRow.id.toString(),
         {
-          id: profile.id.toString(),
-          email: profile.email,
-          username: profile.username,
-          first_name: profile.firstName,
-          last_name: profile.lastName
+          id: profileRow.id.toString(),
+          email: profileRow.email,
+          username: profileRow.username,
+          first_name: profileRow.firstName,
+          last_name: profileRow.lastName
         }
       ])
     );
@@ -419,46 +475,55 @@ export class AttendanceService {
 
     const filteredTotal = search
       ? rows.length
-      : total;
+      : Number(total[0]?.value ?? 0);
 
     return paginatedResponse(rows, { page, per_page: limit, total: filteredTotal });
   }
 
   async getDailyRecord(userId: string, workDate: string) {
     const userIdBigInt = toBigInt(userId);
+    const workDateValue = this.toWorkDate(new Date(workDate));
 
-    const daily = await this.drizzle.attendanceDaily.findFirst({
-      where: {
-        userId: userIdBigInt,
-        workDate: workDate
-      }
-    });
+    const dailyRows = await this.db.client
+      .select()
+      .from(attendanceDaily)
+      .where(and(
+        eq(attendanceDaily.userId, userIdBigInt),
+        eq(attendanceDaily.workDate, workDateValue),
+        this.tenantCond(attendanceDaily.tenantId)
+      ))
+      .limit(1);
+    const daily = dailyRows[0] ?? null;
 
     if (!daily) {
       return null;
     }
 
-    const entries = await this.drizzle.attendanceEntry.findMany({
-      where: {
-        userId: userIdBigInt,
-        workDate: workDate
-      },
-      orderBy: { entryAt: 'asc' }
-    });
+    const entries = await this.db.client
+      .select()
+      .from(attendanceEntry)
+      .where(and(
+        eq(attendanceEntry.userId, userIdBigInt),
+        eq(attendanceEntry.workDate, workDateValue),
+        this.tenantCond(attendanceEntry.tenantId)
+      ))
+      .orderBy(asc(attendanceEntry.entryAt));
 
-    const profile = await this.drizzle.profile.findUnique({
-      where: { id: userIdBigInt },
-      select: { id: true, email: true, username: true, firstName: true, lastName: true }
-    });
+    const profileRows = await this.db.client
+      .select({ id: profile.id, email: profile.email, username: profile.username, firstName: profile.firstName, lastName: profile.lastName })
+      .from(profile)
+      .where(eq(profile.id, userIdBigInt))
+      .limit(1);
+    const profileRow = profileRows[0] ?? null;
 
     return {
       daily: this.serializeDaily(daily),
-      profile: profile ? {
-        id: profile.id.toString(),
-        email: profile.email,
-        username: profile.username,
-        first_name: profile.firstName,
-        last_name: profile.lastName
+      profile: profileRow ? {
+        id: profileRow.id.toString(),
+        email: profileRow.email,
+        username: profileRow.username,
+        first_name: profileRow.firstName,
+        last_name: profileRow.lastName
       } : null,
       entries: entries.map(e => ({
         id: e.id.toString(),
@@ -482,32 +547,29 @@ export class AttendanceService {
     const status = query.is_active === undefined ? null : String(query.is_active) === 'true';
     const search = query.search ? String(query.search).trim() : '';
 
-    const rows = await this.drizzle.officeLocation.findMany({
-      where: {
-        ...(status === null ? {} : { isActive: status }),
-        ...(search
-          ? {
-              OR: [
-                { name: { contains: search, mode: 'insensitive' } },
-                { address: { contains: search, mode: 'insensitive' } }
-              ]
-            }
-          : {}),
-        ...(organizationId ? { organizations: { some: { organizationId } } } : {})
-      },
-      include: {
-        organizations: {
-          include: {
-            organization: { select: { id: true, name: true, code: true } }
-          },
-          orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }]
-        }
-      },
-      orderBy: [{ isActive: 'desc' }, { name: 'asc' }]
-    });
+    const conds: SQL[] = [];
+    if (status !== null) conds.push(eq(officeLocation.isActive, status));
+    if (search) {
+      conds.push(or(
+        ilike(officeLocation.name, `%${search}%`),
+        ilike(officeLocation.address, `%${search}%`)
+      ));
+    }
+    if (organizationId) {
+      const linked = await this.orgLinkedLocationIds([organizationId]);
+      conds.push(inArray(officeLocation.id, linked));
+    }
+
+    const rows = await this.db.client
+      .select()
+      .from(officeLocation)
+      .where(conds.length ? and(...conds) : undefined)
+      .orderBy(desc(officeLocation.isActive), asc(officeLocation.name));
+
+    const withOrganizations = await this.attachOfficeLocationOrganizations(rows);
 
     return {
-      data: rows.map((row) => this.serializeOfficeLocation(row))
+      data: withOrganizations.map((row) => this.serializeOfficeLocation(row))
     };
   }
 
@@ -519,13 +581,15 @@ export class AttendanceService {
     const todayEnd = new Date(today);
     todayEnd.setDate(todayEnd.getDate() + 1);
 
-    const entries = await this.drizzle.attendanceEntry.findMany({
-      where: {
-        userId: actorId,
-        workDate: today,
-      },
-      orderBy: { entryAt: 'desc' }
-    });
+    const entries = await this.db.client
+      .select()
+      .from(attendanceEntry)
+      .where(and(
+        eq(attendanceEntry.userId, actorId),
+        eq(attendanceEntry.workDate, today),
+        this.tenantCond(attendanceEntry.tenantId)
+      ))
+      .orderBy(desc(attendanceEntry.entryAt));
 
     const openClockIn = entries.find(e => e.entryType === 'clock_in' && !entries.some(out => out.entryType === 'clock_out' && out.entryAt > e.entryAt));
     const lastEntry = entries[0] ?? null;
@@ -558,46 +622,50 @@ export class AttendanceService {
 
   async createOfficeLocation(userId: string, dto: UpsertOfficeLocationDto) {
     const actorId = toBigInt(userId);
+    const tid = this.tenantContext.currentTenantId();
     const organizationIds = this.uniqueBigInts(dto.organization_ids ?? []);
     const primaryOrganizationId = dto.primary_organization_id ? toBigInt(dto.primary_organization_id) : null;
     if (primaryOrganizationId && !organizationIds.some((id) => id === primaryOrganizationId)) {
       organizationIds.unshift(primaryOrganizationId);
     }
 
-    const row = await this.drizzle.officeLocation.create({
-      data: {
-        name: dto.name.trim(),
-        address: dto.address?.trim() || null,
-        latitude: dto.latitude,
-        longitude: dto.longitude,
-        radiusMeters: dto.radius_meters ?? 150,
-        isActive: dto.is_active ?? true,
-        createdBy: actorId,
-        updatedBy: actorId,
-        organizations: organizationIds.length
-          ? {
-              create: organizationIds.map((organizationId) => ({
-                organizationId,
-                isPrimary: primaryOrganizationId ? organizationId === primaryOrganizationId : false
-              }))
-            }
-          : undefined
-      },
-      include: {
-        organizations: {
-          include: { organization: { select: { id: true, name: true, code: true } } },
-          orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }]
-        }
-      }
-    });
+    const [row] = await this.db.client.insert(officeLocation).values({
+      name: dto.name.trim(),
+      address: dto.address?.trim() || null,
+      latitude: dto.latitude != null ? String(dto.latitude) : null,
+      longitude: dto.longitude != null ? String(dto.longitude) : null,
+      radiusMeters: dto.radius_meters ?? 150,
+      isActive: dto.is_active ?? true,
+      createdBy: actorId,
+      updatedBy: actorId
+    }).returning();
 
-    return { success: true, data: this.serializeOfficeLocation(row) };
+    if (organizationIds.length) {
+      await this.db.client.insert(organizationOfficeLocation).values(
+        organizationIds.map((organizationId) => ({
+          organizationId,
+          officeLocationId: row.id,
+          isPrimary: primaryOrganizationId ? organizationId === primaryOrganizationId : false,
+          ...(tid ? { tenantId: tid } : {})
+        }))
+      ).returning();
+    }
+
+    const [completed] = await this.attachOfficeLocationOrganizations([row]);
+
+    return { success: true, data: this.serializeOfficeLocation(completed) };
   }
 
   async updateOfficeLocation(userId: string, id: string, dto: UpsertOfficeLocationDto) {
     const actorId = toBigInt(userId);
+    const tid = this.tenantContext.currentTenantId();
     const officeLocationId = toBigInt(id);
-    const existing = await this.drizzle.officeLocation.findUnique({ where: { id: officeLocationId } });
+    const existingRows = await this.db.client
+      .select()
+      .from(officeLocation)
+      .where(eq(officeLocation.id, officeLocationId))
+      .limit(1);
+    const existing = existingRows[0] ?? null;
     if (!existing) throw new NotFoundException('Office location not found');
 
     const organizationIds = dto.organization_ids ? this.uniqueBigInts(dto.organization_ids) : null;
@@ -606,40 +674,39 @@ export class AttendanceService {
       organizationIds.unshift(primaryOrganizationId);
     }
 
-    const row = await this.drizzle.$transaction(async (tx) => {
+    const row = await this.db.client.transaction(async (tx) => {
       if (organizationIds) {
-        await tx.organizationOfficeLocation.deleteMany({ where: { officeLocationId } });
+        await tx.delete(organizationOfficeLocation)
+          .where(and(eq(organizationOfficeLocation.officeLocationId, officeLocationId), this.tenantCond(organizationOfficeLocation.tenantId)));
       }
-      const updated = await tx.officeLocation.update({
-        where: { id: officeLocationId },
-        data: {
+      const [updated] = await tx.update(officeLocation)
+        .set({
           name: dto.name?.trim() || existing.name,
           address: dto.address === undefined ? existing.address : dto.address?.trim() || null,
-          latitude: dto.latitude ?? existing.latitude,
-          longitude: dto.longitude ?? existing.longitude,
+          latitude: dto.latitude != null ? String(dto.latitude) : existing.latitude,
+          longitude: dto.longitude != null ? String(dto.longitude) : existing.longitude,
           radiusMeters: dto.radius_meters ?? existing.radiusMeters,
           isActive: dto.is_active ?? existing.isActive,
-          updatedBy: actorId,
-          organizations: organizationIds
-            ? {
-                create: organizationIds.map((organizationId) => ({
-                  organizationId,
-                  isPrimary: primaryOrganizationId ? organizationId === primaryOrganizationId : false
-                }))
-              }
-            : undefined
-        },
-        include: {
-          organizations: {
-            include: { organization: { select: { id: true, name: true, code: true } } },
-            orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }]
-          }
-        }
-      });
+          updatedBy: actorId
+        })
+        .where(eq(officeLocation.id, officeLocationId))
+        .returning();
+      if (organizationIds) {
+        await tx.insert(organizationOfficeLocation).values(
+          organizationIds.map((organizationId) => ({
+            organizationId,
+            officeLocationId,
+            isPrimary: primaryOrganizationId ? organizationId === primaryOrganizationId : false,
+            ...(tid ? { tenantId: tid } : {})
+          }))
+        ).returning();
+      }
       return updated;
     });
 
-    return { success: true, data: this.serializeOfficeLocation(row) };
+    const [completed] = await this.attachOfficeLocationOrganizations([row]);
+
+    return { success: true, data: this.serializeOfficeLocation(completed) };
   }
 
   async listCorrections(userId: string, query: Record<string, any>) {
@@ -653,123 +720,161 @@ export class AttendanceService {
     const limit = query.per_page ? Math.max(1, parseInt(String(query.per_page), 10)) : 25;
     const skip = (page - 1) * limit;
 
-    const where = {
-      ...(status ? { status } : {}),
-      ...(targetUserId ? { userId: targetUserId } : {}),
-      ...((fromDate || toDate)
-        ? {
-            workDate: {
-              ...(fromDate ? { gte: fromDate } : {}),
-              ...(toDate ? { lte: toDate } : {})
-            }
-          }
-        : {}),
-      ...(String(query.mine) === 'true' ? { OR: [{ requestedBy: actorId }, { reviewedBy: actorId }] } : {})
-    };
+    const conds: SQL[] = [];
+    if (status) conds.push(eq(attendanceCorrection.status, status));
+    if (targetUserId) conds.push(eq(attendanceCorrection.userId, targetUserId));
+    if (fromDate) conds.push(gte(attendanceCorrection.workDate, fromDate));
+    if (toDate) conds.push(lte(attendanceCorrection.workDate, toDate));
+    if (String(query.mine) === 'true') {
+      conds.push(or(
+        eq(attendanceCorrection.requestedBy, actorId),
+        eq(attendanceCorrection.reviewedBy, actorId)
+      ));
+    }
+    const where = and(...conds);
 
     const [total, rows] = await Promise.all([
-      this.drizzle.attendanceCorrection.count({ where }),
-      this.drizzle.attendanceCorrection.findMany({
-        where,
-        include: {
-          user: { select: { id: true, firstName: true, lastName: true, email: true } },
-          requester: { select: { id: true, firstName: true, lastName: true, email: true } },
-          reviewer: { select: { id: true, firstName: true, lastName: true, email: true } },
-          officeLocation: { select: { id: true, name: true } },
-          proposedOfficeLocation: { select: { id: true, name: true } }
-        },
-        orderBy: [{ status: 'asc' }, { requestedAt: 'desc' }],
-        skip,
-        take: limit
-      })
+      this.db.client.select({ value: count() }).from(attendanceCorrection).where(where),
+      this.db.client
+        .select()
+        .from(attendanceCorrection)
+        .where(where)
+        .orderBy(asc(attendanceCorrection.status), desc(attendanceCorrection.requestedAt))
+        .limit(limit)
+        .offset(skip)
     ]);
 
+    const withIncludes = await this.attachCorrectionIncludes(rows);
+
     return paginatedResponse(
-      rows.map((row) => this.serializeCorrection(row)),
-      { page, per_page: limit, total }
+      withIncludes.map((row) => this.serializeCorrection(row)),
+      { page, per_page: limit, total: Number(total[0]?.value ?? 0) }
     );
   }
 
   async createCorrection(userId: string, dto: CreateAttendanceCorrectionDto) {
     const actorId = toBigInt(userId);
     const workDate = this.toWorkDate(new Date(dto.work_date));
-    const existingDaily = await this.drizzle.attendanceDaily.findUnique({
-      where: { unique_attendance_daily: { userId: actorId, workDate } }
-    });
+    const existingDailyRows = await this.db.client
+      .select()
+      .from(attendanceDaily)
+      .where(and(
+        eq(attendanceDaily.userId, actorId),
+        eq(attendanceDaily.workDate, workDate),
+        this.tenantCond(attendanceDaily.tenantId)
+      ))
+      .limit(1);
+    const existingDaily = existingDailyRows[0] ?? null;
     const relevantEntry = dto.request_type === 'clock_in'
-      ? await this.drizzle.attendanceEntry.findFirst({ where: { userId: actorId, workDate, entryType: 'clock_in' }, orderBy: { entryAt: 'asc' } })
+      ? (await this.db.client
+          .select()
+          .from(attendanceEntry)
+          .where(and(
+            eq(attendanceEntry.userId, actorId),
+            eq(attendanceEntry.workDate, workDate),
+            eq(attendanceEntry.entryType, 'clock_in'),
+            this.tenantCond(attendanceEntry.tenantId)
+          ))
+          .orderBy(asc(attendanceEntry.entryAt))
+          .limit(1))[0] ?? null
       : dto.request_type === 'clock_out'
-        ? await this.drizzle.attendanceEntry.findFirst({ where: { userId: actorId, workDate, entryType: 'clock_out' }, orderBy: { entryAt: 'desc' } })
-        : await this.drizzle.attendanceEntry.findFirst({ where: { userId: actorId, workDate }, orderBy: { entryAt: 'desc' } });
+        ? (await this.db.client
+            .select()
+            .from(attendanceEntry)
+            .where(and(
+              eq(attendanceEntry.userId, actorId),
+              eq(attendanceEntry.workDate, workDate),
+              eq(attendanceEntry.entryType, 'clock_out'),
+              this.tenantCond(attendanceEntry.tenantId)
+            ))
+            .orderBy(desc(attendanceEntry.entryAt))
+            .limit(1))[0] ?? null
+        : (await this.db.client
+            .select()
+            .from(attendanceEntry)
+            .where(and(
+              eq(attendanceEntry.userId, actorId),
+              eq(attendanceEntry.workDate, workDate),
+              this.tenantCond(attendanceEntry.tenantId)
+            ))
+            .orderBy(desc(attendanceEntry.entryAt))
+            .limit(1))[0] ?? null;
 
-    const correction = await this.drizzle.attendanceCorrection.create({
-      data: {
-        userId: actorId,
-        attendanceDailyId: existingDaily?.id ?? null,
-        attendanceEntryId: relevantEntry?.id ?? null,
-        officeLocationId: relevantEntry?.officeLocationId ?? existingDaily?.officeLocationId ?? null,
-        requestType: dto.request_type,
-        requestedBy: actorId,
-        reason: dto.reason.trim(),
-        workDate,
-        proposedAt: dto.proposed_at ? new Date(dto.proposed_at) : null,
-        proposedMode: dto.proposed_mode ?? null,
-        proposedOfficeLocationId: dto.proposed_office_location_id ? toBigInt(dto.proposed_office_location_id) : null,
-        proposedLatitude: dto.proposed_latitude ?? null,
-        proposedLongitude: dto.proposed_longitude ?? null,
-        snapshotJson: {
-          daily: existingDaily ? this.serializeDaily(existingDaily) : null,
-          entry: relevantEntry ? this.serializeEntry(relevantEntry) : null
-        } as Drizzle.InputJsonValue
+    const [correction] = await this.db.client.insert(attendanceCorrection).values({
+      userId: actorId,
+      attendanceDailyId: existingDaily?.id ?? null,
+      attendanceEntryId: relevantEntry?.id ?? null,
+      officeLocationId: relevantEntry?.officeLocationId ?? existingDaily?.officeLocationId ?? null,
+      requestType: dto.request_type,
+      requestedBy: actorId,
+      reason: dto.reason.trim(),
+      workDate,
+      proposedAt: dto.proposed_at ? new Date(dto.proposed_at) : null,
+      proposedMode: dto.proposed_mode ?? null,
+      proposedOfficeLocationId: dto.proposed_office_location_id ? toBigInt(dto.proposed_office_location_id) : null,
+      proposedLatitude: dto.proposed_latitude != null ? String(dto.proposed_latitude) : null,
+      proposedLongitude: dto.proposed_longitude != null ? String(dto.proposed_longitude) : null,
+      snapshotJson: {
+        daily: existingDaily ? this.serializeDaily(existingDaily) : null,
+        entry: relevantEntry ? this.serializeEntry(relevantEntry) : null
       }
-    });
+    }).returning();
 
     return { success: true, data: this.serializeCorrection(correction) };
   }
 
   async approveCorrection(userId: string, id: string, dto: ReviewAttendanceCorrectionDto) {
     const actorId = toBigInt(userId);
-    const correction = await this.drizzle.attendanceCorrection.findUnique({ where: { id } });
+    const correctionRows = await this.db.client
+      .select()
+      .from(attendanceCorrection)
+      .where(and(eq(attendanceCorrection.id, id), this.tenantCond(attendanceCorrection.tenantId)))
+      .limit(1);
+    const correction = correctionRows[0] ?? null;
     if (!correction) throw new NotFoundException('Attendance correction not found');
     if (correction.status !== 'pending') throw new BadRequestException('Attendance correction is no longer pending');
 
     const profile = await this.getProfileContext(correction.userId);
     const policy = await this.resolveAttendancePolicy(correction.userId, profile);
 
-    await this.drizzle.$transaction(async (tx) => {
+    await this.db.client.transaction(async (tx) => {
       if (correction.requestType === 'clock_in' || correction.requestType === 'clock_out') {
         if (!correction.proposedAt) throw new BadRequestException('Correction is missing the proposed time');
-        await tx.attendanceEntry.create({
-          data: {
-            userId: correction.userId,
-            entryType: correction.requestType,
-            entryAt: correction.proposedAt,
-            workDate: correction.workDate,
-            attendanceMode: correction.proposedMode ?? null,
-            officeLocationId: correction.proposedOfficeLocationId ?? correction.officeLocationId,
-            latitude: correction.proposedLatitude,
-            longitude: correction.proposedLongitude,
-            geofenceStatus: this.evaluateGeofence({
-              attendanceMode: (correction.proposedMode as AttendanceMode | null) ?? 'onsite',
-              officeLocation: correction.proposedOfficeLocationId
-                ? await tx.officeLocation.findUnique({ where: { id: correction.proposedOfficeLocationId } })
-                : null,
-              latitude: correction.proposedLatitude ? Number(correction.proposedLatitude) : undefined,
-              longitude: correction.proposedLongitude ? Number(correction.proposedLongitude) : undefined
-            }),
-            source: 'admin',
-            createdBy: actorId,
-            metadata: { correction_id: correction.id, approved_by: actorId.toString() } as Drizzle.InputJsonValue
-          }
+        const officeLocationRow = correction.proposedOfficeLocationId
+          ? (await tx.select().from(officeLocation).where(eq(officeLocation.id, correction.proposedOfficeLocationId)).limit(1))[0] ?? null
+          : null;
+        await tx.insert(attendanceEntry).values({
+          userId: correction.userId,
+          entryType: correction.requestType,
+          entryAt: correction.proposedAt,
+          workDate: correction.workDate,
+          attendanceMode: correction.proposedMode ?? null,
+          officeLocationId: correction.proposedOfficeLocationId ?? correction.officeLocationId,
+          latitude: correction.proposedLatitude,
+          longitude: correction.proposedLongitude,
+          geofenceStatus: this.evaluateGeofence({
+            attendanceMode: (correction.proposedMode as AttendanceMode | null) ?? 'onsite',
+            officeLocation: officeLocationRow,
+            latitude: correction.proposedLatitude ? Number(correction.proposedLatitude) : undefined,
+            longitude: correction.proposedLongitude ? Number(correction.proposedLongitude) : undefined
+          }),
+          source: 'admin',
+          createdBy: actorId,
+          metadata: { correction_id: correction.id, approved_by: actorId.toString() }
         });
       } else {
         const targetEntries = correction.attendanceEntryId
-          ? await tx.attendanceEntry.findMany({ where: { id: correction.attendanceEntryId } })
-          : await tx.attendanceEntry.findMany({ where: { userId: correction.userId, workDate: correction.workDate } });
+          ? await tx.select().from(attendanceEntry).where(eq(attendanceEntry.id, correction.attendanceEntryId))
+          : await tx.select().from(attendanceEntry).where(and(
+              eq(attendanceEntry.userId, correction.userId),
+              eq(attendanceEntry.workDate, correction.workDate)
+            ));
         for (const entry of targetEntries) {
-          await tx.attendanceEntry.update({
-            where: { id: entry.id },
-            data: {
+          const officeLocationRow = correction.proposedOfficeLocationId
+            ? (await tx.select().from(officeLocation).where(eq(officeLocation.id, correction.proposedOfficeLocationId)).limit(1))[0] ?? null
+            : null;
+          await tx.update(attendanceEntry)
+            .set({
               attendanceMode: correction.proposedMode ?? entry.attendanceMode,
               officeLocationId:
                 correction.proposedOfficeLocationId === null || correction.proposedOfficeLocationId === undefined
@@ -780,27 +885,24 @@ export class AttendanceService {
               geofenceStatus: correction.proposedMode
                 ? this.evaluateGeofence({
                     attendanceMode: correction.proposedMode as AttendanceMode,
-                    officeLocation: correction.proposedOfficeLocationId
-                      ? await tx.officeLocation.findUnique({ where: { id: correction.proposedOfficeLocationId } })
-                      : null,
+                    officeLocation: officeLocationRow,
                     latitude: correction.proposedLatitude ? Number(correction.proposedLatitude) : undefined,
                     longitude: correction.proposedLongitude ? Number(correction.proposedLongitude) : undefined
                   })
                 : entry.geofenceStatus
-            }
-          });
+            })
+            .where(eq(attendanceEntry.id, entry.id));
         }
       }
 
-      await tx.attendanceCorrection.update({
-        where: { id },
-        data: {
+      await tx.update(attendanceCorrection)
+        .set({
           status: 'approved',
           reviewedBy: actorId,
           reviewedAt: new Date(),
           reviewNotes: dto.review_notes?.trim() || null
-        }
-      });
+        })
+        .where(eq(attendanceCorrection.id, id));
     });
 
     const daily = await this.recomputeDay(correction.userId, correction.workDate, profile, policy);
@@ -820,19 +922,23 @@ export class AttendanceService {
 
   async rejectCorrection(userId: string, id: string, dto: ReviewAttendanceCorrectionDto) {
     const actorId = toBigInt(userId);
-    const correction = await this.drizzle.attendanceCorrection.findUnique({ where: { id } });
+    const correctionRows = await this.db.client
+      .select()
+      .from(attendanceCorrection)
+      .where(and(eq(attendanceCorrection.id, id), this.tenantCond(attendanceCorrection.tenantId)))
+      .limit(1);
+    const correction = correctionRows[0] ?? null;
     if (!correction) throw new NotFoundException('Attendance correction not found');
     if (correction.status !== 'pending') throw new BadRequestException('Attendance correction is no longer pending');
 
-    await this.drizzle.attendanceCorrection.update({
-      where: { id },
-      data: {
+    await this.db.client.update(attendanceCorrection)
+      .set({
         status: 'rejected',
         reviewedBy: actorId,
         reviewedAt: new Date(),
         reviewNotes: dto.review_notes?.trim() || null
-      }
-    });
+      })
+      .where(eq(attendanceCorrection.id, id));
 
     this.notifications.create({
       userId: correction.userId,
@@ -853,55 +959,64 @@ export class AttendanceService {
     const fromDate = query.from ? this.toWorkDate(new Date(String(query.from))) : undefined;
     const toDate = query.to ? this.toWorkDate(new Date(String(query.to))) : undefined;
 
-    const rows = await this.drizzle.attendanceException.findMany({
-      where: {
-        ...(status ? { status } : {}),
-        ...(targetUserId ? { userId: targetUserId } : {}),
-        ...((fromDate || toDate)
-          ? {
-              workDate: {
-                ...(fromDate ? { gte: fromDate } : {}),
-                ...(toDate ? { lte: toDate } : {})
-              }
-            }
-          : {})
-      },
-      include: {
-        user: { select: { id: true, firstName: true, lastName: true, email: true } },
-        creator: { select: { id: true, firstName: true, lastName: true, email: true } },
-        reviewer: { select: { id: true, firstName: true, lastName: true, email: true } },
-        officeLocation: { select: { id: true, name: true } }
-      },
-      orderBy: [{ status: 'asc' }, { workDate: 'desc' }, { createdAt: 'desc' }]
-    });
+    const conds: SQL[] = [];
+    if (status) conds.push(eq(attendanceException.status, status));
+    if (targetUserId) conds.push(eq(attendanceException.userId, targetUserId));
+    if (fromDate) conds.push(gte(attendanceException.workDate, fromDate));
+    if (toDate) conds.push(lte(attendanceException.workDate, toDate));
 
-    return { data: rows.map((row) => this.serializeException(row)) };
+    const rows = await this.db.client
+      .select()
+      .from(attendanceException)
+      .where(and(...conds))
+      .orderBy(asc(attendanceException.status), desc(attendanceException.workDate), desc(attendanceException.createdAt));
+
+    const withIncludes = await this.attachExceptionIncludes(rows);
+
+    return { data: withIncludes.map((row) => this.serializeException(row)) };
   }
 
   async createException(userId: string, dto: CreateAttendanceExceptionDto) {
     const actorId = toBigInt(userId);
+    const tid = this.tenantContext.currentTenantId();
     const targetUserId = toBigInt(dto.user_id);
     const workDate = this.toWorkDate(new Date(dto.work_date));
     const [daily, lastEntry] = await Promise.all([
-      this.drizzle.attendanceDaily.findUnique({ where: { unique_attendance_daily: { userId: targetUserId, workDate } } }),
-      this.drizzle.attendanceEntry.findFirst({ where: { userId: targetUserId, workDate }, orderBy: { entryAt: 'desc' } })
+      this.db.client
+        .select()
+        .from(attendanceDaily)
+        .where(and(
+          eq(attendanceDaily.userId, targetUserId),
+          eq(attendanceDaily.workDate, workDate),
+          this.tenantCond(attendanceDaily.tenantId)
+        ))
+        .limit(1),
+      this.db.client
+        .select()
+        .from(attendanceEntry)
+        .where(and(
+          eq(attendanceEntry.userId, targetUserId),
+          eq(attendanceEntry.workDate, workDate),
+          this.tenantCond(attendanceEntry.tenantId)
+        ))
+        .orderBy(desc(attendanceEntry.entryAt))
+        .limit(1)
     ]);
 
-    const row = await this.drizzle.attendanceException.create({
-      data: {
-        userId: targetUserId,
-        attendanceDailyId: daily?.id ?? null,
-        attendanceEntryId: lastEntry?.id ?? null,
-        officeLocationId: dto.office_location_id ? toBigInt(dto.office_location_id) : daily?.officeLocationId ?? null,
-        exceptionType: dto.exception_type,
-        status: 'active',
-        workDate,
-        attendanceMode: dto.attendance_mode ?? null,
-        reason: dto.reason.trim(),
-        notes: dto.notes?.trim() || null,
-        createdBy: actorId
-      }
-    });
+    const [row] = await this.db.client.insert(attendanceException).values({
+      userId: targetUserId,
+      attendanceDailyId: daily[0]?.id ?? null,
+      attendanceEntryId: lastEntry[0]?.id ?? null,
+      officeLocationId: dto.office_location_id ? toBigInt(dto.office_location_id) : daily[0]?.officeLocationId ?? null,
+      exceptionType: dto.exception_type,
+      status: 'active',
+      workDate,
+      attendanceMode: dto.attendance_mode ?? null,
+      reason: dto.reason.trim(),
+      notes: dto.notes?.trim() || null,
+      createdBy: actorId,
+      ...(tid ? { tenantId: tid } : {})
+    }).returning();
 
     const profile = await this.getProfileContext(targetUserId);
     const policy = await this.resolveAttendancePolicy(targetUserId, profile);
@@ -912,19 +1027,23 @@ export class AttendanceService {
 
   async resolveException(userId: string, id: string, dto: ReviewAttendanceExceptionDto) {
     const actorId = toBigInt(userId);
-    const existing = await this.drizzle.attendanceException.findUnique({ where: { id } });
+    const existingRows = await this.db.client
+      .select()
+      .from(attendanceException)
+      .where(and(eq(attendanceException.id, id), this.tenantCond(attendanceException.tenantId)))
+      .limit(1);
+    const existing = existingRows[0] ?? null;
     if (!existing) throw new NotFoundException('Attendance exception not found');
     if (existing.status !== 'active') throw new BadRequestException('Attendance exception is no longer active');
 
-    await this.drizzle.attendanceException.update({
-      where: { id },
-      data: {
+    await this.db.client.update(attendanceException)
+      .set({
         status: 'resolved',
         reviewedBy: actorId,
         reviewedAt: new Date(),
         notes: dto.review_notes?.trim() ? `${existing.notes ? `${existing.notes}\n\n` : ''}Resolution: ${dto.review_notes.trim()}` : existing.notes
-      }
-    });
+      })
+      .where(eq(attendanceException.id, id));
 
     const profile = await this.getProfileContext(existing.userId);
     const policy = await this.resolveAttendancePolicy(existing.userId, profile);
@@ -936,13 +1055,32 @@ export class AttendanceService {
   private async recomputeDay(userId: bigint, workDate: Date, profileArg?: ProfileContext, policyArg?: AttendancePolicy) {
     const profile = profileArg ?? (await this.getProfileContext(userId));
     const [entries, policy, exceptions, corrections] = await Promise.all([
-      this.drizzle.attendanceEntry.findMany({
-        where: { userId, workDate },
-        orderBy: { entryAt: 'asc' }
-      }),
+      this.db.client
+        .select()
+        .from(attendanceEntry)
+        .where(and(eq(attendanceEntry.userId, userId), eq(attendanceEntry.workDate, workDate), this.tenantCond(attendanceEntry.tenantId)))
+        .orderBy(asc(attendanceEntry.entryAt)),
       policyArg ? Promise.resolve(policyArg) : this.resolveAttendancePolicy(userId, profile),
-      this.drizzle.attendanceException.findMany({ where: { userId, workDate, status: 'active' }, orderBy: { createdAt: 'desc' } }),
-      this.drizzle.attendanceCorrection.findMany({ where: { userId, workDate, status: 'approved' }, orderBy: { reviewedAt: 'desc' } })
+      this.db.client
+        .select()
+        .from(attendanceException)
+        .where(and(
+          eq(attendanceException.userId, userId),
+          eq(attendanceException.workDate, workDate),
+          eq(attendanceException.status, 'active'),
+          this.tenantCond(attendanceException.tenantId)
+        ))
+        .orderBy(desc(attendanceException.createdAt)),
+      this.db.client
+        .select()
+        .from(attendanceCorrection)
+        .where(and(
+          eq(attendanceCorrection.userId, userId),
+          eq(attendanceCorrection.workDate, workDate),
+          eq(attendanceCorrection.status, 'approved'),
+          this.tenantCond(attendanceCorrection.tenantId)
+        ))
+        .orderBy(desc(attendanceCorrection.reviewedAt))
     ]);
 
     let firstInAt: Date | null = null;
@@ -1044,47 +1182,36 @@ export class AttendanceService {
       office_location_id: officeLocationId ? officeLocationId.toString() : null
     };
 
-    const daily = await this.drizzle.attendanceDaily.upsert({
-      where: {
-        unique_attendance_daily: { userId, workDate }
-      },
-      update: {
-        status,
-        attendanceMode: effectiveMode,
-        expectedMode: this.resolveExpectedMode(profile, workDate, policy),
-        reconciliationStatus,
-        officeLocationId,
-        geofenceStatus,
-        scheduledMinutes,
-        workedMinutes,
-        lateMinutes,
-        overtimeMinutes,
-        firstInAt,
-        lastOutAt,
-        policySnapshot: policySnapshot as Drizzle.InputJsonValue,
-        computedAt: new Date()
-      },
-      create: {
-        userId,
-        workDate,
-        status,
-        attendanceMode: effectiveMode,
-        expectedMode: this.resolveExpectedMode(profile, workDate, policy),
-        reconciliationStatus,
-        officeLocationId,
-        geofenceStatus,
-        scheduledMinutes,
-        workedMinutes,
-        lateMinutes,
-        overtimeMinutes,
-        firstInAt,
-        lastOutAt,
-        policySnapshot: policySnapshot as Drizzle.InputJsonValue,
-        computedAt: new Date()
-      }
-    });
+    const dailyValues = {
+      status,
+      attendanceMode: effectiveMode,
+      expectedMode: this.resolveExpectedMode(profile, workDate, policy),
+      reconciliationStatus,
+      officeLocationId,
+      geofenceStatus,
+      scheduledMinutes,
+      workedMinutes,
+      lateMinutes,
+      overtimeMinutes,
+      firstInAt,
+      lastOutAt,
+      policySnapshot,
+      computedAt: new Date()
+    };
 
-    return this.serializeDaily(daily);
+    const daily = await this.db.client.insert(attendanceDaily).values({
+      userId,
+      workDate,
+      ...dailyValues,
+      ...(this.tenantContext.currentTenantId() ? { tenantId: this.tenantContext.currentTenantId() } : {})
+    })
+      .onConflictDoUpdate({
+        target: [attendanceDaily.userId, attendanceDaily.workDate],
+        set: dailyValues
+      })
+      .returning();
+
+    return this.serializeDaily(daily[0]);
   }
 
   private async resolveAttendancePolicy(userId: bigint, profileArg?: ProfileContext): Promise<AttendancePolicy> {
@@ -1110,15 +1237,17 @@ export class AttendanceService {
     const staffType = profile.workMode ?? undefined;
 
     const now = new Date();
-    const policies = await this.drizzle.policy.findMany({
-      where: {
-        module: 'attendance',
-        policyKey: 'schedule',
-        isActive: true,
-        OR: [{ effectiveFrom: null }, { effectiveFrom: { lte: now } }],
-        AND: [{ OR: [{ effectiveTo: null }, { effectiveTo: { gte: now } }] }]
-      }
-    });
+    const policies = await this.db.client
+      .select()
+      .from(policy)
+      .where(and(
+        eq(policy.module, 'attendance'),
+        eq(policy.policyKey, 'schedule'),
+        eq(policy.isActive, true),
+        or(isNull(policy.effectiveFrom), lte(policy.effectiveFrom, now)),
+        or(isNull(policy.effectiveTo), gte(policy.effectiveTo, now)),
+        this.tenantCond(policy.tenantId) ? or(eq(policy.tenantId, this.tenantContext.currentTenantId()!), isNull(policy.tenantId)) : undefined
+      ));
 
     const matched = policies
       .filter((row) => {
@@ -1209,40 +1338,42 @@ export class AttendanceService {
   }
 
   private async getProfileContext(userId: bigint): Promise<ProfileContext> {
-    const [profile, primaryTeam] = await this.drizzle.$transaction([
-      this.drizzle.profile.findUnique({
-        where: { id: userId },
-        include: {
-          organizations: true,
-          employeeProfile: { select: { workMode: true } },
-          employeeMeta: true
-        }
-      }),
-      this.drizzle.groupUser.findFirst({
-        where: { userId, isPrimary: true },
-        select: { groupId: true }
-      })
+    const [profileRows, primaryTeamRows, organizations, employeeRows, metaRows] = await Promise.all([
+      this.db.client.select().from(profile).where(eq(profile.id, userId)).limit(1),
+      this.db.client
+        .select({ groupId: groupUser.groupId })
+        .from(groupUser)
+        .where(and(eq(groupUser.userId, userId), eq(groupUser.isPrimary, true)))
+        .limit(1),
+      this.db.client.select().from(profileOrganization).where(eq(profileOrganization.profileId, userId)),
+      this.db.client
+        .select({ workMode: employeeProfile.workMode })
+        .from(employeeProfile)
+        .where(eq(employeeProfile.userId, userId))
+        .limit(1),
+      this.db.client.select().from(employeeMeta).where(eq(employeeMeta.userId, userId))
     ]);
-    if (!profile) throw new NotFoundException('User profile not found');
+    const profileRow = profileRows[0] ?? null;
+    if (!profileRow) throw new NotFoundException('User profile not found');
 
     return {
-      id: profile.id,
-      email: profile.email,
-      username: profile.username,
-      firstName: profile.firstName,
-      lastName: profile.lastName,
-      primaryOrganizationId: profile.primaryOrganizationId,
-      primaryTeamId: primaryTeam?.groupId ?? null,
-      workMode: profile.employeeProfile?.workMode ?? null,
+      id: profileRow.id,
+      email: profileRow.email,
+      username: profileRow.username,
+      firstName: profileRow.firstName,
+      lastName: profileRow.lastName,
+      primaryOrganizationId: profileRow.primaryOrganizationId,
+      primaryTeamId: primaryTeamRows[0]?.groupId ?? null,
+      workMode: employeeRows[0]?.workMode ?? null,
       organizationIds: Array.from(
         new Set(
           [
-            ...(profile.primaryOrganizationId ? [profile.primaryOrganizationId] : []),
-            ...profile.organizations.map((row: any) => row.organizationId)
+            ...(profileRow.primaryOrganizationId ? [profileRow.primaryOrganizationId] : []),
+            ...organizations.map((row: any) => row.organizationId)
           ].filter(Boolean) as bigint[]
         )
       ),
-      employeeMeta: (profile.employeeMeta ?? []).reduce((acc: Record<string, unknown>, row: any) => {
+      employeeMeta: (metaRows ?? []).reduce((acc: Record<string, unknown>, row: any) => {
         acc[row.metaKey] = row.metaValue;
         return acc;
       }, {})
@@ -1287,20 +1418,17 @@ export class AttendanceService {
 
   private async listAllowedOfficeLocations(profile: ProfileContext) {
     if (!profile.organizationIds.length) return [];
-    const rows = await this.drizzle.officeLocation.findMany({
-      where: {
-        isActive: true,
-        organizations: { some: { organizationId: { in: profile.organizationIds } } }
-      },
-      include: {
-        organizations: {
-          include: { organization: { select: { id: true, name: true, code: true } } },
-          orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }]
-        }
-      },
-      orderBy: [{ name: 'asc' }]
-    });
-    return rows.map((row) => this.serializeOfficeLocation(row));
+    const linked = await this.orgLinkedLocationIds(profile.organizationIds);
+    const rows = await this.db.client
+      .select()
+      .from(officeLocation)
+      .where(and(
+        eq(officeLocation.isActive, true),
+        inArray(officeLocation.id, linked)
+      ))
+      .orderBy(asc(officeLocation.name));
+    const withOrganizations = await this.attachOfficeLocationOrganizations(rows);
+    return withOrganizations.map((row) => this.serializeOfficeLocation(row));
   }
 
   private async resolveOfficeLocationForAttendance(input: {
@@ -1313,24 +1441,121 @@ export class AttendanceService {
 
     const requestedOfficeLocationId = input.requestedOfficeLocationId ? toBigInt(input.requestedOfficeLocationId) : null;
     if (requestedOfficeLocationId) {
-      const row = await this.drizzle.officeLocation.findFirst({
-        where: {
-          id: requestedOfficeLocationId,
-          isActive: true,
-          organizations: { some: { organizationId: { in: input.profile.organizationIds } } }
-        }
-      });
+      const linked = await this.orgLinkedLocationIds(input.profile.organizationIds);
+      const rows = await this.db.client
+        .select()
+        .from(officeLocation)
+        .where(and(
+          eq(officeLocation.id, requestedOfficeLocationId),
+          eq(officeLocation.isActive, true),
+          inArray(officeLocation.id, linked)
+        ))
+        .limit(1);
+      const row = rows[0] ?? null;
       if (!row) throw new BadRequestException('Office location is not available for this staff member');
       return row;
     }
 
-    return this.drizzle.officeLocation.findFirst({
-      where: {
-        isActive: true,
-        organizations: { some: { organizationId: { in: input.profile.organizationIds } } }
-      },
-      orderBy: [{ organizations: { _count: 'desc' } }, { id: 'asc' }]
-    });
+    const linked = await this.orgLinkedLocationIds(input.profile.organizationIds);
+    const rows = await this.db.client
+      .select()
+      .from(officeLocation)
+      .where(and(
+        eq(officeLocation.isActive, true),
+        inArray(officeLocation.id, linked)
+      ))
+      .orderBy(asc(officeLocation.id))
+      .limit(1);
+    return rows[0] ?? null;
+  }
+
+  private async orgLinkedLocationIds(organizationIds: bigint[]): Promise<bigint[]> {
+    if (!organizationIds.length) return [];
+    const rows = await this.db.client
+      .select({ officeLocationId: organizationOfficeLocation.officeLocationId })
+      .from(organizationOfficeLocation)
+      .where(and(
+        inArray(organizationOfficeLocation.organizationId, organizationIds),
+        this.tenantCond(organizationOfficeLocation.tenantId)
+      ));
+    return rows.map((row) => row.officeLocationId);
+  }
+
+  private async attachOfficeLocationOrganizations<T extends { id: bigint }>(rows: T[]) {
+    if (!rows.length) return rows.map((row) => ({ ...row, organizations: [] }));
+    const ids = Array.from(new Set(rows.map((row) => row.id)));
+    const orgRows = await this.db.client
+      .select({ rel: organizationOfficeLocation, org: organization })
+      .from(organizationOfficeLocation)
+      .innerJoin(organization, eq(organizationOfficeLocation.organizationId, organization.id))
+      .where(and(
+        inArray(organizationOfficeLocation.officeLocationId, ids),
+        this.tenantCond(organizationOfficeLocation.tenantId)
+      ))
+      .orderBy(desc(organizationOfficeLocation.isPrimary), asc(organizationOfficeLocation.createdAt));
+    const byLocation = new Map<string, any[]>();
+    for (const entry of orgRows) {
+      const key = entry.rel.officeLocationId.toString();
+      const list = byLocation.get(key) ?? [];
+      list.push({ ...entry.rel, organization: entry.org });
+      byLocation.set(key, list);
+    }
+    return rows.map((row) => ({ ...row, organizations: byLocation.get(row.id.toString()) ?? [] }));
+  }
+
+  private async attachCorrectionIncludes(rows: any[]) {
+    if (!rows.length) return rows;
+    const profileIds = Array.from(new Set(
+      rows.flatMap((row) => [row.userId, row.requestedBy, row.reviewedBy].filter((id): id is bigint => id != null))
+    ));
+    const locationIds = Array.from(new Set(
+      rows.flatMap((row) => [row.officeLocationId, row.proposedOfficeLocationId].filter((id): id is bigint => id != null))
+    ));
+    const [users, locations] = await Promise.all([
+      profileIds.length
+        ? this.db.client.select().from(profile).where(inArray(profile.id, profileIds))
+        : Promise.resolve([]),
+      locationIds.length
+        ? this.db.client.select().from(officeLocation).where(inArray(officeLocation.id, locationIds))
+        : Promise.resolve([])
+    ]);
+    const userMap = new Map(users.map((user) => [user.id.toString(), user]));
+    const locationMap = new Map(locations.map((location) => [location.id.toString(), location]));
+    return rows.map((row) => ({
+      ...row,
+      user: row.userId ? userMap.get(row.userId.toString()) ?? null : null,
+      requester: row.requestedBy ? userMap.get(row.requestedBy.toString()) ?? null : null,
+      reviewer: row.reviewedBy ? userMap.get(row.reviewedBy.toString()) ?? null : null,
+      officeLocation: row.officeLocationId ? locationMap.get(row.officeLocationId.toString()) ?? null : null,
+      proposedOfficeLocation: row.proposedOfficeLocationId ? locationMap.get(row.proposedOfficeLocationId.toString()) ?? null : null
+    }));
+  }
+
+  private async attachExceptionIncludes(rows: any[]) {
+    if (!rows.length) return rows;
+    const profileIds = Array.from(new Set(
+      rows.flatMap((row) => [row.userId, row.createdBy, row.reviewedBy].filter((id): id is bigint => id != null))
+    ));
+    const locationIds = Array.from(new Set(
+      rows.flatMap((row) => [row.officeLocationId].filter((id): id is bigint => id != null))
+    ));
+    const [users, locations] = await Promise.all([
+      profileIds.length
+        ? this.db.client.select().from(profile).where(inArray(profile.id, profileIds))
+        : Promise.resolve([]),
+      locationIds.length
+        ? this.db.client.select().from(officeLocation).where(inArray(officeLocation.id, locationIds))
+        : Promise.resolve([])
+    ]);
+    const userMap = new Map(users.map((user) => [user.id.toString(), user]));
+    const locationMap = new Map(locations.map((location) => [location.id.toString(), location]));
+    return rows.map((row) => ({
+      ...row,
+      user: row.userId ? userMap.get(row.userId.toString()) ?? null : null,
+      creator: row.createdBy ? userMap.get(row.createdBy.toString()) ?? null : null,
+      reviewer: row.reviewedBy ? userMap.get(row.reviewedBy.toString()) ?? null : null,
+      officeLocation: row.officeLocationId ? locationMap.get(row.officeLocationId.toString()) ?? null : null
+    }));
   }
 
   private resolveSubmittedMode(mode: string | undefined, profile: ProfileContext, workDate: Date, policy: AttendancePolicy): AttendanceMode {
@@ -1350,16 +1575,18 @@ export class AttendanceService {
   }
 
   private async findHoliday(profile: ProfileContext, workDate: Date, officeLocationId: bigint | null) {
-    const rows = await this.drizzle.attendanceHoliday.findMany({
-      where: {
-        isActive: true,
-        OR: [
-          ...(officeLocationId ? [{ officeLocationId }] : []),
-          ...(profile.organizationIds.length ? [{ organizationId: { in: profile.organizationIds } }] : [])
-        ]
-      },
-      orderBy: [{ officeLocationId: 'desc' }, { organizationId: 'desc' }, { createdAt: 'desc' }]
-    });
+    const orConds: SQL[] = [];
+    if (officeLocationId) orConds.push(eq(attendanceHoliday.officeLocationId, officeLocationId));
+    if (profile.organizationIds.length) orConds.push(inArray(attendanceHoliday.organizationId, profile.organizationIds));
+    const rows = await this.db.client
+      .select()
+      .from(attendanceHoliday)
+      .where(and(
+        eq(attendanceHoliday.isActive, true),
+        ...(orConds.length ? [or(...orConds)] : []),
+        this.tenantCond(attendanceHoliday.tenantId)
+      ))
+      .orderBy(desc(attendanceHoliday.officeLocationId), desc(attendanceHoliday.organizationId), desc(attendanceHoliday.createdAt));
     return (
       rows.find((row) => {
         const sameDay = this.workDateKey(row.holidayDate) === this.workDateKey(workDate);
@@ -1374,19 +1601,21 @@ export class AttendanceService {
   }
 
   private async isOnApprovedLeave(userId: bigint, workDate: Date) {
-    const requests = await this.drizzle.requestInstance.findMany({
-      where: {
-        createdBy: userId,
-        status: { in: ['approved', 'completed'] }
-      },
-      select: {
-        id: true,
-        data: true,
-        requestType: { select: { taxonomyKeys: true, name: true } }
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 50
-    });
+    const requests = await this.db.client
+      .select({
+        id: requestInstance.id,
+        data: requestInstance.data,
+        requestType: { taxonomyKeys: requestType.taxonomyKeys, name: requestType.name }
+      })
+      .from(requestInstance)
+      .innerJoin(requestType, eq(requestInstance.requestTypeId, requestType.id))
+      .where(and(
+        eq(requestInstance.createdBy, userId),
+        inArray(requestInstance.status, ['approved', 'completed']),
+        this.tenantCond(requestInstance.tenantId)
+      ))
+      .orderBy(desc(requestInstance.createdAt))
+      .limit(50);
 
     for (const row of requests) {
       const data = row.data && typeof row.data === 'object' && !Array.isArray(row.data) ? (row.data as Record<string, unknown>) : {};
@@ -1406,7 +1635,7 @@ export class AttendanceService {
 
   private evaluateGeofence(input: {
     attendanceMode: AttendanceMode;
-    officeLocation: { latitude: Drizzle.Decimal | number; longitude: Drizzle.Decimal | number; radiusMeters: number } | null;
+    officeLocation: { latitude: Decimal | number | string; longitude: Decimal | number | string; radiusMeters: number } | null;
     latitude?: number | null;
     longitude?: number | null;
   }): GeofenceStatus {

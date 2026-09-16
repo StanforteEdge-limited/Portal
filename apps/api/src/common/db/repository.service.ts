@@ -516,7 +516,7 @@ class TableRepository {
       }
     }
 
-    return decorated.map((entry) => entry.result);
+    return decorated.map((entry) => entry.result) as T[];
   }
 
   public async attachInclude<T>(row: T, include?: Record<string, any>): Promise<T> {
