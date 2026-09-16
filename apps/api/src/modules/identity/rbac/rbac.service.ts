@@ -14,7 +14,7 @@ import { UpdatePermissionDto } from '$modules/identity/rbac/dto/update-permissio
 import { UpdateRoleDto } from '$modules/identity/rbac/dto/update-role.dto';
 import { role as roleTable, permission as permissionTable, rolePermission, userRole as userRoleTable } from '$modules/identity/rbac/model';
 import { profile } from '$modules/identity/users/model';
-import { organization } from '$modules/directory/organizations/model';
+import { organization } from '$modules/hrm/organizations/model';
 import { tenantMembership } from '$modules/tenancy/model';
 
 @Injectable()

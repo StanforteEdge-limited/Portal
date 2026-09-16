@@ -12,7 +12,7 @@ import { paginatedResponse } from '$common/helpers/paginated-response';
 import { UsersService } from '$modules/identity/users/users.service';
 import { TenantContext } from '$common/auth/tenant-context';
 import { profile, type Profile } from '$modules/identity/users/model';
-import { organization, profileOrganization } from '$modules/directory/organizations/model';
+import { organization, profileOrganization } from '$modules/hrm/organizations/model';
 import { tenantMembership, tenantOrganization } from '$modules/tenancy/model';
 import { role as roleTable, userRole as userRoleTable } from '$modules/identity/rbac/model';
 

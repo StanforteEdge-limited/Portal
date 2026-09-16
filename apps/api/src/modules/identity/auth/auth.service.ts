@@ -23,10 +23,10 @@ import {
   parseCookieHeader
 } from '$common/auth/cookies';
 import { profile as profileTable } from '$modules/identity/users/model';
-import { organization as organizationTable, profileOrganization as profileOrganizationTable } from '$modules/directory/organizations/model';
+import { organization as organizationTable, profileOrganization as profileOrganizationTable } from '$modules/hrm/organizations/model';
 import { tenant as tenantTable, tenantMembership as tenantMembershipTable, tenantOrganization as tenantOrganizationTable } from '$modules/tenancy/model';
 import { token as tokenTable } from '$modules/identity/auth/model';
-import { onboardingProgress as onboardingProgressTable } from '$modules/hr/hr/model';
+import { onboardingProgress as onboardingProgressTable } from '$modules/hrm/employees/model';
 import { role as roleTable, permission as permissionTable, rolePermission as rolePermissionTable, userRole as userRoleTable } from '$modules/identity/rbac/model';
 
 const ACCESS_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m';
@@ -42,7 +42,6 @@ interface RbacStateCacheEntry {
   permissions: string[];
   expiresAt: number;
 }
-
 @Injectable()
 export class AuthService {
   constructor(

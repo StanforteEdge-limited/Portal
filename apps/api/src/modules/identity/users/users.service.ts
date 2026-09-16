@@ -17,12 +17,12 @@ import { paginatedResponse } from '$common/helpers/paginated-response';
 import { TenantContext } from '$common/auth/tenant-context';
 import { TenantContextService } from '$common/auth/tenant-context.service';
 import { profile } from '$modules/identity/users/model';
-import { organization as organizationTable, profileOrganization } from '$modules/directory/organizations/model';
+import { organization as organizationTable, profileOrganization } from '$modules/hrm/organizations/model';
 import { tenantMembership, tenantOrganization } from '$modules/tenancy/model';
 import { role as roleTable, userRole as userRoleTable } from '$modules/identity/rbac/model';
 import { group as groupTable, groupUser } from '$modules/communication/groups/model';
-import { project as projectTable, projectMember } from '$modules/operations/projects/model';
-import { employeeProfile, employeeMeta, onboardingProgress } from '$modules/hr/hr/model';
+import { project as projectTable, projectMember } from '$modules/hrm/projects/model';
+import { employeeProfile, employeeMeta, onboardingProgress } from '$modules/hrm/employees/model';
 import { fileAsset } from '$modules/storage/model';
 import { token as tokenTable } from '$modules/identity/auth/model';
 
