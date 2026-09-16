@@ -9,7 +9,7 @@ import { NotificationsModule } from '$modules/notifications/notifications.module
 import { MailModule } from '$common/mail/mail.module';
 import { PdfModule } from '$common/pdf/pdf.module';
 import { StorageModule } from '$modules/storage/storage.module';
-import { ProcurementDocumentGeneratorService } from '$modules/finance/procurement/documents/procurement-document-generator.service';
+import { ProcurementDocumentEngineService } from '$modules/finance/procurement/documents/procurement-document-engine.service';
 import { BackgroundJobsService } from '$modules/background-jobs/background-jobs.service';
 import { StorageService } from '$modules/storage/storage.service';
 
@@ -26,7 +26,7 @@ import { StorageService } from '$modules/storage/storage.service';
   providers: [
     ProcurementService,
     VendorPortalService,
-    ProcurementDocumentGeneratorService,
+    ProcurementDocumentEngineService,
     {
       provide: 'PROCUREMENT_JOB_HANDLERS',
       inject: [BackgroundJobsService, ProcurementService, StorageService],

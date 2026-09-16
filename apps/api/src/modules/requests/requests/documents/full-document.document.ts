@@ -1,4 +1,4 @@
-import { RequestDocumentGeneratorService } from './request-document-generator.service';
+import { RequestDocumentEngineService } from './request-document-engine.service';
 import { Document, DocumentIds, DocumentOutput, RequestRemittanceAllocationSummary } from '$common/documents/document.types';
 import { RequestPdfDocument } from './request-pdf.document';
 
@@ -11,7 +11,7 @@ type FullDocumentContext = {
 };
 
 export class FullDocumentDocument implements Document<FullDocumentContext> {
-  constructor(private readonly engine: RequestDocumentGeneratorService) {}
+  constructor(private readonly engine: RequestDocumentEngineService) {}
 
   async fetchContext(ids: DocumentIds): Promise<FullDocumentContext> {
     const { requestId } = ids;
