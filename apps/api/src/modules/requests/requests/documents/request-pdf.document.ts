@@ -1,4 +1,4 @@
-import { RequestDocumentEngineService } from './request-document-engine.service';
+import { RequestDocumentFacadeService } from './request-document-facade.service';
 import { Document, DocumentIds, DocumentOutput, FullPaymentVoucher, RequestThread } from '$common/documents/document.types';
 
 type RequestPdfContext = {
@@ -12,7 +12,7 @@ type RequestPdfContext = {
 };
 
 export class RequestPdfDocument implements Document<RequestPdfContext> {
-  constructor(private readonly engine: RequestDocumentEngineService) {}
+  constructor(private readonly engine: RequestDocumentFacadeService) {}
 
   async fetchContext(ids: DocumentIds): Promise<RequestPdfContext> {
     const { requestId } = ids;

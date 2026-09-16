@@ -10,7 +10,7 @@ import { financeContact } from '$modules/finance/finance/model';
 import { procurementOrder } from '$modules/finance/procurement/model';
 
 @Injectable()
-export class ProcurementDocumentEngineService extends DocumentGeneratorService {
+export class ProcurementDocumentFacadeService extends DocumentGeneratorService {
   constructor(
     private readonly db: DbService,
     pdfService: PdfService,

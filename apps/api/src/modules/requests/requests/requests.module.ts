@@ -8,7 +8,7 @@ import { MailModule } from '$common/mail/mail.module';
 import { PdfModule } from '$common/pdf/pdf.module';
 import { FinanceModule } from '$modules/finance/finance/finance.module';
 import { StorageModule } from '$modules/storage/storage.module';
-import { RequestDocumentEngineService } from '$modules/requests/requests/documents/request-document-engine.service';
+import { RequestDocumentFacadeService } from '$modules/requests/requests/documents/request-document-facade.service';
 import { BackgroundJobsService } from '$modules/background-jobs/background-jobs.service';
 import { StorageService } from '$modules/storage/storage.service';
 
@@ -17,7 +17,7 @@ import { StorageService } from '$modules/storage/storage.service';
   controllers: [RequestsController],
   providers: [
     RequestsService,
-    RequestDocumentEngineService,
+    RequestDocumentFacadeService,
     {
       provide: 'REQUESTS_JOB_HANDLERS',
       inject: [BackgroundJobsService, RequestsService, StorageService],
@@ -46,6 +46,6 @@ import { StorageService } from '$modules/storage/storage.service';
       },
     },
   ],
-  exports: [RequestDocumentEngineService],
+  exports: [RequestDocumentFacadeService],
 })
 export class RequestsModule {}

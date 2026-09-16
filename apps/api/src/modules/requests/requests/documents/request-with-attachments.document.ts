@@ -1,4 +1,4 @@
-import { RequestDocumentEngineService } from './request-document-engine.service';
+import { RequestDocumentFacadeService } from './request-document-facade.service';
 import { Document, DocumentIds, DocumentOutput } from '$common/documents/document.types';
 import { RequestPdfDocument } from './request-pdf.document';
 
@@ -10,7 +10,7 @@ type RequestWithAttachmentsContext = {
 };
 
 export class RequestWithAttachmentsDocument implements Document<RequestWithAttachmentsContext> {
-  constructor(private readonly engine: RequestDocumentEngineService) {}
+  constructor(private readonly engine: RequestDocumentFacadeService) {}
 
   async fetchContext(ids: DocumentIds): Promise<RequestWithAttachmentsContext> {
     const { requestId } = ids;

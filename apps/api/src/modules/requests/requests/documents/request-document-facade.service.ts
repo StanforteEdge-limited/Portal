@@ -42,7 +42,7 @@ import { DocumentGeneratorService } from '$common/documents/document-generator.s
 import { DocumentIds, DocumentOutput, ThreadEntry, RequestThread, Signatories, ApprovalSummary, FullPaymentVoucher, RequestRemittanceAllocationSummary } from '$common/documents/document.types';
 
 @Injectable()
-export class RequestDocumentEngineService extends DocumentGeneratorService {
+export class RequestDocumentFacadeService extends DocumentGeneratorService {
   constructor(
     private readonly db: DbService,
     pdfService: PdfService,

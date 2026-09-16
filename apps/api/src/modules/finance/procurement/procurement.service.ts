@@ -6,7 +6,7 @@ import { WorkflowService } from '$modules/requests/workflow/workflow.service';
 import { NotificationsService } from '$modules/notifications/notifications.service';
 import { MailService } from '$common/mail/mail.service';
 import { MailQueueService } from '$common/mail/mail-queue.service';
-import { ProcurementDocumentEngineService } from '$modules/finance/procurement/documents/procurement-document-engine.service';
+import { ProcurementDocumentFacadeService } from '$modules/finance/procurement/documents/procurement-document-facade.service';
 import { toBigInt } from '$common/utils/ids';
 import { CreatePrDto } from '$modules/finance/procurement/dto/create-pr.dto';
 import { CreatePoDto } from '$modules/finance/procurement/dto/create-po.dto';
@@ -30,7 +30,7 @@ export class ProcurementService {
     private readonly notificationsService: NotificationsService,
     private readonly mailService: MailService,
     private readonly mailQueue: MailQueueService,
-    private readonly documentGenerator: ProcurementDocumentEngineService,
+    private readonly documentGenerator: ProcurementDocumentFacadeService,
   ) {}
 
   private requiredTenantId(): bigint {

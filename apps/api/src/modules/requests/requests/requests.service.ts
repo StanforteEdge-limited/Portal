@@ -2,7 +2,7 @@ import { Injectable, BadRequestException, NotFoundException, ConflictException, 
 import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, lte, ne, or, sql, SQL } from 'drizzle-orm';
 import { DbService } from '$common/db/db.service';
 import { TenantContextService } from '$common/auth/tenant-context.service';
-import { RequestDocumentEngineService } from '$modules/requests/requests/documents/request-document-engine.service';
+import { RequestDocumentFacadeService } from '$modules/requests/requests/documents/request-document-facade.service';
 import { DocumentIds } from '$common/documents/document.types';
 import { RequestPdfDocument } from '$modules/requests/requests/documents/request-pdf.document';
 import { PaymentVoucherDocument } from '$modules/requests/requests/documents/payment-voucher.document';
@@ -77,7 +77,7 @@ export class RequestsService {
     private readonly workflowService: WorkflowService,
     private readonly formsService: FormsService,
     private readonly notificationsService: NotificationsService,
-    private readonly documentGenerator: RequestDocumentEngineService,
+    private readonly documentGenerator: RequestDocumentFacadeService,
     @Optional() private readonly tenantContext?: TenantContextService,
   ) {}
 

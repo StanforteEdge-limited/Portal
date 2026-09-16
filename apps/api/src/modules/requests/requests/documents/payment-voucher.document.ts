@@ -1,4 +1,4 @@
-import { RequestDocumentEngineService } from './request-document-engine.service';
+import { RequestDocumentFacadeService } from './request-document-facade.service';
 import { Document, DocumentIds, DocumentOutput, RequestThread } from '$common/documents/document.types';
 
 type PaymentVoucherContext = {
@@ -11,7 +11,7 @@ type PaymentVoucherContext = {
 };
 
 export class PaymentVoucherDocument implements Document<PaymentVoucherContext> {
-  constructor(private readonly engine: RequestDocumentEngineService) {}
+  constructor(private readonly engine: RequestDocumentFacadeService) {}
 
   async fetchContext(ids: DocumentIds): Promise<PaymentVoucherContext> {
     const { requestId, voucherId } = ids;
