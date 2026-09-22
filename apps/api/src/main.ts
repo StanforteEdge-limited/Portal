@@ -118,7 +118,8 @@ async function bootstrap() {
   const globalWindowMs = Number(process.env.GLOBAL_RATE_LIMIT_WINDOW_MS || 60 * 1000);
   const globalMax = Number(process.env.GLOBAL_RATE_LIMIT_MAX || 600);
   // Shared Redis store keeps counters consistent across all API instances.
-  const rateLimitStore = app.get(RateLimitService).store;
+  const rateLimitService = app.get(RateLimitService);
+  const rateLimitStore = rateLimitService.store;
   const rateLimitOptions = {
     windowMs: globalWindowMs,
     max: globalMax,
@@ -129,13 +130,34 @@ async function bootstrap() {
   };
   app.use(rateLimit(rateLimitOptions));
 
-  const authRateLimitOptions = { store: rateLimitStore, standardHeaders: true, legacyHeaders: false };
-  app.use('/v1/auth/login', rateLimit({ ...authRateLimitOptions, windowMs: authWindowMs, max: loginLimit }));
+  const authRateLimitOptions = { standardHeaders: true, legacyHeaders: false };
+  app.use(
+    '/v1/auth/login',
+    rateLimit({
+      ...authRateLimitOptions,
+      store: rateLimitService.createStore('rl:auth:login'),
+      windowMs: authWindowMs,
+      max: loginLimit,
+    }),
+  );
   app.use(
     '/v1/auth/forgot-password',
-    rateLimit({ ...authRateLimitOptions, windowMs: authWindowMs, max: forgotLimit }),
+    rateLimit({
+      ...authRateLimitOptions,
+      store: rateLimitService.createStore('rl:auth:forgot'),
+      windowMs: authWindowMs,
+      max: forgotLimit,
+    }),
   );
-  app.use('/v1/auth/accept-invite', rateLimit({ ...authRateLimitOptions, windowMs: authWindowMs, max: inviteLimit }));
+  app.use(
+    '/v1/auth/accept-invite',
+    rateLimit({
+      ...authRateLimitOptions,
+      store: rateLimitService.createStore('rl:auth:invite'),
+      windowMs: authWindowMs,
+      max: inviteLimit,
+    }),
+  );
 
   const jwtSecret = process.env.JWT_SECRET || '';
   const refreshSecret = process.env.JWT_REFRESH_SECRET || '';

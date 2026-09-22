@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { DbModule } from '$common/db/db.module';
+import { TenantContextModule } from '$common/auth/tenant-context.module';
 import { TenantContextInterceptor } from '$common/http/tenant-context.interceptor';
 import { HealthModule } from '$modules/platform/health/health.module';
 import { AuthModule } from '$modules/identity/auth/auth.module';
@@ -51,6 +52,7 @@ import { SchedulingModule } from '$modules/scheduling/scheduling.module';
 @Module({
   imports: [
     DbModule,
+    TenantContextModule,
     HealthModule,
     AuthModule,
     RbacModule,

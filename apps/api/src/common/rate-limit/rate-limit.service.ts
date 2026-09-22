@@ -74,4 +74,21 @@ export class RateLimitService implements OnModuleInit, OnModuleDestroy {
     }
     return this.rateLimitStore;
   }
+
+  /**
+   * Creates an additional store instance backed by the same Redis connection.
+   * express-rate-limit v8 throws ERR_ERL_STORE_REUSE if the same store object is
+   * shared across multiple limiters, so each limiter needs its own instance.
+   * A distinct key prefix keeps each limiter's counters isolated.
+   */
+  createStore(prefix: string): Store {
+    if (this.redis) {
+      return new RedisStore({
+        prefix,
+        sendCommand: (...args: string[]): Promise<RedisReply> =>
+          this.redis!.call(args[0], ...args.slice(1)) as Promise<RedisReply>,
+      });
+    }
+    return new MemoryStore();
+  }
 }
