@@ -1,7 +1,7 @@
 import { DbService, type AppDb } from '$common/db/db.service';
 
 import Decimal from 'decimal.js';
-import { sql } from 'drizzle-orm';
+import { SQL, and, asc, count, eq, gte, ilike, lte, or, sql } from 'drizzle-orm';
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { parseBigIntId, toBigInt } from '$common/utils/ids';
 import { isLeaveRequestType } from '$common/utils/leave-policy';
@@ -35,6 +35,13 @@ import { MailQueueService } from '$common/mail/mail-queue.service';
 import { PdfService } from '$common/pdf/pdf.service';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 import { TenantContextService } from '$common/auth/tenant-context.service';
+import {
+  financeChartAccount,
+  financeFund,
+  financeGrant,
+  financeJournalEntry,
+  financeJournalLine,
+} from '$modules/finance/finance/model';
 
 
 type JsonObject = Record<string, any>;
@@ -2571,39 +2578,36 @@ export class FinanceService {
     const page = Math.max(1, Number(query.page ?? 1));
     const perPage = Math.min(100, Math.max(1, Number(query.per_page ?? 20)));
 
-    const where: WhereInput = {};
-    if (query.organization_id) where.organizationId = parseBigIntId(String(query.organization_id), 'organization_id');
-    if (query.type) where.type = String(query.type).toLowerCase();
-    if (query.category) where.category = String(query.category).toLowerCase();
-    if (query.is_active !== undefined) where.isActive = String(query.is_active) !== 'false';
+    const conditions: SQL[] = [];
+    if (query.organization_id) conditions.push(eq(financeChartAccount.organizationId, parseBigIntId(String(query.organization_id), 'organization_id')));
+    if (query.type) conditions.push(eq(financeChartAccount.type, String(query.type).toLowerCase()));
+    if (query.category) conditions.push(eq(financeChartAccount.category, String(query.category).toLowerCase()));
+    if (query.is_active !== undefined) conditions.push(eq(financeChartAccount.isActive, String(query.is_active) !== 'false'));
     if (query.q) {
-      const term = String(query.q);
-      where.OR = [
-        { code: { contains: term, mode: 'insensitive' } },
-        { name: { contains: term, mode: 'insensitive' } },
-        { category: { contains: term, mode: 'insensitive' } }
-      ];
+      const term = `%${String(query.q)}%`;
+      conditions.push(or(
+        ilike(financeChartAccount.code, term),
+        ilike(financeChartAccount.name, term),
+        ilike(financeChartAccount.category, term)
+      ) as SQL);
     }
 
-    const whereCount: WhereInput = { ...where };
+    const where = conditions.length ? and(...conditions) : undefined;
 
     const [data, total] = await Promise.all([
-      this.db.client.query.financeChartAccount.findMany({
-        where,
-        include: {
-          organization: { select: { id: true, name: true, code: true } },
-          financeAccount: { select: { id: true, name: true, code: true, accountType: true } }
-        },
-        orderBy: [{ type: 'asc' }, { code: 'asc' }],
-        skip: (page - 1) * perPage,
-        take: perPage
-      }),
-      this.db.client.query.financeChartAccount.count({ where: whereCount })
+      this.db.client
+        .select()
+        .from(financeChartAccount)
+        .where(where)
+        .orderBy(asc(financeChartAccount.type), asc(financeChartAccount.code))
+        .offset((page - 1) * perPage)
+        .limit(perPage),
+      this.db.client.select({ value: count() }).from(financeChartAccount).where(where)
     ]);
 
     return paginatedResponse(
       data.map((row) => this.serializeChartAccount(row)),
-      { page, per_page: perPage, total }
+      { page, per_page: perPage, total: Number(total[0]?.value ?? 0) }
     );
   }
 
@@ -5930,29 +5934,36 @@ export class FinanceService {
   private async buildReportContext(query: Record<string, any>) {
     const period = await this.resolvePeriodContext(query);
     const comparisonPeriod = await this.resolveComparisonPeriod(period, query);
-    const lines = await this.db.client.query.financeJournalLine.findMany({
-      where: {
-        journalEntry: {
-          entryDate: {
-            gte: new Date(period.start_date),
-            lte: new Date(period.end_date)
-          }
-        },
-        ...(query.organization_id ? { organizationId: parseBigIntId(String(query.organization_id), 'organization_id') } : {}),
-        ...(query.team_id ? { teamId: parseBigIntId(String(query.team_id), 'team_id') } : {}),
-        ...(query.fund_id ? { fundId: String(query.fund_id) } : {}),
-        ...(query.grant_id ? { grantId: String(query.grant_id) } : {})
-      },
-      include: {
-        chartAccount: true,
-        journalEntry: true,
-        organization: { select: { id: true, name: true, code: true } },
-        team: { select: { id: true, name: true, type: true } },
-        fund: true,
-        grant: true
-      },
-      orderBy: [{ journalEntry: { entryDate: 'asc' } }, { createdAt: 'asc' }]
-    });
+    const conditions: SQL[] = [
+      gte(financeJournalEntry.entryDate, new Date(period.start_date)),
+      lte(financeJournalEntry.entryDate, new Date(period.end_date))
+    ];
+    if (query.organization_id) conditions.push(eq(financeJournalLine.organizationId, parseBigIntId(String(query.organization_id), 'organization_id')));
+    if (query.team_id) conditions.push(eq(financeJournalLine.teamId, parseBigIntId(String(query.team_id), 'team_id')));
+    if (query.fund_id) conditions.push(eq(financeJournalLine.fundId, String(query.fund_id)));
+    if (query.grant_id) conditions.push(eq(financeJournalLine.grantId, String(query.grant_id)));
+    const rows = await this.db.client
+      .select({
+        line: financeJournalLine,
+        chartAccount: financeChartAccount,
+        journalEntry: financeJournalEntry,
+        fund: financeFund,
+        grant: financeGrant
+      })
+      .from(financeJournalLine)
+      .innerJoin(financeJournalEntry, eq(financeJournalEntry.id, financeJournalLine.journalEntryId))
+      .innerJoin(financeChartAccount, eq(financeChartAccount.id, financeJournalLine.chartAccountId))
+      .leftJoin(financeFund, eq(financeFund.id, financeJournalLine.fundId))
+      .leftJoin(financeGrant, eq(financeGrant.id, financeJournalLine.grantId))
+      .where(and(...conditions))
+      .orderBy(asc(financeJournalEntry.entryDate), asc(financeJournalLine.createdAt));
+    const lines = rows.map((row) => ({
+      ...row.line,
+      chartAccount: row.chartAccount,
+      journalEntry: row.journalEntry,
+      fund: row.fund,
+      grant: row.grant
+    }));
     return { period, comparisonPeriod, lines };
   }
 

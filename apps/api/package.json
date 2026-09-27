@@ -30,9 +30,12 @@
     "drizzle:migrate:locked": "node scripts/migrate-locked.js",
     "drizzle:push": "drizzle-kit push",
     "drizzle:studio": "drizzle-kit studio",
-    "test": "jest --config jest.config.ts",
-    "test:watch": "jest --config jest.config.ts --watch",
-    "test:coverage": "jest --config jest.config.ts --coverage"
+    "test": "jest --config jest.config.js",
+    "test:watch": "jest --config jest.config.js --watch",
+    "test:coverage": "jest --config jest.config.js --coverage",
+    "test:e2e": "jest --config jest.e2e.config.js --runInBand --forceExit",
+    "test:e2e:parallel": "jest --config jest.e2e.config.js --forceExit",
+    "test:e2e:watch": "jest --config jest.e2e.config.js --watch"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.782.0",

@@ -13,6 +13,10 @@
     "build:desktop": "pnpm --filter stanforte-desktop build",
     "build:api": "pnpm --filter portal-api build",
     "deploy:server": "pnpm --filter portal-api deploy:server",
+    "test": "pnpm --filter portal-api test",
+    "test:unit": "pnpm --filter portal-api test",
+    "test:e2e": "pnpm --filter portal-api test:e2e",
+    "test:playwright": "playwright test",
     "tauri:dev": "pnpm --filter stanforte-desktop tauri:dev",
     "tauri:build": "pnpm --filter stanforte-desktop tauri:build"
   },

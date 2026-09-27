@@ -285,6 +285,7 @@ private formReadConditions(): SQL[] {
   }
 
   private async findFormById(id: string) {
+    if (!this.isUuid(id)) return null;
     const [row] = await this.db.client
       .select()
       .from(form)
@@ -294,12 +295,17 @@ private formReadConditions(): SQL[] {
   }
 
   private async findField(id: string, formId: string) {
+    if (!this.isUuid(id) || !this.isUuid(formId)) return null;
     const [row] = await this.db.client
       .select()
       .from(formField)
       .where(and(eq(formField.id, id), eq(formField.formId, formId), ...this.formFieldConditions()))
       .limit(1);
     return row ?? null;
+  }
+
+  private isUuid(value: string) {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
   }
 
   private async withFields(row: typeof form.$inferSelect) {
