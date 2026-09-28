@@ -1,7 +1,6 @@
 import { Injectable, NotFoundException, UnauthorizedException, BadRequestException } from '$core/nest-compat';
 import { JwtService } from '$core/auth/jwt.service';
 import * as bcrypt from 'bcryptjs';
-import type { Response } from 'express';
 import { and, asc, eq, ilike, inArray, isNull, or } from 'drizzle-orm';
 import {  DbService  } from '$core/db';
 import {
@@ -31,6 +30,7 @@ import {  tenant as tenantTable, tenantMembership as tenantMembershipTable, tena
 import {  token as tokenTable  } from '$apps/identity/auth/model';
 import {  onboardingProgress as onboardingProgressTable  } from '$apps/hr/employees/model';
 import {  role as roleTable, permission as permissionTable, rolePermission as rolePermissionTable, userRole as userRoleTable  } from '$apps/identity/rbac/model';
+import type { ServiceResponse } from '$core/routes';
 
 const ACCESS_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m';
 const REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '30d';
@@ -53,7 +53,7 @@ export class AuthService {
     private readonly mailQueue: MailQueueService
   ) {}
 
-  async login(dto: Login, res?: Response): Promise<LoginResponse> {
+  async login(dto: Login, res?: ServiceResponse): Promise<LoginResponse> {
     const email = dto.email.trim().toLowerCase();
     const organizationCode = dto.organization?.trim();
     const [profile] = await this.db.client
@@ -295,7 +295,7 @@ export class AuthService {
     return tenants.filter((tenant): tenant is NonNullable<typeof tenant> => tenant !== null);
   }
 
-  async switchTenant(userId: string, tenantIdValue: string, res?: Response) {
+  async switchTenant(userId: string, tenantIdValue: string, res?: ServiceResponse) {
     const profileId = toBigInt(userId);
     const tenantId = toBigInt(tenantIdValue);
     const tenantContext = await this.resolveTenantContext(profileId, undefined, tenantId);
@@ -315,7 +315,7 @@ export class AuthService {
     };
   }
 
-  async logout(userId: string, res?: Response) {
+  async logout(userId: string, res?: ServiceResponse) {
     await this.db.client
       .delete(tokenTable)
       .where(and(eq(tokenTable.profileId, toBigInt(userId)), eq(tokenTable.type, 'refresh')));
@@ -352,7 +352,7 @@ export class AuthService {
     return { success: true };
   }
 
-  async refresh(dto: Refresh, req?: any, res?: Response) {
+  async refresh(dto: Refresh, req?: any, res?: ServiceResponse) {
     const cookieTokens = parseCookieHeader(req?.headers?.cookie);
     const refreshToken = dto.refresh_token || cookieTokens[AUTH_REFRESH_COOKIE];
     if (!refreshToken) this.throwUnauthorized('Invalid refresh token', 'AUTH_REFRESH_INVALID');
@@ -522,7 +522,7 @@ export class AuthService {
     });
   }
 
-  async handleGoogleCallback(code: string, res?: Response): Promise<string> {
+  async handleGoogleCallback(code: string, res?: ServiceResponse): Promise<string> {
     const appUrl = process.env.APP_BASE_URL || 'http://localhost:5173';
     try {
       const { google } = await import('googleapis');
@@ -804,7 +804,7 @@ export class AuthService {
       : value * 60 * 60 * 24;
   }
 
-  private setAuthCookies(res: Response | undefined, accessToken: string, refreshToken: string, expiresIn: string) {
+  private setAuthCookies(res: ServiceResponse | undefined, accessToken: string, refreshToken: string, expiresIn: string) {
     if (!res) return;
     const accessMaxAge = this.parseExpiresInSeconds(expiresIn);
     const refreshMaxAge = this.parseExpiresInSeconds(REFRESH_EXPIRES_IN);
@@ -812,7 +812,7 @@ export class AuthService {
     res.cookie(AUTH_REFRESH_COOKIE, refreshToken, authCookieOptions(refreshMaxAge));
   }
 
-  private clearAuthCookies(res: Response | undefined) {
+  private clearAuthCookies(res: ServiceResponse | undefined) {
     if (!res) return;
     res.clearCookie(AUTH_ACCESS_COOKIE, clearAuthCookieOptions());
     res.clearCookie(AUTH_REFRESH_COOKIE, clearAuthCookieOptions());

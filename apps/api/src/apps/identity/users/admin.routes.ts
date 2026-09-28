@@ -16,7 +16,6 @@ import {
 import { composeGuards, currentTenant, requireAuth, requirePermissions } from '$core/auth/guards';
 import { requestBody, requestParams, requestQuery } from '$core/routes';
 
-/** Controller-level `@Permissions('users.manage')` in the Nest build. */
 const guard = composeGuards(requireAuth, requirePermissions('users.manage'));
 
 export const AdminRoutes: FastifyPluginAsync = async (fastify) => {

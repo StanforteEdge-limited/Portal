@@ -10,7 +10,7 @@ import { toBigInt } from '$core/utils/ids';
 
 import { organization, profileOrganization } from './model';
 import {  tenantOrganization  } from '$apps/tenancy/model';
-import { organizationTypeEnum } from '$app/db/enums';
+import { organizationTypeEnum } from './model';
 
 type OrganizationType = (typeof organizationTypeEnum.enumValues)[number];
 

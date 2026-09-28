@@ -18,10 +18,7 @@ import {
 import { currentTenant, requireAuth, requirePermissions } from '$core/auth/guards';
 import { requestBody, requestParams, requestQuery } from '$core/routes';
 
-/**
- * Mounted at the API root: the Nest controller uses an empty `@Controller()`
- * prefix, so these live at `/v1/profile`, `/v1/users`, and so on.
- */
+/** Mounted at the API root, so these live at `/v1/profile`, `/v1/users`, and so on. */
 export const UsersRoutes: FastifyPluginAsync = async (fastify) => {
   const users = () => fastify.container.users;
 

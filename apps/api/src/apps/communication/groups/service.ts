@@ -12,7 +12,7 @@ import { TenantContextService } from '$core/auth/tenant-context.service';
 import { paginatedResponse } from '$core/helpers/paginated-response';
 import { parseBigIntId, toBigInt } from '$core/utils/ids';
 import type { AppDb } from '$core/db';
-import type { GroupUserRole } from '$app/db/enums';
+import type { GroupUserRole } from './model';
 import {  organization  } from '$apps/hr/organizations/model';
 import {  profile  } from '$apps/identity/users/model';
 

@@ -1,4 +1,4 @@
-import { BadRequestException } from '$core/nest-compat';
+import { BadRequestException } from '$core/errors';
 
 export function toBigInt(value: string | number | bigint): bigint {
   if (typeof value === 'bigint') return value;

@@ -9,7 +9,7 @@ import {  DbService  } from '$core/db';
 import { TenantContextService } from '$core/auth/tenant-context.service';
 import { paginatedResponse } from '$core/helpers/paginated-response';
 import { parseBigIntId, toBigInt } from '$core/utils/ids';
-import type { GroupUserRole } from '$app/db/enums';
+import type { GroupUserRole } from '$apps/communication/groups/model';
 import {  organization  } from '$apps/hr/organizations/model';
 import {  profile  } from '$apps/identity/users/model';
 import {  requestInstance  } from '$apps/hr/requests/model';

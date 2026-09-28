@@ -1,6 +1,8 @@
 import { defineRelationsPart } from 'drizzle-orm';
-import { bigint, bigserial, boolean, date, doublePrecision, index, integer, jsonb, numeric, pgTable, serial, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
-import { tokenTypeEnum, organizationTypeEnum, groupUserRoleEnum, requestStatusEnum, employmentTypeEnum, employmentStatusEnum, workModeEnum, onboardingStatusEnum, workItemTypeEnum, workItemStatusEnum, workPriorityEnum, workLogApprovalStatusEnum, procurementCategoryEnum, paymentPatternEnum, procurementStatusEnum, poStatusEnum, grnStatusEnum, mailProviderEnum } from '$app/db/enums';
+import { bigint, bigserial, boolean, date, doublePrecision, index, integer, jsonb, numeric, pgEnum, pgTable, serial, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
+
+export const organizationTypeEnum = pgEnum("organization_type", ["group", "venture", "shared_function"]);
+export type OrganizationType = typeof organizationTypeEnum.enumValues[number];
 
 export const officeLocation = pgTable("sta_office_locations", {
   id: bigserial("id", { mode: 'bigint' }).primaryKey(),

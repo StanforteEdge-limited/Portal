@@ -1,4 +1,3 @@
-import { Injectable } from '$core/nest-compat';
 import nodemailer from 'nodemailer';
 import {  DbService  } from '$core/db';
 import { MailTemplatesService } from './mail-templates.service';

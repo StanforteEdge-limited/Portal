@@ -11,7 +11,8 @@ import {
 import { BadRequestException, Injectable, NotFoundException } from '$core/nest-compat';
 import * as bcrypt from 'bcryptjs';
 import { SQL, and, asc, count, desc, eq, exists, gte, ilike, inArray, isNull, lte, ne, or, sum } from 'drizzle-orm';
-import type { EmploymentStatus, EmploymentType, GroupUserRole } from '$app/db/enums';
+import type { GroupUserRole } from '$apps/communication/groups/model';
+import type { EmploymentStatus, EmploymentType } from './model';
 import {  DbService, type AppDb  } from '$core/db';
 import { TenantContextService } from '$core/auth/tenant-context.service';
 import { randomToken } from '$core/utils/crypto';

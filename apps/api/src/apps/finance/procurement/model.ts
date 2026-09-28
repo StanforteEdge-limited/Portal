@@ -1,6 +1,20 @@
 import { defineRelationsPart } from 'drizzle-orm';
-import { bigint, boolean, date, index, jsonb, numeric, pgTable, text, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
-import { grnStatusEnum, paymentPatternEnum, poStatusEnum, procurementCategoryEnum, procurementStatusEnum } from '$app/db/enums';
+import { bigint, boolean, date, index, jsonb, numeric, pgEnum, pgTable, text, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
+
+export const procurementCategoryEnum = pgEnum("procurement_category", ["goods", "services", "works"]);
+export type ProcurementCategory = typeof procurementCategoryEnum.enumValues[number];
+
+export const paymentPatternEnum = pgEnum("payment_pattern", ["post_delivery", "pre_payment", "milestone"]);
+export type PaymentPattern = typeof paymentPatternEnum.enumValues[number];
+
+export const procurementStatusEnum = pgEnum("procurement_status", ["draft", "submitted", "approved", "rejected", "returned", "converted_to_po", "cancelled"]);
+export type ProcurementStatus = typeof procurementStatusEnum.enumValues[number];
+
+export const poStatusEnum = pgEnum("po_status", ["draft", "pending_approval", "approved", "sent", "acknowledged", "partially_received", "received", "completed", "cancelled"]);
+export type PoStatus = typeof poStatusEnum.enumValues[number];
+
+export const grnStatusEnum = pgEnum("grn_status", ["pending", "confirmed", "disputed"]);
+export type GrnStatus = typeof grnStatusEnum.enumValues[number];
 import { tenant } from '$apps/tenancy/model';
 
 export const procurementCase = pgTable("sta_procurement_cases", {

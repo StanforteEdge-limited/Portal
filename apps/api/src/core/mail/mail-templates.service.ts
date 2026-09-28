@@ -1,7 +1,7 @@
-import { Injectable, Logger } from '$core/nest-compat';
 import { existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import Handlebars from 'handlebars';
+import { Logger } from '$core/logger';
 
 const SUPPORTED_TEMPLATE_FILES: Record<string, string> = {
   layout: 'layout.hbs',

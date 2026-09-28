@@ -1,15 +1,11 @@
-import { Injectable } from '$core/nest-compat';
 import { Queue } from 'bullmq';
 import { SendMailInput } from './mail.service';
 
 /**
  * Submission stub for the in-process `mail` Bull queue.
  *
- * Request-path code should enqueue through here (fire-and-forget) instead of
- * awaiting real SMTP inline; the `MailWorker` consumes the queue and calls
- * `MailService.send`. This mirrors the proven `notifications` queue exactly —
- * same `@Global` Bull root, same registered-queue pattern — so an SMTP hiccup
- * can never block a portal request.
+ * Request-path code should enqueue through here instead of awaiting real SMTP
+ * inline, so an SMTP hiccup can never block a portal request.
  */
 export class MailQueueService {
   constructor(private readonly mailQueue: Queue) {}

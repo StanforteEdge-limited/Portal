@@ -40,9 +40,8 @@ export interface JwtServiceOptions {
 
 /**
  * Direct `jsonwebtoken` wrapper with the constructor/per-call option shape the
- * migrated services already use. Constructor options are the base and per-call
- * options override them, so tokens signed before the Nest removal keep the same
- * wire format and remain verifiable.
+ * services already use. Constructor options are the base and per-call options
+ * override them, keeping token wire format stable.
  */
 export class JwtService {
   constructor(private readonly options: JwtServiceOptions = {}) {}

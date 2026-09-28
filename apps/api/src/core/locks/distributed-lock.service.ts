@@ -1,55 +1,29 @@
-import { Global, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '$core/nest-compat';
 import { randomUUID } from 'node:crypto';
-import Redis from 'ioredis';
+import type { Redis } from 'ioredis';
+import { Logger } from '$core/logger';
 
 /**
- * Redis-backed advisory/leader lock so recurring cron jobs run on exactly one
- * API instance in a multi-replica deployment. Degrades gracefully to running
- * unconditionally (single-instance semantics) when Redis is unavailable.
+ * Redis-backed advisory/leader lock so recurring jobs run on exactly one API
+ * instance in a multi-replica deployment. Degrades gracefully to running
+ * unconditionally when Redis is unavailable.
  */
-export class DistributedLockService implements OnModuleInit, OnModuleDestroy {
+export class DistributedLockService {
   private readonly logger = new Logger(DistributedLockService.name);
-  private redis?: Redis;
   private connected = false;
 
-  private redisOptions() {
-    return {
-      host: process.env.REDIS_HOST ?? '127.0.0.1',
-      port: Number(process.env.REDIS_PORT ?? 6379),
-      password: process.env.REDIS_PASSWORD || undefined,
-      lazyConnect: true,
-      maxRetriesPerRequest: 1,
-      enableOfflineQueue: false,
-    };
-  }
+  constructor(private readonly redis?: Redis) {}
 
-  async onModuleInit() {
-    const redis = new Redis(this.redisOptions());
+  async connect(): Promise<void> {
+    if (!this.redis) return;
     try {
-      await redis.connect();
-      await redis.ping();
-      this.redis = redis;
+      await this.redis.ping();
       this.connected = true;
       this.logger.log('Distributed lock service ready');
     } catch (error) {
       this.logger.warn(
         `Distributed lock service unavailable; cron jobs may double-fire: ${(error as Error)?.message}`,
       );
-      try {
-        await redis.disconnect();
-      } catch {
-        /* ignore */
-      }
-    }
-  }
-
-  async onModuleDestroy() {
-    if (this.redis) {
-      try {
-        await this.redis.quit();
-      } catch {
-        /* ignore */
-      }
+      this.connected = false;
     }
   }
 
@@ -59,6 +33,7 @@ export class DistributedLockService implements OnModuleInit, OnModuleDestroy {
    * Redis is not available (single-instance behavior).
    */
   async withLock<T>(name: string, ttlMs: number, operation: () => Promise<T>): Promise<T | null> {
+    if (!this.connected) await this.connect();
     if (!this.connected || !this.redis) return operation();
     const key = `portal:lock:${name}`;
     const token = `${process.pid}-${randomUUID()}`;
@@ -75,6 +50,7 @@ export class DistributedLockService implements OnModuleInit, OnModuleDestroy {
   }
 
   async ping(): Promise<boolean> {
+    if (!this.connected) await this.connect();
     if (!this.redis || !this.connected) return false;
     try {
       return (await this.redis.ping()) === 'PONG';

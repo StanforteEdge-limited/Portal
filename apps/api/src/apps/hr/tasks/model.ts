@@ -1,6 +1,17 @@
 import { defineRelationsPart } from 'drizzle-orm';
-import { bigint, bigserial, boolean, date, doublePrecision, index, integer, jsonb, numeric, pgTable, serial, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
-import { tokenTypeEnum, organizationTypeEnum, groupUserRoleEnum, requestStatusEnum, employmentTypeEnum, employmentStatusEnum, workModeEnum, onboardingStatusEnum, workItemTypeEnum, workItemStatusEnum, workPriorityEnum, workLogApprovalStatusEnum, procurementCategoryEnum, paymentPatternEnum, procurementStatusEnum, poStatusEnum, grnStatusEnum, mailProviderEnum } from '$app/db/enums';
+import { bigint, bigserial, boolean, date, doublePrecision, index, integer, jsonb, numeric, pgEnum, pgTable, serial, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
+
+export const workItemTypeEnum = pgEnum("work_item_type", ["weekly_task", "daily_task", "project_activity", "recurring_responsibility", "ad_hoc"]);
+export type WorkItemType = typeof workItemTypeEnum.enumValues[number];
+
+export const workItemStatusEnum = pgEnum("work_item_status", ["planned", "in_progress", "completed", "blocked", "carried_over", "cancelled"]);
+export type WorkItemStatus = typeof workItemStatusEnum.enumValues[number];
+
+export const workPriorityEnum = pgEnum("work_priority", ["low", "medium", "high", "critical"]);
+export type WorkPriority = typeof workPriorityEnum.enumValues[number];
+
+export const workLogApprovalStatusEnum = pgEnum("work_log_approval_status", ["draft", "submitted", "approved", "rejected"]);
+export type WorkLogApprovalStatus = typeof workLogApprovalStatusEnum.enumValues[number];
 import { profile } from '$apps/identity/users/model';
 import { project } from '$apps/hr/projects/model';
 import { tenant } from '$apps/tenancy/model';

@@ -1,4 +1,5 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
+import type { Container } from '$app/bootstrap/container';
 import { JwtService } from './jwt.service';
 import { ForbiddenException, UnauthorizedException } from '$core/errors';
 import type { TenantContext } from './tenant-context';
@@ -23,13 +24,9 @@ export function extractAccessToken(request: FastifyRequest): string | null {
   return null;
 }
 
-/**
- * Replaces the Nest `JwtAuthGuard`: verifies the bearer/cookie token, revalidates
- * the payload through the auth service, and publishes the tenant context for the
- * rest of the request.
- */
+/** Verifies the bearer/cookie token and publishes request tenant context. */
 export async function authenticate(request: FastifyRequest): Promise<AuthenticatedUser> {
-  const { container } = request.server;
+  const { container }: { container: Container } = request.server;
   const token = extractAccessToken(request);
   if (!token) throw new UnauthorizedException();
 
@@ -59,7 +56,6 @@ export async function authenticate(request: FastifyRequest): Promise<Authenticat
   return user;
 }
 
-/** Replaces the Nest `@CurrentTenant()` param decorator. */
 export function currentTenant(request: FastifyRequest): TenantContext {
   const user = request.user as AuthenticatedUser | undefined;
   const tenant = request.tenant;
@@ -86,10 +82,7 @@ export function composeGuards(...hooks: GuardHook[]): GuardHook[] {
   return hooks;
 }
 
-/**
- * Replaces the Nest `PermissionsGuard` + `@Permissions()` decorator. A route with
- * no required permissions is reachable by any authenticated user.
- */
+/** Builds a permission preHandler for authenticated routes. */
 export function requirePermissions(...permissions: string[]) {
   return async (request: FastifyRequest, _reply: FastifyReply): Promise<void> => {
     const user = (request.user as AuthenticatedUser | undefined) ?? (await authenticate(request));
@@ -102,7 +95,7 @@ export function requirePermissions(...permissions: string[]) {
   };
 }
 
-/** Replaces the Nest `VendorJwtGuard` (vendor-portal audience scoped tokens). */
+/** Builds a vendor-portal audience scoped token preHandler. */
 export function requireVendorJwt() {
   return async (request: FastifyRequest): Promise<void> => {
     const header = request.headers.authorization;

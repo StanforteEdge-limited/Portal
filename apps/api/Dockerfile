@@ -1,4 +1,4 @@
-# StanforteEdge Portal API — NestJS + Postgres + Redis (BullMQ) + Mailpit
+# StanforteEdge Portal API - Fastify + Postgres + Redis (BullMQ) + Mailpit
 FROM node:20-alpine
 
 RUN corepack enable && corepack prepare pnpm@10.33.0 --activate \

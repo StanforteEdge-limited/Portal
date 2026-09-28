@@ -8,6 +8,7 @@ import { MailQueueService } from '$core/mail/mail-queue.service';
 import { PdfService } from '$core/pdf/pdf.service';
 import { CacheService } from '$core/cache/cache.service';
 import { QueueRegistry } from '$core/queues/queue-registry';
+import type { Redis } from 'ioredis';
 import { config } from '../config';
 
 import { AuthService } from '$apps/identity/auth/service';
@@ -67,7 +68,7 @@ import { BackgroundJobsService } from '$apps/background_jobs/service';
 /**
  * Fastify has no dependency injection container, so every singleton and service
  * is wired here once and shared for the process lifetime. Services stay plain
- * classes, exactly as in the Nest build.
+ * classes.
  *
  * Wiring is lazy: a service is constructed the first time it is read, so a
  * process that never touches a domain (or a dev box without S3 credentials)
@@ -77,7 +78,10 @@ import { BackgroundJobsService } from '$apps/background_jobs/service';
 export class Container {
   private readonly instances = new Map<string, unknown>();
 
-  constructor(readonly db: DbService) {}
+  constructor(
+    readonly db: DbService,
+    readonly redis?: Redis,
+  ) {}
 
   private provide<T>(key: string, factory: () => T): T {
     if (!this.instances.has(key)) this.instances.set(key, factory());
@@ -105,11 +109,11 @@ export class Container {
   }
 
   get locks(): DistributedLockService {
-    return this.provide('locks', () => new DistributedLockService());
+    return this.provide('locks', () => new DistributedLockService(this.redis));
   }
 
   get cache(): CacheService {
-    return this.provide('cache', () => new CacheService());
+    return this.provide('cache', () => new CacheService(this.redis));
   }
 
   get queues(): QueueRegistry {

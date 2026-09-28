@@ -9,10 +9,7 @@ export function redisConnection() {
   };
 }
 
-/**
- * Replaces `BullModule.registerQueue` from the Nest build. Queues are created
- * lazily and share one Redis connection config, mirroring `QueuesModule`.
- */
+/** Creates BullMQ queues lazily with one shared Redis connection config. */
 export class QueueRegistry {
   private readonly logger = new Logger(QueueRegistry.name);
   private readonly options: QueueOptions;

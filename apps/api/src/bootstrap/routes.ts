@@ -11,10 +11,7 @@ export interface AppRoute {
   plugin: FastifyPluginAsync;
 }
 
-/**
- * Mirrors the Nest controller tree: one entry per `@Controller(prefix)`, mounted
- * under the global `/v1` prefix. Controllers that are not ported yet are absent.
- */
+/** Fastify route plugins mounted under the global `/v1` prefix. */
 export const appRoutes: AppRoute[] = [
   { prefix: '/health', plugin: HealthRoutes },
   { prefix: '/auth', plugin: AuthRoutes },

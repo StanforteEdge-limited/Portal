@@ -41,15 +41,9 @@ function list(name: string): string[] {
 
 /**
  * Fastify's `trustProxy` accepts a boolean, an IP/subnet list, or a function.
- * It does NOT accept the `'true'`/`'false'`/`'1'`/`'0'` strings the env var uses
- * for Express, and it has no numeric hop count, so the raw string has to be
- * translated or the server either refuses to boot (`invalid IP address: true`)
- * or silently stops trusting the proxy hop, which collapses `request.ip` to the
- * nginx address.
- *
- * Mirrors the Express branches in `main.ts`. A single reverse proxy sits in
- * front of the API, so hop count 1 and trust-all resolve identically and `true`
- * is used.
+ * Environment variables commonly store boolean-ish strings, but Fastify expects
+ * a boolean, an IP/subnet list, or a trust function. Translate the value before
+ * boot so proxy IP handling is explicit.
  */
 function trustProxySetting(): boolean | string {
   const raw = str('TRUST_PROXY', str('NODE_ENV', 'development').toLowerCase() === 'production' ? '1' : '0');

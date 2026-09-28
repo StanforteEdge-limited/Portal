@@ -1,8 +1,8 @@
-import { Injectable, Logger } from '$core/nest-compat';
 import { existsSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import puppeteer from 'puppeteer';
+import { Logger } from '$core/logger';
 
 export class PdfService {
   private readonly logger = new Logger(PdfService.name);
@@ -14,7 +14,7 @@ export class PdfService {
   }
 
   /**
-   * Bounded concurrency guard so a burst of HTML→PDF requests never launches an
+   * Bounded concurrency guard so a burst of HTML-to-PDF requests never launches an
    * unbounded number of Chromium processes on the same node.
    */
   private async acquire(): Promise<() => void> {
@@ -33,7 +33,7 @@ export class PdfService {
   }
 
   /**
-   * Single entry point for HTML → PDF rendering across the app. Never throws:
+   * Single entry point for HTML-to-PDF rendering across the app. Never throws:
    * on any launch/render failure it returns a plaintext fallback PDF instead,
    * so callers don't each need their own try/catch around Puppeteer.
    */

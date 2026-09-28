@@ -1,6 +1,17 @@
 import { defineRelationsPart } from 'drizzle-orm';
-import { bigint, bigserial, boolean, date, index, integer, jsonb, numeric, pgTable, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
-import { employmentTypeEnum, employmentStatusEnum, workModeEnum, onboardingStatusEnum } from '$app/db/enums';
+import { bigint, bigserial, boolean, date, index, integer, jsonb, numeric, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
+
+export const employmentTypeEnum = pgEnum("employment_type", ["full_time", "contract", "intern", "consultant"]);
+export type EmploymentType = typeof employmentTypeEnum.enumValues[number];
+
+export const employmentStatusEnum = pgEnum("employment_status", ["draft", "active", "suspended", "exited"]);
+export type EmploymentStatus = typeof employmentStatusEnum.enumValues[number];
+
+export const workModeEnum = pgEnum("work_mode", ["onsite", "hybrid", "remote"]);
+export type WorkMode = typeof workModeEnum.enumValues[number];
+
+export const onboardingStatusEnum = pgEnum("onboarding_status", ["invited", "accepted", "profile_pending", "forms_pending", "hr_review", "completed"]);
+export type OnboardingStatus = typeof onboardingStatusEnum.enumValues[number];
 import { tenant } from '$apps/tenancy/model';
 
 export const employeeProfile = pgTable("sta_employee_profiles", {

@@ -1,5 +1,5 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '$core/nest-compat';
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { BadRequestException, UnauthorizedException } from '$core/errors';
 import { SystemContext, TenantContext } from './tenant-context';
 
 export class TenantContextService {

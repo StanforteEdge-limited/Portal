@@ -1,7 +1,6 @@
 /**
- * Mirrors the Nest `ResponseEnvelopeInterceptor`: every successful handler result
- * is wrapped as `{ success: true, data }` unless the handler already produced an
- * envelope of its own.
+ * Wraps every successful handler result as `{ success: true, data }` unless the
+ * handler already produced an envelope of its own.
  */
 export function envelope(value: unknown): Record<string, unknown> {
   if (value && typeof value === 'object' && typeof (value as any).success === 'boolean') {
@@ -21,8 +20,8 @@ export function envelope(value: unknown): Record<string, unknown> {
 }
 
 /**
- * Express handled BigInt globally with a JSON replacer. Fastify has no such
- * option, so payloads are normalized on the way out instead.
+ * Fastify payloads are normalized on the way out so BigInt values are encoded
+ * consistently.
  */
 export function withJsonReplacer(value: unknown): unknown {
   if (value === null || typeof value !== 'object') return value;

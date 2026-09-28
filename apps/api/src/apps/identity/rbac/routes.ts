@@ -14,7 +14,6 @@ import {
 import { composeGuards, currentTenant, requireAuth, requirePermissions } from '$core/auth/guards';
 import { requestBody, requestParams, requestQuery } from '$core/routes';
 
-/** Controller-level `@Permissions('settings.manage')` in the Nest build. */
 const guard = composeGuards(requireAuth, requirePermissions('settings.manage'));
 
 export const RbacRoutes: FastifyPluginAsync = async (fastify) => {

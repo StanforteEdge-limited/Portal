@@ -2,7 +2,7 @@ import type { FastifyError, FastifyInstance, FastifyReply, FastifyRequest } from
 import { HttpError } from '$core/errors';
 import { Logger } from '$core/logger';
 
-const logger = new Logger('ExceptionFilter');
+const logger = new Logger('ErrorHandler');
 
 interface ErrorBody {
   status: number;
@@ -35,10 +35,7 @@ function describe(error: unknown, request: FastifyRequest): ErrorBody {
   return { status: 500, message: 'Internal server error' };
 }
 
-/**
- * Mirrors the Nest `AllExceptionsFilter` response shape:
- * `{ success: false, error: { status_code, message, details }, path, timestamp }`.
- */
+/** Builds the Fastify error handler used by the API. */
 export function buildErrorHandler(fastify: FastifyInstance) {
   return function errorHandler(error: unknown, request: FastifyRequest, reply: FastifyReply) {
     const { status, message, details } = describe(error, request);
