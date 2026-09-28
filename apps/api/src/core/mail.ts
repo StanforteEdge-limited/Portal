@@ -2,11 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import nodemailer from 'nodemailer';
 import Handlebars from 'handlebars';
-import { Queue } from 'bullmq';
-import { DbService } from '$core/db';
 import { Logger } from '$core/logger';
-import { toBigInt } from '$core/utils';
-import { emailLog } from '$apps/communication/mail/model';
 
 const SUPPORTED_TEMPLATE_FILES: Record<string, string> = {
   layout: 'layout.hbs',
@@ -25,9 +21,6 @@ export type SendMailInput = {
   portalUrl?: string;
   ctaLabel?: string;
   threadKey?: string;
-  userId?: string | bigint;
-  notifiableType?: string;
-  notifiableId?: string | number | bigint;
   attachments?: Array<{
     filename: string;
     content: Buffer | string;
@@ -149,10 +142,7 @@ export class MailTemplatesService {
 }
 
 export class MailService {
-  constructor(
-    private readonly db: DbService,
-    private readonly templates: MailTemplatesService,
-  ) {}
+  constructor(private readonly templates: MailTemplatesService) {}
 
   private transporter = this.buildTransporter();
 
@@ -196,11 +186,6 @@ export class MailService {
   async send(input: SendMailInput) {
     const renderedHtml = this.renderEmailHtml(input);
     if (!this.transporter || !process.env.MAIL_FROM) {
-      try {
-        await this.logEmail(input, renderedHtml, { status: 'skipped', errorMessage: 'smtp_not_configured' });
-      } catch (error) {
-        void error;
-      }
       return { sent: false, reason: 'smtp_not_configured' as const };
     }
 
@@ -226,74 +211,11 @@ export class MailService {
         references: [rootThreadMessageId],
       });
 
-      try {
-        await this.logEmail(input, renderedHtml, { status: 'sent', messageId: info.messageId ?? messageId });
-      } catch (error) {
-        void error;
-      }
 
       return { sent: true as const, messageId: info.messageId };
     } catch (error: any) {
-      try {
-        await this.logEmail(input, renderedHtml, {
-          status: 'failed',
-          errorMessage: error?.message ? String(error.message) : 'send_failed',
-        });
-      } catch (logError) {
-        void logError;
-      }
       return { sent: false as const, reason: 'send_failed' as const };
     }
   }
 
-  private async logEmail(
-    input: SendMailInput,
-    renderedHtml: string,
-    status: { status: string; messageId?: string; errorMessage?: string },
-  ) {
-    await this.db.client.insert(emailLog).values({
-      userId: input.userId !== undefined ? toBigInt(input.userId) : null,
-      toEmail: input.to,
-      subject: input.subject,
-      bodyText: input.text,
-      bodyHtml: renderedHtml,
-      threadKey: input.threadKey ?? null,
-      provider: 'smtp',
-      status: status.status,
-      messageId: status.messageId,
-      errorMessage: status.errorMessage,
-      notifiableType: input.notifiableType ?? null,
-      notifiableId: input.notifiableId !== undefined ? toBigInt(input.notifiableId) : null,
-    });
-  }
-}
-
-export class MailQueueService {
-  constructor(private readonly mailQueue: Queue) {}
-
-  enqueue(input: SendMailInput, options: { delayMs?: number; jobId?: string } = {}) {
-    return this.mailQueue.add('send-email', this.serialize(input), {
-      jobId: options.jobId,
-      attempts: 3,
-      backoff: { type: 'exponential', delay: 5000 },
-      removeOnComplete: 1000,
-      removeOnFail: 5000,
-      delay: options.delayMs ?? 0,
-    });
-  }
-
-  private serialize(input: SendMailInput): SendMailInput {
-    if (!input.attachments?.length) return input;
-    const attachments = input.attachments.map((attachment) => {
-      if (Buffer.isBuffer(attachment.content)) {
-        return {
-          ...attachment,
-          content: attachment.content.toString('base64'),
-          encoding: attachment.encoding ?? 'base64',
-        };
-      }
-      return attachment;
-    });
-    return { ...input, attachments };
-  }
 }

@@ -54,7 +54,7 @@ import { NotificationsService } from '$apps/hr/notifications/service';
 
 
 import { MailService } from '$core/mail';
-import { MailQueueService } from '$core/mail';
+import { MailQueueService } from '$app/jobs/queues';
 import { PdfService } from '$core/pdf';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 import { TenantContextService } from '$core/auth/tenant-context.service';

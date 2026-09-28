@@ -1,5 +1,5 @@
 import { RequestDocumentFacadeService } from './service';
-import { Document, DocumentIds, DocumentOutput } from '$core/document-generation/document.types';
+import { Document, DocumentIds, DocumentOutput } from '$app/jobs/documents';
 import { RequestPdfDocument } from './request-pdf.document';
 
 type RequestWithAttachmentsContext = {

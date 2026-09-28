@@ -1,5 +1,4 @@
 export * as analytics from './analytics';
-export * as backgroundJobs from './background_jobs';
 export * as communication from './communication';
 export * as crm from './crm';
 export * as finance from './finance';

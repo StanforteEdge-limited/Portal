@@ -1,5 +1,5 @@
 import { RequestDocumentFacadeService } from './service';
-import { Document, DocumentIds, DocumentOutput, FullPaymentVoucher, RequestThread } from '$core/document-generation/document.types';
+import { Document, DocumentIds, DocumentOutput, FullPaymentVoucher, RequestThread } from '$app/jobs/documents';
 
 type RequestPdfContext = {
   request: any;

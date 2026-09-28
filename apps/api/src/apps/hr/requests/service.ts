@@ -18,7 +18,7 @@ import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, lte
 import { DbService } from '$core/db';
 import { TenantContextService } from '$core/auth/tenant-context.service';
 import { RequestDocumentFacadeService } from '$apps/hr/requests/documents/service';
-import { DocumentIds } from '$core/document-generation/document.types';
+import { DocumentIds } from '$app/jobs/documents';
 import { RequestPdfDocument } from '$apps/hr/requests/documents/request-pdf.document';
 import { PaymentVoucherDocument } from '$apps/hr/requests/documents/payment-voucher.document';
 import { CertificateOfHonorDocument } from '$apps/hr/requests/documents/certificate-of-honor.document';

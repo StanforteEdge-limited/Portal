@@ -50,8 +50,8 @@ export { subscriptionPlan, subscriptionPlanPrice, tenantSubscription, billingInv
 export type { SubscriptionPlan, NewSubscriptionPlan, SubscriptionPlanPrice, NewSubscriptionPlanPrice, TenantSubscription, NewTenantSubscription } from '$apps/platform/billing/model';
 export { fileAsset, storageFolder } from '$apps/storage/model';
 export type { FileAsset, NewFileAsset, StorageFolder, NewStorageFolder } from '$apps/storage/model';
-export { backgroundJob } from '$apps/background_jobs/model';
-export type { BackgroundJob, NewBackgroundJob } from '$apps/background_jobs/model';
+export { backgroundJob } from '$app/jobs/background';
+export type { BackgroundJob, NewBackgroundJob } from '$app/jobs/background';
 export { emailLog, mailAccount, mailHeader, mailProviderEnum } from '$apps/communication/mail/model';
 export type { EmailLog, NewEmailLog, MailAccount, NewMailAccount, MailHeader, NewMailHeader, MailProvider } from '$apps/communication/mail/model';
 export { systemVersion } from '$apps/platform/version/model';

@@ -15,7 +15,7 @@ import {
 import { sha256, randomToken } from '$core/utils';
 import { toBigInt } from '$core/utils';
 import { MailService } from '$core/mail';
-import { MailQueueService } from '$core/mail';
+import { MailQueueService } from '$app/jobs/queues';
 import {
   AUTH_ACCESS_COOKIE,
   AUTH_REFRESH_COOKIE,

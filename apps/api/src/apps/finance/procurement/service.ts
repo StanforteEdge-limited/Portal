@@ -11,7 +11,7 @@ import { TenantContextService } from '$core/auth/tenant-context.service';
 import { WorkflowService } from '$apps/hr/workflow/service';
 import { NotificationsService } from '$apps/hr/notifications/service';
 import { MailService } from '$core/mail';
-import { MailQueueService } from '$core/mail';
+import { MailQueueService } from '$app/jobs/queues';
 import { ProcurementDocumentFacadeService } from '$apps/finance/procurement/documents/service';
 import { toBigInt } from '$core/utils';
 

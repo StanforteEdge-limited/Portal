@@ -1,7 +1,7 @@
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import { DbService } from '$core/db';
 import { PdfService } from '$core/pdf';
-import { MailQueueService } from '$core/mail';
+import { MailQueueService } from '$app/jobs/queues';
 import { DeductionService } from '$apps/finance/accounting/deduction';
 import { toBigInt } from '$core/utils';
 import { fileAsset } from '$apps/storage/model';
@@ -37,8 +37,8 @@ import {
   financeRequestRemittance,
   financeSetting,
  } from '$apps/finance/accounting/model';
-import { DocumentGeneratorService } from '$core/document-generation/document-generator.service';
-import { DocumentIds, DocumentOutput, ThreadEntry, RequestThread, Signatories, ApprovalSummary, FullPaymentVoucher, RequestRemittanceAllocationSummary } from '$core/document-generation/document.types';
+import { DocumentGeneratorService } from '$app/jobs/documents';
+import { DocumentIds, DocumentOutput, ThreadEntry, RequestThread, Signatories, ApprovalSummary, FullPaymentVoucher, RequestRemittanceAllocationSummary } from '$app/jobs/documents';
 import { NotFoundException } from '$core/errors';
 
 export class RequestDocumentFacadeService extends DocumentGeneratorService {

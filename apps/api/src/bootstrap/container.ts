@@ -4,10 +4,10 @@ import { TenantContextService } from '$core/auth/tenant-context.service';
 import { DistributedLockService } from '$core/locks';
 import { MailService } from '$core/mail';
 import { MailTemplatesService } from '$core/mail';
-import { MailQueueService } from '$core/mail';
+import { MailQueueService } from '$app/jobs/queues';
 import { PdfService } from '$core/pdf';
 import { CacheService } from '$core/cache';
-import { QueueRegistry } from '$core/queues';
+import { QueueRegistry } from '$app/jobs/queues';
 import type { Redis } from 'ioredis';
 import { config } from '../config';
 
@@ -63,7 +63,7 @@ import { VersionService } from '$apps/platform/version/service';
 import { PaystackService } from '$apps/platform/billing/paystack';
 import { BillingService } from '$apps/platform/billing/service';
 import { AnalyticsService } from '$apps/analytics/service';
-import { BackgroundJobsService } from '$apps/background_jobs/service';
+import { BackgroundJobsService } from '$app/jobs/background';
 
 /**
  * Fastify has no dependency injection container, so every singleton and service
@@ -125,7 +125,7 @@ export class Container {
   }
 
   get mail(): MailService {
-    return this.provide('mail', () => new MailService(this.db, this.mailTemplates));
+    return this.provide('mail', () => new MailService(this.mailTemplates));
   }
 
   get mailTemplates(): MailTemplatesService {

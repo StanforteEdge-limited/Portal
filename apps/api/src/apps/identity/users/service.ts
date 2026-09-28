@@ -13,7 +13,7 @@ import type {
 } from '@stanforte/contract';
 import { randomToken, sha256 } from '$core/utils';
 import { MailService } from '$core/mail';
-import { MailQueueService } from '$core/mail';
+import { MailQueueService } from '$app/jobs/queues';
 import { generateUniqueUsername, makeUsernameSeed } from '$core/utils';
 import { paginatedResponse } from '$core/pagination';
 import { TenantContext } from '$core/auth/tenant-context';

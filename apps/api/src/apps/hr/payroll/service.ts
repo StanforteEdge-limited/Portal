@@ -1943,9 +1943,6 @@ export class PayrollService {
           subject: `Payslip - ${run.name}`,
           text: `Dear ${item.worker?.fullName || 'Worker'},\n\nYour payslip for ${run.name} is attached.\n\nRegards,\nStanforte Edge Payroll`,
           threadKey: `payroll-run-${run.id}`,
-          userId: actorId,
-          notifiableType: 'payroll_run',
-          notifiableId: run.id,
           attachments: [
             {
               filename: payslip.file_name,
