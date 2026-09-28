@@ -1,5 +1,5 @@
 import { ProcurementDocumentFacadeService } from './service';
-import { Document, DocumentIds, DocumentOutput } from '$app/jobs/documents';
+import { Document, DocumentIds, DocumentOutput } from '$core/documents';
 
 export type PoLineItem = {
   description: string;

@@ -1,5 +1,5 @@
 import { RequestDocumentFacadeService } from './service';
-import { Document, DocumentIds, DocumentOutput } from '$app/jobs/documents';
+import { Document, DocumentIds, DocumentOutput } from '$core/documents';
 import { PaymentVoucherDocument } from './payment-voucher.document';
 import { NotFoundException } from '$core/errors';
 

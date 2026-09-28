@@ -1,5 +1,5 @@
 import { RequestDocumentFacadeService } from './service';
-import { Document, DocumentIds, DocumentOutput } from '$app/jobs/documents';
+import { Document, DocumentIds, DocumentOutput } from '$core/documents';
 
 type CertificateContext = {
   request: any;

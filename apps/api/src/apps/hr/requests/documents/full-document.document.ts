@@ -1,5 +1,5 @@
 import { RequestDocumentFacadeService } from './service';
-import { Document, DocumentIds, DocumentOutput, RequestRemittanceAllocationSummary } from '$app/jobs/documents';
+import { Document, DocumentIds, DocumentOutput, RequestRemittanceAllocationSummary } from '$core/documents';
 import { RequestPdfDocument } from './request-pdf.document';
 
 type FullDocumentContext = {

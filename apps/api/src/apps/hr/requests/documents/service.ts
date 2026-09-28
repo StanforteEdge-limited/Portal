@@ -38,7 +38,7 @@ import {
   financeSetting,
  } from '$apps/finance/accounting/model';
 import { DocumentGeneratorService } from '$app/jobs/documents';
-import { DocumentIds, DocumentOutput, ThreadEntry, RequestThread, Signatories, ApprovalSummary, FullPaymentVoucher, RequestRemittanceAllocationSummary } from '$app/jobs/documents';
+import { DocumentIds, DocumentOutput, ThreadEntry, RequestThread, Signatories, ApprovalSummary, FullPaymentVoucher, RequestRemittanceAllocationSummary } from '$core/documents';
 import { NotFoundException } from '$core/errors';
 
 export class RequestDocumentFacadeService extends DocumentGeneratorService {

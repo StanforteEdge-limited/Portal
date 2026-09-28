@@ -7,7 +7,7 @@ import { MailTemplatesService } from '$core/mail';
 import { MailQueueService } from '$app/jobs/queues';
 import { PdfService } from '$core/pdf';
 import { CacheService } from '$core/cache';
-import { QueueRegistry } from '$app/jobs/queues';
+import { QueueRegistry } from '$core/queues';
 import type { Redis } from 'ioredis';
 import { config } from '../config';
 
