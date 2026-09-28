@@ -11,58 +11,56 @@ import { QueueRegistry } from '$core/queues';
 import type { Redis } from 'ioredis';
 import { config } from '../config';
 
-import { AuthService } from '$apps/identity/auth/service';
-import { RbacService } from '$apps/identity/rbac/service';
-import { AuditService } from '$apps/identity/audit/service';
-import { UsersService } from '$apps/identity/users/service';
-import { AdminService } from '$apps/identity/users/admin';
+import { AuthService } from '$apps/identity/auth/repository';
+import { RbacService } from '$apps/identity/rbac/repository';
+import { AuditService } from '$apps/identity/audit/repository';
+import { AdminService, UsersService } from '$apps/identity/users/repository';
 
-import { S3StorageService } from '$apps/storage/s3-storage';
-import { StorageService } from '$apps/storage/service';
+import { ObjectStorageService } from '$core/storage';
+import { StorageService } from '$apps/storage/repository';
 
-import { NotificationsService } from '$apps/hr/notifications/service';
-import { WorkflowService } from '$apps/hr/workflow/service';
-import { FormsService } from '$apps/hr/forms/service';
-import { RequestsService } from '$apps/hr/requests/service';
-import { RequestDocumentFacadeService } from '$apps/hr/requests/documents/service';
-import { DeductionService } from '$apps/finance/accounting/deduction';
-import { ProcurementDocumentFacadeService } from '$apps/finance/procurement/documents/service';
-import { PayrollService } from '$apps/hr/payroll/service';
-import { FinanceService } from '$apps/finance/accounting/service';
-import { ProcurementService } from '$apps/finance/procurement/service';
-import { VendorPortalService } from '$apps/finance/vendor_portal/service';
+import { NotificationsService } from '$apps/hr/notifications/repository';
+import { WorkflowService } from '$apps/hr/workflow/repository';
+import { FormsService } from '$apps/hr/forms/repository';
+import { RequestsService } from '$apps/hr/requests/repository';
+import { RequestDocumentFacadeService } from '$apps/hr/requests/repository';
+import { DeductionService } from '$apps/finance/deductions';
+import { PayrollService } from '$apps/hr/payroll/repository';
+import { FinanceService } from '$apps/finance/accounting/repository';
+import { ProcurementService } from '$apps/finance/procurement/repository';
+import { VendorPortalService } from '$apps/finance/vendor_portal/repository';
 
-import { OrganizationsService } from '$apps/hr/organizations/service';
-import { EmployeesService } from '$apps/hr/employees/service';
-import { AttendanceService } from '$apps/hr/attendance/service';
-import { LeaveService } from '$apps/hr/leave/service';
-import { DocumentsService } from '$apps/hr/documents/service';
-import { TaxonomyService } from '$apps/hr/taxonomy/service';
-import { ProjectsService } from '$apps/hr/projects/service';
-import { OnboardingService } from '$apps/hr/onboarding/service';
-import { AcknowledgementsService } from '$apps/hr/acknowledgements/service';
-import { PoliciesService } from '$apps/hr/policies/service';
-import { TasksService } from '$apps/hr/tasks/service';
+import { OrganizationsService } from '$apps/hr/organizations/repository';
+import { EmployeesService } from '$apps/hr/employees/repository';
+import { AttendanceService } from '$apps/hr/attendance/repository';
+import { LeaveService } from '$apps/hr/leave/repository';
+import { DocumentsService } from '$apps/hr/documents/repository';
+import { TaxonomyService } from '$apps/hr/taxonomy/repository';
+import { ProjectsService } from '$apps/hr/projects/repository';
+import { OnboardingService } from '$apps/hr/onboarding/repository';
+import { AcknowledgementsService } from '$apps/hr/acknowledgements/repository';
+import { PoliciesService } from '$apps/hr/policies/repository';
+import { TasksService } from '$apps/hr/tasks/repository';
 
-import { CrmAccountsService } from '$apps/crm/accounts/service';
-import { CrmActivitiesService } from '$apps/crm/activities/service';
-import { CrmContactsService } from '$apps/crm/contacts/service';
-import { CrmLeadsService } from '$apps/crm/leads/service';
-import { CrmOpportunitiesService } from '$apps/crm/opportunities/service';
-import { CrmPipelinesService } from '$apps/crm/pipelines/service';
+import { CrmAccountsService } from '$apps/crm/accounts/repository';
+import { CrmActivitiesService } from '$apps/crm/activities/repository';
+import { CrmContactsService } from '$apps/crm/contacts/repository';
+import { CrmLeadsService } from '$apps/crm/leads/repository';
+import { CrmOpportunitiesService } from '$apps/crm/opportunities/repository';
+import { CrmPipelinesService } from '$apps/crm/pipelines/repository';
 
-import { ChatRealtimeService } from '$apps/communication/chat/chat-realtime';
-import { ChatService } from '$apps/communication/chat/service';
-import { GroupsService } from '$apps/communication/groups/service';
-import { MailCryptoService } from '$apps/communication/mail/mail-crypto';
-import { MailAccountService } from '$apps/communication/mail/service';
+import { ChatRealtimeService } from '$apps/communication/chat/realtime';
+import { ChatService } from '$apps/communication/chat/repository';
+import { GroupsService } from '$apps/communication/groups/repository';
+import { MailCryptoService } from '$apps/communication/mail/crypto';
+import { MailAccountService } from '$apps/communication/mail/repository';
 
-import { TenancyService } from '$apps/tenancy/service';
+import { TenancyService } from '$apps/tenancy/repository';
 import { HealthService } from '$apps/platform/health';
-import { VersionService } from '$apps/platform/version/service';
-import { PaystackService } from '$apps/platform/billing/paystack';
-import { BillingService } from '$apps/platform/billing/service';
-import { AnalyticsService } from '$apps/analytics/service';
+import { VersionService } from '$apps/platform/version/repository';
+import { PaystackPaymentGatewayService } from '$core/payments';
+import { BillingService } from '$apps/platform/billing/repository';
+import { AnalyticsService } from '$apps/analytics/repository';
 import { BackgroundJobsService } from '$app/jobs/background';
 
 /**
@@ -144,8 +142,8 @@ export class Container {
     return this.provide('pdf', () => new PdfService());
   }
 
-  get s3(): S3StorageService {
-    return this.provide('s3', () => new S3StorageService());
+  get s3(): ObjectStorageService {
+    return this.provide('s3', () => new ObjectStorageService());
   }
 
   get storage(): StorageService {
@@ -217,13 +215,6 @@ export class Container {
     return this.provide('deduction', () => new DeductionService(this.db, this.tenantContext, this.pdf));
   }
 
-  get procurementDocuments(): ProcurementDocumentFacadeService {
-    return this.provide(
-      'procurementDocuments',
-      () => new ProcurementDocumentFacadeService(this.db, this.pdf, this.mailQueue),
-    );
-  }
-
   get payroll(): PayrollService {
     return this.provide(
       'payroll',
@@ -266,7 +257,7 @@ export class Container {
           this.notifications,
           this.mail,
           this.mailQueue,
-          this.procurementDocuments,
+          this.pdf,
         ),
     );
   }
@@ -373,7 +364,7 @@ export class Container {
   get billing(): BillingService {
     return this.provide(
       'billing',
-      () => new BillingService(this.db, new PaystackService(), this.cache),
+      () => new BillingService(this.db, new PaystackPaymentGatewayService(), this.cache),
     );
   }
 

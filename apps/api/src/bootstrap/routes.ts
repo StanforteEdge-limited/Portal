@@ -1,8 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { HealthRoutes } from '$apps/platform/health';
 import { AuthRoutes } from '$apps/identity/auth/routes';
-import { UsersRoutes } from '$apps/identity/users/routes';
-import { AdminRoutes } from '$apps/identity/users/admin.routes';
+import { AdminRoutes, UsersRoutes } from '$apps/identity/users/routes';
 import { RbacRoutes } from '$apps/identity/rbac/routes';
 import { AuditRoutes } from '$apps/identity/audit/routes';
 

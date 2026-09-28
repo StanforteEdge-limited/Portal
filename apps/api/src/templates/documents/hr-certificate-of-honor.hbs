@@ -1,0 +1,40 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    @page { size: A4; margin: 12mm; }
+    body { font-family: Arial, sans-serif; color: #111827; margin: 0; font-size: 13px; }
+    .shell { border: 2px solid #111827; padding: 28px; min-height: 720px; }
+    .top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 34px; }
+    .title { text-align: center; font-size: 24px; font-weight: 700; text-transform: uppercase; margin: 16px 0 28px; }
+    .grid { display: grid; grid-template-columns: 180px 1fr; gap: 10px 16px; margin-bottom: 24px; }
+    .label { color: #4b5563; font-weight: 700; }
+    .box { border: 1px solid #d1d5db; padding: 14px; min-height: 72px; line-height: 1.7; margin-bottom: 18px; }
+    .signature { margin-top: 48px; width: 260px; border-top: 1px solid #111827; padding-top: 6px; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="top">
+      <div>{{#if logoDataUri}}<img src="{{logoDataUri}}" alt="Logo" style="height:48px" />{{else}}<strong>Stanforte Edge</strong>{{/if}}</div>
+      <div>{{issuedAt}}</div>
+    </div>
+    <div class="title">Certificate of Honor</div>
+    <div class="grid">
+      <div class="label">Request</div><div>{{requestLabel}}</div>
+      <div class="label">Payment Voucher</div><div>{{voucherNumber}}</div>
+      <div class="label">Staff Member</div><div>{{staffName}}</div>
+      <div class="label">Amount</div><div>{{amountLabel}}</div>
+    </div>
+    <div class="label">Declaration</div>
+    <div class="box">{{declaration}}</div>
+    <div class="label">Why receipts are unavailable</div>
+    <div class="box">{{reason}}</div>
+    <div class="signature">
+      {{#if signatureDataUri}}<img src="{{signatureDataUri}}" alt="Signature" style="height:42px; max-width:220px" />{{/if}}
+      <div>{{staffName}}</div>
+    </div>
+  </div>
+</body>
+</html>

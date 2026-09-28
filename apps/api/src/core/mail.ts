@@ -104,9 +104,9 @@ export class MailTemplatesService {
   private resolveTemplatesDir(): string {
     const candidates = [
       process.env.EMAIL_TEMPLATES_DIR,
-      join(__dirname, '../mail/templates'),
-      resolve(process.cwd(), 'src/mail/templates'),
-      resolve(process.cwd(), 'dist/mail/templates'),
+      join(__dirname, '../templates/emails'),
+      resolve(process.cwd(), 'src/templates/emails'),
+      resolve(process.cwd(), 'dist/templates/emails'),
     ].filter((path): path is string => Boolean(path));
 
     for (const candidate of candidates) {
@@ -120,7 +120,7 @@ export class MailTemplatesService {
     }
 
     this.logger.warn(`No mail template directory found; tried: ${candidates.join(', ')}`);
-    return candidates[0] ?? resolve(process.cwd(), 'src/mail/templates');
+    return candidates[0] ?? resolve(process.cwd(), 'src/templates/emails');
   }
 
   private escapeHTML(value: unknown): string {
