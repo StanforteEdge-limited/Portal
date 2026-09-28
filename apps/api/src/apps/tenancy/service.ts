@@ -4,7 +4,7 @@ import {
 } from '@stanforte/contract';
 import { randomUUID } from 'node:crypto';
 import * as bcrypt from 'bcryptjs';
-import { generateUniqueUsername, makeUsernameSeed } from '$core/utils/username';
+import { generateUniqueUsername, makeUsernameSeed } from '$core/utils';
 import { form, formField } from '$apps/hr/forms/model';
 import { policy } from '$apps/hr/policies/model';
 import { taxonomy, taxonomyTerm } from '$apps/hr/taxonomy/model';

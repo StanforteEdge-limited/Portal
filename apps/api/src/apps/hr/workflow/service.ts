@@ -3,7 +3,7 @@ import { AppDb, DbService } from '$core/db';
 import { groupUser } from '$apps/communication/groups/model';
 import { permission, role, rolePermission, userRole } from '$apps/identity/rbac/model';
 import { requestInstance, requestType } from '$apps/hr/requests/model';
-import { toBigInt } from '$core/utils/ids';
+import { toBigInt } from '$core/utils';
 import { BadRequestException, NotFoundException } from '$core/errors';
 import {
   WorkflowStepConfig,

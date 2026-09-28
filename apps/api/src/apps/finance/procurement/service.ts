@@ -10,10 +10,10 @@ import { DbService } from '$core/db';
 import { TenantContextService } from '$core/auth/tenant-context.service';
 import { WorkflowService } from '$apps/hr/workflow/service';
 import { NotificationsService } from '$apps/hr/notifications/service';
-import { MailService } from '$core/mail/mail.service';
-import { MailQueueService } from '$core/mail/mail-queue.service';
+import { MailService } from '$core/mail';
+import { MailQueueService } from '$core/mail';
 import { ProcurementDocumentFacadeService } from '$apps/finance/procurement/documents/service';
-import { toBigInt } from '$core/utils/ids';
+import { toBigInt } from '$core/utils';
 
 
 

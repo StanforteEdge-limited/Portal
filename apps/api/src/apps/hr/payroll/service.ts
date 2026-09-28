@@ -20,11 +20,11 @@ import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { PdfService } from '$core/pdf';
 import { existsSync, readFileSync } from 'node:fs';
 import { extname, resolve } from 'node:path';
-import { MailService } from '$core/mail/mail.service';
+import { MailService } from '$core/mail';
 import { StorageService } from '$apps/storage/service';
 import { DbService, type AppDb } from '$core/db';
 import { TenantContextService } from '$core/auth/tenant-context.service';
-import { toBigInt } from '$core/utils/ids';
+import { toBigInt } from '$core/utils';
 import { NotificationsService } from '$apps/hr/notifications/service';
 
 

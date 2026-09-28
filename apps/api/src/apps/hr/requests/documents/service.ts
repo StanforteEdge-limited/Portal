@@ -1,9 +1,9 @@
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import { DbService } from '$core/db';
 import { PdfService } from '$core/pdf';
-import { MailQueueService } from '$core/mail/mail-queue.service';
+import { MailQueueService } from '$core/mail';
 import { DeductionService } from '$apps/finance/accounting/deduction';
-import { toBigInt } from '$core/utils/ids';
+import { toBigInt } from '$core/utils';
 import { fileAsset } from '$apps/storage/model';
 import { profile } from '$apps/identity/users/model';
 import { group as teamGroup } from '$apps/communication/groups/model';

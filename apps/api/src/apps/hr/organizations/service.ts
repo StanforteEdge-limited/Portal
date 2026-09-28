@@ -5,7 +5,7 @@ import {
 import { SQL, and, desc, eq, ilike, or } from 'drizzle-orm';
 import { paginatedResponse } from '$core/pagination';
 import { DbService } from '$core/db';
-import { toBigInt } from '$core/utils/ids';
+import { toBigInt } from '$core/utils';
 
 import { organization, profileOrganization } from './model';
 import { tenantOrganization } from '$apps/tenancy/model';

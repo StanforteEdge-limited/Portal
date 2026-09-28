@@ -1,7 +1,7 @@
 import * as bcrypt from 'bcryptjs';
 import { SQL, and, asc, count, desc, eq, ilike, inArray, isNull, ne, or } from 'drizzle-orm';
 import { DbService } from '$core/db';
-import { toBigInt } from '$core/utils/ids';
+import { toBigInt } from '$core/utils';
 import type {
   AssignUserRoles,
   CreateUser,
@@ -11,10 +11,10 @@ import type {
   UpdateUser,
   UsersListQuery,
 } from '@stanforte/contract';
-import { randomToken, sha256 } from '$core/utils/crypto';
-import { MailService } from '$core/mail/mail.service';
-import { MailQueueService } from '$core/mail/mail-queue.service';
-import { generateUniqueUsername, makeUsernameSeed } from '$core/utils/username';
+import { randomToken, sha256 } from '$core/utils';
+import { MailService } from '$core/mail';
+import { MailQueueService } from '$core/mail';
+import { generateUniqueUsername, makeUsernameSeed } from '$core/utils';
 import { paginatedResponse } from '$core/pagination';
 import { TenantContext } from '$core/auth/tenant-context';
 import { TenantContextService } from '$core/auth/tenant-context.service';

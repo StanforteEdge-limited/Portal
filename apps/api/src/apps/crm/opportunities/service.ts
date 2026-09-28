@@ -5,7 +5,7 @@ import { SQL, and, asc, count, desc, eq, ilike, inArray } from 'drizzle-orm';
 import { TenantContextService } from '$core/auth/tenant-context.service';
 import { DbService } from '$core/db';
 import { paginatedResponse } from '$core/pagination';
-import { parseBigIntId } from '$core/utils/ids';
+import { parseBigIntId } from '$core/utils';
 import { profile } from '$apps/identity/users/model';
 import { crmAccount } from '../accounts/model';
 import { crmActivity } from '../activities/model';

@@ -1,6 +1,6 @@
 import { asc, eq, sql } from 'drizzle-orm';
 import { DbService } from '$core/db';
-import { toBigInt } from '$core/utils/ids';
+import { toBigInt } from '$core/utils';
 import { document } from '$apps/hr/documents/model';
 import { hrDesignation } from './model';
 import { BadRequestException, NotFoundException } from '$core/errors';

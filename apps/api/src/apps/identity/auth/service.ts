@@ -12,10 +12,10 @@ import {
   type Refresh,
   type ResetPassword,
 } from '@stanforte/contract';
-import { sha256, randomToken } from '$core/utils/crypto';
-import { toBigInt } from '$core/utils/ids';
-import { MailService } from '$core/mail/mail.service';
-import { MailQueueService } from '$core/mail/mail-queue.service';
+import { sha256, randomToken } from '$core/utils';
+import { toBigInt } from '$core/utils';
+import { MailService } from '$core/mail';
+import { MailQueueService } from '$core/mail';
 import {
   AUTH_ACCESS_COOKIE,
   AUTH_REFRESH_COOKIE,

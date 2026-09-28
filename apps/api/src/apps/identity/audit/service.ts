@@ -1,7 +1,7 @@
 import { and, asc, count, desc, eq, gte, ilike, inArray, lte, SQL } from 'drizzle-orm';
 import { DbService } from '$core/db';
 import { TenantContextService } from '$core/auth/tenant-context.service';
-import { parseBigIntId, toBigInt } from '$core/utils/ids';
+import { parseBigIntId, toBigInt } from '$core/utils';
 import { type CreateAuditEvent } from '@stanforte/contract';
 import { paginatedResponse } from '$core/pagination';
 import { auditEvent } from '$apps/identity/audit/model';

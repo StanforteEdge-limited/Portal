@@ -5,7 +5,7 @@
   "description": "StanforteEdge Portal API Fastify port",
   "scripts": {
     "dev": "tsx watch -r ./path-alias-register.cjs src/server.ts",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && node scripts/copy-mail-templates.cjs",
     "start": "node -r ./path-alias-register.cjs dist/server.js",
     "drizzle:generate": "drizzle-kit generate",
     "drizzle:migrate": "drizzle-kit migrate",

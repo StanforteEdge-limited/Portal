@@ -6,7 +6,7 @@ import {
 import { SQL, and, count, desc, eq } from 'drizzle-orm';
 import { DbService } from '$core/db';
 import { TenantContextService } from '$core/auth/tenant-context.service';
-import { parseBigIntId, toBigInt } from '$core/utils/ids';
+import { parseBigIntId, toBigInt } from '$core/utils';
 
 
 

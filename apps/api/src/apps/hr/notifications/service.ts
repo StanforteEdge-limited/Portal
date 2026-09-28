@@ -1,6 +1,6 @@
 import { SQL, and, asc, count, desc, eq } from 'drizzle-orm';
 import { DbService } from '$core/db';
-import { toBigInt } from '$core/utils/ids';
+import { toBigInt } from '$core/utils';
 import { TenantContextService } from '$core/auth/tenant-context.service';
 import { Queue } from 'bullmq';
 import { notification, notificationJob } from './model';

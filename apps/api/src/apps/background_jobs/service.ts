@@ -2,7 +2,7 @@ import { Queue } from 'bullmq';
 import { and, eq } from 'drizzle-orm';
 import { DbService } from '$core/db';
 import { TenantContextService } from '$core/auth/tenant-context.service';
-import { toBigInt } from '$core/utils/ids';
+import { toBigInt } from '$core/utils';
 import { backgroundJob } from './model';
 import { BadRequestException, NotFoundException } from '$core/errors';
 import { Logger } from '$core/logger';

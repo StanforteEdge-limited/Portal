@@ -10,7 +10,7 @@ import { DbService } from '$core/db';
 import { TenantContextService } from '$core/auth/tenant-context.service';
 import { paginatedResponse } from '$core/pagination';
 
-import { toBigInt } from '$core/utils/ids';
+import { toBigInt } from '$core/utils';
 import { form, formAssignment, formField } from './model';
 import { profile } from '$apps/identity/users/model';
 import { requestType } from '$apps/hr/requests/model';

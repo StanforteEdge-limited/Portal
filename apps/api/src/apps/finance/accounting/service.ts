@@ -26,8 +26,8 @@ import { DbService, type AppDb } from '$core/db';
 
 import Decimal from 'decimal.js';
 import { SQL, and, asc, count, eq, gte, ilike, lte, or, sql } from 'drizzle-orm';
-import { parseBigIntId, toBigInt } from '$core/utils/ids';
-import { isLeaveRequestType } from '$core/utils/leave-policy';
+import { parseBigIntId, toBigInt } from '$core/utils';
+import { isLeaveRequestType } from '$core/utils';
 import { PayrollService } from '$apps/hr/payroll/service';
 import { paginatedResponse } from '$core/pagination';
 
@@ -53,8 +53,8 @@ import { NotificationsService } from '$apps/hr/notifications/service';
 
 
 
-import { MailService } from '$core/mail/mail.service';
-import { MailQueueService } from '$core/mail/mail-queue.service';
+import { MailService } from '$core/mail';
+import { MailQueueService } from '$core/mail';
 import { PdfService } from '$core/pdf';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 import { TenantContextService } from '$core/auth/tenant-context.service';

@@ -3,7 +3,7 @@ import { DbService } from '$core/db';
 import { AuthService } from '$apps/identity/auth/service';
 import { TenantContextService } from '$core/auth/tenant-context.service';
 import { paginatedResponse } from '$core/pagination';
-import { parseBigIntId } from '$core/utils/ids';
+import { parseBigIntId } from '$core/utils';
 import { TenantContext } from '$core/auth/tenant-context';
 import type {
   AssignUserRoleIds,

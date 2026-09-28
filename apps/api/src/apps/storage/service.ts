@@ -4,7 +4,7 @@ import {
 import { SQL, and, asc, count, desc, eq, exists, ilike, inArray, isNotNull, isNull, like, ne, or, sql } from 'drizzle-orm';
 import { DbService } from '$core/db';
 import { TenantContextService } from '$core/auth/tenant-context.service';
-import { toBigInt } from '$core/utils/ids';
+import { toBigInt } from '$core/utils';
 import { paginatedResponse } from '$core/pagination';
 
 import { S3StorageService } from './s3-storage';
@@ -409,9 +409,7 @@ export class StorageService {
       publicUrl: file.publicUrl,
       usage,
     };
-  }
-
-  // â”€â”€ Folders â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  }  // Folders
 
   async listFolders(query: Record<string, any> = {}) {
     const conditions: SQL[] = this.storageFolderConditions();
@@ -555,9 +553,7 @@ export class StorageService {
       .delete(storageFolder)
       .where(and(eq(storageFolder.id, folder.id), ...this.storageFolderConditions()));
     return { success: true, id: folder.id.toString() };
-  }
-
-  // â”€â”€ Quota (based on the tenant's subscription plan) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  }  // Quota based on the tenant's subscription plan
 
   async currentUsageBytes(): Promise<number> {
     const rows = await this.db.client

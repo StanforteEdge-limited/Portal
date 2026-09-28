@@ -15,7 +15,7 @@ import { PDFDocument, StandardFonts } from 'pdf-lib';
 import { paginatedResponse } from '$core/pagination';
 import { DbService } from '$core/db';
 import { TenantContextService } from '$core/auth/tenant-context.service';
-import { toBigInt } from '$core/utils/ids';
+import { toBigInt } from '$core/utils';
 
 
 

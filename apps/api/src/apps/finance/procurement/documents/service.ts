@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { DbService } from '$core/db';
 import { PdfService } from '$core/pdf';
-import { MailQueueService } from '$core/mail/mail-queue.service';
+import { MailQueueService } from '$core/mail';
 import { DocumentGeneratorService } from '$core/document-generation/document-generator.service';
 import { profile } from '$apps/identity/users/model';
 import { organization } from '$apps/hr/organizations/model';

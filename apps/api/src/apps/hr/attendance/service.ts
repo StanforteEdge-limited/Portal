@@ -10,7 +10,7 @@ import { Decimal } from 'decimal.js';
 import { DbService } from '$core/db';
 import { TenantContextService } from '$core/auth/tenant-context.service';
 import { paginatedResponse } from '$core/pagination';
-import { toBigInt } from '$core/utils/ids';
+import { toBigInt } from '$core/utils';
 import { NotificationsService } from '$apps/hr/notifications/service';
 
 

@@ -1,9 +1,45 @@
+import { createHash, randomBytes } from 'crypto';
+import { BadRequestException } from '$core/errors';
+
 export type LeavePolicyScopeContext = {
   organization_id?: string;
   team_id?: string;
   staff_type?: string;
   user_id?: string;
 };
+
+export function sha256(value: string): string {
+  return createHash('sha256').update(value).digest('hex');
+}
+
+export function randomToken(bytes = 32): string {
+  return randomBytes(bytes).toString('hex');
+}
+
+export function toBigInt(value: string | number | bigint): bigint {
+  if (typeof value === 'bigint') return value;
+  if (typeof value === 'number') {
+    if (!Number.isInteger(value) || value < 0) {
+      throw new Error('Invalid numeric identifier');
+    }
+    return BigInt(value);
+  }
+  if (!value || value.trim().length === 0) {
+    throw new Error('Identifier is required');
+  }
+  if (!/^\d+$/.test(value)) {
+    throw new Error('Identifier must be a positive integer string');
+  }
+  return BigInt(value);
+}
+
+export function parseBigIntId(value: string | number | bigint, label: string): bigint {
+  try {
+    return toBigInt(value);
+  } catch {
+    throw new BadRequestException(`Invalid ${label}`);
+  }
+}
 
 export function objectSchema(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
@@ -50,4 +86,24 @@ export function policyScopeRank(scopeType: string) {
   if (scopeType === 'staff_type') return 3;
   if (scopeType === 'user') return 4;
   return 99;
+}
+
+export function makeUsernameSeed(firstName?: string | null, lastName?: string | null, fallback = 'user') {
+  const base = `${(firstName || '').trim()} ${(lastName || '').trim()}`.trim();
+  const raw = (base || fallback).toLowerCase();
+  const normalized = raw.replace(/[^a-z0-9]+/g, '.').replace(/^\.+|\.+$/g, '');
+  return normalized || fallback;
+}
+
+export async function generateUniqueUsername(
+  seed: string,
+  exists: (username: string) => Promise<boolean>,
+): Promise<string> {
+  const cleanSeed = seed.replace(/\.+/g, '.').replace(/^\.+|\.+$/g, '') || 'user';
+  if (!(await exists(cleanSeed))) return cleanSeed;
+  for (let i = 1; i <= 9999; i += 1) {
+    const candidate = `${cleanSeed}.${i}`;
+    if (!(await exists(candidate))) return candidate;
+  }
+  return `${cleanSeed}.${Date.now().toString().slice(-6)}`;
 }

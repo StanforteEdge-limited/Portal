@@ -10,7 +10,7 @@ import { SQL, and, asc, desc, eq, gte, ilike, inArray, lte, notInArray, or } fro
 import { DbService } from '$core/db';
 import { TenantContextService } from '$core/auth/tenant-context.service';
 import { paginatedResponse } from '$core/pagination';
-import { toBigInt } from '$core/utils/ids';
+import { toBigInt } from '$core/utils';
 
 import { NewPayrollRunTimesheetAllocation, payrollRun, payrollRunTimesheetAllocation, payrollWorker } from '$apps/hr/payroll/model';
 import { NewWorkItem, NewWorkLog, projectTimesheetEntry, sprint, teamGoal, teamKpi, teamObjective, workItem, workLog } from './model';

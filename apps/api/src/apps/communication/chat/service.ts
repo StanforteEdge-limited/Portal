@@ -6,7 +6,7 @@ import {
 import { SQL, and, asc, count, desc, eq, gt, inArray, lt } from 'drizzle-orm';
 import { DbService } from '$core/db';
 import { TenantContextService } from '$core/auth/tenant-context.service';
-import { parseBigIntId } from '$core/utils/ids';
+import { parseBigIntId } from '$core/utils';
 
 import { ChatRealtimeService } from './chat-realtime';
 import { chatConversation, chatConversationMember, chatMessage, chatMessageAttachment } from './model';

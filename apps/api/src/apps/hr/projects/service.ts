@@ -7,7 +7,7 @@ import { and, desc, eq, ilike, inArray, isNotNull, or, SQL } from 'drizzle-orm';
 import { DbService } from '$core/db';
 import { TenantContextService } from '$core/auth/tenant-context.service';
 import { paginatedResponse } from '$core/pagination';
-import { parseBigIntId, toBigInt } from '$core/utils/ids';
+import { parseBigIntId, toBigInt } from '$core/utils';
 import type { GroupUserRole } from '$apps/communication/groups/model';
 import { organization } from '$apps/hr/organizations/model';
 import { profile } from '$apps/identity/users/model';

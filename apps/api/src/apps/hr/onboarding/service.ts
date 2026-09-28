@@ -5,7 +5,7 @@ import {
 import { and, asc, count, desc, eq, inArray, isNull, or, SQL } from 'drizzle-orm';
 import { DbService } from '$core/db';
 import { TenantContextService } from '$core/auth/tenant-context.service';
-import { toBigInt } from '$core/utils/ids';
+import { toBigInt } from '$core/utils';
 import { organization, profileOrganization } from '$apps/hr/organizations/model';
 import { employeeMeta, employeeProfile, onboardingProgress } from '$apps/hr/employees/model';
 import { role, userRole } from '$apps/identity/rbac/model';
