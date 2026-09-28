@@ -545,10 +545,10 @@ export class EmployeesService {
 
     const role: GroupUserRole =
       dto.role === 'lead'
-        ? GroupUserRole.moderator
+        ? 'moderator'
         : dto.role === 'manager'
-          ? GroupUserRole.admin
-          : GroupUserRole.member;
+          ? 'admin'
+          : 'member';
 
     const [existingPrimary] = await this.db.client
       .select({ id: groupUser.id })
