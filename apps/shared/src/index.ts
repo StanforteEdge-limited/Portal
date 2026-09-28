@@ -38,8 +38,12 @@ export type {
   AdminUser,
   AdminUserRole,
   AdminUserDetail,
+  AdminUsersApi,
+  AdminUsersPage,
   AdminUsersResponse,
+  BulkCreateUsersResult,
   RoleOption,
+  UserRolesResponse,
 } from "./api/admin-users-api";
 export { createFinanceApi } from "./api/finance-api";
 export type {

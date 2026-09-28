@@ -1,0 +1,10 @@
+export * as analytics from './analytics';
+export * as backgroundJobs from './background_jobs';
+export * as communication from './communication';
+export * as crm from './crm';
+export * as finance from './finance';
+export * as hr from './hr';
+export * as identity from './identity';
+export * as platform from './platform';
+export * as storage from './storage';
+export * as tenancy from './tenancy';

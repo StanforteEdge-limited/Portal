@@ -9,6 +9,7 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
+    "@stanforte/contract": "workspace:*",
     "react": "^18.2.0"
   },
   "devDependencies": {

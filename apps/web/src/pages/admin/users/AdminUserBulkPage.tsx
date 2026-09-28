@@ -1,7 +1,8 @@
 import { useNavigate } from "react-router-dom";
+import type { CreateAdminUser } from "@stanforte/contract";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { AppShell } from "@/shared/components/layout/AppShell";
-import { useCachedQuery, httpRequest, resourceApi, adminUsersApi } from "@/shared/lib/core";
+import { useCachedQuery, resourceApi, adminUsersApi } from "@/shared/lib/core";
 import { buildAppNavigation, buildAppMobileNav } from "@/shared/navigation";
 import { getWorkspaceProfile } from "@/shared/api/workspace-api";
 import { BulkImportDashboard, type BulkColumnSchema } from "@/shared/components/feedback/BulkImportDashboard";
@@ -105,15 +106,8 @@ export default function AdminUserBulkPage() {
     }
   ];
 
-  const handleSubmitBulk = async (dataList: any[]) => {
-    return await httpRequest<{
-      successCount: number;
-      failedCount: number;
-      results: { identifier: string; status: "success" | "failed"; error?: string }[];
-    }>("/admin/users/bulk", {
-      method: "POST",
-      body: { users: dataList }
-    });
+  const handleSubmitBulk = async (dataList: CreateAdminUser[]) => {
+    return await adminUsersApi.createBulkUsers({ users: dataList });
   };
 
   const userName =

@@ -6,8 +6,10 @@
     "baseUrl": "src",
     "paths": {
       "$app/*": ["./*"],
-      "$modules/*": ["modules/*"],
-      "$common/*": ["common/*"]
+      "$apps/*": ["apps/*"],
+      "$core/*": ["core/*"],
+      "$plugins/*": ["plugins/*"],
+      "$config/*": ["config/*"]
     },
     "outDir": "dist",
     "rootDir": "src",
@@ -16,8 +18,6 @@
     "useUnknownInCatchVariables": false,
     "strictPropertyInitialization": false,
     "esModuleInterop": true,
-    "emitDecoratorMetadata": true,
-    "experimentalDecorators": true,
     "skipLibCheck": true,
     "isolatedModules": true
   },
