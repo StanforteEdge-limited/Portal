@@ -1,6 +1,5 @@
-import { Injectable } from '$core/nest-compat';
 import { and, eq } from 'drizzle-orm';
-import {  DbService  } from '$core/db';
+import { DbService } from '$core/db';
 import { systemVersion } from './model';
 
 export class VersionService {

@@ -1,18 +1,18 @@
 import {
   UpsertCrmActivity,
 } from '@stanforte/contract';
-import { Injectable, NotFoundException } from '$core/nest-compat';
 import { SQL, and, count, desc, eq, inArray, isNotNull, isNull } from 'drizzle-orm';
 import { TenantContextService } from '$core/auth/tenant-context.service';
-import {  DbService  } from '$core/db';
-import { paginatedResponse } from '$core/helpers/paginated-response';
+import { DbService } from '$core/db';
+import { paginatedResponse } from '$core/pagination';
 import { parseBigIntId } from '$core/utils/ids';
-import {  profile  } from '$apps/identity/users/model';
+import { profile } from '$apps/identity/users/model';
 import { crmAccount } from '../accounts/model';
 import { crmContact } from '../contacts/model';
 import { crmOpportunity } from '../opportunities/model';
 
 import { crmActivity } from './model';
+import { NotFoundException } from '$core/errors';
 
 export class CrmActivitiesService {
   constructor(

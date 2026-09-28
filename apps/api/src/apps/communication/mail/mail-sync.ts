@@ -1,9 +1,8 @@
 import {
   SyncResult,
 } from '@stanforte/contract';
-import { Injectable } from '$core/nest-compat';
 import { and, desc, eq } from 'drizzle-orm';
-import {  DbService  } from '$core/db';
+import { DbService } from '$core/db';
 import { MailAccountService } from './service';
 import { MailImapService } from './mail-imap';
 import { NotificationsService } from '$apps/hr/notifications/service';

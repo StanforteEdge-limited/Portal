@@ -1,9 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from '$core/nest-compat';
 import { asc, eq, sql } from 'drizzle-orm';
-import {  DbService  } from '$core/db';
+import { DbService } from '$core/db';
 import { toBigInt } from '$core/utils/ids';
-import {  document  } from '$apps/hr/documents/model';
+import { document } from '$apps/hr/documents/model';
 import { hrDesignation } from './model';
+import { BadRequestException, NotFoundException } from '$core/errors';
 
 export class DesignationsService {
   constructor(private readonly db: DbService) {}

@@ -1,13 +1,13 @@
-import { Injectable, BadRequestException } from '$core/nest-compat';
 import { and, asc, count, desc, eq, gte, ilike, inArray, lte, SQL } from 'drizzle-orm';
-import {  DbService  } from '$core/db';
+import { DbService } from '$core/db';
 import { TenantContextService } from '$core/auth/tenant-context.service';
 import { parseBigIntId, toBigInt } from '$core/utils/ids';
 import { type CreateAuditEvent } from '@stanforte/contract';
-import { paginatedResponse } from '$core/helpers/paginated-response';
-import {  auditEvent  } from '$apps/identity/audit/model';
-import {  emailLog  } from '$apps/communication/mail/model';
-import {  profile  } from '$apps/identity/users/model';
+import { paginatedResponse } from '$core/pagination';
+import { auditEvent } from '$apps/identity/audit/model';
+import { emailLog } from '$apps/communication/mail/model';
+import { profile } from '$apps/identity/users/model';
+import { BadRequestException } from '$core/errors';
 
 export class AuditService {
   constructor(

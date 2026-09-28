@@ -5,12 +5,11 @@ import {
   ReviewAttendanceException,
   UpsertOfficeLocation,
 } from '@stanforte/contract';
-import { BadRequestException, Injectable, Logger, NotFoundException } from '$core/nest-compat';
 import { SQL, and, asc, count, desc, eq, gte, ilike, inArray, isNull, lte, or } from 'drizzle-orm';
 import { Decimal } from 'decimal.js';
-import {  DbService  } from '$core/db';
+import { DbService } from '$core/db';
 import { TenantContextService } from '$core/auth/tenant-context.service';
-import { paginatedResponse } from '$core/helpers/paginated-response';
+import { paginatedResponse } from '$core/pagination';
 import { toBigInt } from '$core/utils/ids';
 import { NotificationsService } from '$apps/hr/notifications/service';
 
@@ -25,12 +24,14 @@ import {
   attendanceException,
   attendanceHoliday,
 } from './model';
-import {  employeeMeta, employeeProfile  } from '$apps/hr/employees/model';
-import {  officeLocation, organization, organizationOfficeLocation, profileOrganization  } from '$apps/hr/organizations/model';
-import {  profile  } from '$apps/identity/users/model';
-import {  group, groupUser  } from '$apps/communication/groups/model';
-import {  policy  } from '$apps/hr/policies/model';
-import {  requestInstance, requestType  } from '$apps/hr/requests/model';
+import { employeeMeta, employeeProfile } from '$apps/hr/employees/model';
+import { officeLocation, organization, organizationOfficeLocation, profileOrganization } from '$apps/hr/organizations/model';
+import { profile } from '$apps/identity/users/model';
+import { group, groupUser } from '$apps/communication/groups/model';
+import { policy } from '$apps/hr/policies/model';
+import { requestInstance, requestType } from '$apps/hr/requests/model';
+import { BadRequestException, NotFoundException } from '$core/errors';
+import { Logger } from '$core/logger';
 
 type AttendanceMode = 'onsite' | 'remote' | 'field';
 type GeofenceStatus = 'inside' | 'outside' | 'unknown' | 'not_applicable';

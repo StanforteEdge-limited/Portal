@@ -1,5 +1,5 @@
-import { Injectable, Logger } from '$core/nest-compat';
 import { Namespace } from 'socket.io';
+import { Logger } from '$core/logger';
 
 /**
  * Central emitter for the /chat namespace. The gateway registers the namespace

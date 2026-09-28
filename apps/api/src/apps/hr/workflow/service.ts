@@ -1,10 +1,10 @@
-import { BadRequestException, Injectable, NotFoundException } from '$core/nest-compat';
 import { and, asc, eq, gt, inArray } from 'drizzle-orm';
-import {  AppDb, DbService  } from '$core/db';
-import {  groupUser  } from '$apps/communication/groups/model';
-import {  permission, role, rolePermission, userRole  } from '$apps/identity/rbac/model';
-import {  requestInstance, requestType  } from '$apps/hr/requests/model';
+import { AppDb, DbService } from '$core/db';
+import { groupUser } from '$apps/communication/groups/model';
+import { permission, role, rolePermission, userRole } from '$apps/identity/rbac/model';
+import { requestInstance, requestType } from '$apps/hr/requests/model';
 import { toBigInt } from '$core/utils/ids';
+import { BadRequestException, NotFoundException } from '$core/errors';
 import {
   WorkflowStepConfig,
   getWorkflowApproverLabel,

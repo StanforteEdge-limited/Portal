@@ -1,7 +1,6 @@
 import {
   SendMailMessage,
 } from '@stanforte/contract';
-import { Injectable } from '$core/nest-compat';
 import nodemailer from 'nodemailer';
 import type { MailAccount } from './model';
 

@@ -1,5 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify';
-import { HealthRoutes } from '$apps/platform/health/routes';
+import { HealthRoutes } from '$apps/platform/health';
 import { AuthRoutes } from '$apps/identity/auth/routes';
 import { UsersRoutes } from '$apps/identity/users/routes';
 import { AdminRoutes } from '$apps/identity/users/admin.routes';

@@ -1,7 +1,7 @@
-import { NotFoundException } from '$core/nest-compat';
 import { RequestDocumentFacadeService } from './service';
 import { Document, DocumentIds, DocumentOutput } from '$core/document-generation/document.types';
 import { PaymentVoucherDocument } from './payment-voucher.document';
+import { NotFoundException } from '$core/errors';
 
 type PVWithAttachmentsContext = {
   voucher: any;

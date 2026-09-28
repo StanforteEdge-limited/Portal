@@ -3,19 +3,19 @@ import {
   CreateDocument,
   UpdateDocument,
 } from '@stanforte/contract';
-import { BadRequestException, Injectable, NotFoundException } from '$core/nest-compat';
 import { SQL, and, count, desc, eq, ilike, or } from 'drizzle-orm';
-import {  DbService  } from '$core/db';
+import { DbService } from '$core/db';
 import { TenantContextService } from '$core/auth/tenant-context.service';
 import { toBigInt } from '$core/utils/ids';
 
 
 
-import { paginatedResponse } from '$core/helpers/paginated-response';
+import { paginatedResponse } from '$core/pagination';
 import { document, documentAcknowledgement } from './model';
-import {  fileAsset  } from '$apps/storage/model';
-import {  organization  } from '$apps/hr/organizations/model';
-import {  profile  } from '$apps/identity/users/model';
+import { fileAsset } from '$apps/storage/model';
+import { organization } from '$apps/hr/organizations/model';
+import { profile } from '$apps/identity/users/model';
+import { BadRequestException, NotFoundException } from '$core/errors';
 
 export class DocumentsService {
   constructor(

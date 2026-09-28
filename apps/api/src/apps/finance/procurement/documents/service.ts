@@ -1,13 +1,12 @@
-import { Injectable } from '$core/nest-compat';
 import { eq } from 'drizzle-orm';
-import {  DbService  } from '$core/db';
-import { PdfService } from '$core/pdf/pdf.service';
+import { DbService } from '$core/db';
+import { PdfService } from '$core/pdf';
 import { MailQueueService } from '$core/mail/mail-queue.service';
 import { DocumentGeneratorService } from '$core/document-generation/document-generator.service';
-import {  profile  } from '$apps/identity/users/model';
-import {  organization  } from '$apps/hr/organizations/model';
-import {  financeContact  } from '$apps/finance/accounting/model';
-import {  procurementOrder  } from '$apps/finance/procurement/model';
+import { profile } from '$apps/identity/users/model';
+import { organization } from '$apps/hr/organizations/model';
+import { financeContact } from '$apps/finance/accounting/model';
+import { procurementOrder } from '$apps/finance/procurement/model';
 
 export class ProcurementDocumentFacadeService extends DocumentGeneratorService {
   constructor(

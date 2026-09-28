@@ -3,14 +3,14 @@ import {
   CreateLeaveType,
   ReviewLeaveRequest,
 } from '@stanforte/contract';
-import { BadRequestException, Injectable, NotFoundException } from '$core/nest-compat';
 import { and, asc, desc, eq, gte, inArray, isNull, lte, or, SQL } from 'drizzle-orm';
 import { TenantContext } from '$core/auth/tenant-context';
-import {  DbService  } from '$core/db';
+import { DbService } from '$core/db';
 import { NotificationsService } from '$apps/hr/notifications/service';
-import {  leaveBalanceLedger  } from '$apps/hr/employees/model';
+import { leaveBalanceLedger } from '$apps/hr/employees/model';
 
 import { leaveRequest, leaveType } from './model';
+import { BadRequestException, NotFoundException } from '$core/errors';
 
 export class LeaveService {
   constructor(

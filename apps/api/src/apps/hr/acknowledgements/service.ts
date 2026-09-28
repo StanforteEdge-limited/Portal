@@ -3,18 +3,18 @@ import {
   ListAcknowledgements,
   RevokeAcknowledgement,
 } from '@stanforte/contract';
-import { BadRequestException, Injectable, NotFoundException } from '$core/nest-compat';
 import { SQL, and, count, desc, eq } from 'drizzle-orm';
-import {  DbService  } from '$core/db';
+import { DbService } from '$core/db';
 import { TenantContextService } from '$core/auth/tenant-context.service';
 import { parseBigIntId, toBigInt } from '$core/utils/ids';
 
 
 
-import { paginatedResponse } from '$core/helpers/paginated-response';
+import { paginatedResponse } from '$core/pagination';
 import { acknowledgement, NewAcknowledgement } from './model';
-import {  profile  } from '$apps/identity/users/model';
-import {  formSubmission  } from '$apps/hr/forms/model';
+import { profile } from '$apps/identity/users/model';
+import { formSubmission } from '$apps/hr/forms/model';
+import { BadRequestException, NotFoundException } from '$core/errors';
 
 export class AcknowledgementsService {
   constructor(

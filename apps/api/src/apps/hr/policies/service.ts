@@ -3,17 +3,17 @@ import {
   ResolvePolicy,
   UpdatePolicy,
 } from '@stanforte/contract';
-import { BadRequestException, Injectable, NotFoundException } from '$core/nest-compat';
 import { SQL, and, asc, count, desc, eq, gte, inArray, isNull, lte, or } from 'drizzle-orm';
-import {  DbService  } from '$core/db';
+import { DbService } from '$core/db';
 import { TenantContextService } from '$core/auth/tenant-context.service';
 import { toBigInt } from '$core/utils/ids';
 
 
 
-import { paginatedResponse } from '$core/helpers/paginated-response';
+import { paginatedResponse } from '$core/pagination';
 import { NewPolicy, Policy, policy } from './model';
-import {  document  } from '$apps/hr/documents/model';
+import { document } from '$apps/hr/documents/model';
+import { BadRequestException, NotFoundException } from '$core/errors';
 
 type PolicyContext = {
   organization_id?: string;

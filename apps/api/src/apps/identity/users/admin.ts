@@ -1,18 +1,18 @@
-import { BadRequestException, Injectable, NotFoundException } from '$core/nest-compat';
 import * as bcrypt from 'bcryptjs';
 import { SQL, and, count, desc, eq, exists, ilike, inArray, isNull, or, sql } from 'drizzle-orm';
-import {  DbService  } from '$core/db';
+import { DbService } from '$core/db';
 import { TenantContextService } from '$core/auth/tenant-context.service';
 import { parseBigIntId, toBigInt } from '$core/utils/ids';
 import type { CreateAdminUser, UpdateAdminUser, UpdateUserStatus, UsersListQuery } from '@stanforte/contract';
 import { generateUniqueUsername, makeUsernameSeed } from '$core/utils/username';
-import { paginatedResponse } from '$core/helpers/paginated-response';
+import { paginatedResponse } from '$core/pagination';
 import { UsersService } from '$apps/identity/users/service';
 import { TenantContext } from '$core/auth/tenant-context';
-import {  profile, type Profile  } from '$apps/identity/users/model';
-import {  organization, profileOrganization  } from '$apps/hr/organizations/model';
-import {  tenantMembership, tenantOrganization  } from '$apps/tenancy/model';
-import {  role as roleTable, userRole as userRoleTable  } from '$apps/identity/rbac/model';
+import { profile, type Profile } from '$apps/identity/users/model';
+import { organization, profileOrganization } from '$apps/hr/organizations/model';
+import { tenantMembership, tenantOrganization } from '$apps/tenancy/model';
+import { role as roleTable, userRole as userRoleTable } from '$apps/identity/rbac/model';
+import { BadRequestException, NotFoundException } from '$core/errors';
 
 export class AdminService {
   constructor(

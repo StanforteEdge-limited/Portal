@@ -6,30 +6,26 @@ import {
   StatutoryDeductionsQuery,
   RemitStatutoryDeductions,
 } from '@stanforte/contract';
-import {
-  BadRequestException,
-  Injectable,
-  Logger,
-  NotFoundException,
-} from '$core/nest-compat';
 import { Decimal } from 'decimal.js';
 import { SQL, and, asc, count, desc, eq, exists, gte, ilike, inArray, isNull, like, lt, lte, or, sql } from 'drizzle-orm';
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { extname, resolve } from 'node:path';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
-import { paginatedResponse } from '$core/helpers/paginated-response';
-import {  DbService  } from '$core/db';
+import { paginatedResponse } from '$core/pagination';
+import { DbService } from '$core/db';
 import { TenantContextService } from '$core/auth/tenant-context.service';
 import { toBigInt } from '$core/utils/ids';
 
 
 
 
-import { PdfService } from '$core/pdf/pdf.service';
-import {  fileAsset  } from '$apps/storage/model';
-import {  profile  } from '$apps/identity/users/model';
-import {  requestInstance  } from '$apps/hr/requests/model';
+import { PdfService } from '$core/pdf';
+import { fileAsset } from '$apps/storage/model';
+import { profile } from '$apps/identity/users/model';
+import { requestInstance } from '$apps/hr/requests/model';
+import { BadRequestException, NotFoundException } from '$core/errors';
+import { Logger } from '$core/logger';
 import {
   financeAccount,
   financeChartAccount,

@@ -1,8 +1,6 @@
-import { Injectable } from '$core/nest-compat';
-import { CacheLike } from '$core/cache/cache.service';
-import { Inject } from '$core/nest-compat';
+import { CacheLike } from '$core/cache';
 import { desc, eq, and } from 'drizzle-orm';
-import {  DbService  } from '$core/db';
+import { DbService } from '$core/db';
 import { TenantContext } from '$core/auth/tenant-context';
 import { analyticsEvent } from './model';
 

@@ -1,12 +1,13 @@
-import { BadRequestException, Injectable, Logger } from '$core/nest-compat';
 import { SQL, and, asc, count, desc, eq } from 'drizzle-orm';
-import {  DbService  } from '$core/db';
+import { DbService } from '$core/db';
 import { toBigInt } from '$core/utils/ids';
 import { TenantContextService } from '$core/auth/tenant-context.service';
 import { Queue } from 'bullmq';
 import { notification, notificationJob } from './model';
-import {  profile  } from '$apps/identity/users/model';
-import {  tenantMembership  } from '$apps/tenancy/model';
+import { profile } from '$apps/identity/users/model';
+import { tenantMembership } from '$apps/tenancy/model';
+import { BadRequestException } from '$core/errors';
+import { Logger } from '$core/logger';
 
 type NotificationInput = {
   userId: string | bigint;

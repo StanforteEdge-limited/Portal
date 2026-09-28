@@ -2,14 +2,14 @@ import {
   ReplaceCrmPipelineStages,
   UpsertCrmPipeline,
 } from '@stanforte/contract';
-import { Injectable, NotFoundException } from '$core/nest-compat';
 import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 import { TenantContextService } from '$core/auth/tenant-context.service';
-import {  DbService  } from '$core/db';
+import { DbService } from '$core/db';
 import { parseBigIntId } from '$core/utils/ids';
 import { crmOpportunity } from '../opportunities/model';
 
 import { crmPipeline, crmPipelineStage } from './model';
+import { NotFoundException } from '$core/errors';
 
 export class CrmPipelinesService {
   constructor(

@@ -1,13 +1,13 @@
 import { JwtService } from '$core/auth/jwt.service';
 import { DbService } from '$core/db';
 import { TenantContextService } from '$core/auth/tenant-context.service';
-import { DistributedLockService } from '$core/locks/distributed-lock.service';
+import { DistributedLockService } from '$core/locks';
 import { MailService } from '$core/mail/mail.service';
 import { MailTemplatesService } from '$core/mail/mail-templates.service';
 import { MailQueueService } from '$core/mail/mail-queue.service';
-import { PdfService } from '$core/pdf/pdf.service';
-import { CacheService } from '$core/cache/cache.service';
-import { QueueRegistry } from '$core/queues/queue-registry';
+import { PdfService } from '$core/pdf';
+import { CacheService } from '$core/cache';
+import { QueueRegistry } from '$core/queues';
 import type { Redis } from 'ioredis';
 import { config } from '../config';
 
@@ -58,7 +58,7 @@ import { MailCryptoService } from '$apps/communication/mail/mail-crypto';
 import { MailAccountService } from '$apps/communication/mail/service';
 
 import { TenancyService } from '$apps/tenancy/service';
-import { HealthService } from '$apps/platform/health/service';
+import { HealthService } from '$apps/platform/health';
 import { VersionService } from '$apps/platform/version/service';
 import { PaystackService } from '$apps/platform/billing/paystack';
 import { BillingService } from '$apps/platform/billing/service';

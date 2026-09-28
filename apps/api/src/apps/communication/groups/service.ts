@@ -5,18 +5,18 @@ import {
   SetGroupOrganizations,
   UpdateTeam,
 } from '@stanforte/contract';
-import { BadRequestException, Injectable, NotFoundException } from '$core/nest-compat';
 import { and, asc, desc, eq, ilike, inArray, or, SQL } from 'drizzle-orm';
-import {  DbService  } from '$core/db';
+import { DbService } from '$core/db';
 import { TenantContextService } from '$core/auth/tenant-context.service';
-import { paginatedResponse } from '$core/helpers/paginated-response';
+import { paginatedResponse } from '$core/pagination';
 import { parseBigIntId, toBigInt } from '$core/utils/ids';
 import type { AppDb } from '$core/db';
 import type { GroupUserRole } from './model';
-import {  organization  } from '$apps/hr/organizations/model';
-import {  profile  } from '$apps/identity/users/model';
+import { organization } from '$apps/hr/organizations/model';
+import { profile } from '$apps/identity/users/model';
 
 import { group, groupOrganization, groupUser, groupUserOrganizationScope } from './model';
+import { BadRequestException, NotFoundException } from '$core/errors';
 
 export class GroupsService {
 constructor(

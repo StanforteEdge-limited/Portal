@@ -12,18 +12,17 @@ import {
   UpsertPayrollTaxTable,
   UpsertPayrollWorker,
 } from '@stanforte/contract';
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '$core/nest-compat';
 import Decimal from 'decimal.js';
 import type { SQL } from 'drizzle-orm';
 import { and, asc, count, desc, eq, gt, gte, ilike, inArray, isNull, like, lte, not, or } from 'drizzle-orm';
 import JSZip from 'jszip';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
-import { PdfService } from '$core/pdf/pdf.service';
+import { PdfService } from '$core/pdf';
 import { existsSync, readFileSync } from 'node:fs';
 import { extname, resolve } from 'node:path';
 import { MailService } from '$core/mail/mail.service';
 import { StorageService } from '$apps/storage/service';
-import {  DbService, type AppDb  } from '$core/db';
+import { DbService, type AppDb } from '$core/db';
 import { TenantContextService } from '$core/auth/tenant-context.service';
 import { toBigInt } from '$core/utils/ids';
 import { NotificationsService } from '$apps/hr/notifications/service';
@@ -38,7 +37,7 @@ import { NotificationsService } from '$apps/hr/notifications/service';
 
 
 
-import { paginatedResponse } from '$core/helpers/paginated-response';
+import { paginatedResponse } from '$core/pagination';
 import {
   payrollAccountingPosting,
   payrollComponent,
@@ -62,11 +61,11 @@ import {
   payrollWorkerProfile,
   payrollWorkerProfileComponent,
 } from './model';
-import {  group  } from '$apps/communication/groups/model';
-import {  organization  } from '$apps/hr/organizations/model';
-import {  projectTimesheetEntry  } from '$apps/hr/tasks/model';
-import {  profile  } from '$apps/identity/users/model';
-import {  notification  } from '$apps/hr/notifications/model';
+import { group } from '$apps/communication/groups/model';
+import { organization } from '$apps/hr/organizations/model';
+import { projectTimesheetEntry } from '$apps/hr/tasks/model';
+import { profile } from '$apps/identity/users/model';
+import { notification } from '$apps/hr/notifications/model';
 import { 
   financeAccount,
   financeChartAccount,
@@ -77,6 +76,7 @@ import {
   financeReportingPeriod,
  } from '$apps/finance/accounting/model';
 import type { NewPayrollComponent } from './model';
+import { BadRequestException, ConflictException, NotFoundException } from '$core/errors';
 
 type TxClient = Parameters<Parameters<AppDb['transaction']>[0]>[0];
 

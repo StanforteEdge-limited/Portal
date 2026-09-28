@@ -1,15 +1,14 @@
-import { Injectable, NotFoundException } from '$core/nest-compat';
 import { and, asc, eq, inArray } from 'drizzle-orm';
-import {  DbService  } from '$core/db';
-import { PdfService } from '$core/pdf/pdf.service';
+import { DbService } from '$core/db';
+import { PdfService } from '$core/pdf';
 import { MailQueueService } from '$core/mail/mail-queue.service';
 import { DeductionService } from '$apps/finance/accounting/deduction';
 import { toBigInt } from '$core/utils/ids';
-import {  fileAsset  } from '$apps/storage/model';
-import {  profile  } from '$apps/identity/users/model';
-import {  group as teamGroup  } from '$apps/communication/groups/model';
-import {  organization  } from '$apps/hr/organizations/model';
-import {  taxonomyTerm  } from '$apps/hr/taxonomy/model';
+import { fileAsset } from '$apps/storage/model';
+import { profile } from '$apps/identity/users/model';
+import { group as teamGroup } from '$apps/communication/groups/model';
+import { organization } from '$apps/hr/organizations/model';
+import { taxonomyTerm } from '$apps/hr/taxonomy/model';
 import { 
   requestCategory,
   requestGroup,
@@ -40,6 +39,7 @@ import {
  } from '$apps/finance/accounting/model';
 import { DocumentGeneratorService } from '$core/document-generation/document-generator.service';
 import { DocumentIds, DocumentOutput, ThreadEntry, RequestThread, Signatories, ApprovalSummary, FullPaymentVoucher, RequestRemittanceAllocationSummary } from '$core/document-generation/document.types';
+import { NotFoundException } from '$core/errors';
 
 export class RequestDocumentFacadeService extends DocumentGeneratorService {
   constructor(

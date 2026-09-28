@@ -22,15 +22,14 @@ import {
   UpsertFinanceItem,
   CreateFinanceExpense,
 } from '@stanforte/contract';
-import {  DbService, type AppDb  } from '$core/db';
+import { DbService, type AppDb } from '$core/db';
 
 import Decimal from 'decimal.js';
 import { SQL, and, asc, count, eq, gte, ilike, lte, or, sql } from 'drizzle-orm';
-import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '$core/nest-compat';
 import { parseBigIntId, toBigInt } from '$core/utils/ids';
 import { isLeaveRequestType } from '$core/utils/leave-policy';
 import { PayrollService } from '$apps/hr/payroll/service';
-import { paginatedResponse } from '$core/helpers/paginated-response';
+import { paginatedResponse } from '$core/pagination';
 
 import { NotificationsService } from '$apps/hr/notifications/service';
 
@@ -56,9 +55,11 @@ import { NotificationsService } from '$apps/hr/notifications/service';
 
 import { MailService } from '$core/mail/mail.service';
 import { MailQueueService } from '$core/mail/mail-queue.service';
-import { PdfService } from '$core/pdf/pdf.service';
+import { PdfService } from '$core/pdf';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 import { TenantContextService } from '$core/auth/tenant-context.service';
+import { BadRequestException, ForbiddenException, NotFoundException } from '$core/errors';
+import { Logger } from '$core/logger';
 import { 
   financeChartAccount,
   financeFund,

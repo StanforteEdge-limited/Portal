@@ -5,9 +5,8 @@ import {
   ConfirmGrn,
   AttachProcurementFile,
 } from '@stanforte/contract';
-import { BadRequestException, Injectable, NotFoundException } from '$core/nest-compat';
 import { SQL, and, asc, count, desc, eq, inArray, notExists, or } from 'drizzle-orm';
-import {  DbService  } from '$core/db';
+import { DbService } from '$core/db';
 import { TenantContextService } from '$core/auth/tenant-context.service';
 import { WorkflowService } from '$apps/hr/workflow/service';
 import { NotificationsService } from '$apps/hr/notifications/service';
@@ -22,11 +21,12 @@ import { toBigInt } from '$core/utils/ids';
 
 import { PurchaseOrderDocument } from '$apps/finance/procurement/documents/purchase-order.document';
 import { procurementAttachment, procurementCase, procurementGRN, procurementOrder, procurementRequisition } from './model';
-import {  fileAsset  } from '$apps/storage/model';
-import {  financeContact, financeContactPerson  } from '$apps/finance/accounting/model';
-import {  profile  } from '$apps/identity/users/model';
-import {  requestInstance, requestType  } from '$apps/hr/requests/model';
-import {  permission, role, rolePermission, userRole  } from '$apps/identity/rbac/model';
+import { fileAsset } from '$apps/storage/model';
+import { financeContact, financeContactPerson } from '$apps/finance/accounting/model';
+import { profile } from '$apps/identity/users/model';
+import { requestInstance, requestType } from '$apps/hr/requests/model';
+import { permission, role, rolePermission, userRole } from '$apps/identity/rbac/model';
+import { BadRequestException, NotFoundException } from '$core/errors';
 
 export class ProcurementService {
   constructor(

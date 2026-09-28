@@ -6,11 +6,10 @@ import {
   UpsertTagTerm,
   ReplaceEntityTags,
 } from '@stanforte/contract';
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '$core/nest-compat';
 import { SQL, and, asc, count, eq, ilike, inArray, isNull, or } from 'drizzle-orm';
-import {  DbService  } from '$core/db';
+import { DbService } from '$core/db';
 import { TenantContextService } from '$core/auth/tenant-context.service';
-import { paginatedResponse } from '$core/helpers/paginated-response';
+import { paginatedResponse } from '$core/pagination';
 
 
 
@@ -18,8 +17,9 @@ import { paginatedResponse } from '$core/helpers/paginated-response';
 
 
 import { taxonomy, taxonomyTagAssignment, taxonomyTerm } from './model';
-import {  form, formField  } from '$apps/hr/forms/model';
-import {  requestCategory, requestGroup, requestType  } from '$apps/hr/requests/model';
+import { form, formField } from '$apps/hr/forms/model';
+import { requestCategory, requestGroup, requestType } from '$apps/hr/requests/model';
+import { BadRequestException, ConflictException, NotFoundException } from '$core/errors';
 
 export class TaxonomyService {
   constructor(

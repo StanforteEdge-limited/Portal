@@ -1,7 +1,6 @@
-import { BadRequestException, Injectable, NotFoundException } from '$core/nest-compat';
 import * as bcrypt from 'bcryptjs';
 import { SQL, and, asc, count, desc, eq, ilike, inArray, isNull, ne, or } from 'drizzle-orm';
-import {  DbService  } from '$core/db';
+import { DbService } from '$core/db';
 import { toBigInt } from '$core/utils/ids';
 import type {
   AssignUserRoles,
@@ -16,18 +15,19 @@ import { randomToken, sha256 } from '$core/utils/crypto';
 import { MailService } from '$core/mail/mail.service';
 import { MailQueueService } from '$core/mail/mail-queue.service';
 import { generateUniqueUsername, makeUsernameSeed } from '$core/utils/username';
-import { paginatedResponse } from '$core/helpers/paginated-response';
+import { paginatedResponse } from '$core/pagination';
 import { TenantContext } from '$core/auth/tenant-context';
 import { TenantContextService } from '$core/auth/tenant-context.service';
-import {  profile  } from '$apps/identity/users/model';
-import {  organization as organizationTable, profileOrganization  } from '$apps/hr/organizations/model';
-import {  tenantMembership, tenantOrganization  } from '$apps/tenancy/model';
-import {  role as roleTable, userRole as userRoleTable  } from '$apps/identity/rbac/model';
-import {  group as groupTable, groupUser  } from '$apps/communication/groups/model';
-import {  project as projectTable, projectMember  } from '$apps/hr/projects/model';
-import {  employeeProfile, employeeMeta, onboardingProgress  } from '$apps/hr/employees/model';
-import {  fileAsset  } from '$apps/storage/model';
-import {  token as tokenTable  } from '$apps/identity/auth/model';
+import { profile } from '$apps/identity/users/model';
+import { organization as organizationTable, profileOrganization } from '$apps/hr/organizations/model';
+import { tenantMembership, tenantOrganization } from '$apps/tenancy/model';
+import { role as roleTable, userRole as userRoleTable } from '$apps/identity/rbac/model';
+import { group as groupTable, groupUser } from '$apps/communication/groups/model';
+import { project as projectTable, projectMember } from '$apps/hr/projects/model';
+import { employeeProfile, employeeMeta, onboardingProgress } from '$apps/hr/employees/model';
+import { fileAsset } from '$apps/storage/model';
+import { token as tokenTable } from '$apps/identity/auth/model';
+import { BadRequestException, NotFoundException } from '$core/errors';
 
 export class UsersService {
   constructor(

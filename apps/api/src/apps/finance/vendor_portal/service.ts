@@ -2,15 +2,15 @@ import {
   VendorLogin,
   VendorAcknowledge,
 } from '@stanforte/contract';
-import { Injectable, UnauthorizedException, NotFoundException } from '$core/nest-compat';
 import { JwtService } from '$core/auth/jwt.service';
 import { and, asc, desc, eq, ne } from 'drizzle-orm';
-import {  DbService  } from '$core/db';
+import { DbService } from '$core/db';
 import * as bcrypt from 'bcryptjs';
 
-import {  fileAsset  } from '$apps/storage/model';
-import {  procurementAttachment, procurementOrder  } from '$apps/finance/procurement/model';
+import { fileAsset } from '$apps/storage/model';
+import { procurementAttachment, procurementOrder } from '$apps/finance/procurement/model';
 import { vendorPortalUser } from './model';
+import { NotFoundException, UnauthorizedException } from '$core/errors';
 
 export class VendorPortalService {
   constructor(

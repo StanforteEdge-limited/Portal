@@ -1,6 +1,8 @@
+import type { FastifyPluginAsync } from 'fastify';
 import { sql } from 'drizzle-orm';
-import {  DbService  } from '$core/db';
-import { DistributedLockService } from '$core/locks/distributed-lock.service';
+import { DbService } from '$core/db';
+import { DistributedLockService } from '$core/locks';
+import { sendRaw } from '$plugins/http';
 
 export interface HealthCheck {
   status: 'ok' | 'degraded' | 'error';
@@ -41,3 +43,12 @@ export class HealthService {
     };
   }
 }
+
+export const HealthRoutes: FastifyPluginAsync = async (fastify) => {
+  fastify.get('/', async () => ({ status: 'ok' }));
+
+  fastify.get('/ready', async (_request, reply) => {
+    const report = await fastify.container.health.ready();
+    return sendRaw(reply, report, report.status === 'ok' ? 200 : 503);
+  });
+};

@@ -14,9 +14,8 @@ import {
   CreateManualRequest,
   DownloadRequest,
 } from '@stanforte/contract';
-import { Injectable, BadRequestException, NotFoundException, ConflictException, Optional, UnauthorizedException } from '$core/nest-compat';
 import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, lte, ne, or, sql, SQL } from 'drizzle-orm';
-import {  DbService  } from '$core/db';
+import { DbService } from '$core/db';
 import { TenantContextService } from '$core/auth/tenant-context.service';
 import { RequestDocumentFacadeService } from '$apps/hr/requests/documents/service';
 import { DocumentIds } from '$core/document-generation/document.types';
@@ -27,7 +26,7 @@ import { RequestWithAttachmentsDocument } from '$apps/hr/requests/documents/requ
 import { FullPackageDocument } from '$apps/hr/requests/documents/full-package.document';
 import { FullDocumentDocument } from '$apps/hr/requests/documents/full-document.document';
 import { PVWithAttachmentsDocument } from '$apps/hr/requests/documents/pv-with-attachments.document';
-import { paginatedResponse } from '$core/helpers/paginated-response';
+import { paginatedResponse } from '$core/pagination';
 
 
 
@@ -49,7 +48,7 @@ import { normalizeWorkflowStepApprover } from '$apps/hr/workflow/workflow-approv
 import { FormsService } from '$apps/hr/forms/service';
 import { NotificationsService } from '$apps/hr/notifications/service';
 import { requestCategory, requestGroup, requestInstance, requestItem, requestItemFile, requestType } from './model';
-import {  workflow, workflowHistory, workflowInstance, workflowStep, workflowStepApprover  } from '$apps/hr/workflow/model';
+import { workflow, workflowHistory, workflowInstance, workflowStep, workflowStepApprover } from '$apps/hr/workflow/model';
 import { 
   financeAccount,
   financeBudget,
@@ -61,14 +60,15 @@ import {
   financePVDeduction,
   financeRequestDeduction,
  } from '$apps/finance/accounting/model';
-import {  employeeProfile, leaveBalanceLedger  } from '$apps/hr/employees/model';
-import {  policy  } from '$apps/hr/policies/model';
-import {  group, groupUser  } from '$apps/communication/groups/model';
-import {  organization  } from '$apps/hr/organizations/model';
-import {  profile  } from '$apps/identity/users/model';
-import {  permission, role, rolePermission, userRole  } from '$apps/identity/rbac/model';
-import {  fileAsset  } from '$apps/storage/model';
-import {  tenantMembership, tenantOrganization  } from '$apps/tenancy/model';
+import { employeeProfile, leaveBalanceLedger } from '$apps/hr/employees/model';
+import { policy } from '$apps/hr/policies/model';
+import { group, groupUser } from '$apps/communication/groups/model';
+import { organization } from '$apps/hr/organizations/model';
+import { profile } from '$apps/identity/users/model';
+import { permission, role, rolePermission, userRole } from '$apps/identity/rbac/model';
+import { fileAsset } from '$apps/storage/model';
+import { tenantMembership, tenantOrganization } from '$apps/tenancy/model';
+import { BadRequestException, ConflictException, NotFoundException, UnauthorizedException } from '$core/errors';
 
 const MANUAL_REQUEST_ID_MIN = BigInt(1);
 const MANUAL_REQUEST_ID_MAX = BigInt(99999);

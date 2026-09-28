@@ -3,17 +3,17 @@ import {
   SendChatMessage,
   UpdateChatMember,
 } from '@stanforte/contract';
-import { BadRequestException, Injectable, NotFoundException } from '$core/nest-compat';
 import { SQL, and, asc, count, desc, eq, gt, inArray, lt } from 'drizzle-orm';
-import {  DbService  } from '$core/db';
+import { DbService } from '$core/db';
 import { TenantContextService } from '$core/auth/tenant-context.service';
 import { parseBigIntId } from '$core/utils/ids';
 
 import { ChatRealtimeService } from './chat-realtime';
 import { chatConversation, chatConversationMember, chatMessage, chatMessageAttachment } from './model';
-import {  profile  } from '$apps/identity/users/model';
-import {  fileAsset  } from '$apps/storage/model';
-import {  tenantMembership  } from '$apps/tenancy/model';
+import { profile } from '$apps/identity/users/model';
+import { fileAsset } from '$apps/storage/model';
+import { tenantMembership } from '$apps/tenancy/model';
+import { BadRequestException, NotFoundException } from '$core/errors';
 
 const PROFILE_SELECT = {
   id: profile.id,

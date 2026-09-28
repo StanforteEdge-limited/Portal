@@ -1,8 +1,8 @@
 import nodemailer from 'nodemailer';
-import {  DbService  } from '$core/db';
+import { DbService } from '$core/db';
 import { MailTemplatesService } from './mail-templates.service';
 import { toBigInt } from '$core/utils/ids';
-import {  emailLog  } from '$apps/communication/mail/model';
+import { emailLog } from '$apps/communication/mail/model';
 
 export type SendMailInput = {
   to: string;

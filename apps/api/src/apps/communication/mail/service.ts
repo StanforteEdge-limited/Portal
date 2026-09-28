@@ -1,9 +1,9 @@
-import { Injectable, NotFoundException, ForbiddenException } from '$core/nest-compat';
 import { and, asc, eq, isNotNull } from 'drizzle-orm';
-import {  DbService  } from '$core/db';
+import { DbService } from '$core/db';
 import { MailCryptoService } from './mail-crypto';
 import { google } from 'googleapis';
 import { MailAccount, mailAccount } from './model';
+import { ForbiddenException, NotFoundException } from '$core/errors';
 
 const GOOGLE_SCOPES = ['https://mail.google.com/', 'email', 'profile'];
 

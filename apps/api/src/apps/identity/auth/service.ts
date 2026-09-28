@@ -1,8 +1,7 @@
-import { Injectable, NotFoundException, UnauthorizedException, BadRequestException } from '$core/nest-compat';
 import { JwtService } from '$core/auth/jwt.service';
 import * as bcrypt from 'bcryptjs';
 import { and, asc, eq, ilike, inArray, isNull, or } from 'drizzle-orm';
-import {  DbService  } from '$core/db';
+import { DbService } from '$core/db';
 import {
   type AcceptInvite,
   type AuthStatusResponse,
@@ -24,13 +23,14 @@ import {
   clearAuthCookieOptions,
   parseCookieHeader
 } from '$core/auth/cookies';
-import {  profile as profileTable  } from '$apps/identity/users/model';
-import {  organization as organizationTable, profileOrganization as profileOrganizationTable  } from '$apps/hr/organizations/model';
-import {  tenant as tenantTable, tenantMembership as tenantMembershipTable, tenantOrganization as tenantOrganizationTable  } from '$apps/tenancy/model';
-import {  token as tokenTable  } from '$apps/identity/auth/model';
-import {  onboardingProgress as onboardingProgressTable  } from '$apps/hr/employees/model';
-import {  role as roleTable, permission as permissionTable, rolePermission as rolePermissionTable, userRole as userRoleTable  } from '$apps/identity/rbac/model';
+import { profile as profileTable } from '$apps/identity/users/model';
+import { organization as organizationTable, profileOrganization as profileOrganizationTable } from '$apps/hr/organizations/model';
+import { tenant as tenantTable, tenantMembership as tenantMembershipTable, tenantOrganization as tenantOrganizationTable } from '$apps/tenancy/model';
+import { token as tokenTable } from '$apps/identity/auth/model';
+import { onboardingProgress as onboardingProgressTable } from '$apps/hr/employees/model';
+import { role as roleTable, permission as permissionTable, rolePermission as rolePermissionTable, userRole as userRoleTable } from '$apps/identity/rbac/model';
 import type { ServiceResponse } from '$core/routes';
+import { BadRequestException, NotFoundException, UnauthorizedException } from '$core/errors';
 
 const ACCESS_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m';
 const REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '30d';

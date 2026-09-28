@@ -1,4 +1,3 @@
-import { Injectable } from '$core/nest-compat';
 import { ImapFlow } from 'imapflow';
 import { simpleParser } from 'mailparser';
 import type { MailAccount } from './model';

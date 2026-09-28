@@ -10,7 +10,6 @@ import { policy } from '$apps/hr/policies/model';
 import { taxonomy, taxonomyTerm } from '$apps/hr/taxonomy/model';
 import { workflow, workflowStep, workflowStepApprover, workflowTransition } from '$apps/hr/workflow/model';
 
-import { BadRequestException, Injectable, NotFoundException } from '$core/nest-compat';
 import { and, asc, eq, inArray, SQL, sql, count, isNull } from 'drizzle-orm';
 import { AppDb, DbService } from '$core/db';
 import { TenantContext } from '$core/auth/tenant-context';
@@ -20,6 +19,7 @@ import { UsersService } from '$apps/identity/users/service';
 import { profile } from '$apps/identity/users/model';
 import { role, userRole } from '$apps/identity/rbac/model';
 import { tenant, tenantMembership } from './model';
+import { BadRequestException, NotFoundException } from '$core/errors';
 
 
 const RESERVED_SLUGS = new Set([

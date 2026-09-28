@@ -1,7 +1,7 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '$core/nest-compat';
 import Redis from 'ioredis';
 import type { RedisOptions } from 'ioredis';
 import { ChatRealtimeService } from './chat-realtime';
+import { Logger } from '$core/logger';
 
 const PRESENCE_CHANNEL = 'portal:chat:presence';
 const ONLINE_KEY_PREFIX = 'chat:presence:online';
@@ -24,7 +24,7 @@ interface SocketRegistration {
  * - Local maps keep per-socket membership so the disconnecting socket knows
  *   which conversation rooms to notify.
  */
-export class PresenceService implements OnModuleInit, OnModuleDestroy {
+export class PresenceService {
   private readonly logger = new Logger(PresenceService.name);
   private readonly bySocket = new Map<string, SocketRegistration>();
   private readonly countByProfile = new Map<string, Map<string, number>>();

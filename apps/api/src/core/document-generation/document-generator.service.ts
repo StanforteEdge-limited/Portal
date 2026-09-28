@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { extname, resolve } from 'node:path';
 import JSZip from 'jszip';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
-import { PdfService } from '$core/pdf/pdf.service';
+import { PdfService } from '$core/pdf';
 import { MailQueueService } from '$core/mail/mail-queue.service';
 import { toBigInt } from '$core/utils/ids';
 import {

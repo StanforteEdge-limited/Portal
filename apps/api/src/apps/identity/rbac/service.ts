@@ -1,9 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '$core/nest-compat';
 import { SQL, and, asc, count, eq, ilike, inArray, isNull, or } from 'drizzle-orm';
-import {  DbService  } from '$core/db';
+import { DbService } from '$core/db';
 import { AuthService } from '$apps/identity/auth/service';
 import { TenantContextService } from '$core/auth/tenant-context.service';
-import { paginatedResponse } from '$core/helpers/paginated-response';
+import { paginatedResponse } from '$core/pagination';
 import { parseBigIntId } from '$core/utils/ids';
 import { TenantContext } from '$core/auth/tenant-context';
 import type {
@@ -14,10 +13,11 @@ import type {
   UpdatePermission,
   UpdateRole,
 } from '@stanforte/contract';
-import {  role as roleTable, permission as permissionTable, rolePermission, userRole as userRoleTable  } from '$apps/identity/rbac/model';
-import {  profile  } from '$apps/identity/users/model';
-import {  organization  } from '$apps/hr/organizations/model';
-import {  tenantMembership  } from '$apps/tenancy/model';
+import { role as roleTable, permission as permissionTable, rolePermission, userRole as userRoleTable } from '$apps/identity/rbac/model';
+import { profile } from '$apps/identity/users/model';
+import { organization } from '$apps/hr/organizations/model';
+import { tenantMembership } from '$apps/tenancy/model';
+import { BadRequestException, NotFoundException } from '$core/errors';
 
 export class RbacService {
   constructor(

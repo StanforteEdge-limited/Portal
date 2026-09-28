@@ -3,20 +3,20 @@ import {
   CreateProject,
   UpdateProject,
 } from '@stanforte/contract';
-import { BadRequestException, Injectable, NotFoundException } from '$core/nest-compat';
 import { and, desc, eq, ilike, inArray, isNotNull, or, SQL } from 'drizzle-orm';
-import {  DbService  } from '$core/db';
+import { DbService } from '$core/db';
 import { TenantContextService } from '$core/auth/tenant-context.service';
-import { paginatedResponse } from '$core/helpers/paginated-response';
+import { paginatedResponse } from '$core/pagination';
 import { parseBigIntId, toBigInt } from '$core/utils/ids';
 import type { GroupUserRole } from '$apps/communication/groups/model';
-import {  organization  } from '$apps/hr/organizations/model';
-import {  profile  } from '$apps/identity/users/model';
-import {  requestInstance  } from '$apps/hr/requests/model';
+import { organization } from '$apps/hr/organizations/model';
+import { profile } from '$apps/identity/users/model';
+import { requestInstance } from '$apps/hr/requests/model';
 
 
 
 import { project, projectGovernance, projectMember } from './model';
+import { BadRequestException, NotFoundException } from '$core/errors';
 
 export class ProjectsService {
 constructor(
