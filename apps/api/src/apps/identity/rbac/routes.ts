@@ -54,7 +54,7 @@ export const RbacRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.get('/permissions', { preHandler: guard }, async (request) => {
     const { module, search } = requestQuery<{ module?: string; search?: string }>(request);
-    return rbac().listPermissions({ module, search });
+    return rbac().listPermissions({ module, search }, currentTenant(request));
   });
 
   fastify.get('/users/:profileId', { preHandler: guard }, async (request) =>

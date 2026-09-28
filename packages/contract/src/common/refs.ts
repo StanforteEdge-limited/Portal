@@ -21,6 +21,16 @@ export const TenantRefSchema = Type.Object({
 });
 export type TenantRef = Static<typeof TenantRefSchema>;
 
+/** Minimal user/profile reference for assignees, authors, and mentions. */
+export const UserRefSchema = Type.Object({
+  id: IdSchema,
+  email: Type.String(),
+  username: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  first_name: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  last_name: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+});
+export type UserRef = Static<typeof UserRefSchema>;
+
 /** A group, team or project the user belongs to. */
 export const NamedGroupRefSchema = Type.Object({
   id: IdSchema,

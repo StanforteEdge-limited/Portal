@@ -1,4 +1,5 @@
 export * from './common/primitives';
+export { UserRefSchema, type UserRef } from './common/refs';
 export * from './communication/chat';
 export * from './communication/groups';
 export * from './communication/mail';
@@ -13,6 +14,8 @@ export * from './finance/procurement';
 export * from './finance/vendor_portal';
 export * from './hr/acknowledgements';
 export * from './hr/attendance';
+export * from './hr/departments';
+export * from './hr/designations';
 export * from './hr/documents';
 export * from './hr/employees';
 export * from './hr/forms';

@@ -3,7 +3,6 @@ import * as bcrypt from 'bcryptjs';
 import { and, asc, eq, ilike, inArray, isNull, or } from 'drizzle-orm';
 import { DbService } from '$core/db';
 import {
-  type AcceptInvite,
   type AuthStatusResponse,
   type ChangePassword,
   type ForgotPassword,
@@ -24,16 +23,17 @@ import {
   parseCookieHeader
 } from '$core/auth/cookies';
 import { profile as profileTable } from '$apps/identity/users/model';
+import { config } from '$config/index';
 import { organization as organizationTable, profileOrganization as profileOrganizationTable } from '$apps/hr/organizations/model';
 import { tenant as tenantTable, tenantMembership as tenantMembershipTable, tenantOrganization as tenantOrganizationTable } from '$apps/tenancy/model';
 import { token as tokenTable } from '$apps/identity/auth/model';
-import { onboardingProgress as onboardingProgressTable } from '$apps/hr/employees/model';
+import { onboardingProgress as onboardingProgressTable } from '$apps/hr/onboarding/model';
 import { role as roleTable, permission as permissionTable, rolePermission as rolePermissionTable, userRole as userRoleTable } from '$apps/identity/rbac/model';
 import type { ServiceResponse } from '$core/routes';
 import { BadRequestException, NotFoundException, UnauthorizedException } from '$core/errors';
 
-const ACCESS_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m';
-const REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '30d';
+const ACCESS_EXPIRES_IN = config.jwt.expiresIn;
+const REFRESH_EXPIRES_IN = config.jwt.refreshExpiresIn;
 
 interface RbacStateCacheEntry {
   tenantId: bigint;
@@ -105,10 +105,14 @@ export class AuthService {
 
     const ok = await bcrypt.compare(dto.password, profile.passwordHash);
     if (!ok) {
-      // SECURITY: Increment failed attempts
-      const attempts = profile.failedLoginAttempts + 1;
+      // SECURITY: Increment failed attempts. A lockout that has already elapsed
+      // starts a fresh window, otherwise the first wrong attempt after the
+      // 15 minute window would re-lock the account immediately.
+      const lockoutExpired = Boolean(profile.lockoutUntil && profile.lockoutUntil <= new Date());
+      const priorAttempts = lockoutExpired ? 0 : profile.failedLoginAttempts;
+      const attempts = priorAttempts + 1;
       const lockoutUntil = attempts >= 3 ? new Date(Date.now() + 15 * 60 * 1000) : null;
-      
+
       await this.db.client
         .update(profileTable)
         .set({
@@ -239,7 +243,7 @@ export class AuthService {
     return null;
   }
 
-  async status(userId: string): Promise<AuthStatusResponse> {
+  async status(userId: string, tenantId?: string | null): Promise<AuthStatusResponse> {
     const [profile] = await this.db.client
       .select()
       .from(profileTable)
@@ -251,7 +255,12 @@ export class AuthService {
       .from(onboardingProgressTable)
       .where(eq(onboardingProgressTable.userId, profile.id))
       .limit(1);
-    const tenantContext = await this.resolveTenantContext(profile.id, profile.primaryOrganizationId);
+    // Prefer the tenant the request was authenticated for: re-deriving it from
+    // primaryOrganizationId reported the wrong tenant right after a switch.
+    const activeTenantId = tenantId ? toBigInt(tenantId) : null;
+    const tenantContext = activeTenantId
+      ? await this.resolveTenantContext(profile.id, undefined, activeTenantId)
+      : await this.resolveTenantContext(profile.id, profile.primaryOrganizationId);
     const authContext = await this.buildAuthContext(profile.id, tenantContext?.tenantId);
     return {
       id: profile.id.toString(),
@@ -370,6 +379,22 @@ export class AuthService {
       this.throwUnauthorized('Refresh token expired', 'AUTH_REFRESH_EXPIRED');
     }
 
+    // SECURITY: a suspended/deactivated profile must not be able to keep the
+    // session alive by rotating refresh tokens.
+    const [refreshProfile] = await this.db.client
+      .select({ status: profileTable.status, lockoutUntil: profileTable.lockoutUntil })
+      .from(profileTable)
+      .where(eq(profileTable.id, tokenRow.profileId))
+      .limit(1);
+    if (!refreshProfile || refreshProfile.status !== 'active') {
+      await this.db.client.delete(tokenTable).where(eq(tokenTable.id, tokenRow.id));
+      this.throwUnauthorized('Account is not active', 'AUTH_ACCOUNT_INACTIVE');
+    }
+    if (refreshProfile.lockoutUntil && refreshProfile.lockoutUntil > new Date()) {
+      await this.db.client.delete(tokenTable).where(eq(tokenTable.id, tokenRow.id));
+      this.throwUnauthorized('Account is temporarily locked', 'AUTH_ACCOUNT_LOCKED');
+    }
+
     const tenantContext = await this.resolveTenantContext(tokenRow.profileId, undefined, tokenRow.tenantId);
     if (!tenantContext) this.throwUnauthorized('Tenant membership is required', 'AUTH_TENANT_REQUIRED');
     const authContext = await this.buildAuthContext(tokenRow.profileId, tenantContext.tenantId);
@@ -450,59 +475,6 @@ export class AuthService {
     await this.db.client.transaction(async (tx) => {
       await tx.update(profileTable).set({ passwordHash: newHash }).where(eq(profileTable.id, tokenRow.profileId));
       await tx.delete(tokenTable).where(eq(tokenTable.profileId, tokenRow.profileId));
-    });
-
-    return { success: true };
-  }
-
-  async acceptInvite(dto: AcceptInvite) {
-    if (dto.confirm_password && dto.new_password !== dto.confirm_password) {
-      throw new BadRequestException('Passwords do not match');
-    }
-
-    const tokenHash = sha256(dto.token);
-    const [tokenRow] = await this.db.client
-      .select()
-      .from(tokenTable)
-      .where(and(eq(tokenTable.tokenHash, tokenHash), eq(tokenTable.type, 'invite')))
-      .limit(1);
-
-    if (!tokenRow) this.throwUnauthorized('Invalid invite token', 'AUTH_INVITE_TOKEN_INVALID');
-    if (tokenRow.expiresAt.getTime() < Date.now()) {
-      await this.db.client.delete(tokenTable).where(eq(tokenTable.id, tokenRow.id));
-      this.throwUnauthorized('Invite token expired', 'AUTH_INVITE_TOKEN_EXPIRED');
-    }
-    if (tokenRow.tenantId) {
-      const [membership] = await this.db.client
-        .select()
-        .from(tenantMembershipTable)
-        .where(
-          and(
-            eq(tenantMembershipTable.tenantId, tokenRow.tenantId),
-            eq(tenantMembershipTable.profileId, tokenRow.profileId),
-            eq(tenantMembershipTable.status, 'active')
-          )
-        )
-        .limit(1);
-      if (!membership) this.throwUnauthorized('Tenant invitation is no longer active', 'AUTH_INVITE_MEMBERSHIP_INVALID');
-    }
-
-    const passwordHash = await bcrypt.hash(dto.new_password, 12);
-    await this.db.client.transaction(async (tx) => {
-      await tx
-        .update(profileTable)
-        .set({ passwordHash, status: 'active' })
-        .where(eq(profileTable.id, tokenRow.profileId));
-      await tx
-        .insert(onboardingProgressTable)
-        .values({ userId: tokenRow.profileId, status: 'accepted', currentStep: 'profile' })
-        .onConflictDoUpdate({
-          target: onboardingProgressTable.userId,
-          set: { status: 'accepted', currentStep: 'profile' }
-        });
-      await tx
-        .delete(tokenTable)
-        .where(and(eq(tokenTable.profileId, tokenRow.profileId), eq(tokenTable.type, 'invite')));
     });
 
     return { success: true };
@@ -610,7 +582,7 @@ export class AuthService {
   private readonly maxRbacCacheEntries = Math.max(1000, Number(process.env.AUTH_ROLE_CACHE_MAX_ENTRIES || 100_000));
 
   private rbacCacheTtlMs(): number {
-    return Math.max(1000, Number(process.env.AUTH_ROLE_CACHE_TTL_MS || 30_000));
+    return Math.max(1000, config.jwt.roleCacheTtlMs);
   }
 
   private static rbacCacheKey(profileId: bigint, tenantId: bigint): string {
@@ -684,7 +656,7 @@ export class AuthService {
     };
 
     const accessToken = await this.jwt.signAsync(accessPayload, {
-      secret: process.env.JWT_SECRET || 'change-me',
+      secret: config.jwt.secret,
       expiresIn: ACCESS_EXPIRES_IN
     });
 
@@ -824,7 +796,10 @@ export class AuthService {
       .from(userRoleTable)
       .leftJoin(roleTable, eq(userRoleTable.roleId, roleTable.id))
       .where(and(eq(userRoleTable.profileId, profileId), tenantId ? eq(userRoleTable.tenantId, tenantId) : undefined));
-    return rows.map((r) => r.role?.slug ?? '');
+    // A left join with a deleted role yields no slug; emitting '' would both
+    // pollute the roles returned to the client and feed empty slugs into the
+    // inArray() lookups below.
+    return Array.from(new Set(rows.map((r) => r.role?.slug).filter((slug): slug is string => Boolean(slug))));
   }
 
   private async getUserPermissions(profileId: bigint, roles?: string[], tenantId?: bigint): Promise<string[]> {

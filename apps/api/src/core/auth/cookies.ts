@@ -44,7 +44,12 @@ export function parseCookieHeader(cookieHeader?: string | null): Record<string, 
     const key = segment.slice(0, index).trim();
     const value = segment.slice(index + 1).trim();
     if (!key) return acc;
-    acc[key] = decodeURIComponent(value);
+    try {
+      acc[key] = decodeURIComponent(value);
+    } catch {
+      // A malformed percent-escape must not throw out of request handling.
+      acc[key] = value;
+    }
     return acc;
   }, {});
 }

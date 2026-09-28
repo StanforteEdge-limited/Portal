@@ -1,4 +1,4 @@
-import { SQL, and, asc, count, eq, ilike, inArray, isNull, or } from 'drizzle-orm';
+import { SQL, and, asc, count, eq, ilike, inArray, isNotNull, isNull, or } from 'drizzle-orm';
 import { DbService } from '$core/db';
 import { AuthService } from '$apps/identity/auth/repository';
 import { TenantContextService } from '$core/auth/tenant-context.service';
@@ -130,19 +130,19 @@ private templateScopeCondition(table: typeof roleTable | typeof permissionTable,
       users: usersByRole.get(r.id) ?? [],
     }));
 
-    return paginatedResponse(items, { page: 1, per_page: items.length, total: items.length });
+    return paginatedResponse(items, { page: 1, per_page: Math.max(1, items.length), total: items.length });
   }
 
   async createRole(dto: CreateRole) {
+    const tid = this.tenantContext.currentTenantId();
     const slug = this.normalizeSlug(dto.slug ?? dto.name);
     await this.ensureRoleSlugAvailable(slug);
 
     const permissionIds = this.parseIds(dto.permission_ids ?? [], 'permission id');
     if (permissionIds.length > 0) {
-      await this.ensurePermissionsExist(permissionIds);
+      await this.ensurePermissionsExist(permissionIds, tid);
     }
 
-    const tid = this.tenantContext.currentTenantId();
     const now = new Date();
     const [created] = await this.db.client
       .insert(roleTable)
@@ -202,13 +202,17 @@ private templateScopeCondition(table: typeof roleTable | typeof permissionTable,
 
     if (dto.permission_ids) {
       const permissionIds = this.parseIds(dto.permission_ids, 'permission id');
-      await this.ensurePermissionsExist(permissionIds);
+      await this.ensurePermissionsExist(permissionIds, tid);
       await this.db.client.transaction(async (tx) => {
         await tx.delete(rolePermission).where(eq(rolePermission.roleId, id));
-        await tx
-          .insert(rolePermission)
-          .values(permissionIds.map((permissionId) => ({ roleId: id, permissionId })))
-          .onConflictDoNothing();
+        // An empty list is the documented way to clear a role's permissions;
+        // values([]) throws in drizzle, so the insert has to be skipped.
+        if (permissionIds.length > 0) {
+          await tx
+            .insert(rolePermission)
+            .values(permissionIds.map((permissionId) => ({ roleId: id, permissionId })))
+            .onConflictDoNothing();
+        }
       });
     }
 
@@ -349,14 +353,16 @@ private templateScopeCondition(table: typeof roleTable | typeof permissionTable,
     if (!role) throw new NotFoundException('Role not found');
 
     const permissionIds = this.parseIds(dto.permission_ids, 'permission id');
-    await this.ensurePermissionsExist(permissionIds);
+    await this.ensurePermissionsExist(permissionIds, tid);
 
     await this.db.client.transaction(async (tx) => {
       await tx.delete(rolePermission).where(eq(rolePermission.roleId, id));
-      await tx
-        .insert(rolePermission)
-        .values(permissionIds.map((permissionId) => ({ roleId: id, permissionId })))
-        .onConflictDoNothing();
+      if (permissionIds.length > 0) {
+        await tx
+          .insert(rolePermission)
+          .values(permissionIds.map((permissionId) => ({ roleId: id, permissionId })))
+          .onConflictDoNothing();
+      }
       await tx.update(roleTable).set({ updatedAt: new Date() }).where(eq(roleTable.id, id));
     });
 
@@ -364,8 +370,11 @@ private templateScopeCondition(table: typeof roleTable | typeof permissionTable,
     return this.getRoleById(id, tid);
   }
 
-  async listPermissions(filters: { module?: string; search?: string }) {
+  async listPermissions(filters: { module?: string; search?: string }, tenant?: TenantContext) {
+    const tid = tenant?.tenantId ?? this.tenantContext.currentTenantId();
     const conditions: SQL[] = [];
+    const permScope = this.templateScopeCondition(permissionTable, tid);
+    if (permScope) conditions.push(permScope);
     if (filters.module) conditions.push(eq(permissionTable.module, filters.module));
     if (filters.search) {
       const search = `%${filters.search}%`;
@@ -380,13 +389,16 @@ private templateScopeCondition(table: typeof roleTable | typeof permissionTable,
       .where(where)
       .orderBy(asc(permissionTable.module), asc(permissionTable.name));
     const permIds = perms.map((p) => p.id);
+    // Role rows must be tenant-scoped too, otherwise the payload leaks the
+    // names of roles owned by other tenants.
+    const roleScope = this.templateScopeCondition(roleTable, tid);
 
     const rolePermRows = permIds.length
       ? await this.db.client
           .select({ permissionId: rolePermission.permissionId, role: roleTable })
           .from(rolePermission)
           .leftJoin(roleTable, eq(rolePermission.roleId, roleTable.id))
-          .where(inArray(rolePermission.permissionId, permIds))
+          .where(and(inArray(rolePermission.permissionId, permIds), roleScope))
       : ([] as any[]);
 
     const rolesByPerm = new Map(
@@ -451,12 +463,14 @@ private templateScopeCondition(table: typeof roleTable | typeof permissionTable,
     };
   }
 
-  async getPermissionDeleteImpact(permissionId: string) {
+  async getPermissionDeleteImpact(permissionId: string, tenant?: TenantContext) {
     const id = parseBigIntId(permissionId, 'permission id');
+    const tid = tenant?.tenantId ?? this.tenantContext.currentTenantId();
+    const permCond = this.templateScopeCondition(permissionTable, tid);
     const [perm] = await this.db.client
       .select()
       .from(permissionTable)
-      .where(eq(permissionTable.id, id))
+      .where(and(eq(permissionTable.id, id), permCond))
       .limit(1);
     if (!perm) throw new NotFoundException('Permission not found');
 
@@ -464,7 +478,7 @@ private templateScopeCondition(table: typeof roleTable | typeof permissionTable,
       .select({ role: roleTable })
       .from(rolePermission)
       .leftJoin(roleTable, eq(rolePermission.roleId, roleTable.id))
-      .where(eq(rolePermission.permissionId, id))
+      .where(and(eq(rolePermission.permissionId, id), this.templateScopeCondition(roleTable, tid)))
       .orderBy(asc(roleTable.name));
 
     return {
@@ -541,10 +555,26 @@ private templateScopeCondition(table: typeof roleTable | typeof permissionTable,
       .limit(1);
     if (!existing) throw new NotFoundException('Permission not found');
 
+    // Only roles visible in this tenant may be repointed; a permission can be
+    // attached to roles of other tenants, and rewriting those would be a
+    // cross-tenant mutation.
+    const scopedRoleIds = tid
+      ? (
+          await this.db.client
+            .select({ id: roleTable.id })
+            .from(roleTable)
+            .where(this.templateScopeCondition(roleTable, tid))
+        ).map((role) => role.id)
+      : null;
     const assignments = await this.db.client
       .select({ roleId: rolePermission.roleId })
       .from(rolePermission)
-      .where(eq(rolePermission.permissionId, id));
+      .where(
+        and(
+          eq(rolePermission.permissionId, id),
+          scopedRoleIds ? inArray(rolePermission.roleId, scopedRoleIds) : undefined,
+        ),
+      );
     const affectedRoleIds = Array.from(new Set(assignments.map((item) => item.roleId)));
 
     let replacementId: bigint | null = null;
@@ -692,9 +722,24 @@ private templateScopeCondition(table: typeof roleTable | typeof permissionTable,
         .where(and(eq(organization.id, organizationId), tid ? eq(organization.tenantId, tid) : undefined))
         .limit(1);
       if (!org) throw new NotFoundException('Organization not found');
+    } else if (tid) {
+      // user_role.organization_id is nullable, so an omitted organization means
+      // "tenant-wide assignments". Both the replace and the primary-flag reset
+      // below have to cover the whole tenant in that case, otherwise roles of
+      // other organizations would survive a replace_existing call.
+      const [orgScoped] = await this.db.client
+        .select({ id: userRoleTable.id })
+        .from(userRoleTable)
+        .where(and(eq(userRoleTable.tenantId, tid), isNotNull(userRoleTable.organizationId)))
+        .limit(1);
+      if (orgScoped) {
+        throw new BadRequestException(
+          'organization_id is required: the user already has organization-scoped role assignments in this tenant',
+        );
+      }
     }
 
-    await this.ensureRolesExist(roleIds);
+    await this.ensureRolesExist(roleIds, tid);
 
     let primaryRoleId: bigint | null = null;
     if (dto.primary_role_id) {
@@ -814,22 +859,26 @@ private templateScopeCondition(table: typeof roleTable | typeof permissionTable,
     if (existing) throw new BadRequestException('Role slug already exists');
   }
 
-  private async ensurePermissionsExist(permissionIds: bigint[]) {
+  private async ensurePermissionsExist(permissionIds: bigint[], tid?: bigint) {
     if (permissionIds.length === 0) return;
+    const permCond = this.templateScopeCondition(permissionTable, tid);
     const found = await this.db.client
       .select({ id: permissionTable.id })
       .from(permissionTable)
-      .where(inArray(permissionTable.id, permissionIds));
+      .where(and(inArray(permissionTable.id, permissionIds), permCond));
     if (found.length !== permissionIds.length) {
       throw new NotFoundException('One or more permissions were not found');
     }
   }
 
-  private async ensureRolesExist(roleIds: bigint[]) {
+  private async ensureRolesExist(roleIds: bigint[], tid?: bigint) {
+    // Scope to the caller's tenant: without this a tenant could assign a role
+    // that belongs to a different tenant (or a global template) by id.
+    const roleCond = this.templateScopeCondition(roleTable, tid);
     const found = await this.db.client
       .select({ id: roleTable.id })
       .from(roleTable)
-      .where(inArray(roleTable.id, roleIds));
+      .where(and(inArray(roleTable.id, roleIds), roleCond));
     if (found.length !== roleIds.length) {
       throw new NotFoundException('One or more roles were not found');
     }

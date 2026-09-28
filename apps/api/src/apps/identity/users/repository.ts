@@ -1,5 +1,5 @@
 import * as bcrypt from 'bcryptjs';
-import { SQL, and, asc, count, desc, eq, exists, ilike, inArray, isNull, ne, or, sql } from 'drizzle-orm';
+import { SQL, and, asc, count, desc, eq, exists, ilike, inArray, isNull, ne, notInArray, or, sql } from 'drizzle-orm';
 import { DbService } from '$core/db';
 import { parseBigIntId, toBigInt } from '$core/utils';
 import type {
@@ -27,17 +27,20 @@ import { tenantMembership, tenantOrganization } from '$apps/tenancy/model';
 import { role as roleTable, userRole as userRoleTable } from '$apps/identity/rbac/model';
 import { group as groupTable, groupUser } from '$apps/communication/groups/model';
 import { project as projectTable, projectMember } from '$apps/hr/projects/model';
-import { employeeProfile, employeeMeta, onboardingProgress } from '$apps/hr/employees/model';
+import { employeeProfile, employeeMeta } from '$apps/hr/employees/model';
+import { onboardingProgress } from '$apps/hr/onboarding/model';
 import { fileAsset } from '$apps/storage/model';
 import { token as tokenTable } from '$apps/identity/auth/model';
-import { BadRequestException, NotFoundException } from '$core/errors';
+import { AuthService } from '$apps/identity/auth/repository';
+import { BadRequestException, NotFoundException, UnauthorizedException } from '$core/errors';
 
 export class UsersService {
   constructor(
     private readonly db: DbService,
     private readonly mailService: MailService,
     private readonly mailQueue: MailQueueService,
-    private readonly tenantContext: TenantContextService
+    private readonly tenantContext: TenantContextService,
+    private readonly auth: AuthService
   ) {}
 
 async getMyProfile(profileId: string, tenant?: TenantContext) {
@@ -252,19 +255,30 @@ if (roleSlugs.length > 0) {
           ? or(eq(roleTable.tenantId, tenant.tenantId), isNull(roleTable.tenantId))
           : undefined;
         const roles = await tx
-          .select({ id: roleTable.id, slug: roleTable.slug })
+          .select({ id: roleTable.id, slug: roleTable.slug, tenantId: roleTable.tenantId })
           .from(roleTable)
           .where(and(inArray(roleTable.slug, roleSlugs), eq(roleTable.isActive, true), roleCond));
-        if (roles.length !== roleSlugs.length) {
-          const found = new Set(roles.map((r) => r.slug));
-          const missing = roleSlugs.filter((slug) => !found.has(slug));
+        // A slug can resolve to both a tenant role and a global template role,
+        // so compare distinct slugs: comparing row counts reported every slug
+        // as missing whenever that overlap existed.
+        const found = new Set(roles.map((r) => r.slug));
+        const missing = roleSlugs.filter((slug) => !found.has(slug));
+        if (missing.length > 0) {
           throw new BadRequestException(`Unknown role(s): ${missing.join(', ')}`);
         }
+        // Prefer the tenant-owned role when both a tenant role and a global
+        // template share the slug.
+        const resolved = roleSlugs
+          .map((slug) => {
+            const matches = roles.filter((r) => r.slug === slug);
+            return matches.find((r) => r.tenantId != null) ?? matches[0];
+          })
+          .filter((role): role is { id: bigint; slug: string; tenantId: bigint | null } => Boolean(role));
 
         await tx
           .insert(userRoleTable)
           .values(
-            roles.map((role, index) => ({
+            resolved.map((role, index) => ({
               profileId: createdUser.id,
               roleId: role.id,
               tenantId: tenant?.tenantId as bigint,
@@ -585,15 +599,25 @@ const roleCond = tenant?.tenantId
       : undefined;
 
     const roles = await this.db.client
-      .select({ id: roleTable.id, slug: roleTable.slug, name: roleTable.name })
+      .select({ id: roleTable.id, slug: roleTable.slug, name: roleTable.name, tenantId: roleTable.tenantId })
       .from(roleTable)
       .where(and(inArray(roleTable.slug, roleSlugs), eq(roleTable.isActive, true), roleCond));
 
-    if (roles.length !== roleSlugs.length) {
-      const found = new Set(roles.map((r) => r.slug));
-      const missing = roleSlugs.filter((slug) => !found.has(slug));
+    // Compare distinct slugs, not row counts: a slug owned by both a tenant
+    // role and a global template produced a bogus "Unknown role(s): " error.
+    const found = new Set(roles.map((role) => role.slug));
+    const missing = roleSlugs.filter((slug) => !found.has(slug));
+    if (missing.length > 0) {
       throw new BadRequestException(`Unknown role(s): ${missing.join(', ')}`);
     }
+    // Prefer the tenant-owned role when both a tenant role and a global
+    // template share the slug.
+    const resolved = roleSlugs
+      .map((slug) => {
+        const matches = roles.filter((role) => role.slug === slug);
+        return matches.find((role) => role.tenantId != null) ?? matches[0];
+      })
+      .filter((role): role is NonNullable<typeof role> => Boolean(role));
 
     await this.db.client.transaction(async (tx) => {
       await tx
@@ -602,7 +626,7 @@ const roleCond = tenant?.tenantId
       await tx
         .insert(userRoleTable)
         .values(
-          roles.map((role, index) => ({
+          resolved.map((role, index) => ({
             profileId,
             roleId: role.id,
             tenantId: tenant?.tenantId as bigint,
@@ -613,13 +637,15 @@ const roleCond = tenant?.tenantId
         .onConflictDoNothing();
     });
 
+    this.auth.invalidateRbacState(profileId, tenant?.tenantId);
+
     return {
       user: {
         id: user.id.toString(),
         email: user.email,
         username: user.username,
       },
-      roles: roles.map((role, index) => ({
+      roles: resolved.map((role, index) => ({
         id: role.id.toString(),
         slug: role.slug,
         name: role.name,
@@ -697,6 +723,10 @@ async inviteUser(userId: string, dto: InviteUser, tenantId?: bigint) {
         expiresAt,
       });
     });
+    // An admin-issued reset invalidates every existing session, otherwise the
+    // old refresh tokens keep the compromised password alive. The reset token
+    // that was just created is preserved.
+    await this.revokeSessions(profileId, ['reset']);
 
     const portalUrl = this.resolvePortalUrl();
     const resetLink = `${portalUrl}/reset-password?token=${encodeURIComponent(resetToken)}`;
@@ -724,10 +754,33 @@ async inviteUser(userId: string, dto: InviteUser, tenantId?: bigint) {
     return (process.env.PWA_URL || process.env.APP_BASE_URL || 'http://localhost:3000').replace(/\/+$/, '');
   }
 
+  /**
+   * Revokes live sessions for a profile. `keepTypes` preserves tokens the
+   * caller has just issued (a password reset must not delete its own token).
+   */
+  async revokeSessions(profileId: bigint, keepTypes: ('access' | 'refresh' | 'reset' | 'invite')[] = []) {
+    const conditions = [eq(tokenTable.profileId, profileId)];
+    if (keepTypes.length > 0) {
+      conditions.push(notInArray(tokenTable.type, keepTypes));
+    }
+    await this.db.client.delete(tokenTable).where(and(...conditions));
+    this.auth.invalidateRbacState(profileId);
+  }
+
   private async issueInvite(profileId: bigint, status: 'pending' | 'invited', tenantId?: bigint) {
     const inviteToken = randomToken(32);
     const tokenHash = sha256(inviteToken);
     const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7);
+
+    // Re-inviting an already active profile must not demote it to
+    // invited/pending, which would lock the user out of the portal until they
+    // clicked the new link.
+    const [current] = await this.db.client
+      .select({ status: profile.status })
+      .from(profile)
+      .where(eq(profile.id, profileId))
+      .limit(1);
+    const demote = current?.status !== 'active';
 
     await this.db.client.transaction(async (tx) => {
       await tx.delete(tokenTable).where(and(eq(tokenTable.profileId, profileId), eq(tokenTable.type, 'invite')));
@@ -739,7 +792,9 @@ async inviteUser(userId: string, dto: InviteUser, tenantId?: bigint) {
         tokenHash,
         expiresAt,
       });
-      await tx.update(profile).set({ status }).where(eq(profile.id, profileId));
+      if (demote) {
+        await tx.update(profile).set({ status }).where(eq(profile.id, profileId));
+      }
       await tx
         .insert(onboardingProgress)
         .values({
@@ -865,20 +920,26 @@ async inviteUser(userId: string, dto: InviteUser, tenantId?: bigint) {
   }
 
   private serializeProfile(user: any): ProfileResponse {
-    const groupMemberships = (user.groups ?? []).map((item: any) => ({
-      id: item.group.id.toString(),
-      name: item.group.name,
-      type: item.group.type,
-      role: item.role,
-      is_primary: Boolean(item.isPrimary ?? item.is_primary ?? false)
-    }));
+    // group/project/organization come from left joins, so filter out null rows
+    // instead of dereferencing them and turning a listing into a 500.
+    const groupMemberships = (user.groups ?? [])
+      .filter((item: any) => item?.group)
+      .map((item: any) => ({
+        id: item.group.id.toString(),
+        name: item.group.name,
+        type: item.group.type,
+        role: item.role,
+        is_primary: Boolean(item.isPrimary ?? item.is_primary ?? false)
+      }));
 
-    const projectMemberships = (user.projectMemberships ?? []).map((item: any) => ({
-      id: item.project.id.toString(),
-      name: item.project.name,
-      type: 'project',
-      role: item.role
-    }));
+    const projectMemberships = (user.projectMemberships ?? [])
+      .filter((item: any) => item?.project)
+      .map((item: any) => ({
+        id: item.project.id.toString(),
+        name: item.project.name,
+        type: 'project',
+        role: item.role
+      }));
 
     return {
       id: user.id.toString(),
@@ -902,7 +963,9 @@ async inviteUser(userId: string, dto: InviteUser, tenantId?: bigint) {
       primary_organization_id: user.primaryOrganizationId ? user.primaryOrganizationId.toString() : null,
       created_at: user.createdAt,
       updated_at: user.updatedAt,
-      organizations: (user.organizations ?? []).map((item: any) => {
+      organizations: (user.organizations ?? [])
+        .filter((item: any) => item?.organization)
+        .map((item: any) => {
         const metadata =
           item.organization.metadata && typeof item.organization.metadata === 'object'
             ? (item.organization.metadata as Record<string, unknown>)
@@ -946,13 +1009,13 @@ async inviteUser(userId: string, dto: InviteUser, tenantId?: bigint) {
             primary_team:
               (() => {
                 const pt = (user.groups ?? []).find(
-                  (g: any) => g.isPrimary && ['team', 'department'].includes(String(g.group.type).toLowerCase())
+                  (g: any) => g?.group && g.isPrimary && ['team', 'department'].includes(String(g.group.type).toLowerCase())
                 );
                 return pt ? { id: pt.group.id.toString(), name: pt.group.name, type: pt.group.type } : null;
               })(),
             primary_organization:
               (() => {
-                const po = (user.organizations ?? []).find((o: any) => o.isPrimary);
+                const po = (user.organizations ?? []).find((o: any) => o?.organization && o.isPrimary);
                 return po ? { id: po.organization.id.toString(), name: po.organization.name, code: po.organization.code } : null;
               })(),
             meta: (user.employeeMeta ?? []).reduce((acc: Record<string, unknown>, row: any) => {
@@ -973,11 +1036,13 @@ async inviteUser(userId: string, dto: InviteUser, tenantId?: bigint) {
       email: user.email,
       type: user.type,
       status: user.status,
-      firstName: user.firstName ?? null,
-      lastName: user.lastName ?? null,
-      primaryOrganizationId: user.primaryOrganizationId ? user.primaryOrganizationId.toString() : null,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt
+      // The identity contract is snake_case; the camelCase keys here meant
+      // clients reading first_name/primary_organization_id always got null.
+      first_name: user.firstName ?? null,
+      last_name: user.lastName ?? null,
+      primary_organization_id: user.primaryOrganizationId ? user.primaryOrganizationId.toString() : null,
+      created_at: user.createdAt,
+      updated_at: user.updatedAt
     };
   }
 
@@ -991,6 +1056,7 @@ export class AdminService {
     private readonly db: DbService,
     private readonly tenantContext: TenantContextService,
     private readonly usersService: UsersService,
+    private readonly auth: AuthService
   ) {}
 
 private async tenantProfileIds(tenantId: bigint): Promise<bigint[]> {
@@ -1028,6 +1094,47 @@ private async tenantProfileIds(tenantId: bigint): Promise<bigint[]> {
       .from(tenantOrganization)
       .where(and(eq(tenantOrganization.tenantId, tenantId), eq(tenantOrganization.organizationId, organizationId)))
       .limit(1);
+    return Boolean(row);
+  }
+
+  /**
+   * Every admin entry point runs inside a tenant. Without this guard a missing
+   * tenant context silently degraded into a cross-tenant read or, for writes,
+   * a NOT NULL violation on tenant_organization.tenant_id.
+   */
+  private requireTenantId(tenant?: TenantContext): bigint {
+    const tenantId = tenant?.tenantId ?? this.tenantContext.currentTenantId();
+    if (!tenantId) {
+      throw new UnauthorizedException('Tenant context is required for user administration');
+    }
+    return tenantId;
+  }
+
+  /**
+   * `sta_profiles.email`/`username` carry GLOBAL unique indexes, so the
+   * existence check has to be global. Scoping it to the tenant reported "Email
+   * already exists" as false and then let the insert fail with a raw unique
+   * violation (500) instead of a 400.
+   */
+  private async emailTakenGlobally(email: string, exceptProfileId?: bigint): Promise<boolean> {
+    const [row] = await this.tenantContext.runSystem('admin.emailCheck', async () =>
+      this.db.client
+        .select({ id: profile.id })
+        .from(profile)
+        .where(and(eq(profile.email, email), exceptProfileId ? ne(profile.id, exceptProfileId) : undefined))
+        .limit(1),
+    );
+    return Boolean(row);
+  }
+
+  private async usernameTakenGlobally(username: string, exceptProfileId?: bigint): Promise<boolean> {
+    const [row] = await this.tenantContext.runSystem('admin.usernameCheck', async () =>
+      this.db.client
+        .select({ id: profile.id })
+        .from(profile)
+        .where(and(eq(profile.username, username), exceptProfileId ? ne(profile.id, exceptProfileId) : undefined))
+        .limit(1),
+    );
     return Boolean(row);
   }
 
@@ -1069,7 +1176,7 @@ private async tenantProfileIds(tenantId: bigint): Promise<bigint[]> {
     const page = Math.max(1, Number(filters.page ?? 1));
     const perPage = Math.min(100, Math.max(1, Number(filters.per_page ?? 20)));
     const skip = (page - 1) * perPage;
-    const tenantId = tenant?.tenantId ?? this.tenantContext.currentTenantId();
+    const tenantId = this.requireTenantId(tenant);
 
     const conditions: SQL[] = [];
 
@@ -1139,7 +1246,7 @@ private async tenantProfileIds(tenantId: bigint): Promise<bigint[]> {
 
   async getUser(profileId: string, tenant?: TenantContext) {
     const id = parseBigIntId(profileId, 'profile id');
-    const tenantId = tenant?.tenantId ?? this.tenantContext.currentTenantId();
+    const tenantId = this.requireTenantId(tenant);
     if (tenantId) {
       const isMember = await this.profileInTenant(tenantId, id);
       if (!isMember) throw new NotFoundException('Profile not found');
@@ -1163,7 +1270,7 @@ private async tenantProfileIds(tenantId: bigint): Promise<bigint[]> {
   async createUser(dto: CreateAdminUser, tenant?: TenantContext) {
     const email = dto.email.trim().toLowerCase();
     const requestedUsername = dto.username?.trim();
-    const tenantId = tenant?.tenantId ?? this.tenantContext.currentTenantId();
+    const tenantId = this.requireTenantId(tenant);
     const usernameScope = await this.scopedProfileCondition(tenantId);
 
     const username = requestedUsername
@@ -1180,18 +1287,10 @@ private async tenantProfileIds(tenantId: bigint): Promise<bigint[]> {
           },
         );
 
-    const [emailExists] = await this.db.client
-      .select({ id: profile.id })
-      .from(profile)
-      .where(and(eq(profile.email, email), ...(await this.membershipCondition(tenantId))))
-      .limit(1);
-    const usernameExists = requestedUsername
-      ? await this.db.client
-          .select({ id: profile.id })
-          .from(profile)
-          .where(and(eq(profile.username, username), ...(await this.membershipCondition(tenantId))))
-          .limit(1)
-      : null;
+    // Both checks are global: profile.email and profile.username are globally
+    // unique, so a tenant-scoped check cannot detect the collision.
+    const emailExists = await this.emailTakenGlobally(email);
+    const usernameExists = requestedUsername ? await this.usernameTakenGlobally(username) : false;
 
     if (emailExists) throw new BadRequestException('Email already exists');
     if (usernameExists) throw new BadRequestException('Username already exists');
@@ -1281,7 +1380,7 @@ private async tenantProfileIds(tenantId: bigint): Promise<bigint[]> {
 
         if (roleSlugs.length > 0) {
           const roleRows = await tx
-            .select({ id: roleTable.id })
+            .select({ id: roleTable.id, slug: roleTable.slug, tenantId: roleTable.tenantId })
             .from(roleTable)
             .where(
               and(
@@ -1291,16 +1390,30 @@ private async tenantProfileIds(tenantId: bigint): Promise<bigint[]> {
               ),
             );
 
+          // Unknown slugs used to be dropped silently, and a slug owned by both
+          // a tenant role and a global template produced duplicate rows.
+          const found = new Set(roleRows.map((role) => role.slug));
+          const missing = roleSlugs.filter((slug) => !found.has(slug));
+          if (missing.length > 0) {
+            throw new BadRequestException(`Unknown role(s): ${missing.join(', ')}`);
+          }
+          const resolved = roleSlugs
+            .map((slug) => {
+              const matches = roleRows.filter((role) => role.slug === slug);
+              return matches.find((role) => role.tenantId != null) ?? matches[0];
+            })
+            .filter((role): role is { id: bigint; slug: string; tenantId: bigint | null } => Boolean(role));
+
           await tx
             .delete(userRoleTable)
             .where(and(eq(userRoleTable.profileId, created.id), tenantId ? eq(userRoleTable.tenantId, tenantId) : undefined));
-          if (roleRows.length > 0) {
+          if (resolved.length > 0) {
             await tx.insert(userRoleTable).values(
-              roleRows.map((role) => ({
+              resolved.map((role, index) => ({
                 profileId: created.id,
                 roleId: role.id,
                 tenantId: tenantId as bigint,
-                isPrimaryRole: false,
+                isPrimaryRole: index === 0,
               })),
             );
           }
@@ -1332,7 +1445,7 @@ private async tenantProfileIds(tenantId: bigint): Promise<bigint[]> {
 
   async updateUser(profileId: string, dto: UpdateAdminUser, tenant?: TenantContext) {
     const id = parseBigIntId(profileId, 'profile id');
-    const tenantId = tenant?.tenantId ?? this.tenantContext.currentTenantId();
+    const tenantId = this.requireTenantId(tenant);
     if (tenantId) {
       const isMember = await this.profileInTenant(tenantId, id);
       if (!isMember) throw new NotFoundException('Profile not found');
@@ -1357,24 +1470,20 @@ private async tenantProfileIds(tenantId: bigint): Promise<bigint[]> {
     } = { updatedAt: new Date() };
 
     if (dto.username && dto.username !== existing.username) {
-      const usernameExists = await this.db.client
-        .select({ id: profile.id })
-        .from(profile)
-        .where(and(eq(profile.username, dto.username), ...(await this.membershipCondition(tenantId))))
-        .limit(1);
-      if (usernameExists[0]) throw new BadRequestException('Username already exists');
+      // Global uniqueness: a tenant-scoped check cannot see a collision in
+      // another tenant and would surface as a raw 500 unique violation.
+      if (await this.usernameTakenGlobally(dto.username, id)) {
+        throw new BadRequestException('Username already exists');
+      }
       data.username = dto.username;
     }
 
     if (dto.email) {
       const email = dto.email.trim().toLowerCase();
       if (email !== existing.email) {
-        const emailExists = await this.db.client
-          .select({ id: profile.id })
-          .from(profile)
-          .where(and(eq(profile.email, email), ...(await this.membershipCondition(tenantId))))
-          .limit(1);
-        if (emailExists[0]) throw new BadRequestException('Email already exists');
+        if (await this.emailTakenGlobally(email, id)) {
+          throw new BadRequestException('Email already exists');
+        }
       }
       data.email = email;
     }
@@ -1384,6 +1493,11 @@ private async tenantProfileIds(tenantId: bigint): Promise<bigint[]> {
     if (dto.type !== undefined) data.type = dto.type;
     if (dto.status !== undefined) data.status = dto.status;
     if (dto.password) data.passwordHash = await bcrypt.hash(dto.password, 12);
+    // A password change must invalidate existing sessions, otherwise a reset
+    // leaves the old refresh token usable.
+    if (dto.password && data.passwordHash !== existing.passwordHash) {
+      await this.usersService.revokeSessions(id, ['reset']);
+    }
 
     const orgInput = dto.primary_organization_id ?? dto.organization_id;
     let nextPrimaryOrganizationId = existing.primaryOrganizationId;
@@ -1458,7 +1572,7 @@ private async tenantProfileIds(tenantId: bigint): Promise<bigint[]> {
 
   async updateStatus(profileId: string, dto: UpdateUserStatus, tenant?: TenantContext) {
     const id = parseBigIntId(profileId, 'profile id');
-    const tenantId = tenant?.tenantId ?? this.tenantContext.currentTenantId();
+    const tenantId = this.requireTenantId(tenant);
     if (tenantId) {
       const isMember = await this.profileInTenant(tenantId, id);
       if (!isMember) throw new NotFoundException('Profile not found');
@@ -1475,6 +1589,14 @@ private async tenantProfileIds(tenantId: bigint): Promise<bigint[]> {
       .set({ status: dto.status, updatedAt: new Date() })
       .where(eq(profile.id, id))
       .returning();
+
+    // A suspended/inactive profile keeps its access token alive until expiry
+    // otherwise, and the refresh guard only helps if the refresh tokens are
+    // gone too. The profile may belong to several tenants, so all sessions
+    // are revoked.
+    if (dto.status !== 'active') {
+      await this.usersService.revokeSessions(id);
+    }
 
     const [hydrated] = await this.hydrateUsers([user], tenantId);
     return this.serializeUser(hydrated);
@@ -1494,26 +1616,32 @@ private async tenantProfileIds(tenantId: bigint): Promise<bigint[]> {
       created_at: user.createdAt,
       updated_at: user.updatedAt,
       primary_organization_id: user.primaryOrganizationId ? user.primaryOrganizationId.toString() : null,
-      roles: (user.roles ?? []).map((userRole: any) => ({
-        id: userRole.role.id.toString(),
-        name: userRole.role.name,
-        slug: userRole.role.slug,
-        is_primary_role: userRole.isPrimaryRole,
-        organization: userRole.organization
-          ? {
-              id: userRole.organization.id.toString(),
-              name: userRole.organization.name,
-              code: userRole.organization.code,
-            }
-          : null,
-      })),
-      organizations: (user.organizations ?? []).map((membership: any) => ({
-        id: membership.organization.id.toString(),
-        name: membership.organization.name,
-        code: membership.organization.code,
-        type: membership.organization.organizationType,
-        is_active: membership.organization.isActive,
-      })),
+      roles: (user.roles ?? [])
+        // user_role.role is a left join, so a dangling role id yields null.
+        .filter((userRole: any) => userRole?.role)
+        .map((userRole: any) => ({
+          id: userRole.role.id.toString(),
+          name: userRole.role.name,
+          slug: userRole.role.slug,
+          is_primary_role: userRole.isPrimaryRole,
+          organization: userRole.organization
+            ? {
+                id: userRole.organization.id.toString(),
+                name: userRole.organization.name,
+                code: userRole.organization.code,
+              }
+            : null,
+        })),
+      organizations: (user.organizations ?? [])
+        // Same for tenant_organization: a removed organization leaves a null row.
+        .filter((membership: any) => membership?.organization)
+        .map((membership: any) => ({
+          id: membership.organization.id.toString(),
+          name: membership.organization.name,
+          code: membership.organization.code,
+          type: membership.organization.organizationType,
+          is_active: membership.organization.isActive,
+        })),
     };
   }
 

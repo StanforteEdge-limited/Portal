@@ -31,7 +31,23 @@ export const UpdateOrganizationSchema = Type.Object({
 export type UpdateOrganization = Static<typeof UpdateOrganizationSchema>;
 
 /* -------------------------------------------------------------------------- */
-/* Route scaffolding                                                          */
+/* Query                                                                       */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * `listOrganizations` returns the tenant's orgs with their children already
+ * attached, so there is no page/per_page pair: the service reports a single
+ * page sized to the result set.
+ */
+export const OrganizationsListQuerySchema = Type.Object({
+  search: Type.Optional(Type.String({ maxLength: 120 })),
+  is_active: Type.Optional(Type.String()),
+  organization_type: Type.Optional(Type.String()),
+});
+export type OrganizationsListQuery = Static<typeof OrganizationsListQuerySchema>;
+
+/* -------------------------------------------------------------------------- */
+/* Route scaffolding                                                           */
 /* -------------------------------------------------------------------------- */
 
 export const organizationsIdParamsSchema = Type.Object({

@@ -69,6 +69,32 @@ export const taxonomyIdParamsSchema = Type.Object({
 });
 export type taxonomyIdParams = Static<typeof taxonomyIdParamsSchema>;
 
+/** Terms are addressed by taxonomy key rather than numeric id. */
+export const TaxonomyKeyParamsSchema = Type.Object({
+  taxonomyKey: Type.String(),
+});
+export type TaxonomyKeyParams = Static<typeof TaxonomyKeyParamsSchema>;
+
+/** One entity's tags within one taxonomy. */
+export const EntityTagsParamsSchema = Type.Object({
+  entityType: Type.String(),
+  entityId: Type.String(),
+  taxonomyKey: Type.String(),
+});
+export type EntityTagsParams = Static<typeof EntityTagsParamsSchema>;
+
+/** Field option sets hang off a form field id. */
+export const TaxonomyFieldParamsSchema = Type.Object({
+  fieldId: Type.String(),
+});
+export type TaxonomyFieldParams = Static<typeof TaxonomyFieldParamsSchema>;
+
+/** Autocomplete input for the tag picker. */
+export const SuggestTagTermsQuerySchema = Type.Object({
+  query: Type.Optional(Type.String({ maxLength: 120 })),
+});
+export type SuggestTagTermsQuery = Static<typeof SuggestTagTermsQuerySchema>;
+
 /** `include_inactive` is compared against the literal string `'true'`. */
 export const TaxonomyListQuerySchema = Type.Object({
   module: Type.Optional(Type.String()),

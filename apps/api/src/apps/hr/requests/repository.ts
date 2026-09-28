@@ -64,7 +64,8 @@ import {
   financeRequestRemittance,
   financeSetting,
  } from '$apps/finance/accounting/model';
-import { employeeProfile, leaveBalanceLedger } from '$apps/hr/employees/model';
+import { employeeProfile } from '$apps/hr/employees/model';
+import { leaveBalanceLedger } from '$apps/hr/leave/model';
 import { policy } from '$apps/hr/policies/model';
 import { group, group as teamGroup, groupUser } from '$apps/communication/groups/model';
 import { organization } from '$apps/hr/organizations/model';

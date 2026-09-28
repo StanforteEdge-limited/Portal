@@ -101,3 +101,46 @@ export type PaginatedListResponse<T> = {
     meta: PaginationMeta;
   };
 };
+
+export function toBigInt(value: string | number | bigint): bigint {
+  if (typeof value === 'bigint') return value;
+  if (typeof value === 'number') {
+    if (!Number.isInteger(value) || value < 0) {
+      throw new Error('Invalid numeric identifier');
+    }
+    return BigInt(value);
+  }
+  if (!value || value.trim().length === 0) {
+    throw new Error('Identifier is required');
+  }
+  if (!/^\d+$/.test(value)) {
+    throw new Error('Identifier must be a positive integer string');
+  }
+  return BigInt(value);
+}
+
+export function parseBigIntId(value: string | number | bigint, label: string): bigint {
+  try {
+    return toBigInt(value);
+  } catch {
+    throw new Error(`Invalid ${label}`);
+  }
+}
+
+export function paginatedResponse<T>(
+  items: T[],
+  meta: { page: number; per_page: number; total: number },
+): PaginatedListResponse<T> {
+  return {
+    success: true,
+    data: {
+      items,
+      meta: {
+        page: meta.page,
+        per_page: meta.per_page,
+        total: meta.total,
+        pages: Math.ceil(meta.total / meta.per_page),
+      },
+    },
+  };
+}

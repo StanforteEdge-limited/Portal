@@ -1,5 +1,7 @@
 import { createHash, randomBytes } from 'crypto';
 import { BadRequestException } from '$core/errors';
+import { toBigInt as sharedToBigInt, parseBigIntId as sharedParseBigIntId } from '@stanforte/contract';
+import assert from 'assert';
 
 export type LeavePolicyScopeContext = {
   organization_id?: string;
@@ -8,34 +10,31 @@ export type LeavePolicyScopeContext = {
   user_id?: string;
 };
 
+export function slugify(text: string): string {
+  assert(text, 'Value is required')
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\s_-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 export function sha256(value: string): string {
+  assert(value, 'Value is required')
   return createHash('sha256').update(value).digest('hex');
 }
 
 export function randomToken(bytes = 32): string {
+  assert(bytes, 'Bytes is required')
   return randomBytes(bytes).toString('hex');
 }
 
-export function toBigInt(value: string | number | bigint): bigint {
-  if (typeof value === 'bigint') return value;
-  if (typeof value === 'number') {
-    if (!Number.isInteger(value) || value < 0) {
-      throw new Error('Invalid numeric identifier');
-    }
-    return BigInt(value);
-  }
-  if (!value || value.trim().length === 0) {
-    throw new Error('Identifier is required');
-  }
-  if (!/^\d+$/.test(value)) {
-    throw new Error('Identifier must be a positive integer string');
-  }
-  return BigInt(value);
-}
+export const toBigInt = sharedToBigInt;
 
 export function parseBigIntId(value: string | number | bigint, label: string): bigint {
   try {
-    return toBigInt(value);
+    return sharedParseBigIntId(value, label);
   } catch {
     throw new BadRequestException(`Invalid ${label}`);
   }

@@ -7,7 +7,7 @@ import { paginatedResponse } from '$core/pagination';
 import { auditEvent } from '$apps/identity/audit/model';
 import { emailLog } from '$apps/communication/mail/model';
 import { profile } from '$apps/identity/users/model';
-import { BadRequestException } from '$core/errors';
+import { BadRequestException, UnauthorizedException } from '$core/errors';
 
 export class AuditService {
   constructor(
@@ -19,13 +19,34 @@ private inSystemContext(): boolean {
     return this.tenantContext.get()?.scope === 'system';
   }
 
-  async listEvents(query: Record<string, any>) {
-    const page = Math.max(1, Number(query.page ?? 1));
-    const perPage = Math.min(100, Math.max(1, Number(query.per_page ?? 25)));
+  /**
+   * These endpoints have no querystring schema, so `?page=abc` reaches the
+   * service unvalidated; Math.max(1, NaN) is NaN and drizzle would emit
+   * `limit NaN` straight to Postgres.
+   */
+  private pagination(query: Record<string, any>, defaultPerPage: number) {
+    const parsed = (value: unknown, fallback: number) => {
+      const numeric = Number(value);
+      return Number.isFinite(numeric) && numeric > 0 ? Math.floor(numeric) : fallback;
+    };
+    const page = parsed(query.page, 1);
+    const perPage = Math.min(100, parsed(query.per_page, defaultPerPage));
+    return { page, perPage };
+  }
 
-    const conditions: SQL[] = [];
+  /** Audit reads must never fall back to an unscoped, cross-tenant query. */
+  private requireTenantId(): bigint {
     const tenantId = this.tenantContext.currentTenantId();
-    if (tenantId) conditions.push(eq(auditEvent.tenantId, tenantId));
+    if (!tenantId) {
+      throw new UnauthorizedException('Tenant context is required to read audit records');
+    }
+    return tenantId;
+  }
+
+  async listEvents(query: Record<string, any>) {
+    const { page, perPage } = this.pagination(query, 25);
+
+    const conditions: SQL[] = [eq(auditEvent.tenantId, this.requireTenantId())];
     if (query.action) conditions.push(eq(auditEvent.action, String(query.action)));
     if (query.entity_type) conditions.push(eq(auditEvent.entityType, String(query.entity_type)));
     if (query.entity_id) conditions.push(eq(auditEvent.entityId, String(query.entity_id)));
@@ -67,7 +88,7 @@ private inSystemContext(): boolean {
   async createEvent(dto: CreateAuditEvent, performedBy?: string) {
     const tenantId = this.tenantContext.currentTenantId();
     if (this.inSystemContext() || !tenantId) {
-      throw new Error('Audit events require an explicit tenant context');
+      throw new UnauthorizedException('Audit events require an explicit tenant context');
     }
 
     const event =
@@ -102,9 +123,8 @@ private inSystemContext(): boolean {
     const conditions: SQL[] = [
       eq(auditEvent.entityType, 'request'),
       eq(auditEvent.entityId, requestId),
+      eq(auditEvent.tenantId, this.requireTenantId()),
     ];
-    const tenantId = this.tenantContext.currentTenantId();
-    if (tenantId) conditions.push(eq(auditEvent.tenantId, tenantId));
 
     const events = await this.db.client
       .select()
@@ -124,12 +144,9 @@ private inSystemContext(): boolean {
   }
 
   async listEmailLogs(query: Record<string, any>) {
-    const page = Math.max(1, Number(query.page ?? 1));
-    const perPage = Math.min(100, Math.max(1, Number(query.per_page ?? 25)));
+    const { page, perPage } = this.pagination(query, 25);
 
-    const conditions: SQL[] = [];
-    const tenantId = this.tenantContext.currentTenantId();
-    if (tenantId) conditions.push(eq(emailLog.tenantId, tenantId));
+    const conditions: SQL[] = [eq(emailLog.tenantId, this.requireTenantId())];
     if (query.status) conditions.push(eq(emailLog.status, String(query.status)));
     if (query.to_email) conditions.push(ilike(emailLog.toEmail, `%${String(query.to_email)}%`));
     if (query.user_id) conditions.push(eq(emailLog.userId, parseBigIntId(String(query.user_id), 'user id')));

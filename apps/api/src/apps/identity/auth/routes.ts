@@ -1,13 +1,11 @@
 import type { FastifyPluginAsync } from 'fastify';
 import {
-  AcceptInviteSchema,
   ChangePasswordSchema,
   ForgotPasswordSchema,
   LoginSchema,
   RefreshSchema,
   ResetPasswordSchema,
   SwitchTenantSchema,
-  type AcceptInvite,
   type ChangePassword,
   type ForgotPassword,
   type Login,
@@ -37,10 +35,6 @@ export const AuthRoutes: FastifyPluginAsync = async (fastify) => {
     auth().resetPassword(requestBody<ResetPassword>(request)),
   );
 
-  fastify.post('/accept-invite', { schema: { body: AcceptInviteSchema } }, async (request) =>
-    auth().acceptInvite(requestBody<AcceptInvite>(request)),
-  );
-
   fastify.get('/google', async (_request, reply) => {
     const url = await auth().googleAuthUrl();
     return reply.redirect(url);
@@ -53,7 +47,7 @@ export const AuthRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   fastify.get('/status', { preHandler: requireAuth }, async (request) =>
-    auth().status(request.user.id),
+    auth().status(request.user.id, request.user.tenantId),
   );
 
   fastify.get('/tenants', { preHandler: requireAuth }, async (request) =>

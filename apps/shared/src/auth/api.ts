@@ -150,7 +150,7 @@ export function createAuthApi(httpRequest: HttpRequest) {
     password: string;
   }) {
     const { password, ...rest } = payload;
-    return httpRequest("/auth/accept-invite", {
+    return httpRequest("/employees/accept-invite", {
       method: "POST",
       body: { ...rest, new_password: password },
       auth: false,

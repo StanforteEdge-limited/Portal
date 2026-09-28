@@ -7,9 +7,7 @@ import { and, asc, desc, eq, gte, inArray, isNull, lte, or, SQL } from 'drizzle-
 import { TenantContext } from '$core/auth/tenant-context';
 import { DbService } from '$core/db';
 import { NotificationsService } from '$apps/hr/notifications/repository';
-import { leaveBalanceLedger } from '$apps/hr/employees/model';
-
-import { leaveRequest, leaveType } from './model';
+import { leaveBalanceLedger, leaveRequest, leaveType } from './model';
 import { BadRequestException, NotFoundException } from '$core/errors';
 
 export class LeaveService {

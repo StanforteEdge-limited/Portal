@@ -1,1 +1,6 @@
-export const PERMISSIONS = [] as const;
+// Slug style matches the other mounted routes (udit.view, users.manage,
+// settings.manage) so a tenant grants them like the rest.
+export const designationsPermissions = {
+  read: 'designations.view',
+  write: 'designations.manage',
+} as const;

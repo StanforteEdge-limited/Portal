@@ -6,7 +6,7 @@ import {
 import { SQL, and, count, desc, eq, ilike, or } from 'drizzle-orm';
 import { DbService } from '$core/db';
 import { TenantContextService } from '$core/auth/tenant-context.service';
-import { toBigInt } from '$core/utils';
+import { slugify, toBigInt } from '$core/utils';
 
 
 
@@ -82,7 +82,8 @@ export class DocumentsService {
       throw new BadRequestException('Either content_html, file_id, or link_url is required');
     }
 
-    const slug = dto.slug?.trim() || this.slugify(dto.title);
+    // `slug` is varchar(180), so the shared slugifier is truncated to fit.
+    const slug = dto.slug?.trim() || slugify(dto.title).slice(0, 180);
     const existing = await this.findDocumentBySlug(slug);
     if (existing) throw new BadRequestException('Slug already exists');
 
@@ -283,17 +284,7 @@ export class DocumentsService {
     };
   }
 
-  private slugify(value: string) {
-    return value
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .slice(0, 180);
-  }
-
-private documentConditions(): SQL[] {
+  private documentConditions(): SQL[] {
     const tenantId = this.tenantContext.currentTenantId();
     return tenantId ? [eq(document.tenantId, tenantId)] : [];
   }

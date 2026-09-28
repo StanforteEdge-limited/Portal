@@ -1,4 +1,5 @@
 import { and, asc, eq, gt, inArray } from 'drizzle-orm';
+import type { NormalizedWorkflowApprover, WorkflowApproverType, WorkflowStepConfig } from '@stanforte/contract';
 import { AppDb, DbService } from '$core/db';
 import { groupUser } from '$apps/communication/groups/model';
 import { permission, role, rolePermission, userRole } from '$apps/identity/rbac/model';
@@ -13,41 +14,6 @@ import {
   workflowStepApprover,
   workflowTransition,
 } from './model';
-
-export type WorkflowApproverType = 'role' | 'permission' | 'relation' | 'office';
-
-export type WorkflowStepConfig = {
-  role?: string;
-  action?: string;
-  min_amount?: number;
-  approval_limit?: number;
-  approver_type?: WorkflowApproverType;
-  approver_id?: string;
-  approver?: {
-    type?: WorkflowApproverType;
-    value?: string;
-  };
-  conditions?: Array<{
-    field: string;
-    operator: 'equals' | 'not_equals' | 'greater_than' | 'less_than' | 'contains';
-    value: any;
-  }>;
-};
-
-export type NormalizedWorkflowApprover = {
-  approverType: WorkflowApproverType;
-  approverId: string;
-};
-
-const LEGACY_ROLE_MAP: Record<string, NormalizedWorkflowApprover> = {
-  team_lead: { approverType: 'relation', approverId: 'requester_team_lead' },
-  manager: { approverType: 'relation', approverId: 'requester_team_lead_or_manager' },
-  team_lead_or_manager: { approverType: 'relation', approverId: 'requester_team_lead_or_manager' },
-  accountant: { approverType: 'permission', approverId: 'finance.approve' },
-  hr: { approverType: 'permission', approverId: 'hr.approve' },
-  coo: { approverType: 'office', approverId: 'coo' },
-  ed: { approverType: 'office', approverId: 'ed' },
-};
 
 export function normalizeWorkflowStepApprover(step: WorkflowStepConfig): NormalizedWorkflowApprover {
   const explicitType = String(step.approver?.type ?? step.approver_type ?? '')
@@ -65,7 +31,6 @@ export function normalizeWorkflowStepApprover(step: WorkflowStepConfig): Normali
     .toLowerCase();
 
   if (!role) return { approverType: 'permission', approverId: 'requests.approve' };
-  if (LEGACY_ROLE_MAP[role]) return LEGACY_ROLE_MAP[role];
   if (role.includes('.')) return { approverType: 'permission', approverId: role };
   return { approverType: 'role', approverId: role };
 }

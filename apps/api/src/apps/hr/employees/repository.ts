@@ -1,4 +1,5 @@
 import {
+  AcceptInvite,
   SetPrimaryOrganization,
   EmployeeAction,
   UpsertEmployee,
@@ -15,12 +16,17 @@ import type { EmploymentStatus, EmploymentType } from './model';
 import { DbService, type AppDb } from '$core/db';
 import { TenantContextService } from '$core/auth/tenant-context.service';
 import { randomToken } from '$core/utils';
-import { parseBigIntId, toBigInt } from '$core/utils';
+import { parseBigIntId, sha256, toBigInt } from '$core/utils';
 import { isLeaveRequestType, objectSchema, policyScopeMatches, policyScopeRank, resolveLeaveTypeKey } from '$core/utils';
 import { paginatedResponse } from '$core/pagination';
 import { generateUniqueUsername, makeUsernameSeed } from '$core/utils';
-import { employeeProfile, employeeMeta, hrDesignation, leaveBalanceLedger, onboardingProgress } from '$apps/hr/employees/model';
+import { employeeProfile, employeeMeta } from './model';
+import { leaveBalanceLedger } from '$apps/hr/leave/model';
+import { onboardingProgress } from '$apps/hr/onboarding/model';
+import { hrDesignation } from '$apps/hr/designations/model';
 import { profile, type Profile } from '$apps/identity/users/model';
+import { token as inviteToken } from '$apps/identity/auth/model';
+import { tenantMembership } from '$apps/tenancy/model';
 import { role, userRole } from '$apps/identity/rbac/model';
 import { organization, profileOrganization } from '$apps/hr/organizations/model';
 import { group, groupUser } from '$apps/communication/groups/model';
@@ -29,7 +35,7 @@ import { project, projectMember } from '$apps/hr/projects/model';
 import { document as documentTable } from '$apps/hr/documents/model';
 import { policy } from '$apps/hr/policies/model';
 import { requestType } from '$apps/hr/requests/model';
-import { BadRequestException, NotFoundException } from '$core/errors';
+import { BadRequestException, NotFoundException, UnauthorizedException } from '$core/errors';
 
 
 
@@ -46,6 +52,69 @@ export class EmployeesService {
 
   private currentTenantId(): bigint | undefined {
     return this.tenantContext.currentTenantId();
+  }
+
+  /**
+   * Accepts an organization invitation: provisions the employee password,
+   * activates the profile and records onboarding progress.
+   *
+   * Lives here rather than in AuthService because it is the employee/member
+   * provisioning step, not a credential operation.
+   */
+  async acceptInvite(dto: AcceptInvite) {
+    if (dto.confirm_password && dto.new_password !== dto.confirm_password) {
+      throw new BadRequestException('Passwords do not match');
+    }
+
+    const tokenHash = sha256(dto.token);
+    const [tokenRow] = await this.db.client
+      .select()
+      .from(inviteToken)
+      .where(and(eq(inviteToken.tokenHash, tokenHash), eq(inviteToken.type, 'invite')))
+      .limit(1);
+
+    if (!tokenRow) throw new UnauthorizedException('Invalid invite token', 'AUTH_INVITE_TOKEN_INVALID');
+    if (tokenRow.expiresAt.getTime() < Date.now()) {
+      await this.db.client.delete(inviteToken).where(eq(inviteToken.id, tokenRow.id));
+      throw new UnauthorizedException('Invite token expired', 'AUTH_INVITE_TOKEN_EXPIRED');
+    }
+
+    // The invitation is only valid while the tenant membership it was issued
+    // for is still active; a removed member must not be able to redeem it.
+    if (tokenRow.tenantId) {
+      const [membership] = await this.db.client
+        .select()
+        .from(tenantMembership)
+        .where(
+          and(
+            eq(tenantMembership.tenantId, tokenRow.tenantId),
+            eq(tenantMembership.profileId, tokenRow.profileId),
+            eq(tenantMembership.status, 'active')
+          )
+        )
+        .limit(1);
+      if (!membership) {
+        await this.db.client.delete(inviteToken).where(eq(inviteToken.id, tokenRow.id));
+        throw new UnauthorizedException('Tenant invitation is no longer active', 'AUTH_INVITE_MEMBERSHIP_INVALID');
+      }
+    }
+
+    const passwordHash = await bcrypt.hash(dto.new_password, 12);
+    await this.db.client.transaction(async (tx) => {
+      await tx.update(profile).set({ passwordHash, status: 'active' }).where(eq(profile.id, tokenRow.profileId));
+      await tx
+        .insert(onboardingProgress)
+        .values({ userId: tokenRow.profileId, status: 'accepted', currentStep: 'profile' })
+        .onConflictDoUpdate({
+          target: onboardingProgress.userId,
+          set: { status: 'accepted', currentStep: 'profile' }
+        });
+      await tx
+        .delete(inviteToken)
+        .where(and(eq(inviteToken.profileId, tokenRow.profileId), eq(inviteToken.type, 'invite')));
+    });
+
+    return { success: true };
   }
 
   private async requireScopedEmployee(profileId: bigint): Promise<void> {

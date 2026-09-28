@@ -5,7 +5,15 @@ export { createAuthApi } from "./auth/api";
 export { createHrApi } from "./api/hr-api";
 export type { EmployeeSummary, EmployeeDetail, HrSummary, EmployeeAction, EmploymentType, EmploymentStatus, WorkMode } from "./api/hr-api";
 export { createResourceApi } from "./api/resource-api";
-export type { OrganizationItem, TeamItem, TeamOption, TeamMember, OrganizationMapping } from "./api/resource-api";
+export type {
+  OrganizationItem,
+  ProjectCardPayload,
+  ProjectCardUpdatePayload,
+  TeamItem,
+  TeamOption,
+  TeamMember,
+  OrganizationMapping,
+} from "./api/resource-api";
 export { createPolicyApi } from "./api/policy-api";
 export { createDocumentApi } from "./api/document-api";
 export type { DocumentRecord, DocumentAcknowledgementRecord } from "./api/document-api";

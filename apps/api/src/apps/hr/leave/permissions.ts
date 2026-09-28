@@ -1,4 +1,6 @@
+// Slug style matches the other mounted routes (udit.view, users.manage,
+// settings.manage) so a tenant grants them like the rest.
 export const leavePermissions = {
-  read: 'leave:read',
-  write: 'leave:write',
+  read: 'leave.view',
+  write: 'leave.manage',
 } as const;

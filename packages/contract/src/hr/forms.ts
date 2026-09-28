@@ -95,6 +95,13 @@ export const formsIdParamsSchema = Type.Object({
 });
 export type formsIdParams = Static<typeof formsIdParamsSchema>;
 
+/** A field is addressed by both its form and its own id. */
+export const FormFieldParamsSchema = Type.Object({
+  id: Type.String(),
+  fieldId: Type.String(),
+});
+export type FormFieldParams = Static<typeof FormFieldParamsSchema>;
+
 /** Filters read by both the user-facing and management list endpoints. */
 export const FormsListQuerySchema = Type.Object({
   module: Type.Optional(Type.String()),

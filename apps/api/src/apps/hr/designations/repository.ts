@@ -4,18 +4,12 @@ import { toBigInt } from '$core/utils';
 import { document } from '$apps/hr/documents/model';
 import { hrDesignation } from './model';
 import { BadRequestException, NotFoundException } from '$core/errors';
+import {slugify} from "$core/utils"
 
 export class DesignationsService {
   constructor(private readonly db: DbService) {}
 
-  private slugify(text: string): string {
-    return text
-      .toLowerCase()
-      .trim()
-      .replace(/[^\w\s-]/g, '')
-      .replace(/[\s_-]+/g, '-')
-      .replace(/^-+|-+$/g, '');
-  }
+
 
   async list() {
     const list = await this.findDesignationsWithDocuments();
@@ -45,7 +39,7 @@ export class DesignationsService {
       let documentId: string | null = null;
 
       if (dto.job_description !== undefined) {
-        const slug = `jd-${this.slugify(name)}-${Date.now()}`;
+        const slug = `jd-${slugify(name)}-${Date.now()}`;
         const [doc] = await tx.insert(document).values({
             title: `${name} Job Description`,
             slug,
@@ -90,7 +84,7 @@ export class DesignationsService {
             .set({ contentHtml: dto.job_description || '' })
             .where(eq(document.id, documentId));
         } else {
-          const slug = `jd-${this.slugify(dto.name || existing.name)}-${Date.now()}`;
+          const slug = `jd-${slugify(dto.name || existing.name)}-${Date.now()}`;
           const [doc] = await tx.insert(document)
             .values({
               title: `${dto.name || existing.name} Job Description`,
