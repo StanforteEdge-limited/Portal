@@ -29,13 +29,23 @@ import {
   SQL,
   and,
   asc,
+  avg,
   count,
+  desc,
   eq,
+  gt,
   gte,
   ilike,
+  inArray,
+  isNotNull,
+  isNull,
+  lt,
   lte,
+  ne,
+  not,
   or,
   sql,
+  sum,
 } from "drizzle-orm";
 import { parseBigIntId, toBigInt } from "$core/utils";
 import { isLeaveRequestType } from "$core/utils";
@@ -57,18 +67,63 @@ import {
 import { Logger } from "$core/logger";
 
 import {
+  financeAccount,
+  financeAsset,
+  financeAssetDisposal,
+  financeAssetVerification,
+  financeBillHeader,
+  financeBudget,
+  financeBudgetAssumption,
+  financeBudgetLine,
+  financeBudgetPortfolio,
+  financeBudgetRevision,
+  financeBudgetRevisionLine,
   financeChartAccount,
+  financeContact,
+  financeContactPerson,
+  financeDeductionType,
+  financeDonor,
+  financeExpense,
   financeFund,
   financeGrant,
+  financeIncomeEntry,
+  financeItem,
   financeJournalEntry,
   financeJournalLine,
+  financeLedgerEntry,
+  financePaymentVoucher,
+  financePaymentVoucherCorrection,
+  financePaymentVoucherFile,
+  financePaymentVoucherItem,
+  financePVDeduction,
+  financePledge,
+  financeReceipt,
+  financeReceiptAllocation,
+  financeReportingPeriod,
+  financeReportNote,
+  financeRequestDeduction,
+  financeSalesInvoice,
+  financeSetting,
+  financeVendorPayment,
 } from "$apps/finance/accounting/model";
+import { fileAsset } from "$apps/storage/model";
+import { profile } from "$apps/identity/users/model";
+import { permission, role, rolePermission, userRole } from "$apps/identity/rbac/model";
+import { group } from "$apps/communication/groups/model";
+import { requestInstance, requestItem, requestType } from "$apps/hr/requests/model";
+import { workflowHistory, workflowInstance } from "$apps/hr/workflow/model";
+import { payrollWorker } from "$apps/hr/payroll/model";
 
 type JsonObject = Record<string, any>;
 type Payload = Record<string, any>;
 type WhereInput = Record<string, any>;
 type JsonValue = unknown;
 type InputJsonValue = unknown;
+type TxClient = any;
+type LookupClient = AppDb | TxClient;
+type DbTable = any;
+type OrderInput = Record<string, any> | Array<Record<string, any>> | undefined;
+
 class DrizzleClientKnownRequestError extends Error {
   code?: string;
 }
@@ -84,6 +139,268 @@ export class FinanceService {
     private readonly pdfService: PdfService,
     private readonly tenantContext: TenantContextService,
   ) {}
+
+  private tenantWhere(): WhereInput {
+    const tid = this.tenantContext.currentTenantId();
+    return tid ? { tenantId: tid } : {};
+  }
+
+  private tenantCond(column: any): SQL | undefined {
+    const tid = this.tenantContext.currentTenantId();
+    return tid ? eq(column, tid) : undefined;
+  }
+
+  private combine(...conds: Array<SQL | undefined>): SQL | undefined {
+    const present = conds.filter((cond): cond is SQL => cond !== undefined);
+    return present.length ? and(...present) : undefined;
+  }
+
+  private columnOf(table: DbTable, key: string) {
+    if (!table) return undefined;
+    if (table[key]) return table[key];
+    const camel = key.replace(/_([a-z0-9])/g, (_match, chr: string) => chr.toUpperCase());
+    return table[camel] ?? undefined;
+  }
+
+  private coerce(column: any, value: any) {
+    if (value === null || value === undefined) return value;
+    if (typeof value !== "number") return value;
+    const type = typeof column?.getSQLType === "function" ? column.getSQLType() : "";
+    return /numeric|decimal|real|double|money/.test(type) ? String(value) : value;
+  }
+
+  private whereOf(table: DbTable, where?: WhereInput): SQL | undefined {
+    if (!where) return undefined;
+    const clauses = this.clausesOf(table, where);
+    return clauses.length ? and(...clauses) : undefined;
+  }
+
+  private clausesOf(table: DbTable, where: WhereInput): SQL[] {
+    const clauses: SQL[] = [];
+    for (const [key, value] of Object.entries(where)) {
+      if (value === undefined) continue;
+      if (key === "OR" && Array.isArray(value)) {
+        const nested = value.map((item) => this.whereOf(table, item)).filter((item): item is SQL => !!item);
+        if (nested.length) clauses.push(or(...nested));
+        continue;
+      }
+      if (key === "AND" && Array.isArray(value)) {
+        const nested = value.map((item) => this.whereOf(table, item)).filter((item): item is SQL => !!item);
+        if (nested.length) clauses.push(and(...nested));
+        continue;
+      }
+      if (key === "NOT" && value && typeof value === "object") {
+        const nested = this.whereOf(table, value as WhereInput);
+        if (nested) clauses.push(not(nested));
+        continue;
+      }
+      const column = this.columnOf(table, key);
+      if (!column) continue;
+      const clause = this.columnClause(column, value);
+      if (clause) clauses.push(clause);
+    }
+    return clauses;
+  }
+
+  private columnClause(column: any, value: any): SQL | undefined {
+    if (value === null) return isNull(column);
+    if (Array.isArray(value)) return inArray(column, value.map((item) => this.coerce(column, item)));
+    if (value instanceof Date || typeof value !== "object") return eq(column, this.coerce(column, value));
+    if (Array.isArray(value.path)) {
+      return this.jsonPathClause(column, value);
+    }
+    const parts: Array<SQL | undefined> = [];
+    if ("equals" in value) {
+      parts.push(value.equals === null ? isNull(column) : eq(column, this.coerce(column, value.equals)));
+    }
+    if ("in" in value) parts.push(inArray(column, (value.in ?? []).map((item: any) => this.coerce(column, item))));
+    if ("notIn" in value) parts.push(not(inArray(column, (value.notIn ?? []).map((item: any) => this.coerce(column, item)))));
+    if ("not" in value) parts.push(value.not === null ? isNotNull(column) : ne(column, this.coerce(column, value.not)));
+    if ("contains" in value) parts.push(ilike(column, `%${String(value.contains)}%`));
+    if ("startsWith" in value) parts.push(ilike(column, `${String(value.startsWith)}%`));
+    if ("endsWith" in value) parts.push(ilike(column, `%${String(value.endsWith)}`));
+    if ("gte" in value) parts.push(gte(column, this.coerce(column, value.gte)));
+    if ("lte" in value) parts.push(lte(column, this.coerce(column, value.lte)));
+    if ("gt" in value) parts.push(gt(column, this.coerce(column, value.gt)));
+    if ("lt" in value) parts.push(lt(column, this.coerce(column, value.lt)));
+    const present = parts.filter((part): part is SQL => part !== undefined);
+    return present.length ? and(...present) : undefined;
+  }
+
+  private jsonPathClause(column: any, value: JsonObject): SQL | undefined {
+    const path = value.path as Array<string | number>;
+    const accessor = sql.raw(`#>>'{${path.map((segment) => String(segment)).join("','")}}'`);
+    if (value.string_contains != null) {
+      const insensitive = value.mode === "insensitive" || value.mode === undefined;
+      return insensitive
+        ? sql`${accessor}::text ILIKE ${`%${String(value.string_contains)}%`}`
+        : sql`${accessor}::text LIKE ${`%${String(value.string_contains)}%`}`;
+    }
+    if (value.string_starts_with != null) return sql`${accessor}::text ILIKE ${`${String(value.string_starts_with)}%`}`;
+    if (value.string_ends_with != null) return sql`${accessor}::text ILIKE ${`%${String(value.string_ends_with)}`}`;
+    if (value.equals != null) return sql`${accessor}::text = ${String(value.equals)}`;
+    return undefined;
+  }
+
+  private orderOf(table: DbTable, orderBy?: OrderInput): SQL[] {
+    const items = Array.isArray(orderBy) ? orderBy : orderBy ? [orderBy] : [];
+    return items.flatMap((item) =>
+      Object.entries(item).flatMap(([key, direction]) => {
+        const column = this.columnOf(table, key);
+        if (!column) return [];
+        return [String(direction).toLowerCase() === "desc" ? desc(column) : asc(column)];
+      }),
+    );
+  }
+
+  private valuesOf(table: DbTable, data: WhereInput): Record<string, any> {
+    return Object.fromEntries(
+      Object.entries(data ?? {})
+        .filter(([, value]) => value !== undefined)
+        .map(([key, value]) => [key, this.coerce(this.columnOf(table, key), value)]),
+    );
+  }
+
+  private selectShape(table: DbTable, select?: Record<string, boolean>) {
+    if (!select) return undefined;
+    return Object.fromEntries(
+      Object.entries(select)
+        .filter(([, enabled]) => enabled)
+        .map(([key]) => [key, this.columnOf(table, key)])
+        .filter(([, column]) => !!column),
+    );
+  }
+
+  private async selectRows<T = Payload>(
+    client: LookupClient,
+    table: DbTable,
+    options: { where?: WhereInput; condition?: SQL; select?: Record<string, boolean>; orderBy?: OrderInput; limit?: number; offset?: number } = {},
+  ): Promise<T[]> {
+    const shape = this.selectShape(table, options.select);
+    const statement = (shape ? client.select(shape) : client.select())
+      .from(table)
+      .where(options.condition ?? this.whereOf(table, options.where));
+    const ordered = options.orderBy?.length || Object.keys(options.orderBy ?? {}).length
+      ? statement.orderBy(...this.orderOf(table, options.orderBy))
+      : statement;
+    const limited = typeof options.limit === "number" ? ordered.limit(options.limit) : ordered;
+    const paged = typeof options.offset === "number" ? limited.offset(options.offset) : limited;
+    return paged as Promise<T[]>;
+  }
+
+  private async selectRow<T = Payload>(
+    client: LookupClient,
+    table: DbTable,
+    options: { where?: WhereInput; condition?: SQL; select?: Record<string, boolean>; orderBy?: OrderInput } = {},
+  ): Promise<T | null> {
+    const rows = await this.selectRows<T>(client, table, { ...options, limit: 1 });
+    return rows[0] ?? null;
+  }
+
+  private async countRows(client: LookupClient, table: DbTable, where?: WhereInput, condition?: SQL): Promise<number> {
+    const rows = await client
+      .select({ value: count() })
+      .from(table)
+      .where(condition ?? this.whereOf(table, where));
+    return Number((rows[0] as any)?.value ?? 0);
+  }
+
+  private async sumColumn(client: LookupClient, table: DbTable, column: any, where?: WhereInput, condition?: SQL) {
+    const rows = await client
+      .select({ value: sum(column) })
+      .from(table)
+      .where(condition ?? this.whereOf(table, where));
+    return (rows[0] as any)?.value ?? null;
+  }
+
+  private async avgColumn(client: LookupClient, table: DbTable, column: any, where?: WhereInput, condition?: SQL) {
+    const rows = await client
+      .select({ value: avg(column) })
+      .from(table)
+      .where(condition ?? this.whereOf(table, where));
+    return (rows[0] as any)?.value ?? null;
+  }
+
+  private async insertRow<T = Payload>(client: LookupClient, table: DbTable, data: WhereInput): Promise<T | null> {
+    const rows = await client.insert(table).values(this.valuesOf(table, data)).returning();
+    return (rows[0] as T) ?? null;
+  }
+
+  private async insertRows<T = Payload>(client: LookupClient, table: DbTable, rows: WhereInput[]): Promise<T[]> {
+    if (!rows.length) return [];
+    return client.insert(table).values(rows.map((row) => this.valuesOf(table, row))).returning() as Promise<T[]>;
+  }
+
+  private async updateRow<T = Payload>(
+    client: LookupClient,
+    table: DbTable,
+    data: WhereInput,
+    where?: WhereInput,
+    condition?: SQL,
+  ): Promise<T | null> {
+    const rows = await client
+      .update(table)
+      .set(this.valuesOf(table, data))
+      .where(condition ?? this.whereOf(table, where))
+      .returning();
+    return (rows[0] as T) ?? null;
+  }
+
+  private async updateWhere(
+    client: LookupClient,
+    table: DbTable,
+    data: WhereInput,
+    where?: WhereInput,
+    condition?: SQL,
+  ): Promise<number> {
+    const rows = await client
+      .update(table)
+      .set(this.valuesOf(table, data))
+      .where(condition ?? this.whereOf(table, where))
+      .returning();
+    return rows.length;
+  }
+
+  private async deleteRow<T = Payload>(
+    client: LookupClient,
+    table: DbTable,
+    where?: WhereInput,
+    condition?: SQL,
+  ): Promise<T | null> {
+    const rows = await client.delete(table).where(condition ?? this.whereOf(table, where)).returning();
+    return (rows[0] as T) ?? null;
+  }
+
+  private async deleteWhere(
+    client: LookupClient,
+    table: DbTable,
+    where?: WhereInput,
+    condition?: SQL,
+  ): Promise<number> {
+    const rows = (await client.delete(table).where(condition ?? this.whereOf(table, where)).returning()) as unknown[];
+    return rows.length;
+  }
+
+  private async upsertRow<T = Payload>(
+    client: LookupClient,
+    table: DbTable,
+    match: WhereInput,
+    data: WhereInput,
+  ): Promise<T | null> {
+    const existing = await this.selectRow<T>(client, table, { where: match });
+    if (existing) return this.updateRow<T>(client, table, data, match);
+    return this.insertRow<T>(client, table, data);
+  }
+
+  private async loadByIds<T = Payload>(client: LookupClient, table: DbTable, idColumn: any, ids: string[]): Promise<T[]> {
+    const unique = Array.from(new Set(ids.filter(Boolean)));
+    if (!unique.length) return [];
+    return this.selectRows<T>(client, table, { condition: inArray(idColumn, unique) });
+  }
+
+  private parseBigInt(value: string | number | bigint, label: string) {
+    return parseBigIntId(value, label);
+  }
 
   async summary(query: Record<string, any>) {
     const where: WhereInput = {
@@ -114,38 +431,41 @@ export class FinanceService {
       if (query.to) where.createdAt.lte = new Date(String(query.to));
     }
 
-    const [count, aggregates, byStatus] = await Promise.all([
-      this.db.client.query.requestInstance.count({ where }),
-      this.db.client.query.requestInstance.aggregate({
-        where,
-        _sum: { totalAmount: true },
-        _avg: { totalAmount: true },
-      }),
-      this.db.client.query.requestInstance.groupBy({
-        by: ["status"],
-        where,
-        _sum: { totalAmount: true },
-        _count: { _all: true },
-        orderBy: { status: "asc" },
-      }),
+    const [totalRequests, totals, byStatus] = await Promise.all([
+      this.countRows(this.db.client, requestInstance, where),
+      this.db.client
+        .select({
+          total: sum(requestInstance.totalAmount),
+          average: avg(requestInstance.totalAmount),
+        })
+        .from(requestInstance)
+        .where(this.whereOf(requestInstance, where)),
+      this.db.client
+        .select({
+          status: requestInstance.status,
+          total: sum(requestInstance.totalAmount),
+          count: count(),
+        })
+        .from(requestInstance)
+        .where(this.whereOf(requestInstance, where))
+        .groupBy(requestInstance.status)
+        .orderBy(asc(requestInstance.status)),
     ]);
 
     return {
-      total_requests: count,
-      total_amount: aggregates._sum.totalAmount,
-      average_amount: aggregates._avg.totalAmount,
-      by_status: byStatus.map((item) => ({
+      total_requests: totalRequests,
+      total_amount: (totals[0] as any)?.total ?? null,
+      average_amount: (totals[0] as any)?.average ?? null,
+      by_status: byStatus.map((item: any) => ({
         status: item.status,
-        count: (item as any)._count?._all ?? 0,
-        total_amount: item._sum?.totalAmount ?? null,
+        count: Number(item.count ?? 0),
+        total_amount: item.total ?? null,
       })),
     };
   }
 
   async getSettings() {
-    const row = await this.db.client.query.financeSetting.findUnique({
-      where: { key: "default" },
-    });
+    const row = await this.selectRow<Payload>(this.db.client, financeSetting, { where: { key: "default" } });
     const settings = this.normalizeSettings(row?.config);
     const fileIds = [
       settings.prepared_by.signature_file_id,
@@ -153,8 +473,8 @@ export class FinanceService {
       settings.approved_by.signature_file_id,
     ].filter((id): id is string => Boolean(id));
     if (fileIds.length > 0) {
-      const files = await this.db.client.query.fileAsset.findMany({
-        where: { id: { in: fileIds } },
+      const files = await this.selectRows<{ id: string; publicUrl: string }>(this.db.client, fileAsset, {
+        condition: inArray(fileAsset.id, fileIds),
         select: { id: true, publicUrl: true },
       });
       const urlById = new Map(files.map((f) => [f.id, f.publicUrl]));
@@ -181,17 +501,9 @@ export class FinanceService {
       meta: { ...current.meta, ...(dto.meta ?? {}) },
     };
 
-    await this.db.client.query.financeSetting.upsert({
-      where: { key: "default" },
-      update: {
-        config: next as InputJsonValue,
-        updatedBy: userId ? toBigInt(userId) : null,
-      },
-      create: {
-        key: "default",
-        config: next as InputJsonValue,
-        updatedBy: userId ? toBigInt(userId) : null,
-      },
+    await this.upsertRow(this.db.client, financeSetting, { key: "default" }, {
+      config: next as InputJsonValue,
+      updatedBy: userId ? toBigInt(userId) : null,
     });
 
     return next;
@@ -226,27 +538,104 @@ export class FinanceService {
       where.status = String(query.status);
     if (query.currency) where.currency = String(query.currency).toUpperCase();
 
-    const [rows] = await Promise.all([
-      this.db.client.query.requestInstance.findMany({
+    const requestTypeTable = this.db.client._.relations.requestType.table;
+    const requestGroupTable = this.db.client._.relations.requestGroup.table;
+    const organizationTable = this.db.client._.relations.organization.table;
+    const workflowStepTable = this.db.client._.relations.workflowStep.table;
+    const workflowStepApproverTable =
+      this.db.client._.relations.workflowStepApprover.table;
+
+    const rows: Payload[] = await this.selectRows<Payload>(
+      this.db.client,
+      requestInstance,
+      {
         where,
-        include: {
-          requestType: true,
-          group: true,
-          organization: true,
-          creator: {
-            select: {
-              id: true,
-              email: true,
-              username: true,
-              firstName: true,
-              lastName: true,
-            },
-          },
-          paymentVouchers: { select: { voucherNumber: true } },
-        },
         orderBy: { createdAt: "desc" },
-      }),
-    ]);
+      },
+    );
+
+    // Explicit relation loading (the requestType/group/organization/creator
+    // relations are plain foreign keys, so they are batch-resolved here).
+    const requestTypeById = new Map<string, Payload>();
+    const requestGroupById = new Map<string, Payload>();
+    const organizationById = new Map<string, Payload>();
+    const creatorById = new Map<string, Payload>();
+    const vouchersByRequestId = new Map<string, Payload[]>();
+    if (rows.length > 0) {
+      const [requestTypes, requestGroups, organizations, creators, vouchers] =
+        await Promise.all([
+          this.loadByIds<Payload>(
+            this.db.client,
+            requestTypeTable,
+            requestTypeTable.id,
+            rows.map((row) => String(row.requestTypeId)),
+          ),
+          this.loadByIds<Payload>(
+            this.db.client,
+            requestGroupTable,
+            requestGroupTable.id,
+            rows.map((row) => String(row.groupId)),
+          ),
+          this.loadByIds<Payload>(
+            this.db.client,
+            organizationTable,
+            organizationTable.id,
+            rows
+              .filter((row) => row.organizationId != null)
+              .map((row) => String(row.organizationId)),
+          ),
+          this.loadByIds<Payload>(
+            this.db.client,
+            profile,
+            profile.id,
+            rows
+              .filter((row) => row.createdBy != null)
+              .map((row) => String(row.createdBy)),
+          ),
+          this.selectRows<{ requestId: bigint; voucherNumber: string }>(
+            this.db.client,
+            financePaymentVoucher,
+            {
+              condition: inArray(
+                financePaymentVoucher.requestId,
+                rows.map((row) => row.id as bigint),
+              ),
+              select: { requestId: true, voucherNumber: true },
+            },
+          ),
+        ]);
+      for (const item of requestTypes) requestTypeById.set(item.id, item);
+      for (const item of requestGroups) requestGroupById.set(item.id, item);
+      for (const item of organizations)
+        organizationById.set(item.id.toString(), item);
+      for (const item of creators) creatorById.set(item.id.toString(), item);
+      for (const item of vouchers) {
+        const key = item.requestId.toString();
+        const list = vouchersByRequestId.get(key) ?? [];
+        list.push(item);
+        vouchersByRequestId.set(key, list);
+      }
+    }
+
+    for (const row of rows) {
+      row.requestType = row.requestTypeId
+        ? (requestTypeById.get(String(row.requestTypeId)) ?? null)
+        : null;
+      row.group = row.groupId
+        ? (requestGroupById.get(String(row.groupId)) ?? null)
+        : null;
+      row.organization = row.organizationId
+        ? (organizationById.get(String(row.organizationId)) ?? null)
+        : null;
+      row.creator = creatorById.get(String(row.createdBy)) ?? {
+        id: row.createdBy,
+        email: null,
+        username: null,
+        firstName: null,
+        lastName: null,
+      };
+      row.paymentVouchers = vouchersByRequestId.get(row.id.toString()) ?? [];
+    }
 
     const pendingFinanceRoleSlugs = new Set(["accountant", "finance_manager"]);
     const pendingFinancePermissionSlugs = new Set(["finance.approve"]);
@@ -256,16 +645,47 @@ export class FinanceService {
 
     const financeApprovalInstanceIds = new Set<string>();
     if (approvalInstanceIds.length > 0) {
-      const instances = await this.db.client.query.workflowInstance.findMany({
-        where: { id: { in: approvalInstanceIds } },
-        include: {
-          currentStep: {
-            include: {
-              approvers: true,
-            },
-          },
-        },
-      });
+      const instances = await this.selectRows<Payload>(
+        this.db.client,
+        workflowInstance,
+        { condition: inArray(workflowInstance.id, approvalInstanceIds) },
+      );
+      const stepIds = Array.from(
+        new Set(
+          instances
+            .map((instance) => instance.currentStepId)
+            .filter((stepId): stepId is string => Boolean(stepId)),
+        ),
+      );
+      const stepById = new Map<string, Payload>();
+      const approversByStepId = new Map<string, Payload[]>();
+      if (stepIds.length > 0) {
+        const [steps, approvers] = await Promise.all([
+          this.loadByIds<Payload>(
+            this.db.client,
+            workflowStepTable,
+            workflowStepTable.id,
+            stepIds,
+          ),
+          this.selectRows<Payload>(this.db.client, workflowStepApproverTable, {
+            condition: inArray(workflowStepApproverTable.stepId, stepIds),
+          }),
+        ]);
+        for (const step of steps) stepById.set(step.id, step);
+        for (const approver of approvers) {
+          const list = approversByStepId.get(approver.stepId) ?? [];
+          list.push(approver);
+          approversByStepId.set(approver.stepId, list);
+        }
+      }
+      for (const instance of instances) {
+        const step = instance.currentStepId
+          ? (stepById.get(instance.currentStepId) ?? null)
+          : null;
+        instance.currentStep = step
+          ? { ...step, approvers: approversByStepId.get(step.id) ?? [] }
+          : null;
+      }
 
       for (const instance of instances) {
         const hasFinanceApprover = (instance.currentStep?.approvers ?? []).some(
@@ -321,10 +741,14 @@ export class FinanceService {
         })
         .filter((id): id is bigint => id !== null);
       if (teamIds.length > 0) {
-        const teamGroups = await this.db.client.query.group.findMany({
-          where: { id: { in: teamIds } },
-          select: { id: true, name: true },
-        });
+        const teamGroups = await this.selectRows<{ id: bigint; name: string }>(
+          this.db.client,
+          group,
+          {
+            condition: inArray(group.id, teamIds),
+            select: { id: true, name: true },
+          },
+        );
         for (const g of teamGroups) {
           teamGroupMap.set(g.id.toString(), g.name);
         }
@@ -640,9 +1064,9 @@ export class FinanceService {
     );
 
     try {
-      const request = await this.db.client.query.requestInstance.findUnique({
+      const requestTypeTable = this.db.client._.relations.requestType.table;
+      const request = await this.selectRow<Payload>(this.db.client, requestInstance, {
         where: { id },
-        include: { requestType: true },
       });
       if (!request) {
         traceWarn(
@@ -650,6 +1074,11 @@ export class FinanceService {
         );
         throw new NotFoundException("Request not found");
       }
+      request.requestType = await this.selectRow<Payload>(
+        this.db.client,
+        requestTypeTable,
+        { where: { id: request.requestTypeId } },
+      );
       traceLog(
         `disburseRequest:request-loaded requestId=${id.toString()} status=${request.status} totalAmount=${request.totalAmount ?? 0} currency=${request.currency ?? "unknown"} workflowInstanceId=${request.workflowInstanceId ?? "none"}`,
       );
@@ -671,10 +1100,14 @@ export class FinanceService {
       const requestTotal =
         request.totalAmount !== null ? Number(request.totalAmount) : 0;
       const existingVouchers =
-        await this.db.client.query.financePaymentVoucher.findMany({
-          where: { requestId: id },
-          select: { amount: true, grossAmount: true },
-        });
+        await this.selectRows<{ amount: string; grossAmount: string | null }>(
+          this.db.client,
+          financePaymentVoucher,
+          {
+            where: { requestId: id },
+            select: { amount: true, grossAmount: true },
+          },
+        );
       const alreadyDisbursed = existingVouchers.reduce((sum, v) => {
         const val =
           v.grossAmount !== null ? Number(v.grossAmount) : Number(v.amount);
@@ -684,7 +1117,7 @@ export class FinanceService {
       let disburseAmount = dto.amount ?? balanceBefore;
       let targetItems: any[] = [];
       if (dto.item_ids && dto.item_ids.length > 0) {
-        targetItems = await this.db.client.query.requestItem.findMany({
+        targetItems = await this.selectRows<Payload>(this.db.client, requestItem, {
           where: { id: { in: dto.item_ids }, requestId: id },
         });
         if (targetItems.length !== dto.item_ids.length) {
@@ -728,8 +1161,8 @@ export class FinanceService {
         `disburseRequest:evidence requestId=${id.toString()} evidenceFileIds=${evidenceFileIds.length ? evidenceFileIds.join(",") : "none"}`,
       );
       if (evidenceFileIds.length > 0) {
-        const fileExists = await this.db.client.query.fileAsset.count({
-          where: { id: { in: evidenceFileIds } },
+        const fileExists = await this.countRows(this.db.client, fileAsset, {
+          id: { in: evidenceFileIds },
         });
         if (fileExists !== evidenceFileIds.length) {
           traceWarn(
@@ -738,10 +1171,11 @@ export class FinanceService {
           throw new BadRequestException("Invalid disbursement evidence file");
         }
       }
-      const activeAccountCount =
-        await this.db.client.query.financeAccount.count({
-          where: { isActive: true },
-        });
+      const activeAccountCount = await this.countRows(
+        this.db.client,
+        financeAccount,
+        { isActive: true },
+      );
       traceLog(
         `disburseRequest:finance-accounts requestId=${id.toString()} activeAccountCount=${activeAccountCount} paidFromAccountId=${dto.paid_from_account_id ?? "none"}`,
       );
@@ -759,7 +1193,11 @@ export class FinanceService {
         isActive: boolean;
       } | null = null;
       if (dto.paid_from_account_id) {
-        paidFromAccount = await this.db.client.query.financeAccount.findUnique({
+        paidFromAccount = await this.selectRow<{
+          id: string;
+          currency: string;
+          isActive: boolean;
+        }>(this.db.client, financeAccount, {
           where: { id: dto.paid_from_account_id },
           select: { id: true, currency: true, isActive: true },
         });
@@ -813,8 +1251,10 @@ export class FinanceService {
         disbursed_at: now.toISOString(),
       };
 
-      const voucher = await this.db.client.query.financePaymentVoucher.create({
-        data: {
+      const voucher = (await this.insertRow<Payload>(
+        this.db.client,
+        financePaymentVoucher,
+        {
           requestId: id,
           paidFromAccountId: dto.paid_from_account_id ?? null,
           fundId: fund?.id ?? null,
@@ -828,49 +1268,51 @@ export class FinanceService {
           disbursedAt: now,
           contactId: dto.contact_id ?? null,
         },
-      });
+      )) as Payload;
       if (targetItems.length > 0) {
-        await this.db.client.query.financePaymentVoucherItem.createMany({
-          data: targetItems.map((item) => ({
+        await this.insertRows(
+          this.db.client,
+          financePaymentVoucherItem,
+          targetItems.map((item) => ({
             paymentVoucherId: voucher.id,
             requestItemId: item.id,
             amount: item.amount,
           })),
-        });
+        );
       }
       traceLog(
         `disburseRequest:voucher-created requestId=${id.toString()} voucherId=${voucher.id} voucherNumber=${voucherNumber}`,
       );
       if (evidenceFileIds.length > 0) {
-        await this.db.client.query.financePaymentVoucherFile.createMany({
-          data: evidenceFileIds.map((fileId, index) => ({
+        await this.insertRows(
+          this.db.client,
+          financePaymentVoucherFile,
+          evidenceFileIds.map((fileId, index) => ({
             voucherId: voucher.id,
             fileId,
             fileKind: "evidence",
             sortOrder: index,
           })),
-        });
+        );
         traceLog(
           `disburseRequest:voucher-evidence-linked requestId=${id.toString()} voucherId=${voucher.id} evidenceCount=${evidenceFileIds.length}`,
         );
       }
       if (paidFromAccount) {
-        await this.db.client.query.financeLedgerEntry.create({
-          data: {
-            accountId: paidFromAccount.id,
-            direction: "out",
-            amount: disburseAmount,
-            currency: request.currency || paidFromAccount.currency || "NGN",
-            entryDate: now,
-            description: `Disbursement ${voucherNumber} for request ${request.id.toString()}`,
-            sourceType: "finance_payment_voucher",
-            sourceId: voucher.id,
-            createdBy: actorId ? toBigInt(actorId) : null,
-            metadata: {
-              request_id: request.id.toString(),
-              voucher_number: voucherNumber,
-            } as InputJsonValue,
-          },
+        await this.insertRow(this.db.client, financeLedgerEntry, {
+          accountId: paidFromAccount.id,
+          direction: "out",
+          amount: disburseAmount,
+          currency: request.currency || paidFromAccount.currency || "NGN",
+          entryDate: now,
+          description: `Disbursement ${voucherNumber} for request ${request.id.toString()}`,
+          sourceType: "finance_payment_voucher",
+          sourceId: voucher.id,
+          createdBy: actorId ? toBigInt(actorId) : null,
+          metadata: {
+            request_id: request.id.toString(),
+            voucher_number: voucherNumber,
+          } as InputJsonValue,
         });
         traceLog(
           `disburseRequest:ledger-created requestId=${id.toString()} voucherId=${voucher.id} paidFromAccountId=${paidFromAccount.id} amount=${disburseAmount}`,
@@ -881,17 +1323,15 @@ export class FinanceService {
       if (dto.deductions && dto.deductions.length > 0) {
         await Promise.all(
           dto.deductions.map((ded) =>
-            this.db.client.query.financeRequestDeduction.create({
-              data: {
-                requestId: id,
-                deductionTypeId: ded.deduction_type_id,
-                amount: ded.amount,
-                rate: ded.rate,
-                grossAmount: ded.gross_amount,
-                status: "pending",
-                createdBy: actorId ? toBigInt(actorId) : BigInt(0),
-                updatedAt: now,
-              },
+            this.insertRow(this.db.client, financeRequestDeduction, {
+              requestId: id,
+              deductionTypeId: ded.deduction_type_id,
+              amount: ded.amount,
+              rate: ded.rate,
+              grossAmount: ded.gross_amount,
+              status: "pending",
+              createdBy: actorId ? toBigInt(actorId) : BigInt(0),
+              updatedAt: now,
             }),
           ),
         );
@@ -913,19 +1353,17 @@ export class FinanceService {
         `disburseRequest:journal-complete requestId=${id.toString()} voucherId=${voucher.id}`,
       );
       if (request.workflowInstanceId) {
-        await this.db.client.query.workflowHistory.create({
+        await this.insertRow(this.db.client, workflowHistory, {
+          instanceId: request.workflowInstanceId,
+          action: "pv_disbursed",
+          performedBy: actorId ? toBigInt(actorId) : null,
           data: {
-            instanceId: request.workflowInstanceId,
-            action: "pv_disbursed",
-            performedBy: actorId ? toBigInt(actorId) : null,
-            data: {
-              request_id: request.id.toString(),
-              voucher_number: voucherNumber,
-              amount: disburseAmount,
-              method: dto.method ?? null,
-              transaction_ref: dto.transaction_ref ?? null,
-            } as InputJsonValue,
-          },
+            request_id: request.id.toString(),
+            voucher_number: voucherNumber,
+            amount: disburseAmount,
+            method: dto.method ?? null,
+            transaction_ref: dto.transaction_ref ?? null,
+          } as InputJsonValue,
         });
         traceLog(
           `disburseRequest:workflow-history-created requestId=${id.toString()} workflowInstanceId=${request.workflowInstanceId}`,
@@ -943,9 +1381,10 @@ export class FinanceService {
       traceLog(
         `disburseRequest:request-update-start requestId=${id.toString()} statusFrom=${request.status} statusTo=${nextStatus}`,
       );
-      const updated = await this.db.client.query.requestInstance.update({
-        where: { id },
-        data: {
+      const updated = (await this.updateRow<Payload>(
+        this.db.client,
+        requestInstance,
+        {
           status: nextStatus,
           data: {
             ...existingData,
@@ -965,7 +1404,8 @@ export class FinanceService {
             ],
           } as any,
         },
-      });
+        { id },
+      )) as Payload;
       traceLog(
         `disburseRequest:request-update-complete requestId=${id.toString()} updatedStatus=${updated.status} updatedId=${updated.id.toString()}`,
       );
@@ -977,34 +1417,37 @@ export class FinanceService {
           );
 
           // 1. Resolve payroll worker
-          const profile = await this.db.client.query.profile.findUnique({
-            where: { id: request.createdBy },
+          const creatorProfile = await this.selectRow<Payload>(
+            this.db.client,
+            profile,
+            { where: { id: request.createdBy } },
+          );
+          let worker = await this.selectRow<Payload>(this.db.client, payrollWorker, {
+            where: {
+              profileId: request.createdBy,
+              status: "active",
+            },
           });
-          let payrollWorker =
-            await this.db.client.query.payrollWorker.findFirst({
-              where: {
-                profileId: request.createdBy,
-                status: "active",
-              },
-            });
 
-          if (!payrollWorker && profile) {
-            payrollWorker = await this.db.client.query.payrollWorker.findFirst({
-              where: {
-                email: { equals: profile.email, mode: "insensitive" },
-                status: "active",
-              },
+          if (!worker && creatorProfile) {
+            worker = await this.selectRow<Payload>(this.db.client, payrollWorker, {
+              condition: this.combine(
+                this.whereOf(payrollWorker, { status: "active" }),
+                ilike(payrollWorker.email, String(creatorProfile.email ?? "")),
+              ),
             });
             // Auto link the profile if matched by email
-            if (payrollWorker) {
-              await this.db.client.query.payrollWorker.update({
-                where: { id: payrollWorker.id },
-                data: { profileId: profile.id },
-              });
+            if (worker) {
+              await this.updateRow(
+                this.db.client,
+                payrollWorker,
+                { profileId: creatorProfile.id },
+                { id: worker.id },
+              );
             }
           }
 
-          if (!payrollWorker) {
+          if (!worker) {
             traceWarn(
               `disburseRequest:payroll-loan-failed requestId=${id.toString()} reason=payroll_worker_not_found profileId=${request.createdBy.toString()}`,
             );
@@ -1033,11 +1476,11 @@ export class FinanceService {
               : `Salary Advance: ${String(existingData.title || existingData.purpose || "Staff Advance")}`;
 
             traceLog(
-              `disburseRequest:creating-loan-record workerId=${payrollWorker.id} amount=${principalAmount} months=${repaymentMonths}`,
+              `disburseRequest:creating-loan-record workerId=${worker.id} amount=${principalAmount} months=${repaymentMonths}`,
             );
 
             await this.payrollService.createLoan({
-              worker_id: payrollWorker.id,
+              worker_id: worker.id,
               request_id: request.id.toString(),
               loan_type: isLoan ? "loan" : "salary_advance",
               title,
@@ -1119,73 +1562,145 @@ export class FinanceService {
 
   async listPaymentVouchers(requestId: string) {
     const id = parseBigIntId(requestId, "request id");
-    const request = await this.db.client.query.requestInstance.findUnique({
+    const request = await this.selectRow<{ totalAmount: string | null }>(this.db.client, requestInstance, {
       where: { id },
       select: { totalAmount: true },
     });
     if (!request) throw new NotFoundException("Request not found");
 
-    const vouchers = await this.db.client.query.financePaymentVoucher.findMany({
+    const voucherRows = await this.selectRows<Payload>(this.db.client, financePaymentVoucher, {
       where: { requestId: id },
-      include: {
-        evidenceFile: {
-          select: {
-            id: true,
-            fileName: true,
-            mimeType: true,
-            publicUrl: true,
-            storagePath: true,
-          },
-        },
-        attachments: {
-          where: { fileKind: "evidence" },
-          include: {
-            file: {
-              select: {
-                id: true,
-                fileName: true,
-                mimeType: true,
-                publicUrl: true,
-                storagePath: true,
-              },
-            },
-          },
-          orderBy: { sortOrder: "asc" },
-        },
-        paidFromAccount: {
-          select: { id: true, name: true, code: true, accountType: true },
-        },
-        contact: {
-          select: { id: true, name: true },
-        },
-        corrections: {
-          where: { status: "pending" },
-          orderBy: { createdAt: "desc" },
-          take: 1,
-          include: {
-            proposer: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                username: true,
-                email: true,
-              },
-            },
-          },
-        },
-        voucherItems: {
-          include: { requestItem: true },
-        },
-        deductions: {
-          include: {
-            deductionType: true,
-            requestDeduction: true,
-          },
-        },
-      },
       orderBy: { disbursedAt: "asc" },
     });
+    const voucherIds = voucherRows.map((voucher) => voucher.id).filter(Boolean);
+    const evidenceFileIds = voucherRows.map((voucher) => voucher.evidenceFileId).filter(Boolean);
+    const paidFromAccountIds = voucherRows.map((voucher) => voucher.paidFromAccountId).filter(Boolean);
+    const contactIds = voucherRows.map((voucher) => voucher.contactId).filter(Boolean);
+
+    const [
+      evidenceFilesByIdRows,
+      attachmentRows,
+      accountRows,
+      contactRows,
+      correctionRows,
+      voucherItemRows,
+      deductionRows,
+    ] = await Promise.all([
+      evidenceFileIds.length
+        ? this.selectRows<Payload>(this.db.client, fileAsset, {
+            condition: inArray(fileAsset.id, evidenceFileIds),
+            select: { id: true, fileName: true, mimeType: true, publicUrl: true, storagePath: true },
+          })
+        : Promise.resolve([]),
+      voucherIds.length
+        ? this.db.client
+            .select({
+              attachment: financePaymentVoucherFile,
+              file: {
+                id: fileAsset.id,
+                fileName: fileAsset.fileName,
+                mimeType: fileAsset.mimeType,
+                publicUrl: fileAsset.publicUrl,
+                storagePath: fileAsset.storagePath,
+              },
+            })
+            .from(financePaymentVoucherFile)
+            .leftJoin(fileAsset, eq(financePaymentVoucherFile.fileId, fileAsset.id))
+            .where(and(inArray(financePaymentVoucherFile.voucherId, voucherIds), eq(financePaymentVoucherFile.fileKind, "evidence")))
+            .orderBy(asc(financePaymentVoucherFile.sortOrder))
+        : Promise.resolve([]),
+      paidFromAccountIds.length
+        ? this.selectRows<Payload>(this.db.client, financeAccount, {
+            condition: inArray(financeAccount.id, paidFromAccountIds),
+            select: { id: true, name: true, code: true, accountType: true },
+          })
+        : Promise.resolve([]),
+      contactIds.length
+        ? this.selectRows<Payload>(this.db.client, financeContact, {
+            condition: inArray(financeContact.id, contactIds),
+            select: { id: true, name: true },
+          })
+        : Promise.resolve([]),
+      voucherIds.length
+        ? this.db.client
+            .select({
+              correction: financePaymentVoucherCorrection,
+              proposer: {
+                id: profile.id,
+                firstName: profile.firstName,
+                lastName: profile.lastName,
+                username: profile.username,
+                email: profile.email,
+              },
+            })
+            .from(financePaymentVoucherCorrection)
+            .leftJoin(profile, eq(financePaymentVoucherCorrection.proposedBy, profile.id))
+            .where(and(inArray(financePaymentVoucherCorrection.voucherId, voucherIds), eq(financePaymentVoucherCorrection.status, "pending")))
+            .orderBy(desc(financePaymentVoucherCorrection.createdAt))
+        : Promise.resolve([]),
+      voucherIds.length
+        ? this.db.client
+            .select({ item: financePaymentVoucherItem, requestItem })
+            .from(financePaymentVoucherItem)
+            .leftJoin(requestItem, eq(financePaymentVoucherItem.requestItemId, requestItem.id))
+            .where(inArray(financePaymentVoucherItem.paymentVoucherId, voucherIds))
+        : Promise.resolve([]),
+      voucherIds.length
+        ? this.db.client
+            .select({
+              deduction: financePVDeduction,
+              deductionType: financeDeductionType,
+              requestDeduction: financeRequestDeduction,
+            })
+            .from(financePVDeduction)
+            .leftJoin(financeDeductionType, eq(financePVDeduction.deductionTypeId, financeDeductionType.id))
+            .leftJoin(financeRequestDeduction, eq(financePVDeduction.requestDeductionId, financeRequestDeduction.id))
+            .where(inArray(financePVDeduction.paymentVoucherId, voucherIds))
+        : Promise.resolve([]),
+    ]);
+
+    const evidenceFileById = new Map(evidenceFilesByIdRows.map((file: any) => [file.id, file]));
+    const attachmentsByVoucher = new Map<string, any[]>();
+    for (const row of attachmentRows as any[]) {
+      const voucherId = row.attachment.voucherId;
+      const list = attachmentsByVoucher.get(voucherId) ?? [];
+      list.push({ ...row.attachment, file: row.file?.id ? row.file : null });
+      attachmentsByVoucher.set(voucherId, list);
+    }
+    const accountById = new Map(accountRows.map((account: any) => [account.id, account]));
+    const contactById = new Map(contactRows.map((contact: any) => [contact.id, contact]));
+    const correctionsByVoucher = new Map<string, any[]>();
+    for (const row of correctionRows as any[]) {
+      const voucherId = row.correction.voucherId;
+      const list = correctionsByVoucher.get(voucherId) ?? [];
+      if (list.length === 0) list.push({ ...row.correction, proposer: row.proposer?.id ? row.proposer : null });
+      correctionsByVoucher.set(voucherId, list);
+    }
+    const voucherItemsByVoucher = new Map<string, any[]>();
+    for (const row of voucherItemRows as any[]) {
+      const voucherId = row.item.paymentVoucherId;
+      const list = voucherItemsByVoucher.get(voucherId) ?? [];
+      list.push({ ...row.item, requestItem: row.requestItem });
+      voucherItemsByVoucher.set(voucherId, list);
+    }
+    const deductionsByVoucher = new Map<string, any[]>();
+    for (const row of deductionRows as any[]) {
+      const voucherId = row.deduction.paymentVoucherId;
+      const list = deductionsByVoucher.get(voucherId) ?? [];
+      list.push({ ...row.deduction, deductionType: row.deductionType, requestDeduction: row.requestDeduction });
+      deductionsByVoucher.set(voucherId, list);
+    }
+
+    const vouchers: any[] = voucherRows.map((voucher: any) => ({
+      ...voucher,
+      evidenceFile: voucher.evidenceFileId ? evidenceFileById.get(voucher.evidenceFileId) ?? null : null,
+      attachments: attachmentsByVoucher.get(voucher.id) ?? [],
+      paidFromAccount: voucher.paidFromAccountId ? accountById.get(voucher.paidFromAccountId) ?? null : null,
+      contact: voucher.contactId ? contactById.get(voucher.contactId) ?? null : null,
+      corrections: correctionsByVoucher.get(voucher.id) ?? [],
+      voucherItems: voucherItemsByVoucher.get(voucher.id) ?? [],
+      deductions: deductionsByVoucher.get(voucher.id) ?? [],
+    }));
 
     const retirementFileIds = Array.from(
       new Set(
@@ -1205,15 +1720,9 @@ export class FinanceService {
     );
     const retirementFiles =
       retirementFileIds.length > 0
-        ? await this.db.client.query.fileAsset.findMany({
-            where: { id: { in: retirementFileIds } },
-            select: {
-              id: true,
-              fileName: true,
-              mimeType: true,
-              publicUrl: true,
-              storagePath: true,
-            },
+        ? await this.selectRows<Payload>(this.db.client, fileAsset, {
+            condition: inArray(fileAsset.id, retirementFileIds),
+            select: { id: true, fileName: true, mimeType: true, publicUrl: true, storagePath: true },
           })
         : [];
     const retirementFileMap = new Map(
@@ -1222,7 +1731,7 @@ export class FinanceService {
 
     const requestTotal = Number(request.totalAmount ?? 0);
     let cumulativeDisbursed = 0;
-    const items = vouchers.map((voucher) => {
+    const items = vouchers.map((voucher: any) => {
       const amount = Number(voucher.amount);
       const grossAmount =
         voucher.grossAmount !== null ? Number(voucher.grossAmount) : amount;
@@ -1344,6 +1853,25 @@ export class FinanceService {
     });
   }
 
+  private async loadPaymentVoucherWithRequest(voucherId: string, requestId: bigint) {
+    const [row] = await this.db.client
+      .select({
+        voucher: financePaymentVoucher,
+        request: {
+          id: requestInstance.id,
+          status: requestInstance.status,
+          organizationId: requestInstance.organizationId,
+          teamId: requestInstance.teamId,
+          workflowInstanceId: requestInstance.workflowInstanceId,
+        },
+      })
+      .from(financePaymentVoucher)
+      .leftJoin(requestInstance, eq(financePaymentVoucher.requestId, requestInstance.id))
+      .where(and(eq(financePaymentVoucher.id, voucherId), eq(financePaymentVoucher.requestId, requestId)))
+      .limit(1);
+    return row ? { ...row.voucher, request: row.request } : null;
+  }
+
   async updatePaymentVoucher(
     requestId: string,
     voucherId: string,
@@ -1352,20 +1880,7 @@ export class FinanceService {
     actorPermissions: string[] = [],
   ) {
     const id = parseBigIntId(requestId, "request id");
-    const voucher = await this.db.client.query.financePaymentVoucher.findFirst({
-      where: { id: voucherId, requestId: id },
-      include: {
-        request: {
-          select: {
-            id: true,
-            status: true,
-            organizationId: true,
-            teamId: true,
-            workflowInstanceId: true,
-          },
-        },
-      },
-    });
+    const voucher = await this.loadPaymentVoucherWithRequest(voucherId, id);
     if (!voucher) throw new NotFoundException("Payment voucher not found");
     const permissionSet = new Set(
       (actorPermissions ?? []).map((permission) =>
@@ -1418,34 +1933,15 @@ export class FinanceService {
     actorId?: string,
   ) {
     const id = parseBigIntId(requestId, "request id");
-    const correction =
-      await this.db.client.query.financePaymentVoucherCorrection.findFirst({
-        where: {
-          id: correctionId,
-          voucherId,
-          requestId: id,
-          status: "pending",
-        },
-        include: {
-          voucher: {
-            include: {
-              request: {
-                select: {
-                  id: true,
-                  status: true,
-                  organizationId: true,
-                  teamId: true,
-                  workflowInstanceId: true,
-                },
-              },
-            },
-          },
-        },
-      });
+    const correction = await this.selectRow<Payload>(this.db.client, financePaymentVoucherCorrection, {
+      where: { id: correctionId, voucherId, requestId: id, status: "pending" },
+    });
     if (!correction)
       throw new NotFoundException(
         "Pending payment voucher correction not found",
       );
+    correction.voucher = await this.loadPaymentVoucherWithRequest(voucherId, id);
+    if (!correction.voucher) throw new NotFoundException("Payment voucher not found");
 
     const proposed = this.correctionSnapshotToDto(correction.proposedSnapshot);
     const prepared = await this.preparePaymentVoucherUpdate(
@@ -1454,14 +1950,11 @@ export class FinanceService {
     );
     await this.applyPaymentVoucherUpdate(correction.voucher, prepared, actorId);
 
-    await this.db.client.query.financePaymentVoucherCorrection.update({
-      where: { id: correction.id },
-      data: {
+    await this.updateRow(this.db.client, financePaymentVoucherCorrection, {
         status: "approved",
         reviewedBy: actorId ? toBigInt(actorId) : null,
         reviewedAt: new Date(),
-      },
-    });
+      }, { id: correction.id });
 
     await this.notificationsService
       .create({
@@ -1496,30 +1989,22 @@ export class FinanceService {
     comment?: string,
   ) {
     const id = parseBigIntId(requestId, "request id");
-    const correction =
-      await this.db.client.query.financePaymentVoucherCorrection.findFirst({
-        where: {
-          id: correctionId,
-          voucherId,
-          requestId: id,
-          status: "pending",
-        },
-        include: { voucher: true },
-      });
+    const correction = await this.selectRow<Payload>(this.db.client, financePaymentVoucherCorrection, {
+      where: { id: correctionId, voucherId, requestId: id, status: "pending" },
+    });
     if (!correction)
       throw new NotFoundException(
         "Pending payment voucher correction not found",
       );
+    correction.voucher = await this.selectRow<Payload>(this.db.client, financePaymentVoucher, { where: { id: voucherId } });
+    if (!correction.voucher) throw new NotFoundException("Payment voucher not found");
 
-    await this.db.client.query.financePaymentVoucherCorrection.update({
-      where: { id: correction.id },
-      data: {
+    await this.updateRow(this.db.client, financePaymentVoucherCorrection, {
         status: "rejected",
         reviewedBy: actorId ? toBigInt(actorId) : null,
         reviewedAt: new Date(),
         reviewComment: comment?.trim() || null,
-      },
-    });
+      }, { id: correction.id });
 
     await this.notificationsService
       .create({
@@ -1643,9 +2128,7 @@ export class FinanceService {
       ),
     );
     if (evidenceFileIds.length > 0) {
-      const fileExists = await this.db.client.query.fileAsset.count({
-        where: { id: { in: evidenceFileIds } },
-      });
+      const fileExists = await this.countRows(this.db.client, fileAsset, undefined, inArray(fileAsset.id, evidenceFileIds));
       if (fileExists !== evidenceFileIds.length) {
         throw new BadRequestException("Invalid payment voucher evidence file");
       }
@@ -1679,7 +2162,7 @@ export class FinanceService {
       isActive: boolean;
     } | null = null;
     if (paidFromAccountId) {
-      paidFromAccount = await this.db.client.query.financeAccount.findUnique({
+      paidFromAccount = await this.selectRow(this.db.client, financeAccount, {
         where: { id: paidFromAccountId },
         select: { id: true, currency: true, isActive: true },
       });
@@ -1694,7 +2177,7 @@ export class FinanceService {
     const nextTransactionRef = dto.transaction_ref ?? voucher.transactionRef;
     let nextContactId = dto.contact_id ?? voucher.contactId;
     if (nextContactId) {
-      const contact = await this.db.client.query.financeContact.findUnique({
+      const contact = await this.selectRow(this.db.client, financeContact, {
         where: { id: nextContactId },
         select: { id: true },
       });
@@ -1784,9 +2267,7 @@ export class FinanceService {
     actorId?: string,
   ) {
     await this.db.client.transaction(async (tx) => {
-      await tx.financePaymentVoucher.update({
-        where: { id: voucher.id },
-        data: {
+      await this.updateRow(tx, financePaymentVoucher, {
           note: prepared.nextNote,
           method: prepared.nextMethod,
           transactionRef: prepared.nextTransactionRef,
@@ -1795,40 +2276,33 @@ export class FinanceService {
           contactId: prepared.nextContactId,
           paidFromAccountId: prepared.paidFromAccountId,
           disbursedAt: prepared.disbursedAt,
-        },
-      });
+        }, { id: voucher.id });
 
-      await tx.financePaymentVoucherFile.deleteMany({
-        where: { voucherId: voucher.id, fileKind: "evidence" },
-      });
+      await this.deleteWhere(tx, financePaymentVoucherFile, { voucherId: voucher.id, fileKind: "evidence" });
 
       if (prepared.evidenceFileIds.length > 0) {
-        await tx.financePaymentVoucherFile.createMany({
-          data: prepared.evidenceFileIds.map((fileId, index) => ({
+        await this.insertRows(
+          tx,
+          financePaymentVoucherFile,
+          prepared.evidenceFileIds.map((fileId, index) => ({
             voucherId: voucher.id,
             fileId,
             fileKind: "evidence",
             sortOrder: index,
           })),
-        });
+        );
       }
 
-      await tx.financePaymentVoucherCorrection.updateMany({
-        where: { voucherId: voucher.id, status: "pending" },
-        data: {
+      await this.updateWhere(tx, financePaymentVoucherCorrection, {
           status: "superseded",
           reviewedBy: actorId ? toBigInt(actorId) : null,
           reviewedAt: new Date(),
-        },
-      });
+        }, { voucherId: voucher.id, status: "pending" });
 
-      await tx.financeLedgerEntry.deleteMany({
-        where: { sourceType: "finance_payment_voucher", sourceId: voucher.id },
-      });
+      await this.deleteWhere(tx, financeLedgerEntry, { sourceType: "finance_payment_voucher", sourceId: voucher.id });
 
       if (prepared.paidFromAccountId && prepared.paidFromAccount) {
-        await tx.financeLedgerEntry.create({
-          data: {
+        await this.insertRow(tx, financeLedgerEntry, {
             accountId: prepared.paidFromAccountId,
             direction: "out",
             amount: prepared.nextAmount,
@@ -1842,18 +2316,13 @@ export class FinanceService {
               request_id: voucher.request.id.toString(),
               voucher_number: voucher.voucherNumber,
             } as InputJsonValue,
-          },
-        });
+          });
       }
 
-      await tx.financeJournalEntry.deleteMany({
-        where: { sourceType: "finance_payment_voucher", sourceId: voucher.id },
-      });
+      await this.deleteWhere(tx, financeJournalEntry, { sourceType: "finance_payment_voucher", sourceId: voucher.id });
 
       if (prepared.paidFromAccountId) {
-        const refreshedVoucher = await tx.financePaymentVoucher.findUnique({
-          where: { id: voucher.id },
-        });
+        const refreshedVoucher = await this.selectRow<Payload>(tx, financePaymentVoucher, { where: { id: voucher.id } });
         if (!refreshedVoucher)
           throw new NotFoundException("Payment voucher not found after update");
         const period = await this.ensureReportingPeriod(
@@ -1900,8 +2369,7 @@ export class FinanceService {
     });
 
     if (voucher.request.workflowInstanceId) {
-      await this.db.client.query.workflowHistory.create({
-        data: {
+      await this.insertRow(this.db.client, workflowHistory, {
           instanceId: voucher.request.workflowInstanceId,
           action: "pv_corrected",
           performedBy: actorId ? toBigInt(actorId) : null,
@@ -1911,8 +2379,7 @@ export class FinanceService {
             voucher_number: voucher.voucherNumber,
             changes: prepared.changeSummary,
           } as InputJsonValue,
-        },
-      });
+        });
     }
   }
 
@@ -1926,26 +2393,31 @@ export class FinanceService {
   ) {
     if (!actorId) throw new ForbiddenException("Authenticated user required");
 
-    const existingPending =
-      await this.db.client.query.financePaymentVoucherCorrection.findFirst({
-        where: { voucherId: voucher.id, status: "pending" },
-        include: {
-          proposer: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              username: true,
-              email: true,
-            },
-          },
+    const existingPendingRow = await this.db.client
+      .select({
+        correction: financePaymentVoucherCorrection,
+        proposer: {
+          id: profile.id,
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+          username: profile.username,
+          email: profile.email,
         },
-      });
+      })
+      .from(financePaymentVoucherCorrection)
+      .leftJoin(profile, eq(financePaymentVoucherCorrection.proposedBy, profile.id))
+      .where(and(eq(financePaymentVoucherCorrection.voucherId, voucher.id), eq(financePaymentVoucherCorrection.status, "pending")))
+      .orderBy(desc(financePaymentVoucherCorrection.createdAt))
+      .limit(1);
+    const existingPending = existingPendingRow[0]
+      ? {
+          ...existingPendingRow[0].correction,
+          proposer: existingPendingRow[0].proposer?.id ? existingPendingRow[0].proposer : null,
+        }
+      : null;
 
     const correction = existingPending
-      ? await this.db.client.query.financePaymentVoucherCorrection.update({
-          where: { id: existingPending.id },
-          data: {
+      ? await this.updateRow<Payload>(this.db.client, financePaymentVoucherCorrection, {
             reason: reason?.trim() || null,
             currentSnapshot: prepared.currentSnapshot,
             proposedSnapshot: prepared.proposedSnapshot,
@@ -1953,21 +2425,8 @@ export class FinanceService {
             reviewedBy: null,
             reviewedAt: null,
             reviewComment: null,
-          },
-          include: {
-            proposer: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                username: true,
-                email: true,
-              },
-            },
-          },
-        })
-      : await this.db.client.query.financePaymentVoucherCorrection.create({
-          data: {
+          }, { id: existingPending.id })
+      : await this.insertRow<Payload>(this.db.client, financePaymentVoucherCorrection, {
             voucherId: voucher.id,
             requestId: voucher.request.id,
             status: "pending",
@@ -1975,36 +2434,20 @@ export class FinanceService {
             currentSnapshot: prepared.currentSnapshot,
             proposedSnapshot: prepared.proposedSnapshot,
             proposedBy: toBigInt(actorId),
-          },
-          include: {
-            proposer: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                username: true,
-                email: true,
-              },
-            },
-          },
         });
-
-    const approvers = await this.db.client.query.userRole.findMany({
-      where: {
-        role: {
-          OR: [
-            { slug: { in: ["administrator", "admin"] } },
-            {
-              permissions: {
-                some: { permission: { slug: "finance.correct_completed" } },
-              },
-            },
-          ],
-        },
-      },
-      select: { profileId: true },
-      distinct: ["profileId"],
+    if (!correction) throw new BadRequestException("Unable to create payment voucher correction");
+    correction.proposer = await this.selectRow(this.db.client, profile, {
+      where: { id: correction.proposedBy },
+      select: { id: true, firstName: true, lastName: true, username: true, email: true },
     });
+
+    const approvers = await this.db.client
+      .selectDistinct({ profileId: userRole.profileId })
+      .from(userRole)
+      .innerJoin(role, eq(userRole.roleId, role.id))
+      .leftJoin(rolePermission, eq(rolePermission.roleId, role.id))
+      .leftJoin(permission, eq(rolePermission.permissionId, permission.id))
+      .where(or(inArray(role.slug, ["administrator", "admin"]), eq(permission.slug, "finance.correct_completed")));
 
     await Promise.all(
       approvers
@@ -2029,8 +2472,7 @@ export class FinanceService {
     );
 
     if (voucher.request.workflowInstanceId) {
-      await this.db.client.query.workflowHistory.create({
-        data: {
+      await this.insertRow(this.db.client, workflowHistory, {
           instanceId: voucher.request.workflowInstanceId,
           action: "pv_correction_requested",
           performedBy: toBigInt(actorId),
@@ -2042,8 +2484,7 @@ export class FinanceService {
             changes: prepared.changeSummary,
             reason: reason?.trim() || null,
           } as InputJsonValue,
-        },
-      });
+        });
     }
 
     return correction;
@@ -2072,96 +2513,128 @@ export class FinanceService {
       if (query.to) where.disbursedAt.lte = new Date(String(query.to));
     }
 
+    const condition = this.whereOf(financePaymentVoucher, where);
     const [total, rows] = await Promise.all([
-      this.db.client.query.financePaymentVoucher.count({ where }),
-      this.db.client.query.financePaymentVoucher.findMany({
-        where,
-        include: {
+      this.countRows(this.db.client, financePaymentVoucher, where),
+      this.db.client
+        .select({
+          voucher: financePaymentVoucher,
           request: {
-            select: {
-              id: true,
-              status: true,
-              totalAmount: true,
-              createdAt: true,
-              requestType: { select: { name: true, codePrefix: true } },
-              creator: {
-                select: {
-                  firstName: true,
-                  lastName: true,
-                  username: true,
-                  email: true,
-                },
-              },
-            },
+            id: requestInstance.id,
+            status: requestInstance.status,
+            totalAmount: requestInstance.totalAmount,
+            createdAt: requestInstance.createdAt,
+          },
+          requestType: {
+            name: requestType.name,
+            codePrefix: requestType.codePrefix,
+          },
+          creator: {
+            firstName: profile.firstName,
+            lastName: profile.lastName,
+            username: profile.username,
+            email: profile.email,
           },
           paidFromAccount: {
-            select: { id: true, name: true, code: true, accountType: true },
+            id: financeAccount.id,
+            name: financeAccount.name,
+            code: financeAccount.code,
+            accountType: financeAccount.accountType,
           },
           contact: {
-            select: { id: true, name: true },
+            id: financeContact.id,
+            name: financeContact.name,
           },
           evidenceFile: {
-            select: {
-              id: true,
-              fileName: true,
-              mimeType: true,
-              publicUrl: true,
-              storagePath: true,
-            },
+            id: fileAsset.id,
+            fileName: fileAsset.fileName,
+            mimeType: fileAsset.mimeType,
+            publicUrl: fileAsset.publicUrl,
+            storagePath: fileAsset.storagePath,
           },
-          attachments: {
-            where: { fileKind: "evidence" },
-            include: {
-              file: {
-                select: {
-                  id: true,
-                  fileName: true,
-                  mimeType: true,
-                  publicUrl: true,
-                  storagePath: true,
-                },
-              },
-            },
-            orderBy: { sortOrder: "asc" },
-          },
-          voucherItems: {
-            include: { requestItem: true },
-          },
-          deductions: {
-            include: {
-              deductionType: true,
-            },
-          },
-        },
-        orderBy: [{ disbursedAt: "desc" }, { createdAt: "desc" }],
-        skip: (page - 1) * perPage,
-        take: perPage,
-      }),
+        })
+        .from(financePaymentVoucher)
+        .innerJoin(requestInstance, eq(financePaymentVoucher.requestId, requestInstance.id))
+        .leftJoin(requestType, eq(requestInstance.requestTypeId, requestType.id))
+        .leftJoin(profile, eq(requestInstance.createdBy, profile.id))
+        .leftJoin(financeAccount, eq(financePaymentVoucher.paidFromAccountId, financeAccount.id))
+        .leftJoin(financeContact, eq(financePaymentVoucher.contactId, financeContact.id))
+        .leftJoin(fileAsset, eq(financePaymentVoucher.evidenceFileId, fileAsset.id))
+        .where(condition)
+        .orderBy(desc(financePaymentVoucher.disbursedAt), desc(financePaymentVoucher.createdAt))
+        .offset((page - 1) * perPage)
+        .limit(perPage),
     ]);
 
-    const data = rows.map((row) => {
+    const voucherIds = rows.map((row: any) => row.voucher.id);
+    const [attachmentRows, voucherItemRows, deductionRows] = await Promise.all([
+      voucherIds.length
+        ? this.db.client
+            .select({ attachment: financePaymentVoucherFile, file: fileAsset })
+            .from(financePaymentVoucherFile)
+            .leftJoin(fileAsset, eq(financePaymentVoucherFile.fileId, fileAsset.id))
+            .where(and(inArray(financePaymentVoucherFile.voucherId, voucherIds), eq(financePaymentVoucherFile.fileKind, "evidence")))
+            .orderBy(asc(financePaymentVoucherFile.sortOrder))
+        : Promise.resolve([]),
+      voucherIds.length
+        ? this.db.client
+            .select({ item: financePaymentVoucherItem, requestItem })
+            .from(financePaymentVoucherItem)
+            .leftJoin(requestItem, eq(financePaymentVoucherItem.requestItemId, requestItem.id))
+            .where(inArray(financePaymentVoucherItem.paymentVoucherId, voucherIds))
+        : Promise.resolve([]),
+      voucherIds.length
+        ? this.db.client
+            .select({ deduction: financePVDeduction, deductionType: financeDeductionType })
+            .from(financePVDeduction)
+            .leftJoin(financeDeductionType, eq(financePVDeduction.deductionTypeId, financeDeductionType.id))
+            .where(inArray(financePVDeduction.paymentVoucherId, voucherIds))
+        : Promise.resolve([]),
+    ]);
+
+    const attachmentsByVoucher = new Map<string, any[]>();
+    for (const row of attachmentRows as any[]) {
+      const voucherId = row.attachment.voucherId;
+      const list = attachmentsByVoucher.get(voucherId) ?? [];
+      list.push({ ...row.attachment, file: row.file?.id ? row.file : null });
+      attachmentsByVoucher.set(voucherId, list);
+    }
+    const voucherItemsByVoucher = new Map<string, any[]>();
+    for (const row of voucherItemRows as any[]) {
+      const voucherId = row.item.paymentVoucherId;
+      const list = voucherItemsByVoucher.get(voucherId) ?? [];
+      list.push({ ...row.item, requestItem: row.requestItem });
+      voucherItemsByVoucher.set(voucherId, list);
+    }
+    const deductionsByVoucher = new Map<string, any[]>();
+    for (const row of deductionRows as any[]) {
+      const voucherId = row.deduction.paymentVoucherId;
+      const list = deductionsByVoucher.get(voucherId) ?? [];
+      list.push({ ...row.deduction, deductionType: row.deductionType });
+      deductionsByVoucher.set(voucherId, list);
+    }
+
+    const data = rows.map((row: any) => {
+      const voucher = row.voucher;
+      const creator = row.creator ?? {};
       const creatorName =
-        `${row.request.creator.firstName ?? ""} ${row.request.creator.lastName ?? ""}`.trim() ||
-        row.request.creator.username ||
-        row.request.creator.email ||
+        `${creator.firstName ?? ""} ${creator.lastName ?? ""}`.trim() ||
+        creator.username ||
+        creator.email ||
         "-";
-      const requestNumber = `${(row.request.requestType?.codePrefix || "REQ").toUpperCase()}/${row.request.createdAt.getFullYear()}/${row.request.id.toString()}`;
-      const amount = Number(row.amount);
-      const retiredAmount = Number(row.retiredAmount);
-      const grossAmount =
-        row.grossAmount !== null ? Number(row.grossAmount) : amount;
+      const requestNumber = `${(row.requestType?.codePrefix || "REQ").toUpperCase()}/${row.request.createdAt.getFullYear()}/${row.request.id.toString()}`;
+      const amount = Number(voucher.amount);
+      const retiredAmount = Number(voucher.retiredAmount);
+      const grossAmount = voucher.grossAmount !== null ? Number(voucher.grossAmount) : amount;
+      const attachments = attachmentsByVoucher.get(voucher.id) ?? [];
       const evidenceFiles = Array.from(
         new Map(
           [
-            ...(row.attachments ?? [])
-              .map((attachment) => attachment.file)
-              .filter(Boolean),
-            row.evidenceFile ?? null,
+            ...attachments.map((attachment) => attachment.file).filter(Boolean),
+            row.evidenceFile?.id ? row.evidenceFile : null,
           ]
-            .filter((file): file is NonNullable<typeof row.evidenceFile> =>
-              Boolean(file),
-            )
-            .map((file) => [
+            .filter(Boolean)
+            .map((file: any) => [
               file.id,
               {
                 id: file.id,
@@ -2173,25 +2646,25 @@ export class FinanceService {
         ).values(),
       );
       return {
-        id: row.id,
+        id: voucher.id,
         request_id: row.request.id.toString(),
         request_number: requestNumber,
         request_status: row.request.status,
-        request_type: row.request.requestType?.name ?? "-",
+        request_type: row.requestType?.name ?? "-",
         request_creator_name: creatorName,
         request_total_amount: Number(row.request.totalAmount ?? 0),
-        voucher_number: row.voucherNumber,
+        voucher_number: voucher.voucherNumber,
         amount,
         retired_amount: retiredAmount,
         voucher_balance: Math.max(0, amount - retiredAmount),
-        retirement_status: row.retirementStatus,
-        method: row.method,
-        transaction_ref: row.transactionRef,
-        note: row.note,
-        disbursed_at: row.disbursedAt,
-        retired_at: row.retiredAt,
-        verified_at: row.verifiedAt,
-        paid_from_account: row.paidFromAccount
+        retirement_status: voucher.retirementStatus,
+        method: voucher.method,
+        transaction_ref: voucher.transactionRef,
+        note: voucher.note,
+        disbursed_at: voucher.disbursedAt,
+        retired_at: voucher.retiredAt,
+        verified_at: voucher.verifiedAt,
+        paid_from_account: row.paidFromAccount?.id
           ? {
               id: row.paidFromAccount.id,
               name: row.paidFromAccount.name,
@@ -2199,15 +2672,13 @@ export class FinanceService {
               account_type: row.paidFromAccount.accountType,
             }
           : null,
-        contact_id: row.contactId ?? undefined,
-        contact: row.contact
-          ? { id: row.contact.id, name: row.contact.name }
-          : null,
+        contact_id: voucher.contactId ?? undefined,
+        contact: row.contact?.id ? { id: row.contact.id, name: row.contact.name } : null,
         evidence_file: evidenceFiles[0] ?? null,
         evidence_files: evidenceFiles,
         gross_amount: grossAmount,
-        net_amount: row.netAmount !== null ? Number(row.netAmount) : amount,
-        deductions: (row.deductions ?? []).map((d: any) => ({
+        net_amount: voucher.netAmount !== null ? Number(voucher.netAmount) : amount,
+        deductions: (deductionsByVoucher.get(voucher.id) ?? []).map((d: any) => ({
           id: d.id,
           payment_voucher_id: d.paymentVoucherId,
           deduction_type_id: d.deductionTypeId,
@@ -2217,15 +2688,14 @@ export class FinanceService {
           gross_amount: Number(d.grossAmount),
           deduction_amount: Number(d.deductionAmount),
         })),
-        voucher_items:
-          row.voucherItems?.map((vi: any) => ({
-            id: vi.requestItem.id,
-            description: vi.requestItem.description,
-            amount: Number(vi.amount),
-            bank_name: vi.requestItem.bankName,
-            account_number: vi.requestItem.accountNumber,
-            account_name: vi.requestItem.accountName,
-          })) || [],
+        voucher_items: (voucherItemsByVoucher.get(voucher.id) ?? []).map((vi: any) => ({
+          id: vi.requestItem?.id,
+          description: vi.requestItem?.description,
+          amount: Number(vi.amount),
+          bank_name: vi.requestItem?.bankName,
+          account_number: vi.requestItem?.accountNumber,
+          account_name: vi.requestItem?.accountName,
+        })),
       };
     });
 
@@ -2246,13 +2716,13 @@ export class FinanceService {
     };
 
     const [data, total] = await Promise.all([
-      this.db.client.query.financeAccount.findMany({
+      this.selectRows(this.db.client, financeAccount, {
         where,
         orderBy: [{ isActive: "desc" }, { name: "asc" }],
-        skip: (page - 1) * perPage,
-        take: perPage,
+        offset: (page - 1) * perPage,
+        limit: perPage,
       }),
-      this.db.client.query.financeAccount.count({ where }),
+      this.countRows(this.db.client, financeAccount, where),
     ]);
 
     const movementByAccount = await this.getLedgerMovementByAccount(
@@ -2260,34 +2730,21 @@ export class FinanceService {
     );
 
     return paginatedResponse(
-      data.map((row) => ({
-        id: row.id,
-        organization_id: row.organizationId?.toString() ?? null,
-        name: row.name,
-        code: row.code,
-        account_type: row.accountType,
-        bank_name: row.bankName,
-        account_name: row.accountName,
-        account_number: row.accountNumber,
-        branch_name: row.branchName,
-        currency: row.currency,
-        opening_balance: Number(row.openingBalance),
-        current_balance:
-          Number(row.openingBalance) + (movementByAccount.get(row.id) ?? 0),
-        is_active: row.isActive,
-        created_at: row.createdAt,
-        updated_at: row.updatedAt,
-      })),
+      data.map((row) => this.serializeAccount(row, movementByAccount.get(row.id) ?? 0)),
       { page, per_page: perPage, total },
     );
   }
 
   async getAccount(id: string) {
-    const row = await this.db.client.query.financeAccount.findUnique({
+    const row = await this.selectRow(this.db.client, financeAccount, {
       where: { id },
     });
     if (!row) throw new NotFoundException("Account not found");
     const movementByAccount = await this.getLedgerMovementByAccount([row.id]);
+    return this.serializeAccount(row, movementByAccount.get(row.id) ?? 0);
+  }
+
+  private serializeAccount(row: any, movement = 0) {
     return {
       id: row.id,
       organization_id: row.organizationId?.toString() ?? null,
@@ -2300,8 +2757,7 @@ export class FinanceService {
       branch_name: row.branchName,
       currency: row.currency,
       opening_balance: Number(row.openingBalance),
-      current_balance:
-        Number(row.openingBalance) + (movementByAccount.get(row.id) ?? 0),
+      current_balance: Number(row.openingBalance) + movement,
       is_active: row.isActive,
       created_at: row.createdAt,
       updated_at: row.updatedAt,
@@ -2311,66 +2767,59 @@ export class FinanceService {
   private async getLedgerMovementByAccount(accountIds: string[]) {
     if (!accountIds.length) return new Map<string, number>();
 
-    const groups = await this.db.client.query.financeLedgerEntry.groupBy({
-      by: ["accountId", "direction"],
-      where: { accountId: { in: accountIds } },
-      _sum: { amount: true },
-    });
+    const groups = await this.db.client
+      .select({
+        accountId: financeLedgerEntry.accountId,
+        direction: financeLedgerEntry.direction,
+        amount: sum(financeLedgerEntry.amount),
+      })
+      .from(financeLedgerEntry)
+      .where(inArray(financeLedgerEntry.accountId, accountIds))
+      .groupBy(financeLedgerEntry.accountId, financeLedgerEntry.direction);
 
     const movementByAccount = new Map<string, number>();
-    for (const accountId of accountIds) {
-      movementByAccount.set(accountId, 0);
-    }
+    for (const accountId of accountIds) movementByAccount.set(accountId, 0);
 
     for (const group of groups) {
-      const amount = Number(group._sum.amount ?? 0);
-      if (group.direction === "in") {
-        movementByAccount.set(
-          group.accountId,
-          (movementByAccount.get(group.accountId) ?? 0) + amount,
-        );
-      } else if (group.direction === "out") {
-        movementByAccount.set(
-          group.accountId,
-          (movementByAccount.get(group.accountId) ?? 0) - amount,
-        );
-      }
+      const amount = Number(group.amount ?? 0);
+      movementByAccount.set(
+        group.accountId,
+        (movementByAccount.get(group.accountId) ?? 0) +
+          (group.direction === "in" ? amount : -amount),
+      );
     }
 
     return movementByAccount;
   }
 
   async createAccount(dto: UpsertFinanceAccount, actorId?: string) {
-    const row = await this.db.client.query.financeAccount.create({
-      data: {
-        name: dto.name.trim(),
-        code: dto.code?.trim() || null,
-        accountType: dto.account_type ?? "bank",
-        bankName: dto.bank_name?.trim() || null,
-        accountName: dto.account_name?.trim() || null,
-        accountNumber: dto.account_number?.trim() || null,
-        branchName: dto.branch_name?.trim() || null,
-        currency: (dto.currency ?? "NGN").toUpperCase(),
-        openingBalance: dto.opening_balance ?? 0,
-        isActive: dto.is_active ?? true,
-        metadata: (dto.metadata ?? {}) as InputJsonValue,
-        createdBy: actorId ? toBigInt(actorId) : null,
-      },
+    const row = await this.insertRow(this.db.client, financeAccount, {
+      name: dto.name.trim(),
+      code: dto.code?.trim() || null,
+      accountType: dto.account_type ?? "bank",
+      bankName: dto.bank_name?.trim() || null,
+      accountName: dto.account_name?.trim() || null,
+      accountNumber: dto.account_number?.trim() || null,
+      branchName: dto.branch_name?.trim() || null,
+      currency: (dto.currency ?? "NGN").toUpperCase(),
+      openingBalance: dto.opening_balance ?? 0,
+      isActive: dto.is_active ?? true,
+      metadata: (dto.metadata ?? {}) as InputJsonValue,
+      createdBy: actorId ? toBigInt(actorId) : null,
     });
+    if (!row) throw new BadRequestException("Unable to create account");
 
     if (Number(row.openingBalance) !== 0) {
-      await this.db.client.query.financeLedgerEntry.create({
-        data: {
-          accountId: row.id,
-          direction: Number(row.openingBalance) >= 0 ? "in" : "out",
-          amount: Math.abs(Number(row.openingBalance)),
-          currency: row.currency,
-          entryDate: new Date(),
-          description: "Opening balance",
-          sourceType: "opening_balance",
-          sourceId: row.id,
-          createdBy: actorId ? toBigInt(actorId) : null,
-        },
+      await this.insertRow(this.db.client, financeLedgerEntry, {
+        accountId: row.id,
+        direction: Number(row.openingBalance) >= 0 ? "in" : "out",
+        amount: Math.abs(Number(row.openingBalance)),
+        currency: row.currency,
+        entryDate: new Date(),
+        description: "Opening balance",
+        sourceType: "opening_balance",
+        sourceId: row.id,
+        createdBy: actorId ? toBigInt(actorId) : null,
       });
     }
 
@@ -2424,75 +2873,43 @@ export class FinanceService {
       });
     }
 
-    return {
-      id: row.id,
-      organization_id: row.organizationId?.toString() ?? null,
-      name: row.name,
-      code: row.code,
-      account_type: row.accountType,
-      bank_name: row.bankName,
-      account_name: row.accountName,
-      account_number: row.accountNumber,
-      branch_name: row.branchName,
-      currency: row.currency,
-      opening_balance: Number(row.openingBalance),
-      is_active: row.isActive,
-      created_at: row.createdAt,
-      updated_at: row.updatedAt,
-    };
+    return this.serializeAccount(row);
   }
 
   async updateAccount(id: string, dto: UpsertFinanceAccount) {
-    const existing = await this.db.client.query.financeAccount.findUnique({
+    const existing = await this.selectRow(this.db.client, financeAccount, {
       where: { id },
     });
     if (!existing) throw new NotFoundException("Account not found");
 
-    const row = await this.db.client.query.financeAccount.update({
-      where: { id },
-      data: {
-        name: dto.name.trim(),
-        code: dto.code?.trim() || null,
-        accountType: dto.account_type ?? existing.accountType,
-        bankName: dto.bank_name?.trim() || existing.bankName,
-        accountName: dto.account_name?.trim() || existing.accountName,
-        accountNumber: dto.account_number?.trim() || existing.accountNumber,
-        branchName: dto.branch_name?.trim() || existing.branchName,
-        currency: (dto.currency ?? existing.currency).toUpperCase(),
-        openingBalance: dto.opening_balance ?? existing.openingBalance,
-        isActive: dto.is_active ?? existing.isActive,
-        metadata: (dto.metadata ?? existing.metadata ?? {}) as InputJsonValue,
-      },
-    });
+    const row = await this.updateRow(this.db.client, financeAccount, {
+      name: dto.name.trim(),
+      code: dto.code?.trim() || null,
+      accountType: dto.account_type ?? existing.accountType,
+      bankName: dto.bank_name?.trim() || existing.bankName,
+      accountName: dto.account_name?.trim() || existing.accountName,
+      accountNumber: dto.account_number?.trim() || existing.accountNumber,
+      branchName: dto.branch_name?.trim() || existing.branchName,
+      currency: (dto.currency ?? existing.currency).toUpperCase(),
+      openingBalance: dto.opening_balance ?? existing.openingBalance,
+      isActive: dto.is_active ?? existing.isActive,
+      metadata: (dto.metadata ?? existing.metadata ?? {}) as InputJsonValue,
+    }, { id });
+    if (!row) throw new NotFoundException("Account not found");
 
-    return {
-      id: row.id,
-      organization_id: row.organizationId?.toString() ?? null,
-      name: row.name,
-      code: row.code,
-      account_type: row.accountType,
-      bank_name: row.bankName,
-      account_name: row.accountName,
-      account_number: row.accountNumber,
-      branch_name: row.branchName,
-      currency: row.currency,
-      opening_balance: Number(row.openingBalance),
-      is_active: row.isActive,
-      created_at: row.createdAt,
-      updated_at: row.updatedAt,
-    };
+    return this.serializeAccount(row);
   }
 
   async createIncome(dto: CreateFinanceIncome, actorId?: string) {
-    const account = await this.db.client.query.financeAccount.findUnique({
+    const account = await this.selectRow(this.db.client, financeAccount, {
       where: { id: dto.account_id },
       select: { id: true, currency: true, isActive: true },
     });
     if (!account || !account.isActive)
       throw new BadRequestException("Invalid account_id");
     if (dto.file_id) {
-      const fileExists = await this.db.client.query.fileAsset.count({
-        where: { id: dto.file_id },
+      const fileExists = await this.countRows(this.db.client, fileAsset, {
+        id: dto.file_id,
       });
       if (!fileExists) throw new BadRequestException("Invalid file_id");
     }
@@ -2506,57 +2923,54 @@ export class FinanceService {
       dto.grant_id,
     );
 
-    const income = await this.db.client.query.financeIncomeEntry.create({
-      data: {
-        accountId: account.id,
-        revenueAccountId: dto.revenue_account_id ?? null,
-        fundId: fund?.id ?? null,
-        grantId: grant?.id ?? null,
-        amount: dto.amount,
-        currency,
-        receivedAt: now,
-        reference: dto.reference?.trim() || null,
-        payer: dto.payer?.trim() || null,
-        notes: dto.notes?.trim() || null,
-        fileId: dto.file_id ?? null,
-        pledgeId: dto.pledge_id ?? null,
-        createdBy: actorId ? toBigInt(actorId) : null,
-      },
+    const income = await this.insertRow(this.db.client, financeIncomeEntry, {
+      accountId: account.id,
+      revenueAccountId: dto.revenue_account_id ?? null,
+      fundId: fund?.id ?? null,
+      grantId: grant?.id ?? null,
+      amount: dto.amount,
+      currency,
+      receivedAt: now,
+      reference: dto.reference?.trim() || null,
+      payer: dto.payer?.trim() || null,
+      notes: dto.notes?.trim() || null,
+      fileId: dto.file_id ?? null,
+      pledgeId: dto.pledge_id ?? null,
+      createdBy: actorId ? toBigInt(actorId) : null,
     });
+    if (!income) throw new BadRequestException("Unable to create income entry");
 
-    await this.db.client.query.financeLedgerEntry.create({
-      data: {
-        accountId: account.id,
-        direction: "in",
-        amount: dto.amount,
-        currency,
-        entryDate: now,
-        description: dto.notes?.trim() || "Income entry",
-        sourceType: "finance_income",
-        sourceId: income.id,
-        createdBy: actorId ? toBigInt(actorId) : null,
-        metadata: {
-          reference: dto.reference ?? null,
-          payer: dto.payer ?? null,
-        } as InputJsonValue,
-      },
+    await this.insertRow(this.db.client, financeLedgerEntry, {
+      accountId: account.id,
+      direction: "in",
+      amount: dto.amount,
+      currency,
+      entryDate: now,
+      description: dto.notes?.trim() || "Income entry",
+      sourceType: "finance_income",
+      sourceId: income.id,
+      createdBy: actorId ? toBigInt(actorId) : null,
+      metadata: {
+        reference: dto.reference ?? null,
+        payer: dto.payer ?? null,
+      } as InputJsonValue,
     });
 
     await this.postIncomeJournal(income, actorId);
     if (grant?.id) {
-      await this.db.client.query.financeGrant
-        .update({
-          where: { id: grant.id },
-          data: {
-            recognizedAmount: { increment: dto.amount },
-            deferredAmount: { decrement: dto.amount },
-          },
-        })
-        .catch(() => null);
+      await this.updateWhere(
+        this.db.client,
+        financeGrant,
+        {
+          recognizedAmount: sql`${financeGrant.recognizedAmount} + ${dto.amount}`,
+          deferredAmount: sql`${financeGrant.deferredAmount} - ${dto.amount}`,
+        },
+        { id: grant.id },
+      ).catch(() => null);
     }
 
     if (dto.pledge_id) {
-      const pledge = await this.db.client.query.financePledge.findUnique({
+      const pledge = await this.selectRow(this.db.client, financePledge, {
         where: { id: dto.pledge_id },
         select: { amount: true },
       });
@@ -2564,7 +2978,7 @@ export class FinanceService {
         await this.recomputePledgeStatus(
           dto.pledge_id,
           Number(pledge.amount),
-          this.db.client.query,
+          this.db.client,
         );
       }
     }
@@ -2602,38 +3016,50 @@ export class FinanceService {
           }
         : {}),
     };
+    const condition = this.whereOf(financeIncomeEntry, where);
     const [rows, totalResult] = await Promise.all([
-      this.db.client.query.financeIncomeEntry.findMany({
-        where,
-        include: {
-          account: { select: { id: true, name: true, code: true } },
-          file: { select: { id: true, fileName: true, publicUrl: true } },
-        },
-        orderBy: { receivedAt: "desc" },
-        skip: (page - 1) * perPage,
-        take: perPage,
-      }),
-      this.db.client.query.financeIncomeEntry.count({ where }),
+      this.db.client
+        .select({
+          income: financeIncomeEntry,
+          account: {
+            id: financeAccount.id,
+            name: financeAccount.name,
+            code: financeAccount.code,
+          },
+          file: {
+            id: fileAsset.id,
+            fileName: fileAsset.fileName,
+            publicUrl: fileAsset.publicUrl,
+          },
+        })
+        .from(financeIncomeEntry)
+        .innerJoin(financeAccount, eq(financeIncomeEntry.accountId, financeAccount.id))
+        .leftJoin(fileAsset, eq(financeIncomeEntry.fileId, fileAsset.id))
+        .where(condition)
+        .orderBy(desc(financeIncomeEntry.receivedAt))
+        .offset((page - 1) * perPage)
+        .limit(perPage),
+      this.countRows(this.db.client, financeIncomeEntry, where),
     ]);
-    const result = rows.map((row) => ({
-      id: row.id,
-      account_id: row.accountId,
+    const result = rows.map((row: any) => ({
+      id: row.income.id,
+      account_id: row.income.accountId,
       account_name: row.account.name,
       account_code: row.account.code,
-      amount: Number(row.amount),
-      currency: row.currency,
-      received_at: row.receivedAt,
-      reference: row.reference,
-      payer: row.payer,
-      notes: row.notes,
-      file: row.file
+      amount: Number(row.income.amount),
+      currency: row.income.currency,
+      received_at: row.income.receivedAt,
+      reference: row.income.reference,
+      payer: row.income.payer,
+      notes: row.income.notes,
+      file: row.file?.id
         ? {
             id: row.file.id,
             file_name: row.file.fileName,
             public_url: row.file.publicUrl,
           }
         : null,
-      created_at: row.createdAt,
+      created_at: row.income.createdAt,
     }));
     return paginatedResponse(result, {
       page,
@@ -2653,11 +3079,11 @@ export class FinanceService {
       dto.grant_id,
     );
     const [fromAccount, toAccount] = await Promise.all([
-      this.db.client.query.financeAccount.findUnique({
+      this.selectRow(this.db.client, financeAccount, {
         where: { id: dto.from_account_id },
         select: { id: true, name: true, isActive: true, currency: true },
       }),
-      this.db.client.query.financeAccount.findUnique({
+      this.selectRow(this.db.client, financeAccount, {
         where: { id: dto.to_account_id },
         select: { id: true, name: true, isActive: true, currency: true },
       }),
@@ -2687,43 +3113,39 @@ export class FinanceService {
       `Transfer ${currency} ${amount} from ${fromAccount.name} to ${toAccount.name}`;
 
     await this.db.client.transaction(async (tx) => {
-      await tx.financeLedgerEntry.create({
-        data: {
-          accountId: fromAccount.id,
-          direction: "out",
-          amount,
-          currency,
-          entryDate: transferAt,
-          description,
-          sourceType: "finance_transfer",
-          sourceId,
-          createdBy: actorId ? toBigInt(actorId) : null,
-          metadata: {
-            reference: dto.reference ?? null,
-            counterpart_account_id: toAccount.id,
-            fund_id: fund?.id ?? null,
-            grant_id: grant?.id ?? null,
-          } as InputJsonValue,
-        },
+      await this.insertRow(tx, financeLedgerEntry, {
+        accountId: fromAccount.id,
+        direction: "out",
+        amount,
+        currency,
+        entryDate: transferAt,
+        description,
+        sourceType: "finance_transfer",
+        sourceId,
+        createdBy: actorId ? toBigInt(actorId) : null,
+        metadata: {
+          reference: dto.reference ?? null,
+          counterpart_account_id: toAccount.id,
+          fund_id: fund?.id ?? null,
+          grant_id: grant?.id ?? null,
+        } as InputJsonValue,
       });
-      await tx.financeLedgerEntry.create({
-        data: {
-          accountId: toAccount.id,
-          direction: "in",
-          amount,
-          currency,
-          entryDate: transferAt,
-          description,
-          sourceType: "finance_transfer",
-          sourceId,
-          createdBy: actorId ? toBigInt(actorId) : null,
-          metadata: {
-            reference: dto.reference ?? null,
-            counterpart_account_id: fromAccount.id,
-            fund_id: fund?.id ?? null,
-            grant_id: grant?.id ?? null,
-          } as InputJsonValue,
-        },
+      await this.insertRow(tx, financeLedgerEntry, {
+        accountId: toAccount.id,
+        direction: "in",
+        amount,
+        currency,
+        entryDate: transferAt,
+        description,
+        sourceType: "finance_transfer",
+        sourceId,
+        createdBy: actorId ? toBigInt(actorId) : null,
+        metadata: {
+          reference: dto.reference ?? null,
+          counterpart_account_id: fromAccount.id,
+          fund_id: fund?.id ?? null,
+          grant_id: grant?.id ?? null,
+        } as InputJsonValue,
       });
     });
 
@@ -2777,31 +3199,50 @@ export class FinanceService {
     };
   }
 
+  private buildLedgerCondition(query: Record<string, any>): SQL | undefined {
+    const where = this.buildLedgerWhere(query);
+    const q = String(query.q ?? query.search ?? "").trim();
+    const searchableWhere = { ...where };
+    delete searchableWhere.OR;
+    const base = this.whereOf(financeLedgerEntry, searchableWhere);
+    const search = q
+      ? or(
+          ilike(financeLedgerEntry.description, `%${q}%`),
+          ilike(financeLedgerEntry.sourceType, `%${q}%`),
+          ilike(financeLedgerEntry.sourceId, `%${q}%`),
+          ilike(financeAccount.name, `%${q}%`),
+          ilike(financeAccount.code, `%${q}%`),
+        )
+      : undefined;
+    return this.combine(base, search);
+  }
+
   async listLedger(query: Record<string, any>) {
     const page = Math.max(1, Number(query.page ?? 1));
     const perPage = Math.min(
       200,
       Math.max(1, Number(query.per_page ?? query.limit ?? 20)),
     );
-    const where = this.buildLedgerWhere(query);
+    const condition = this.buildLedgerCondition(query);
 
-    const [rows, total] = await Promise.all([
-      this.db.client.query.financeLedgerEntry.findMany({
-        where,
-        include: {
-          account: {
-            select: { id: true, name: true, code: true, accountType: true },
-          },
-        },
-        orderBy: [{ entryDate: "desc" }, { createdAt: "desc" }],
-        skip: (page - 1) * perPage,
-        take: perPage,
-      }),
-      this.db.client.query.financeLedgerEntry.count({ where }),
+    const [rows, totalRows] = await Promise.all([
+      this.db.client
+        .select({ ledger: financeLedgerEntry, account: financeAccount })
+        .from(financeLedgerEntry)
+        .leftJoin(financeAccount, eq(financeLedgerEntry.accountId, financeAccount.id))
+        .where(condition)
+        .orderBy(desc(financeLedgerEntry.entryDate), desc(financeLedgerEntry.createdAt))
+        .offset((page - 1) * perPage)
+        .limit(perPage),
+      this.db.client
+        .select({ value: count() })
+        .from(financeLedgerEntry)
+        .leftJoin(financeAccount, eq(financeLedgerEntry.accountId, financeAccount.id))
+        .where(condition),
     ]);
 
-    const result = rows.map((row) => this.serializeLedgerRow(row));
-    return paginatedResponse(result, { page, per_page: perPage, total });
+    const result = rows.map((row: any) => this.serializeLedgerRow({ ...row.ledger, account: row.account }));
+    return paginatedResponse(result, { page, per_page: perPage, total: Number(totalRows[0]?.value ?? 0) });
   }
 
   async exportLedger(query: Record<string, any>, format = "csv") {
@@ -2812,33 +3253,30 @@ export class FinanceService {
       throw new BadRequestException("Unsupported export format");
     }
 
-    const where = this.buildLedgerWhere(query);
-    const rows = await this.db.client.query.financeLedgerEntry.findMany({
-      where,
-      include: {
-        account: {
-          select: { id: true, name: true, code: true, accountType: true },
-        },
-      },
-      orderBy: [{ entryDate: "desc" }, { createdAt: "desc" }],
-      take: 5000,
-    });
+    const condition = this.buildLedgerCondition(query);
+    const rows = await this.db.client
+      .select({ ledger: financeLedgerEntry, account: financeAccount })
+      .from(financeLedgerEntry)
+      .leftJoin(financeAccount, eq(financeLedgerEntry.accountId, financeAccount.id))
+      .where(condition)
+      .orderBy(desc(financeLedgerEntry.entryDate), desc(financeLedgerEntry.createdAt))
+      .limit(5000);
 
     if (!rows.length) {
       throw new BadRequestException("Ledger export has no rows");
     }
 
-    const csvRows = rows.map((row) => ({
-      date: this.formatDate(row.entryDate),
-      reference: row.sourceId || row.id,
-      account: row.account.name,
-      account_code: row.account.code || "",
-      source: row.sourceType || "",
-      direction: row.direction,
-      amount: Number(row.amount),
-      currency: row.currency,
-      description: row.description || "",
-      created_at: row.createdAt.toISOString(),
+    const csvRows = rows.map((row: any) => ({
+      date: this.formatDate(row.ledger.entryDate),
+      reference: row.ledger.sourceId || row.ledger.id,
+      account: row.account?.name ?? "",
+      account_code: row.account?.code || "",
+      source: row.ledger.sourceType || "",
+      direction: row.ledger.direction,
+      amount: Number(row.ledger.amount),
+      currency: row.ledger.currency,
+      description: row.ledger.description || "",
+      created_at: row.ledger.createdAt.toISOString(),
     }));
     const csv = this.toCsv(csvRows);
 

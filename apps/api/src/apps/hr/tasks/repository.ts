@@ -1,36 +1,65 @@
 import {
+  AddWorkItemAttachment,
+  CreateWorkItemComment,
   UpsertTeamGoal,
   UpsertTeamKpi,
   UpsertTeamObjective,
   UpsertSprint,
   UpsertWorkItem,
   UpsertWorkLog,
+  type UserRef,
 } from '@stanforte/contract';
-import { SQL, and, asc, desc, eq, gte, ilike, inArray, lte, notInArray, or } from 'drizzle-orm';
+import { SQL, and, asc, desc, eq, gte, ilike, inArray, lte, notInArray, or, sql } from 'drizzle-orm';
 import { DbService } from '$core/db';
 import { TenantContextService } from '$core/auth/tenant-context.service';
 import { paginatedResponse } from '$core/pagination';
-import { toBigInt } from '$core/utils';
 
 import { NewPayrollRunTimesheetAllocation, payrollRun, payrollRunTimesheetAllocation, payrollWorker } from '$apps/hr/payroll/model';
-import { NewWorkItem, NewWorkLog, projectTimesheetEntry, sprint, teamGoal, teamKpi, teamObjective, workItem, workLog } from './model';
+import {
+  NewWorkItem,
+  NewWorkLog,
+  projectTimesheetEntry,
+  sprint,
+  teamGoal,
+  teamKpi,
+  teamObjective,
+  workItem,
+  workItemAttachment,
+  workItemComment,
+  workItemCommentMention,
+  workLog,
+} from './model';
 import { profile } from '$apps/identity/users/model';
 import { organization } from '$apps/hr/organizations/model';
 import { group, groupUser } from '$apps/communication/groups/model';
 import { project } from '$apps/hr/projects/model';
 import { employeeProfile } from '$apps/hr/employees/model';
 import { financeFund, financeGrant } from '$apps/finance/accounting/model';
+import { fileAsset } from '$apps/storage/model';
 import { BadRequestException, NotFoundException } from '$core/errors';
+import {
+  normalizeTags,
+  optionalBigInt,
+  optionalString,
+  parseWorkBigInt,
+  profileRefColumns,
+  serializeFileAsset,
+  serializeProfile,
+  serializeProfileRef,
+} from './utils';
 
+
+/**
+ * Owns everything work-item related: the task board, sprints, team OKRs, task
+ * comments and mentions, attachments, and the daily work logs that feed
+ * payroll. Project metadata and membership live in `$apps/hr/projects`.
+ */
 export class TasksService {
-constructor(
+  constructor(
     private readonly db: DbService,
     private readonly tenantContext: TenantContextService,
   ) {}
 
-  private tenantScope(tid: bigint, column: any): SQL {
-    return eq(column, tid);
-  }
 
   private tenantOrgTeamScope(orgCol: any, teamCol: any, tid: bigint): SQL {
     return or(
@@ -45,15 +74,17 @@ constructor(
       inArray(workItem.organizationId, this.db.client.select({ id: organization.id }).from(organization).where(eq(organization.tenantId, tid)) as any),
       inArray(workItem.ownerTeamId, this.db.client.select({ id: group.id }).from(group).where(eq(group.tenantId, tid)) as any),
       inArray(workItem.sprintId, this.db.client.select({ id: sprint.id }).from(sprint).where(eq(sprint.tenantId, tid)) as any),
-      ...(actorId !== undefined ? [eq(workItem.assignedToId, actorId), eq(workItem.assignedById, actorId)] : []),
+      ...(actorId !== undefined
+        ? [eq(workItem.assignedToId, actorId), eq(workItem.assignedById, actorId), eq(workItem.createdById, actorId)]
+        : []),
     ) as SQL;
   }
 
 async listGoals(query: Record<string, any>) {
     const tid = this.tenantContext.requireTenantId();
     const conditions: SQL[] = [this.tenantOrgTeamScope(teamGoal.organizationId, teamGoal.teamId, tid)];
-    if (query.team_id) conditions.push(eq(teamGoal.teamId, this.parseBigInt(String(query.team_id), 'team id')));
-    if (query.organization_id) conditions.push(eq(teamGoal.organizationId, this.parseBigInt(String(query.organization_id), 'organization id')));
+    if (query.team_id) conditions.push(eq(teamGoal.teamId, parseWorkBigInt(String(query.team_id), 'team id')));
+    if (query.organization_id) conditions.push(eq(teamGoal.organizationId, parseWorkBigInt(String(query.organization_id), 'organization id')));
     if (query.period_year) conditions.push(eq(teamGoal.periodYear, Number(query.period_year)));
     const rows = await this.db.client
       .select()
@@ -66,13 +97,13 @@ async listGoals(query: Record<string, any>) {
   }
 
   async upsertGoal(actorId: string, dto: UpsertTeamGoal, id?: string) {
-    const userId = this.parseBigInt(actorId, 'user id');
+    const userId = parseWorkBigInt(actorId, 'user id');
     const payload = {
       title: dto.title,
       description: dto.description ?? null,
-      organizationId: this.optionalBigInt(dto.organization_id, 'organization id'),
-      teamId: this.optionalBigInt(dto.team_id, 'team id'),
-      ownerUserId: this.optionalBigInt(dto.owner_user_id, 'owner user id') ?? userId,
+      organizationId: optionalBigInt(dto.organization_id, 'organization id'),
+      teamId: optionalBigInt(dto.team_id, 'team id'),
+      ownerUserId: optionalBigInt(dto.owner_user_id, 'owner user id') ?? userId,
       createdById: userId,
       periodYear: dto.period_year,
       periodType: dto.period_type ?? 'annual',
@@ -84,14 +115,15 @@ async listGoals(query: Record<string, any>) {
     };
 if (id) {
       await this.db.client.update(teamGoal).set(payload).where(eq(teamGoal.id, id));
-      return this.getGoal(id, userId);
+      return this.getGoal(actorId, id);
     }
     const [row] = await this.db.client.insert(teamGoal).values(payload).returning();
-    return this.getGoal(row.id, userId);
+    return this.getGoal(actorId, row.id);
   }
 
-async getGoal(id: string, allowActorId?: bigint) {
+  async getGoal(actorId: string, id: string) {
     const tid = this.tenantContext.requireTenantId();
+    const allowActorId = parseWorkBigInt(actorId, 'user id');
     const [row] = await this.db.client.select().from(teamGoal)
       .where(and(
         eq(teamGoal.id, id),
@@ -113,7 +145,7 @@ async listObjectives(query: Record<string, any>) {
     const tid = this.tenantContext.requireTenantId();
     const conditions: SQL[] = [this.tenantOrgTeamScope(teamObjective.organizationId, teamObjective.teamId, tid)];
     if (query.goal_id) conditions.push(eq(teamObjective.goalId, String(query.goal_id)));
-    if (query.team_id) conditions.push(eq(teamObjective.teamId, this.parseBigInt(String(query.team_id), 'team id')));
+    if (query.team_id) conditions.push(eq(teamObjective.teamId, parseWorkBigInt(String(query.team_id), 'team id')));
     const rows = await this.db.client
       .select()
       .from(teamObjective)
@@ -125,14 +157,14 @@ async listObjectives(query: Record<string, any>) {
   }
 
   async upsertObjective(actorId: string, dto: UpsertTeamObjective, id?: string) {
-    const userId = this.parseBigInt(actorId, 'user id');
+    const userId = parseWorkBigInt(actorId, 'user id');
     const payload = {
       title: dto.title,
       description: dto.description ?? null,
-      goalId: this.optionalString(dto.goal_id),
-      organizationId: this.optionalBigInt(dto.organization_id, 'organization id'),
-      teamId: this.optionalBigInt(dto.team_id, 'team id'),
-      ownerUserId: this.optionalBigInt(dto.owner_user_id, 'owner user id') ?? userId,
+      goalId: optionalString(dto.goal_id),
+      organizationId: optionalBigInt(dto.organization_id, 'organization id'),
+      teamId: optionalBigInt(dto.team_id, 'team id'),
+      ownerUserId: optionalBigInt(dto.owner_user_id, 'owner user id') ?? userId,
       createdById: userId,
       status: dto.status ?? 'draft',
       weight: dto.weight != null ? String(dto.weight) : null,
@@ -140,14 +172,15 @@ async listObjectives(query: Record<string, any>) {
     };
 if (id) {
       await this.db.client.update(teamObjective).set(payload).where(eq(teamObjective.id, id));
-      return this.getObjective(id, userId);
+      return this.getObjective(actorId, id);
     }
     const [row] = await this.db.client.insert(teamObjective).values(payload).returning();
-    return this.getObjective(row.id, userId);
+    return this.getObjective(actorId, row.id);
   }
 
-async getObjective(id: string, allowActorId?: bigint) {
+  async getObjective(actorId: string, id: string) {
     const tid = this.tenantContext.requireTenantId();
+    const allowActorId = parseWorkBigInt(actorId, 'user id');
     const [row] = await this.db.client.select().from(teamObjective)
       .where(and(
         eq(teamObjective.id, id),
@@ -166,7 +199,7 @@ async listKpis(query: Record<string, any>) {
     const conditions: SQL[] = [this.tenantOrgTeamScope(teamKpi.organizationId, teamKpi.teamId, tid)];
     if (query.goal_id) conditions.push(eq(teamKpi.goalId, String(query.goal_id)));
     if (query.objective_id) conditions.push(eq(teamKpi.objectiveId, String(query.objective_id)));
-    if (query.team_id) conditions.push(eq(teamKpi.teamId, this.parseBigInt(String(query.team_id), 'team id')));
+    if (query.team_id) conditions.push(eq(teamKpi.teamId, parseWorkBigInt(String(query.team_id), 'team id')));
     if (query.period_year) conditions.push(eq(teamKpi.periodYear, Number(query.period_year)));
     const rows = await this.db.client
       .select()
@@ -179,15 +212,15 @@ async listKpis(query: Record<string, any>) {
   }
 
   async upsertKpi(actorId: string, dto: UpsertTeamKpi, id?: string) {
-    const userId = this.parseBigInt(actorId, 'user id');
+    const userId = parseWorkBigInt(actorId, 'user id');
     const payload = {
       title: dto.title,
       description: dto.description ?? null,
-      goalId: this.optionalString(dto.goal_id),
-      objectiveId: this.optionalString(dto.objective_id),
-      organizationId: this.optionalBigInt(dto.organization_id, 'organization id'),
-      teamId: this.optionalBigInt(dto.team_id, 'team id'),
-      ownerUserId: this.optionalBigInt(dto.owner_user_id, 'owner user id') ?? userId,
+      goalId: optionalString(dto.goal_id),
+      objectiveId: optionalString(dto.objective_id),
+      organizationId: optionalBigInt(dto.organization_id, 'organization id'),
+      teamId: optionalBigInt(dto.team_id, 'team id'),
+      ownerUserId: optionalBigInt(dto.owner_user_id, 'owner user id') ?? userId,
       createdById: userId,
       targetType: dto.target_type ?? null,
       targetValue: dto.target_value != null ? String(dto.target_value) : null,
@@ -199,14 +232,15 @@ async listKpis(query: Record<string, any>) {
     };
 if (id) {
       await this.db.client.update(teamKpi).set(payload).where(eq(teamKpi.id, id));
-      return this.getKpi(id, userId);
+      return this.getKpi(actorId, id);
     }
     const [row] = await this.db.client.insert(teamKpi).values(payload).returning();
-    return this.getKpi(row.id, userId);
+    return this.getKpi(actorId, row.id);
   }
 
-async getKpi(id: string, allowActorId?: bigint) {
+  async getKpi(actorId: string, id: string) {
     const tid = this.tenantContext.requireTenantId();
+    const allowActorId = parseWorkBigInt(actorId, 'user id');
     const [row] = await this.db.client.select().from(teamKpi)
       .where(and(
         eq(teamKpi.id, id),
@@ -219,18 +253,20 @@ async getKpi(id: string, allowActorId?: bigint) {
   }
 
   async listMyItems(actorId: string, query: Record<string, any>) {
-    const userId = this.parseBigInt(actorId, 'user id');
+    const userId = parseWorkBigInt(actorId, 'user id');
     const conditions: SQL[] = [
       or(eq(workItem.assignedToId, userId), eq(workItem.createdById, userId), eq(workItem.assignedById, userId)) as SQL,
     ];
     if (query.status) conditions.push(eq(workItem.status, query.status));
-    if (query.project_id) conditions.push(eq(workItem.projectId, this.parseBigInt(String(query.project_id), 'project id')));
-    if (query.sprint_id) conditions.push(eq(workItem.sprintId, this.parseBigInt(String(query.sprint_id), 'sprint id')));
+    if (query.project_id) conditions.push(eq(workItem.projectId, parseWorkBigInt(String(query.project_id), 'project id')));
+    if (query.sprint_id) conditions.push(eq(workItem.sprintId, parseWorkBigInt(String(query.sprint_id), 'sprint id')));
     if (query.parent_id) conditions.push(eq(workItem.parentId, String(query.parent_id)));
+    if (query.tag) conditions.push(sql`${workItem.tags} ? ${String(query.tag)}` as SQL);
     if (query.search) {
       const search = `%${String(query.search)}%`;
       conditions.push(or(ilike(workItem.title, search), ilike(workItem.description, search)) as SQL);
     }
+
     const rows = await this.db.client
       .select()
       .from(workItem)
@@ -242,7 +278,7 @@ async getKpi(id: string, allowActorId?: bigint) {
   }
 
   async listTeamItems(actorId: string, query: Record<string, any>) {
-    const managerId = this.parseBigInt(actorId, 'user id');
+    const managerId = parseWorkBigInt(actorId, 'user id');
     const tid = this.tenantContext.requireTenantId();
     const directReports = await this.db.client
       .select({ userId: employeeProfile.userId })
@@ -265,30 +301,35 @@ const teamIds = [...new Set(primaryTeams.map((row) => row.groupId))] as bigint[]
       ) as SQL,
     ];
     if (query.week_start_date) conditions.push(eq(workItem.weekStartDate, new Date(String(query.week_start_date))));
-    if (query.team_id) conditions.push(eq(workItem.ownerTeamId, this.parseBigInt(String(query.team_id), 'team id')));
-    if (query.assigned_to_id) conditions.push(eq(workItem.assignedToId, this.parseBigInt(String(query.assigned_to_id), 'assigned to id')));
+    if (query.team_id) conditions.push(eq(workItem.ownerTeamId, parseWorkBigInt(String(query.team_id), 'team id')));
+    if (query.assigned_to_id) conditions.push(eq(workItem.assignedToId, parseWorkBigInt(String(query.assigned_to_id), 'assigned to id')));
     if (query.status) conditions.push(eq(workItem.status, query.status));
-    if (query.project_id) conditions.push(eq(workItem.projectId, this.parseBigInt(String(query.project_id), 'project id')));
-    if (query.sprint_id) conditions.push(eq(workItem.sprintId, this.parseBigInt(String(query.sprint_id), 'sprint id')));
+    if (query.project_id) conditions.push(eq(workItem.projectId, parseWorkBigInt(String(query.project_id), 'project id')));
+    if (query.sprint_id) conditions.push(eq(workItem.sprintId, parseWorkBigInt(String(query.sprint_id), 'sprint id')));
     if (query.parent_id) conditions.push(eq(workItem.parentId, String(query.parent_id)));
+    if (query.tag) conditions.push(sql`${workItem.tags} ? ${String(query.tag)}` as SQL);
+    if (query.search) {
+      const search = `%${String(query.search)}%`;
+      conditions.push(or(ilike(workItem.title, search), ilike(workItem.description, search)) as SQL);
+    }
     const rows = await this.db.client
       .select()
       .from(workItem)
       .where(and(...conditions))
       .orderBy(desc(workItem.weekStartDate), asc(workItem.dueDate), desc(workItem.createdAt));
+
     const enriched = await this.enrichItems(rows);
     const items = enriched.map((row) => this.serializeWorkItem(row));
     return paginatedResponse(items, { page: 1, per_page: items.length, total: items.length });
   }
 
   async upsertItem(actorId: string, dto: UpsertWorkItem, id?: string) {
-    const userId = this.parseBigInt(actorId, 'user id');
-    const targetProjectId = dto.project_id ? this.parseBigInt(dto.project_id, 'project id') : null;
-    let parentId: string | null = this.optionalString(dto.parent_id);
-    let sprintId: bigint | null = dto.sprint_id ? this.parseBigInt(dto.sprint_id, 'sprint id') : null;
+    const userId = parseWorkBigInt(actorId, 'user id');
+    const targetProjectId = dto.project_id ? parseWorkBigInt(dto.project_id, 'project id') : null;
+    const parentId: string | null = optionalString(dto.parent_id);
+    const sprintId: bigint | null = dto.sprint_id ? parseWorkBigInt(dto.sprint_id, 'sprint id') : null;
     if (id) {
-      const [existing] = await this.db.client.select().from(workItem).where(eq(workItem.id, id)).limit(1);
-      if (!existing) throw new NotFoundException('Work item not found');
+      const existing = await this.requireItem(id, userId);
       if (![existing.createdById?.toString(), existing.assignedById?.toString(), existing.assignedToId?.toString()].includes(userId.toString())) {
         throw new BadRequestException('You cannot update this work item');
       }
@@ -296,14 +337,36 @@ const teamIds = [...new Set(primaryTeams.map((row) => row.groupId))] as bigint[]
       const projectId = targetProjectId ?? existing.projectId ?? null;
       await this.validateItemLinks(parentId, sprintId, projectId);
       await this.db.client.update(workItem).set(this.mapItemDto(dto, userId, existing)).where(eq(workItem.id, id));
-      return this.getItem(id);
+      return this.getItem(actorId, id);
     }
 
     const projectId = targetProjectId ?? null;
     await this.validateItemLinks(parentId, sprintId, projectId);
     const [created] = await this.db.client.insert(workItem).values(this.mapItemDto(dto, userId)).returning({ id: workItem.id });
-    return this.getItem(created.id);
+    return this.getItem(actorId, created.id);
   }
+
+  /**
+   * Work items carry no `tenant_id` column, so access is proven through the
+   * project, sprint, organization or team that owns them — or through the actor
+   * being the assignee, assigner or creator.
+   */
+  private async findAccessibleItem(id: string, actorId: bigint) {
+    const tid = this.tenantContext.requireTenantId();
+    const [row] = await this.db.client
+      .select()
+      .from(workItem)
+      .where(and(eq(workItem.id, id), this.itemTenantScope(tid, actorId)))
+      .limit(1);
+    return row ?? null;
+  }
+
+  private async requireItem(id: string, actorId: bigint) {
+    const row = await this.findAccessibleItem(id, actorId);
+    if (!row) throw new NotFoundException('Work item not found');
+    return row;
+  }
+
 
   private async validateItemLinks(parentId: string | null, sprintId: bigint | null, projectId: bigint | null) {
     if (parentId) {
@@ -316,6 +379,15 @@ const teamIds = [...new Set(primaryTeams.map((row) => row.groupId))] as bigint[]
       if (projectId != null && parent.projectId != null && projectId !== parent.projectId) {
         throw new BadRequestException('Parent work item belongs to a different project');
       }
+    }
+    if (projectId != null) {
+      const tid = this.tenantContext.requireTenantId();
+      const [projectRow] = await this.db.client
+        .select({ id: project.id })
+        .from(project)
+        .where(and(eq(project.id, projectId), eq(project.tenantId, tid)))
+        .limit(1);
+      if (!projectRow) throw new BadRequestException('Project not found');
     }
     if (sprintId != null) {
       const tid = this.tenantContext.requireTenantId();
@@ -331,25 +403,213 @@ const teamIds = [...new Set(primaryTeams.map((row) => row.groupId))] as bigint[]
     }
   }
 
-  async getItem(id: string) {
-    const [row] = await this.db.client.select().from(workItem).where(eq(workItem.id, id)).limit(1);
-    if (!row) throw new NotFoundException('Work item not found');
+
+  async getItem(actorId: string, id: string) {
+    const row = await this.requireItem(id, parseWorkBigInt(actorId, 'user id'));
     const enriched = await this.enrichItems([row]);
     return this.serializeWorkItem(enriched[0]);
   }
 
+  /** Deletes a work item, cascading its comments, mentions, attachments and logs. */
+  async deleteItem(actorId: string, id: string) {
+    const userId = parseWorkBigInt(actorId, 'user id');
+    const existing = await this.requireItem(id, userId);
+    if (![existing.createdById?.toString(), existing.assignedById?.toString()].includes(userId.toString())) {
+      throw new BadRequestException('You cannot delete this work item');
+    }
+    await this.db.client.delete(workItem).where(eq(workItem.id, id));
+    return { success: true };
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Comments, mentions and attachments                                     */
+  /* ---------------------------------------------------------------------- */
+
+  async listComments(actorId: string, itemId: string) {
+    const userId = parseWorkBigInt(actorId, 'user id');
+    await this.requireItem(itemId, userId);
+    return { success: true, data: await this.loadComments(itemId) };
+  }
+
+  async addComment(actorId: string, itemId: string, dto: CreateWorkItemComment) {
+    const userId = parseWorkBigInt(actorId, 'user id');
+    await this.requireItem(itemId, userId);
+    const tenantId = this.tenantContext.requireTenantId();
+
+    const taggedIds = Array.from(new Set(
+      (dto.tagged_user_ids ?? []).filter(Boolean).map((value) => parseWorkBigInt(value, 'tagged user id')),
+    ));
+    await this.assertProfilesExist(taggedIds);
+
+    const [created] = await this.db.client.transaction(async (tx) => {
+      const [comment] = await tx
+        .insert(workItemComment)
+        .values({
+          tenantId,
+          workItemId: itemId,
+          body: dto.body.trim(),
+          metadata: dto.metadata ?? null,
+          createdBy: userId,
+        })
+        .returning();
+
+      if (taggedIds.length) {
+        await tx.insert(workItemCommentMention).values(
+          taggedIds.map((userId) => ({ tenantId, commentId: comment.id, userId })),
+        );
+      }
+
+      return [comment];
+    });
+
+    const comments = await this.loadComments(itemId);
+    return comments.find((comment) => comment.id === created.id.toString());
+  }
+
+  async listAttachments(actorId: string, itemId: string) {
+    const userId = parseWorkBigInt(actorId, 'user id');
+    await this.requireItem(itemId, userId);
+    return { success: true, data: await this.loadAttachments(itemId) };
+  }
+
+  async addAttachment(actorId: string, itemId: string, dto: AddWorkItemAttachment) {
+    const userId = parseWorkBigInt(actorId, 'user id');
+    await this.requireItem(itemId, userId);
+    const tenantId = this.tenantContext.requireTenantId();
+
+    const [file] = await this.db.client
+      .select({ id: fileAsset.id })
+      .from(fileAsset)
+      .where(and(eq(fileAsset.id, dto.file_asset_id), eq(fileAsset.tenantId, tenantId)))
+      .limit(1);
+    if (!file) throw new NotFoundException('File asset not found');
+
+    await this.db.client
+      .insert(workItemAttachment)
+      .values({
+        tenantId,
+        workItemId: itemId,
+        fileAssetId: dto.file_asset_id,
+        label: dto.label?.trim() || null,
+        createdBy: userId,
+      })
+      .onConflictDoUpdate({
+        target: [workItemAttachment.workItemId, workItemAttachment.fileAssetId],
+        set: { label: dto.label?.trim() || null, createdBy: userId },
+      });
+
+    return { success: true, data: await this.loadAttachments(itemId) };
+  }
+
+  async removeAttachment(actorId: string, itemId: string, attachmentId: string) {
+    const userId = parseWorkBigInt(actorId, 'user id');
+    await this.requireItem(itemId, userId);
+
+    await this.db.client
+      .delete(workItemAttachment)
+      .where(and(
+        eq(workItemAttachment.id, parseWorkBigInt(attachmentId, 'attachment id')),
+        eq(workItemAttachment.workItemId, itemId),
+      ));
+
+    return { success: true, data: await this.loadAttachments(itemId) };
+  }
+
+  private async assertProfilesExist(userIds: bigint[]) {
+    if (!userIds.length) return;
+    const users = await this.db.client
+      .select({ id: profile.id })
+      .from(profile)
+      .where(inArray(profile.id, userIds));
+    if (users.length !== userIds.length) throw new NotFoundException('One or more users not found');
+  }
+
+  private async loadComments(itemId: string) {
+    const rows = await this.db.client
+      .select({ comment: workItemComment, author: profileRefColumns() })
+      .from(workItemComment)
+      .leftJoin(profile, eq(workItemComment.createdBy, profile.id))
+      .where(eq(workItemComment.workItemId, itemId))
+      .orderBy(desc(workItemComment.createdAt));
+
+    const commentIds = rows.map((row) => row.comment.id);
+    const mentions = commentIds.length
+      ? await this.db.client
+          .select({ mention: workItemCommentMention, user: profileRefColumns() })
+          .from(workItemCommentMention)
+          .leftJoin(profile, eq(workItemCommentMention.userId, profile.id))
+          .where(inArray(workItemCommentMention.commentId, commentIds))
+      : [];
+
+    const mentionsByComment = new Map<string, Array<{ id: string; user_id: string; user: UserRef | null }>>();
+    for (const row of mentions) {
+      const key = row.mention.commentId.toString();
+      const list = mentionsByComment.get(key) ?? [];
+      list.push({
+        id: row.mention.id.toString(),
+        user_id: row.mention.userId.toString(),
+        user: serializeProfileRef(row.user),
+      });
+      mentionsByComment.set(key, list);
+    }
+
+    return rows.map(({ comment, author }) => ({
+      id: comment.id.toString(),
+      work_item_id: comment.workItemId,
+      body: comment.body,
+      metadata: comment.metadata ?? {},
+      created_by: comment.createdBy ? comment.createdBy.toString() : null,
+      author: serializeProfileRef(author),
+      tagged_users: mentionsByComment.get(comment.id.toString()) ?? [],
+      created_at: comment.createdAt,
+      updated_at: comment.updatedAt,
+    }));
+  }
+
+  private async loadAttachments(itemId: string) {
+    const rows = await this.db.client
+      .select({
+        attachment: workItemAttachment,
+        file: {
+          id: fileAsset.id,
+          fileName: fileAsset.fileName,
+          mimeType: fileAsset.mimeType,
+          fileSize: fileAsset.fileSize,
+          publicUrl: fileAsset.publicUrl,
+          storagePath: fileAsset.storagePath,
+        },
+      })
+      .from(workItemAttachment)
+      .leftJoin(fileAsset, eq(workItemAttachment.fileAssetId, fileAsset.id))
+      .where(eq(workItemAttachment.workItemId, itemId))
+      .orderBy(desc(workItemAttachment.createdAt));
+
+    return rows.map(({ attachment, file }) => ({
+      id: attachment.id.toString(),
+      work_item_id: attachment.workItemId,
+      file_asset_id: attachment.fileAssetId,
+      label: attachment.label,
+      created_by: attachment.createdBy ? attachment.createdBy.toString() : null,
+      created_at: attachment.createdAt,
+      file: serializeFileAsset(file),
+    }));
+  }
+
+
 async board(actorId: string, query: Record<string, any>) {
     const tid = this.tenantContext.requireTenantId();
-    const conditions: SQL[] = [this.itemTenantScope(tid, this.parseBigInt(actorId, 'user id'))];
-    if (query.project_id) conditions.push(eq(workItem.projectId, this.parseBigInt(String(query.project_id), 'project id')));
-    if (query.sprint_id) conditions.push(eq(workItem.sprintId, this.parseBigInt(String(query.sprint_id), 'sprint id')));
-    if (query.assigned_to_id) conditions.push(eq(workItem.assignedToId, this.parseBigInt(String(query.assigned_to_id), 'assigned to id')));
+    const conditions: SQL[] = [this.itemTenantScope(tid, parseWorkBigInt(actorId, 'user id'))];
+    if (query.project_id) conditions.push(eq(workItem.projectId, parseWorkBigInt(String(query.project_id), 'project id')));
+    if (query.sprint_id) conditions.push(eq(workItem.sprintId, parseWorkBigInt(String(query.sprint_id), 'sprint id')));
+    if (query.assigned_to_id) conditions.push(eq(workItem.assignedToId, parseWorkBigInt(String(query.assigned_to_id), 'assigned to id')));
     if (query.status) conditions.push(eq(workItem.status, query.status));
+    if (query.tag) conditions.push(sql`${workItem.tags} ? ${String(query.tag)}` as SQL);
     const rows = await this.db.client
       .select()
       .from(workItem)
       .where(and(...conditions))
       .orderBy(asc(workItem.sortOrder), asc(workItem.dueDate), asc(workItem.createdAt));
+
     const enriched = await this.enrichItems(rows);
     const items = enriched.map((row) => this.serializeWorkItem(row));
     const order = ['planned', 'in_progress', 'blocked', 'completed', 'carried_over', 'cancelled'];
@@ -370,7 +630,7 @@ async board(actorId: string, query: Record<string, any>) {
   async listSprints(query: Record<string, any>) {
     const tid = this.tenantContext.requireTenantId();
     const conditions: SQL[] = [eq(sprint.tenantId, tid)];
-    if (query.project_id) conditions.push(eq(sprint.projectId, this.parseBigInt(String(query.project_id), 'project id')));
+    if (query.project_id) conditions.push(eq(sprint.projectId, parseWorkBigInt(String(query.project_id), 'project id')));
     if (query.status) conditions.push(eq(sprint.status, String(query.status)));
     if (query.is_active != null) conditions.push(eq(sprint.isActive, query.is_active === 'true' || query.is_active === true));
     const rows = await this.db.client
@@ -385,7 +645,7 @@ async board(actorId: string, query: Record<string, any>) {
 
   async getSprint(id: string) {
     const tid = this.tenantContext.requireTenantId();
-    const sprintId = this.parseBigInt(id, 'sprint id');
+    const sprintId = parseWorkBigInt(id, 'sprint id');
     const [row] = await this.db.client
       .select()
       .from(sprint)
@@ -404,11 +664,11 @@ async board(actorId: string, query: Record<string, any>) {
   }
 
   async upsertSprint(actorId: string, dto: UpsertSprint, id?: string) {
-    const userId = this.parseBigInt(actorId, 'user id');
+    const userId = parseWorkBigInt(actorId, 'user id');
     const tid = this.tenantContext.requireTenantId();
     let projectId: bigint | null = null;
     if (dto.project_id) {
-      projectId = this.parseBigInt(dto.project_id, 'project id');
+      projectId = parseWorkBigInt(dto.project_id, 'project id');
       const [projectRow] = await this.db.client
         .select({ id: project.id })
         .from(project)
@@ -417,7 +677,7 @@ async board(actorId: string, query: Record<string, any>) {
       if (!projectRow) throw new BadRequestException('Project not found');
     }
     if (id) {
-      const sprintId = this.parseBigInt(id, 'sprint id');
+      const sprintId = parseWorkBigInt(id, 'sprint id');
       const [existing] = await this.db.client
         .select()
         .from(sprint)
@@ -454,7 +714,7 @@ async board(actorId: string, query: Record<string, any>) {
 
   async startSprint(actorId: string, id: string) {
     const tid = this.tenantContext.requireTenantId();
-    const sprintId = this.parseBigInt(id, 'sprint id');
+    const sprintId = parseWorkBigInt(id, 'sprint id');
     const [existing] = await this.db.client
       .select()
       .from(sprint)
@@ -474,7 +734,7 @@ async board(actorId: string, query: Record<string, any>) {
 
   async completeSprint(actorId: string, id: string) {
     const tid = this.tenantContext.requireTenantId();
-    const sprintId = this.parseBigInt(id, 'sprint id');
+    const sprintId = parseWorkBigInt(id, 'sprint id');
     const [existing] = await this.db.client
       .select()
       .from(sprint)
@@ -493,7 +753,7 @@ async board(actorId: string, query: Record<string, any>) {
   }
 
   async listMyLogs(actorId: string, query: Record<string, any>) {
-    const userId = this.parseBigInt(actorId, 'user id');
+    const userId = parseWorkBigInt(actorId, 'user id');
     const conditions: SQL[] = [eq(workLog.staffId, userId)];
     if (query.approval_status) conditions.push(eq(workLog.approvalStatus, query.approval_status));
     if (query.from) conditions.push(gte(workLog.logDate, new Date(String(query.from))));
@@ -509,7 +769,7 @@ async board(actorId: string, query: Record<string, any>) {
   }
 
   async listTeamLogs(actorId: string, query: Record<string, any>) {
-    const managerId = this.parseBigInt(actorId, 'user id');
+    const managerId = parseWorkBigInt(actorId, 'user id');
     const tid = this.tenantContext.requireTenantId();
     const reportIds = (await this.db.client
       .select({ userId: employeeProfile.userId })
@@ -526,8 +786,8 @@ or(
       ) as SQL,
     ];
     if (query.approval_status) conditions.push(eq(workLog.approvalStatus, query.approval_status));
-    if (query.team_id) conditions.push(eq(workLog.teamId, this.parseBigInt(String(query.team_id), 'team id')));
-    if (query.staff_id) conditions.push(eq(workLog.staffId, this.parseBigInt(String(query.staff_id), 'staff id')));
+    if (query.team_id) conditions.push(eq(workLog.teamId, parseWorkBigInt(String(query.team_id), 'team id')));
+    if (query.staff_id) conditions.push(eq(workLog.staffId, parseWorkBigInt(String(query.staff_id), 'staff id')));
     if (query.week_start_date) {
       const weekStart = new Date(String(query.week_start_date));
       const weekEnd = new Date(weekStart);
@@ -545,44 +805,58 @@ or(
   }
 
   async upsertLog(actorId: string, dto: UpsertWorkLog, id?: string) {
-    const userId = this.parseBigInt(actorId, 'user id');
-    const [workItemRow] = await this.db.client.select().from(workItem).where(eq(workItem.id, dto.work_item_id)).limit(1);
-    if (!workItemRow) throw new NotFoundException('Work item not found');
+    const userId = parseWorkBigInt(actorId, 'user id');
+    const workItemRow = await this.requireItem(dto.work_item_id, userId);
 
     if (id) {
-      const [existing] = await this.db.client.select().from(workLog).where(eq(workLog.id, id)).limit(1);
-      if (!existing || existing.staffId !== userId) throw new NotFoundException('Work log not found');
+      const existing = await this.requireOwnLog(id, userId);
       if (!['draft', 'rejected'].includes(existing.approvalStatus)) throw new BadRequestException('Only draft or rejected logs can be edited');
       await this.db.client.update(workLog).set(this.mapLogDto(dto, userId, workItemRow, existing)).where(eq(workLog.id, id));
-      return this.getLog(id);
+      return this.getLog(actorId, id);
     }
 
     const [created] = await this.db.client.insert(workLog).values(this.mapLogDto(dto, userId, workItemRow)).returning();
-    return this.getLog(created.id);
+    return this.getLog(actorId, created.id);
   }
 
-  async getLog(id: string) {
+  /** Resolves a log the actor is entitled to see, via its parent work item. */
+  private async findAccessibleLog(id: string, actorId: bigint) {
     const [row] = await this.db.client.select().from(workLog).where(eq(workLog.id, id)).limit(1);
+    if (!row) return null;
+    return (await this.findAccessibleItem(row.workItemId, actorId)) ? row : null;
+  }
+
+  private async requireAccessibleLog(id: string, actorId: bigint) {
+    const row = await this.findAccessibleLog(id, actorId);
     if (!row) throw new NotFoundException('Work log not found');
+    return row;
+  }
+
+  private async requireOwnLog(id: string, actorId: bigint) {
+    const row = await this.requireAccessibleLog(id, actorId);
+    if (row.staffId !== actorId) throw new NotFoundException('Work log not found');
+    return row;
+  }
+
+  async getLog(actorId: string, id: string) {
+    const row = await this.requireAccessibleLog(id, parseWorkBigInt(actorId, 'user id'));
     const hydrated = await this.hydrateWorkLogs([row]);
     return this.serializeWorkLog(hydrated[0]);
   }
 
   async submitLog(actorId: string, id: string) {
-    const userId = this.parseBigInt(actorId, 'user id');
-    const [existing] = await this.db.client.select().from(workLog).where(eq(workLog.id, id)).limit(1);
-    if (!existing || existing.staffId !== userId) throw new NotFoundException('Work log not found');
+    const userId = parseWorkBigInt(actorId, 'user id');
+    const existing = await this.requireOwnLog(id, userId);
     if (!['draft', 'rejected'].includes(existing.approvalStatus)) throw new BadRequestException('Only draft or rejected logs can be submitted');
     await this.db.client.update(workLog).set({ approvalStatus: 'submitted' }).where(eq(workLog.id, id));
     await this.syncWorkLogToProjectTimesheet(id, 'submitted');
-    return this.getLog(id);
+    return this.getLog(actorId, id);
   }
 
   async approveLog(actorId: string, id: string, approve: boolean) {
-    const managerId = this.parseBigInt(actorId, 'user id');
+    const managerId = parseWorkBigInt(actorId, 'user id');
     const tid = this.tenantContext.requireTenantId();
-    const [row] = await this.db.client.select().from(workLog).where(eq(workLog.id, id)).limit(1);
-    if (!row) throw new NotFoundException('Work log not found');
+    const row = await this.requireAccessibleLog(id, managerId);
     const [workItemRow] = await this.db.client.select().from(workItem).where(eq(workItem.id, row.workItemId)).limit(1);
     const [staff] = await this.db.client.select().from(profile).where(eq(profile.id, row.staffId)).limit(1);
     const [employee] = staff
@@ -599,15 +873,16 @@ or(
       .set({
         approvalStatus: approve ? 'approved' : 'rejected',
         approvedById: managerId,
-        approvedAt: approve ? new Date() : null
+        approvedAt: approve ? new Date() : null,
       })
       .where(eq(workLog.id, id));
     await this.syncWorkLogToProjectTimesheet(id, approve ? 'approved' : 'rejected', managerId);
-    return this.getLog(id);
+    return this.getLog(actorId, id);
   }
 
+
   async myTimesheetSummary(actorId: string, query: Record<string, any>) {
-    const userId = this.parseBigInt(actorId, 'user id');
+    const userId = parseWorkBigInt(actorId, 'user id');
     const conditions: SQL[] = [
       eq(workLog.staffId, userId),
       inArray(workLog.approvalStatus, ['submitted', 'approved']),
@@ -657,20 +932,23 @@ or(
       itemType: (dto.item_type as any) ?? existing?.itemType ?? 'weekly_task',
       status: (dto.status as any) ?? existing?.status ?? 'planned',
       priority: (dto.priority as any) ?? existing?.priority ?? 'medium',
-      organizationId: this.optionalBigInt(dto.organization_id, 'organization id') ?? existing?.organizationId ?? null,
-      ownerTeamId: this.optionalBigInt(dto.owner_team_id, 'owner team id') ?? existing?.ownerTeamId ?? null,
-      secondaryTeamId: this.optionalBigInt(dto.secondary_team_id, 'secondary team id') ?? existing?.secondaryTeamId ?? null,
-      projectId: this.optionalBigInt(dto.project_id, 'project id') ?? existing?.projectId ?? null,
-      sprintId: this.optionalBigInt(dto.sprint_id, 'sprint id') ?? existing?.sprintId ?? null,
-      parentId: this.optionalString(dto.parent_id) ?? existing?.parentId ?? null,
+      color: dto.color !== undefined ? dto.color?.trim() || null : existing?.color ?? null,
+      tags: dto.tags !== undefined ? normalizeTags(dto.tags) : existing?.tags ?? null,
+      organizationId: optionalBigInt(dto.organization_id, 'organization id') ?? existing?.organizationId ?? null,
+
+      ownerTeamId: optionalBigInt(dto.owner_team_id, 'owner team id') ?? existing?.ownerTeamId ?? null,
+      secondaryTeamId: optionalBigInt(dto.secondary_team_id, 'secondary team id') ?? existing?.secondaryTeamId ?? null,
+      projectId: optionalBigInt(dto.project_id, 'project id') ?? existing?.projectId ?? null,
+      sprintId: optionalBigInt(dto.sprint_id, 'sprint id') ?? existing?.sprintId ?? null,
+      parentId: optionalString(dto.parent_id) ?? existing?.parentId ?? null,
       estimatePoints: dto.estimate_points != null ? Number(dto.estimate_points) : existing?.estimatePoints ?? null,
       sortOrder: dto.sort_order != null ? Number(dto.sort_order) : existing?.sortOrder ?? 0,
-      fundId: this.optionalString(dto.fund_id) ?? existing?.fundId ?? null,
-      grantId: this.optionalString(dto.grant_id) ?? existing?.grantId ?? null,
-      goalId: this.optionalString(dto.goal_id) ?? existing?.goalId ?? null,
-      objectiveId: this.optionalString(dto.objective_id) ?? existing?.objectiveId ?? null,
-      kpiId: this.optionalString(dto.kpi_id) ?? existing?.kpiId ?? null,
-      assignedToId: this.optionalBigInt(dto.assigned_to_id, 'assigned to id') ?? existing?.assignedToId ?? actorId,
+      fundId: optionalString(dto.fund_id) ?? existing?.fundId ?? null,
+      grantId: optionalString(dto.grant_id) ?? existing?.grantId ?? null,
+      goalId: optionalString(dto.goal_id) ?? existing?.goalId ?? null,
+      objectiveId: optionalString(dto.objective_id) ?? existing?.objectiveId ?? null,
+      kpiId: optionalString(dto.kpi_id) ?? existing?.kpiId ?? null,
+      assignedToId: optionalBigInt(dto.assigned_to_id, 'assigned to id') ?? existing?.assignedToId ?? actorId,
       assignedById: existing?.assignedById ?? actorId,
       createdById: existing?.createdById ?? actorId,
       plannedStartDate: dto.planned_start_date ? new Date(dto.planned_start_date) : existing?.plannedStartDate ?? null,
@@ -686,11 +964,11 @@ or(
     return {
       workItemId: item.id,
       staffId: existing?.staffId ?? actorId,
-      organizationId: this.optionalBigInt(dto.organization_id, 'organization id') ?? existing?.organizationId ?? item.organizationId ?? null,
-      teamId: this.optionalBigInt(dto.team_id, 'team id') ?? existing?.teamId ?? item.ownerTeamId ?? null,
-      projectId: this.optionalBigInt(dto.project_id, 'project id') ?? existing?.projectId ?? item.projectId ?? null,
-      fundId: this.optionalString(dto.fund_id) ?? existing?.fundId ?? item.fundId ?? null,
-      grantId: this.optionalString(dto.grant_id) ?? existing?.grantId ?? item.grantId ?? null,
+      organizationId: optionalBigInt(dto.organization_id, 'organization id') ?? existing?.organizationId ?? item.organizationId ?? null,
+      teamId: optionalBigInt(dto.team_id, 'team id') ?? existing?.teamId ?? item.ownerTeamId ?? null,
+      projectId: optionalBigInt(dto.project_id, 'project id') ?? existing?.projectId ?? item.projectId ?? null,
+      fundId: optionalString(dto.fund_id) ?? existing?.fundId ?? item.fundId ?? null,
+      grantId: optionalString(dto.grant_id) ?? existing?.grantId ?? item.grantId ?? null,
       logDate: new Date(dto.log_date),
       hoursSpent: String(dto.hours_spent ?? 0),
       status: (dto.status as any) ?? existing?.status ?? 'in_progress',
@@ -713,7 +991,10 @@ or(
       item_type: row.itemType,
       status: row.status,
       priority: row.priority,
+      color: row.color ?? null,
+      tags: Array.isArray(row.tags) ? row.tags : [],
       organization_id: row.organizationId?.toString() || '',
+
       owner_team_id: row.ownerTeamId?.toString() || '',
       secondary_team_id: row.secondaryTeamId?.toString() || '',
       project_id: row.projectId?.toString() || '',
@@ -744,9 +1025,9 @@ or(
       goal: row.goal ? this.serializeGoal(row.goal) : null,
       objective: row.objective ? this.serializeObjective(row.objective) : null,
       kpi: row.kpi ? this.serializeKpi(row.kpi) : null,
-      assigned_to: row.assignedTo ? this.serializeProfile(row.assignedTo) : null,
-      assigned_by: row.assignedBy ? this.serializeProfile(row.assignedBy) : null,
-      created_by: row.createdBy ? this.serializeProfile(row.createdBy) : null,
+      assigned_to: row.assignedTo ? serializeProfile(row.assignedTo) : null,
+      assigned_by: row.assignedBy ? serializeProfile(row.assignedBy) : null,
+      created_by: row.createdBy ? serializeProfile(row.createdBy) : null,
       parent: row.parent ? this.serializeWorkItemRef(row.parent) : null,
       subtasks: (row.subtasks || []).map((child: any) => this.serializeWorkItemRef(child)),
       sprint: row.sprint ? this.serializeSprintRef(row.sprint) : null,
@@ -756,12 +1037,16 @@ or(
         hours_spent: Number(log.hoursSpent || 0),
         status: log.status,
         approval_status: log.approvalStatus,
-        note: log.note || ''
+        note: log.note || '',
       })),
+      attachments: row.attachments ?? [],
+      comments_count: (row.comments || []).length,
+      latest_comment: row.comments?.[0] ?? null,
       created_at: row.createdAt,
-      updated_at: row.updatedAt
+      updated_at: row.updatedAt,
     };
   }
+
 
   private serializeWorkLog(row: any) {
     return {
@@ -789,18 +1074,10 @@ or(
       project: row.project ? { id: row.project.id.toString(), name: row.project.name } : null,
       fund: row.fund ? { id: row.fund.id, name: row.fund.name } : null,
       grant: row.grant ? { id: row.grant.id, name: row.grant.name } : null,
-      staff: row.staff ? this.serializeProfile(row.staff) : null,
-      approved_by: row.approvedBy ? this.serializeProfile(row.approvedBy) : null,
+      staff: row.staff ? serializeProfile(row.staff) : null,
+      approved_by: row.approvedBy ? serializeProfile(row.approvedBy) : null,
       created_at: row.createdAt,
       updated_at: row.updatedAt
-    };
-  }
-
-  private serializeProfile(row: any) {
-    return {
-      id: row.id.toString(),
-      full_name: [row.firstName, row.lastName].filter(Boolean).join(' ') || row.email,
-      email: row.email
     };
   }
 
@@ -820,8 +1097,10 @@ or(
     const assignedToIds = [...new Set(rows.map((row) => row.assignedToId).filter((x): x is bigint => x != null))];
     const assignedByIds = [...new Set(rows.map((row) => row.assignedById).filter((x): x is bigint => x != null))];
     const createdByIds = [...new Set(rows.map((row) => row.createdById).filter((x): x is bigint => x != null))];
+    const sprintIds = [...new Set(rows.map((row) => row.sprintId).filter((x): x is bigint => x != null))];
 
-    const [parents, subtasks, organizations, ownerTeams, secondaryTeams, projects, funds, grants, goals, objectives, kpis, assignedTo, assignedBy, createdBy, logs] = await Promise.all([
+
+    const [parents, subtasks, organizations, ownerTeams, secondaryTeams, projects, funds, grants, goals, objectives, kpis, assignedTo, assignedBy, createdBy, logs, comments, attachments, sprints] = await Promise.all([
       parentIds.length ? this.db.client.select().from(workItem).where(inArray(workItem.id, parentIds)) : Promise.resolve([] as any[]),
       this.db.client.select().from(workItem).where(inArray(workItem.parentId, ids)),
       organizationIds.length ? this.db.client.select().from(organization).where(inArray(organization.id, organizationIds)) : Promise.resolve([] as any[]),
@@ -837,7 +1116,30 @@ or(
       assignedByIds.length ? this.db.client.select().from(profile).where(inArray(profile.id, assignedByIds)) : Promise.resolve([] as any[]),
       createdByIds.length ? this.db.client.select().from(profile).where(inArray(profile.id, createdByIds)) : Promise.resolve([] as any[]),
       this.db.client.select().from(workLog).where(inArray(workLog.workItemId, ids)).orderBy(desc(workLog.logDate), desc(workLog.createdAt)),
+      this.db.client.select({ comment: workItemComment, author: profileRefColumns() })
+        .from(workItemComment)
+        .leftJoin(profile, eq(workItemComment.createdBy, profile.id))
+        .where(inArray(workItemComment.workItemId, ids))
+        .orderBy(desc(workItemComment.createdAt)),
+      this.db.client
+        .select({
+          attachment: workItemAttachment,
+          file: {
+            id: fileAsset.id,
+            fileName: fileAsset.fileName,
+            mimeType: fileAsset.mimeType,
+            fileSize: fileAsset.fileSize,
+            publicUrl: fileAsset.publicUrl,
+            storagePath: fileAsset.storagePath,
+          },
+        })
+        .from(workItemAttachment)
+        .leftJoin(fileAsset, eq(workItemAttachment.fileAssetId, fileAsset.id))
+        .where(inArray(workItemAttachment.workItemId, ids))
+        .orderBy(desc(workItemAttachment.createdAt)),
+      sprintIds.length ? this.db.client.select().from(sprint).where(inArray(sprint.id, sprintIds)) : Promise.resolve([] as any[]),
     ]);
+
     const parentMap = new Map(parents.map((parent) => [parent.id, parent]));
     const subtaskMap = new Map<string, any[]>();
     for (const child of subtasks) {
@@ -857,11 +1159,42 @@ or(
     const assignedToMap = new Map(assignedTo.map((worker) => [worker.id.toString(), worker]));
     const assignedByMap = new Map(assignedBy.map((worker) => [worker.id.toString(), worker]));
     const createdByMap = new Map(createdBy.map((worker) => [worker.id.toString(), worker]));
+    const sprintMap = new Map(sprints.map((row) => [row.id.toString(), row]));
+
     const logsByItem = new Map<string, any[]>();
     for (const log of logs) {
       const list = logsByItem.get(log.workItemId) ?? [];
       if (list.length < 5) list.push(log);
       logsByItem.set(log.workItemId, list);
+    }
+    const commentsByItem = new Map<string, any[]>();
+    for (const { comment, author } of comments) {
+      const list = commentsByItem.get(comment.workItemId) ?? [];
+      list.push({
+        id: comment.id.toString(),
+        work_item_id: comment.workItemId,
+        body: comment.body,
+        metadata: comment.metadata ?? {},
+        created_by: comment.createdBy ? comment.createdBy.toString() : null,
+        author: serializeProfileRef(author),
+        created_at: comment.createdAt,
+        updated_at: comment.updatedAt,
+      });
+      commentsByItem.set(comment.workItemId, list);
+    }
+    const attachmentsByItem = new Map<string, any[]>();
+    for (const { attachment, file } of attachments) {
+      const list = attachmentsByItem.get(attachment.workItemId) ?? [];
+      list.push({
+        id: attachment.id.toString(),
+        work_item_id: attachment.workItemId,
+        file_asset_id: attachment.fileAssetId,
+        label: attachment.label,
+        created_by: attachment.createdBy ? attachment.createdBy.toString() : null,
+        created_at: attachment.createdAt,
+        file: serializeFileAsset(file),
+      });
+      attachmentsByItem.set(attachment.workItemId, list);
     }
     return rows.map((row) => ({
       ...row,
@@ -878,10 +1211,14 @@ or(
       assignedBy: row.assignedById ? (assignedByMap.get(row.assignedById.toString()) ?? null) : null,
       createdBy: row.createdById ? (createdByMap.get(row.createdById.toString()) ?? null) : null,
       parent: row.parentId ? (parentMap.get(row.parentId) ?? null) : null,
+      sprint: row.sprintId ? (sprintMap.get(row.sprintId.toString()) ?? null) : null,
       subtasks: subtaskMap.get(row.id) ?? [],
-      logs: logsByItem.get(row.id) ?? []
+      logs: logsByItem.get(row.id) ?? [],
+      comments: commentsByItem.get(row.id) ?? [],
+      attachments: attachmentsByItem.get(row.id) ?? [],
     }));
   }
+
 
   private async hydrateWorkLogs(rows: any[]) {
     if (!rows.length) return rows;
@@ -1037,7 +1374,7 @@ or(
       status: row.status,
       is_active: row.isActive,
       created_by_id: row.createdBy?.toString() || '',
-      created_by: row.creator ? this.serializeProfile(row.creator) : null,
+      created_by: row.creator ? serializeProfile(row.creator) : null,
       total_items: (row.items || []).length,
       completed_items: itemCounts.get('completed') ?? 0,
       items: row.items || [],
@@ -1075,7 +1412,7 @@ or(
       end_date: row.endDate,
       organization: row.organization ? { id: row.organization.id.toString(), name: row.organization.name } : null,
       team: row.team ? { id: row.team.id.toString(), name: row.team.name } : null,
-      owner: row.owner ? this.serializeProfile(row.owner) : null,
+      owner: row.owner ? serializeProfile(row.owner) : null,
       objectives_count: row.objectives?.length ?? 0,
       kpis_count: row.kpis?.length ?? 0,
       created_at: row.createdAt,
@@ -1094,7 +1431,7 @@ or(
       goal_id: row.goalId || '',
       goal: row.goal ? { id: row.goal.id, title: row.goal.title } : null,
       team: row.team ? { id: row.team.id.toString(), name: row.team.name } : null,
-      owner: row.owner ? this.serializeProfile(row.owner) : null,
+      owner: row.owner ? serializeProfile(row.owner) : null,
       kpis_count: row.kpis?.length ?? 0,
       created_at: row.createdAt,
       updated_at: row.updatedAt
@@ -1118,29 +1455,10 @@ or(
       goal: row.goal ? { id: row.goal.id, title: row.goal.title } : null,
       objective: row.objective ? { id: row.objective.id, title: row.objective.title } : null,
       team: row.team ? { id: row.team.id.toString(), name: row.team.name } : null,
-      owner: row.owner ? this.serializeProfile(row.owner) : null,
+      owner: row.owner ? serializeProfile(row.owner) : null,
       created_at: row.createdAt,
       updated_at: row.updatedAt
     };
-  }
-
-  private parseBigInt(value: string, label: string) {
-    try {
-      return toBigInt(value);
-    } catch {
-      throw new BadRequestException(`Invalid ${label}`);
-    }
-  }
-
-  private optionalString(value?: string | null) {
-    if (value == null) return null;
-    const next = String(value).trim();
-    return next.length ? next : null;
-  }
-
-  private optionalBigInt(value: string | null | undefined, label: string) {
-    const next = this.optionalString(value);
-    return next ? this.parseBigInt(next, label) : null;
   }
 
   private async syncWorkLogToProjectTimesheet(workLogId: string, status: 'submitted' | 'approved' | 'rejected', actorId?: bigint) {

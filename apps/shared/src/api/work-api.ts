@@ -1,8 +1,46 @@
 import type { HttpRequest } from "../auth/http-client";
 
-export type WorkItemType = "weekly_task" | "project_activity" | "recurring_responsibility";
+export type WorkItemType = "weekly_task" | "daily_task" | "project_activity" | "recurring_responsibility" | "ad_hoc";
 export type WorkItemPriority = "low" | "medium" | "high" | "critical";
 export type WorkItemStatus = "planned" | "in_progress" | "completed" | "blocked" | "carried_over" | "cancelled";
+
+/** Minimal user reference, matching the API's `UserRefSchema`. */
+export type WorkItemUserRef = {
+  id: string;
+  email: string;
+  username?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+};
+
+export type WorkItemAttachment = {
+  id: string;
+  work_item_id: string;
+  file_asset_id: string;
+  label?: string | null;
+  created_by?: string | null;
+  created_at?: string;
+  file?: {
+    id: string;
+    file_name: string;
+    mime_type?: string | null;
+    file_size?: string | null;
+    public_url?: string | null;
+    storage_path?: string | null;
+  } | null;
+};
+
+export type WorkItemComment = {
+  id: string;
+  work_item_id: string;
+  body: string;
+  metadata?: Record<string, unknown>;
+  created_by?: string | null;
+  author?: WorkItemUserRef | null;
+  tagged_users: Array<{ id: string; user_id: string; user: WorkItemUserRef | null }>;
+  created_at?: string;
+  updated_at?: string;
+};
 
 export type WorkItem = {
   id: string;
@@ -11,6 +49,8 @@ export type WorkItem = {
   item_type: WorkItemType;
   priority: WorkItemPriority;
   status: WorkItemStatus;
+  color?: string | null;
+  tags?: string[];
   assigned_to_id?: string | null;
   assigned_to?: { id: string; full_name?: string } | null;
   due_date?: string | null;
@@ -35,6 +75,9 @@ export type WorkItem = {
   parent?: { id: string; title: string; status?: WorkItemStatus } | null;
   subtasks?: { id: string; title: string; status?: WorkItemStatus }[];
   sprint?: { id: string; name: string; status?: string } | null;
+  attachments?: WorkItemAttachment[];
+  comments_count?: number;
+  latest_comment?: WorkItemComment | null;
 };
 
 export type WorkLog = {
@@ -93,6 +136,8 @@ export type CreateWorkItemDto = {
   item_type: WorkItemType;
   status?: WorkItemStatus;
   priority: WorkItemPriority;
+  color?: string;
+  tags?: string[];
   assigned_to_id?: string;
   due_date?: string;
   week_start_date?: string;
@@ -109,6 +154,12 @@ export type CreateWorkItemDto = {
   kpi_id?: string;
   requires_manager_ack?: boolean;
   is_staff_added?: boolean;
+};
+
+export type CreateWorkItemCommentDto = {
+  body: string;
+  tagged_user_ids?: string[];
+  metadata?: Record<string, unknown>;
 };
 
 export type CreateWorkLogDto = {
@@ -234,6 +285,35 @@ export function createWorkApi(httpRequest: HttpRequest) {
     async updateWorkItem(id: string, dto: Partial<CreateWorkItemDto>) {
       const res = await httpRequest<any>(`/tasks/items/${id}`, { method: "POST", body: dto });
       return (res?.data ?? res) as WorkItem;
+    },
+
+    async deleteWorkItem(id: string) {
+      await httpRequest<void>(`/tasks/items/${id}`, { method: "DELETE" });
+    },
+
+    async listWorkItemComments(itemId: string) {
+      const res = await httpRequest<any>(`/tasks/items/${itemId}/comments`);
+      return ((res as any)?.data ?? []) as WorkItemComment[];
+    },
+
+    async addWorkItemComment(itemId: string, dto: CreateWorkItemCommentDto) {
+      const res = await httpRequest<any>(`/tasks/items/${itemId}/comments`, { method: "POST", body: dto });
+      return (res?.data ?? res) as WorkItemComment;
+    },
+
+    async listWorkItemAttachments(itemId: string) {
+      const res = await httpRequest<any>(`/tasks/items/${itemId}/attachments`);
+      return ((res as any)?.data ?? []) as WorkItemAttachment[];
+    },
+
+    async addWorkItemAttachment(itemId: string, payload: { file_asset_id: string; label?: string }) {
+      const res = await httpRequest<any>(`/tasks/items/${itemId}/attachments`, { method: "POST", body: payload });
+      return ((res as any)?.data ?? []) as WorkItemAttachment[];
+    },
+
+    async removeWorkItemAttachment(itemId: string, attachmentId: string) {
+      const res = await httpRequest<any>(`/tasks/items/${itemId}/attachments/${attachmentId}`, { method: "DELETE" });
+      return ((res as any)?.data ?? []) as WorkItemAttachment[];
     },
 
     async listTeamWorkLogs(params?: Record<string, unknown>) {

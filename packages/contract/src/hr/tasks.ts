@@ -1,5 +1,7 @@
 import { Type, type Static } from '@sinclair/typebox';
-import { IsoDateOrDateTimeSchema } from '../common/primitives';
+import { IdSchema, IsoDateOrDateTimeSchema, UuidSchema } from '../common/primitives';
+import { MetadataSchema } from '../common/refs';
+
 
 export const SprintStatusSchema = Type.Union([
   Type.Literal('planned'),
@@ -34,6 +36,12 @@ export const WorkPrioritySchema = Type.Union([
   Type.Literal('critical'),
 ]);
 export type WorkPriority = Static<typeof WorkPrioritySchema>;
+
+/** Free-form board labels. Deduplicated and length-capped by the service. */
+export const WorkItemTagsSchema = Type.Array(Type.String({ minLength: 1, maxLength: 80 }), {
+  maxItems: 25,
+});
+
 
 /* -------------------------------------------------------------------------- */
 /* Sprints                                                                    */
@@ -111,6 +119,8 @@ export const UpsertWorkItemSchema = Type.Object({
   item_type: Type.Optional(WorkItemTypeSchema),
   status: Type.Optional(WorkItemStatusSchema),
   priority: Type.Optional(WorkPrioritySchema),
+  color: Type.Optional(Type.String({ maxLength: 40 })),
+  tags: Type.Optional(WorkItemTagsSchema),
   organization_id: Type.Optional(Type.String()),
   owner_team_id: Type.Optional(Type.String()),
   secondary_team_id: Type.Optional(Type.String()),
@@ -159,8 +169,38 @@ export const UpsertWorkLogSchema = Type.Object({
 export type UpsertWorkLog = Static<typeof UpsertWorkLogSchema>;
 
 /* -------------------------------------------------------------------------- */
+/* Work item comments, mentions and attachments                                */
+/* -------------------------------------------------------------------------- */
+
+/** Progress note on a work item, optionally tagging other users. */
+export const CreateWorkItemCommentSchema = Type.Object({
+  body: Type.String({ minLength: 1 }),
+  tagged_user_ids: Type.Optional(Type.Array(IdSchema)),
+  metadata: Type.Optional(MetadataSchema),
+});
+export type CreateWorkItemComment = Static<typeof CreateWorkItemCommentSchema>;
+
+export const AddWorkItemAttachmentSchema = Type.Object({
+  file_asset_id: UuidSchema,
+  label: Type.Optional(Type.String({ maxLength: 150 })),
+});
+export type AddWorkItemAttachment = Static<typeof AddWorkItemAttachmentSchema>;
+
+export const WorkItemParamsSchema = Type.Object({
+  id: Type.String({ format: 'uuid' }),
+});
+export type WorkItemParams = Static<typeof WorkItemParamsSchema>;
+
+export const WorkItemAttachmentParamsSchema = Type.Object({
+  id: Type.String({ format: 'uuid' }),
+  attachmentId: IdSchema,
+});
+export type WorkItemAttachmentParams = Static<typeof WorkItemAttachmentParamsSchema>;
+
+/* -------------------------------------------------------------------------- */
 /* Route scaffolding                                                          */
 /* -------------------------------------------------------------------------- */
+
 
 export const TasksIdParamsSchema = Type.Object({
   id: Type.String(),
@@ -182,6 +222,7 @@ export const TasksListQuerySchema = Type.Object({
   approval_status: Type.Optional(Type.String()),
   is_active: Type.Optional(Type.String()),
   period_year: Type.Optional(Type.String()),
+  tag: Type.Optional(Type.String()),
   week_start_date: Type.Optional(Type.String()),
   from: Type.Optional(Type.String()),
   to: Type.Optional(Type.String()),

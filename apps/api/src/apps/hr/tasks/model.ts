@@ -1,5 +1,9 @@
 import { defineRelationsPart } from 'drizzle-orm';
-import { bigint, bigserial, boolean, date, doublePrecision, index, integer, jsonb, numeric, pgEnum, pgTable, serial, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
+import { bigint, bigserial, boolean, date, index, integer, jsonb, numeric, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
+import { profile } from '$apps/identity/users/model';
+import { project } from '$apps/hr/projects/model';
+import { fileAsset } from '$apps/storage/model';
+import { tenant } from '$apps/tenancy/model';
 
 export const workItemTypeEnum = pgEnum("work_item_type", ["weekly_task", "daily_task", "project_activity", "recurring_responsibility", "ad_hoc"]);
 export type WorkItemType = typeof workItemTypeEnum.enumValues[number];
@@ -12,9 +16,7 @@ export type WorkPriority = typeof workPriorityEnum.enumValues[number];
 
 export const workLogApprovalStatusEnum = pgEnum("work_log_approval_status", ["draft", "submitted", "approved", "rejected"]);
 export type WorkLogApprovalStatus = typeof workLogApprovalStatusEnum.enumValues[number];
-import { profile } from '$apps/identity/users/model';
-import { project } from '$apps/hr/projects/model';
-import { tenant } from '$apps/tenancy/model';
+
 
 export const projectTimesheetEntry = pgTable("sta_project_timesheet_entries", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
@@ -159,9 +161,11 @@ export const workItem = pgTable("sta_work_items", {
   organizationId: bigint("organization_id", { mode: 'bigint' }),
   ownerTeamId: bigint("owner_team_id", { mode: 'bigint' }),
   secondaryTeamId: bigint("secondary_team_id", { mode: 'bigint' }),
-  projectId: bigint("project_id", { mode: 'bigint' }),
+  projectId: bigint("project_id", { mode: 'bigint' }).references(() => project.id, { onDelete: 'set null' }),
   sprintId: bigint("sprint_id", { mode: 'bigint' }).references(() => sprint.id, { onDelete: 'set null' }),
   parentId: uuid("parent_id").references(() => workItem.id, { onDelete: 'cascade' }),
+  color: varchar("color", { length: 40 }),
+  tags: jsonb("tags"),
   estimatePoints: integer("estimate_points"),
   sortOrder: integer("sort_order").default(0).notNull(),
   fundId: uuid("fund_id"),
@@ -199,7 +203,7 @@ export type NewWorkItem = typeof workItem.$inferInsert;
 
 export const workLog = pgTable("sta_work_logs", {
   id: uuid("id").defaultRandom().primaryKey().notNull(),
-  workItemId: uuid("work_item_id").notNull(),
+  workItemId: uuid("work_item_id").notNull().references(() => workItem.id, { onDelete: 'cascade' }),
   staffId: bigint("staff_id", { mode: 'bigint' }).notNull(),
   organizationId: bigint("organization_id", { mode: 'bigint' }),
   teamId: bigint("team_id", { mode: 'bigint' }),
@@ -231,5 +235,67 @@ export const workLog = pgTable("sta_work_logs", {
 export type WorkLog = typeof workLog.$inferSelect;
 export type NewWorkLog = typeof workLog.$inferInsert;
 
-export const modules_hrm_tasksRelations = defineRelationsPart({ projectTimesheetEntry, teamGoal, teamObjective, teamKpi, workItem, workLog, sprint });
+export const workItemComment = pgTable("sta_work_item_comments", {
+  id: bigserial("id", { mode: 'bigint' }).primaryKey(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).notNull().references(() => tenant.id, { onDelete: 'cascade' }),
+  workItemId: uuid("work_item_id").notNull().references(() => workItem.id, { onDelete: 'cascade' }),
+  body: text("body").notNull(),
+  metadata: jsonb("metadata"),
+  createdBy: bigint("created_by", { mode: 'bigint' }).references(() => profile.id, { onDelete: 'set null' }),
+  createdAt: timestamp("created_at", { mode: 'date', precision: 6 }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'date', precision: 6 }).notNull().$onUpdate(() => new Date()),
+}, (table) => [
+  index("workItemComment_index_tenantId").on(table.tenantId),
+  index("workItemComment_index_workItemId_createdAt").on(table.workItemId, table.createdAt),
+  index("workItemComment_index_createdBy").on(table.createdBy),
+]);
+
+export type WorkItemComment = typeof workItemComment.$inferSelect;
+export type NewWorkItemComment = typeof workItemComment.$inferInsert;
+
+export const workItemCommentMention = pgTable("sta_work_item_comment_mentions", {
+  id: bigserial("id", { mode: 'bigint' }).primaryKey(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).notNull().references(() => tenant.id, { onDelete: 'cascade' }),
+  commentId: bigint("comment_id", { mode: 'bigint' }).notNull().references(() => workItemComment.id, { onDelete: 'cascade' }),
+  userId: bigint("user_id", { mode: 'bigint' }).notNull().references(() => profile.id, { onDelete: 'cascade' }),
+  createdAt: timestamp("created_at", { mode: 'date', precision: 6 }).defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("work_item_comment_mention_unique").on(table.commentId, table.userId),
+  index("workItemCommentMention_index_tenantId").on(table.tenantId),
+  index("workItemCommentMention_index_userId").on(table.userId),
+]);
+
+export type WorkItemCommentMention = typeof workItemCommentMention.$inferSelect;
+export type NewWorkItemCommentMention = typeof workItemCommentMention.$inferInsert;
+
+export const workItemAttachment = pgTable("sta_work_item_attachments", {
+  id: bigserial("id", { mode: 'bigint' }).primaryKey(),
+  tenantId: bigint("tenant_id", { mode: 'bigint' }).notNull().references(() => tenant.id, { onDelete: 'cascade' }),
+  workItemId: uuid("work_item_id").notNull().references(() => workItem.id, { onDelete: 'cascade' }),
+  fileAssetId: uuid("file_asset_id").notNull().references(() => fileAsset.id, { onDelete: 'cascade' }),
+  label: varchar("label", { length: 150 }),
+  createdBy: bigint("created_by", { mode: 'bigint' }).references(() => profile.id, { onDelete: 'set null' }),
+  createdAt: timestamp("created_at", { mode: 'date', precision: 6 }).defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("work_item_attachment_item_file_unique").on(table.workItemId, table.fileAssetId),
+  index("workItemAttachment_index_tenantId").on(table.tenantId),
+  index("workItemAttachment_index_workItemId").on(table.workItemId),
+  index("workItemAttachment_index_fileAssetId").on(table.fileAssetId),
+]);
+
+export type WorkItemAttachment = typeof workItemAttachment.$inferSelect;
+export type NewWorkItemAttachment = typeof workItemAttachment.$inferInsert;
+
+export const modules_hrm_tasksRelations = defineRelationsPart({
+  projectTimesheetEntry,
+  teamGoal,
+  teamObjective,
+  teamKpi,
+  workItem,
+  workItemComment,
+  workItemCommentMention,
+  workItemAttachment,
+  workLog,
+  sprint,
+});
 

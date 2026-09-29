@@ -1,6 +1,6 @@
 import { Type, type Static } from '@sinclair/typebox';
-import { IdSchema, IsoDateOrDateTimeSchema, UuidSchema } from '../common/primitives';
 import { MetadataSchema } from '../common/refs';
+
 
 export const ProjectRoleSchema = Type.Union([
   Type.Literal('member'),
@@ -55,66 +55,9 @@ export const AddProjectMemberSchema = Type.Object({
 export type AddProjectMember = Static<typeof AddProjectMemberSchema>;
 
 /* -------------------------------------------------------------------------- */
-/* Kanban cards                                                               */
-/* -------------------------------------------------------------------------- */
-
-export const ProjectCardTagsSchema = Type.Array(Type.String({ minLength: 1, maxLength: 80 }), {
-  maxItems: 25,
-});
-
-export const UpsertProjectCardSchema = Type.Object({
-  title: Type.String({ minLength: 1, maxLength: 255 }),
-  description: Type.Optional(Type.String()),
-  status: Type.Optional(Type.String({ minLength: 1, maxLength: 50 })),
-  position: Type.Optional(Type.Number()),
-  color: Type.Optional(Type.String({ maxLength: 40 })),
-  tags: Type.Optional(ProjectCardTagsSchema),
-  assigned_to_id: Type.Optional(IdSchema),
-  due_date: Type.Optional(IsoDateOrDateTimeSchema),
-  metadata: Type.Optional(MetadataSchema),
-});
-export type UpsertProjectCard = Static<typeof UpsertProjectCardSchema>;
-
-export const UpdateProjectCardSchema = Type.Partial(UpsertProjectCardSchema);
-export type UpdateProjectCard = Static<typeof UpdateProjectCardSchema>;
-
-export const ProjectCardsListQuerySchema = Type.Object({
-  status: Type.Optional(Type.String()),
-  tag: Type.Optional(Type.String()),
-  assigned_to_id: Type.Optional(Type.String()),
-  search: Type.Optional(Type.String()),
-});
-export type ProjectCardsListQuery = Static<typeof ProjectCardsListQuerySchema>;
-
-export const ProjectCardParamsSchema = Type.Object({
-  id: IdSchema,
-  cardId: UuidSchema,
-});
-export type ProjectCardParams = Static<typeof ProjectCardParamsSchema>;
-
-export const AddProjectCardAttachmentSchema = Type.Object({
-  file_asset_id: UuidSchema,
-  label: Type.Optional(Type.String({ maxLength: 150 })),
-});
-export type AddProjectCardAttachment = Static<typeof AddProjectCardAttachmentSchema>;
-
-export const ProjectCardAttachmentParamsSchema = Type.Object({
-  id: IdSchema,
-  cardId: UuidSchema,
-  attachmentId: IdSchema,
-});
-export type ProjectCardAttachmentParams = Static<typeof ProjectCardAttachmentParamsSchema>;
-
-export const CreateProjectCardUpdateSchema = Type.Object({
-  body: Type.String({ minLength: 1 }),
-  tagged_user_ids: Type.Optional(Type.Array(IdSchema)),
-  metadata: Type.Optional(MetadataSchema),
-});
-export type CreateProjectCardUpdate = Static<typeof CreateProjectCardUpdateSchema>;
-
-/* -------------------------------------------------------------------------- */
 /* Route scaffolding                                                          */
 /* -------------------------------------------------------------------------- */
+
 
 export const projectsIdParamsSchema = Type.Object({
   id: Type.String(),

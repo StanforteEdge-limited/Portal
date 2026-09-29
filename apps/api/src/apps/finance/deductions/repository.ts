@@ -2025,12 +2025,12 @@ export class DeductionService {
       const deductionMap = new Map(
         deductionRows.map((row) => [row.id, row] as const),
       );
-      for (const allocation of allocations) {
+      for (const allocation of allocations as any[]) {
         const deduction =
           deductionMap.get(allocation.requestDeductionId) ?? null;
         if (deduction)
-          deduction.remittanceAllocations =
-            sumsByDeduction.get(deduction.id) ?? [];
+          (deduction as any).remittanceAllocations =
+            sumsByDeduction.get((deduction as any).id) ?? [];
         allocation.requestDeduction = deduction;
       }
 
@@ -2040,7 +2040,7 @@ export class DeductionService {
           allocations.map((allocation) => [allocation.id, allocation] as const),
         );
         let nextTotal = 0;
-        for (const allocation of allocations) {
+        for (const allocation of allocations as any[]) {
           const override = allocationUpdates.find(
             (entry) => entry.id === allocation.id,
           );

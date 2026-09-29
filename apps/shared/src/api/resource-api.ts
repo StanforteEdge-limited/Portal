@@ -53,25 +53,8 @@ export type TeamOption = {
   members?: TeamMember[];
 };
 
-export type ProjectCardPayload = {
-  title: string;
-  description?: string;
-  status?: string;
-  position?: number;
-  color?: string;
-  tags?: string[];
-  assigned_to_id?: string;
-  due_date?: string;
-  metadata?: Record<string, unknown>;
-};
-
-export type ProjectCardUpdatePayload = {
-  body: string;
-  tagged_user_ids?: string[];
-  metadata?: Record<string, unknown>;
-};
-
 function mapRole(role: string): "member" | "lead" | "manager" {
+
   if (role === "moderator") return "lead";
   if (role === "admin") return "manager";
   return "member";
@@ -325,80 +308,8 @@ export function createResourceApi(httpRequest: HttpRequest) {
       return response?.data as Record<string, unknown>;
     },
 
-    async listProjectCards(projectId: string, params?: {
-      status?: string;
-      tag?: string;
-      assigned_to_id?: string;
-      search?: string;
-    }) {
-      const query = new URLSearchParams();
-      if (params) {
-        Object.entries(params).forEach(([key, value]) => {
-          if (value != null && value !== "") query.set(key, String(value));
-        });
-      }
-      const qs = query.toString();
-      const response = await httpRequest<any>(qs ? `/projects/${projectId}/cards?${qs}` : `/projects/${projectId}/cards`);
-      return (response as any)?.data?.items ?? [];
-    },
-
-    async getProjectCard(projectId: string, cardId: string) {
-      const response = await httpRequest<any>(`/projects/${projectId}/cards/${cardId}`);
-      return response?.data ?? response;
-    },
-
-    async createProjectCard(projectId: string, payload: ProjectCardPayload) {
-      const response = await httpRequest<any>(`/projects/${projectId}/cards`, {
-        method: "POST",
-        body: payload,
-      });
-      return response?.data ?? response;
-    },
-
-    async updateProjectCard(projectId: string, cardId: string, payload: Partial<ProjectCardPayload>) {
-      const response = await httpRequest<any>(`/projects/${projectId}/cards/${cardId}`, {
-        method: "PUT",
-        body: payload,
-      });
-      return response?.data ?? response;
-    },
-
-    async deleteProjectCard(projectId: string, cardId: string) {
-      const response = await httpRequest<any>(`/projects/${projectId}/cards/${cardId}`, {
-        method: "DELETE",
-      });
-      return response?.data ?? response;
-    },
-
-    async addProjectCardAttachment(projectId: string, cardId: string, payload: { file_asset_id: string; label?: string }) {
-      const response = await httpRequest<any>(`/projects/${projectId}/cards/${cardId}/attachments`, {
-        method: "POST",
-        body: payload,
-      });
-      return response?.data ?? response;
-    },
-
-    async removeProjectCardAttachment(projectId: string, cardId: string, attachmentId: string) {
-      const response = await httpRequest<any>(`/projects/${projectId}/cards/${cardId}/attachments/${attachmentId}`, {
-        method: "DELETE",
-      });
-      return response?.data ?? response;
-    },
-
-    async listProjectCardUpdates(projectId: string, cardId: string) {
-      const response = await httpRequest<any>(`/projects/${projectId}/cards/${cardId}/updates`);
-      return response?.data ?? [];
-    },
-
-    async addProjectCardUpdate(projectId: string, cardId: string, payload: ProjectCardUpdatePayload) {
-      const response = await httpRequest<any>(`/projects/${projectId}/cards/${cardId}/updates`, {
-        method: "POST",
-        body: payload,
-      });
-      return response?.data ?? response;
-    },
-
     async listFiles(params?: {
+
       search?: string;
       include_usage?: boolean;
       page?: number;

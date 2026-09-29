@@ -66,7 +66,7 @@ import { organization } from '$apps/hr/organizations/model';
 import { projectTimesheetEntry } from '$apps/hr/tasks/model';
 import { profile } from '$apps/identity/users/model';
 import { notification } from '$apps/hr/notifications/model';
-import { 
+import {
   financeAccount,
   financeChartAccount,
   financeFund,
@@ -79,9 +79,9 @@ import type { NewPayrollComponent } from './model';
 import { BadRequestException, ConflictException, NotFoundException } from '$core/errors';
 
 type TxClient = Parameters<Parameters<AppDb['transaction']>[0]>[0];
+type LookupClient = AppDb | TxClient;
 
 
-type WhereInput = Record<string, any>;
 type InputJsonValue = unknown;
 export class PayrollService {
   constructor(
@@ -124,6 +124,130 @@ export class PayrollService {
   private combine(...conds: Array<SQL | undefined>): SQL | undefined {
     const present = conds.filter((c): c is SQL => c !== undefined);
     return present.length ? and(...present) : undefined;
+  }
+
+  private async requireRunScoped(runId: string) {
+    const [run] = await this.db.client
+      .select()
+      .from(payrollRun)
+      .where(and(eq(payrollRun.id, runId), this.tenantCond(payrollRun.tenantId)))
+      .limit(1);
+    if (!run) throw new NotFoundException('Payroll run not found');
+    return run;
+  }
+
+  private async requireEditableRunItem(runId: string, itemId: string) {
+    const run = await this.findRunScoped(runId);
+    if (!run) throw new NotFoundException('Payroll run not found');
+    const [item] = await this.db.client
+      .select()
+      .from(payrollRunItem)
+      .where(and(eq(payrollRunItem.id, itemId), eq(payrollRunItem.runId, runId)))
+      .limit(1);
+    if (!item) throw new NotFoundException('Payroll run item not found');
+    const [posting] = await this.db.client
+      .select({ c: count() })
+      .from(payrollAccountingPosting)
+      .where(eq(payrollAccountingPosting.runId, runId));
+    if (['paid', 'closed'].includes(run.status) || (posting?.c ?? 0) > 0) {
+      throw new BadRequestException('Paid, closed, or posted payroll runs cannot be edited');
+    }
+    return { run, item };
+  }
+
+  private async loadRunItems(runId: string) {
+    return this.db.client
+      .select()
+      .from(payrollRunItem)
+      .where(eq(payrollRunItem.runId, runId))
+      .orderBy(asc(payrollRunItem.createdAt));
+  }
+
+  private async loadImportJobRows(jobId: string, status?: string) {
+    return this.db.client
+      .select()
+      .from(payrollImportRow)
+      .where(this.combine(
+        eq(payrollImportRow.jobId, jobId),
+        status ? eq(payrollImportRow.status, status) : undefined,
+      ))
+      .orderBy(asc(payrollImportRow.createdAt));
+  }
+
+  private async hydrateImportJobs(jobs: Array<typeof payrollImportJob.$inferSelect>, withRows = false) {
+    if (!jobs.length) return [];
+    const profileIds = Array.from(new Set(jobs.flatMap((job) => [job.uploadedBy, job.retriedBy].filter((id): id is bigint => id != null))));
+    const retryIds = Array.from(new Set(jobs.map((job) => job.retryOfJobId).filter((id): id is string => id != null)));
+
+    const [profiles, retries, rowCounts, rowGroups] = await Promise.all([
+      profileIds.length
+        ? this.db.client
+            .select({ id: profile.id, firstName: profile.firstName, lastName: profile.lastName, email: profile.email })
+            .from(profile)
+            .where(inArray(profile.id, profileIds))
+        : Promise.resolve([]),
+      retryIds.length
+        ? this.db.client
+            .select({ id: payrollImportJob.id, fileName: payrollImportJob.fileName })
+            .from(payrollImportJob)
+            .where(inArray(payrollImportJob.id, retryIds))
+        : Promise.resolve([]),
+      this.db.client
+        .select({ jobId: payrollImportRow.jobId, c: count() })
+        .from(payrollImportRow)
+        .where(inArray(payrollImportRow.jobId, jobs.map((job) => job.id)))
+        .groupBy(payrollImportRow.jobId),
+      withRows
+        ? this.loadImportJobRows(jobs.length === 1 ? jobs[0].id : '')
+        : Promise.resolve([] as Array<typeof payrollImportRow.$inferSelect>),
+    ]);
+
+    const profileMap = new Map(profiles.map((row) => [row.id, row]));
+    const retryMap = new Map(retries.map((row) => [row.id, row]));
+    const countMap = new Map(rowCounts.map((row) => [row.jobId, Number(row.c)]));
+
+    return jobs.map((job) => ({
+      ...job,
+      uploadedByUser: job.uploadedBy ? profileMap.get(job.uploadedBy) ?? null : null,
+      retriedByUser: job.retriedBy ? profileMap.get(job.retriedBy) ?? null : null,
+      retryOfJob: job.retryOfJobId ? retryMap.get(job.retryOfJobId) ?? null : null,
+      _count: { rows: countMap.get(job.id) ?? 0 },
+      ...(withRows ? { rows: rowGroups.filter((row) => row.jobId === job.id) } : {}),
+    }));
+  }
+
+  private async loadWorkersById(ids: string[]) {
+    const map = new Map<string, typeof payrollWorker.$inferSelect>();
+    if (!ids.length) return map;
+    const rows = await this.db.client.select().from(payrollWorker).where(inArray(payrollWorker.id, ids));
+    for (const row of rows) map.set(row.id, row);
+    return map;
+  }
+
+  private async loadOrganizationsById(ids: Array<bigint | null>) {
+    const map = new Map<bigint, { id: bigint; name: string }>();
+    const wanted = ids.filter((id): id is bigint => id != null);
+    if (!wanted.length) return map;
+    const rows = await this.db.client
+      .select({ id: organization.id, name: organization.name })
+      .from(organization)
+      .where(inArray(organization.id, wanted));
+    for (const row of rows) map.set(row.id, row);
+    return map;
+  }
+
+  private async loadItemLinesWithComponents(itemIds: string[]) {
+    if (!itemIds.length) return [];
+    return this.db.client
+      .select({
+        line: payrollRunItemLine,
+        componentName: payrollComponent.name,
+        componentType: payrollComponent.componentType,
+      })
+      .from(payrollRunItemLine)
+      .leftJoin(payrollComponent, eq(payrollRunItemLine.componentId, payrollComponent.id))
+      .where(inArray(payrollRunItemLine.runItemId, itemIds))
+      .orderBy(asc(payrollRunItemLine.createdAt));
   }
 
   private async countTable(table: any, conds: Array<SQL | undefined>): Promise<number> {
@@ -1164,7 +1288,7 @@ export class PayrollService {
             eq(payrollLoan.workerId, worker.id),
             eq(payrollLoan.status, 'active'),
             lte(payrollLoan.startRecoveryDate, run.periodEnd),
-            gt(payrollLoan.outstandingAmount, 0),
+            gt(payrollLoan.outstandingAmount, '0'),
           ))
           .orderBy(asc(payrollLoan.issuedDate));
         const payBasis = worker.payBasis || 'monthly_fixed';
@@ -1689,40 +1813,41 @@ export class PayrollService {
   }
 
   async generateRunItemPayslip(runId: string, itemId: string) {
-    const run = await this.db.client.query.payrollRun.findFirst({
-      where: { id: runId, ...this.tenantWhere() },
-      include: {
-        items: {
-          where: { id: itemId },
-          include: {
-            worker: true,
-            organization: { select: { id: true, name: true } },
-            lines: { include: { component: true }, orderBy: { createdAt: 'asc' } },
-          }
-        }
-      }
-    });
-    if (!run) throw new NotFoundException('Payroll run not found');
-    const item = run.items[0];
+    const run = await this.requireRunScoped(runId);
+    const [item] = (await this.loadRunItems(runId)).filter((entry) => entry.id === itemId);
     if (!item) throw new NotFoundException('Payroll run item not found');
 
-    const earnings = item.lines.filter((line) => line.lineType === 'earning').map((line) => ({
-      label: line.component.name,
-      amount: Number(line.amount || 0),
+    const [worker] = await this.db.client
+      .select()
+      .from(payrollWorker)
+      .where(eq(payrollWorker.id, item.workerId))
+      .limit(1);
+    const [org] = item.organizationId
+      ? await this.db.client
+          .select({ id: organization.id, name: organization.name })
+          .from(organization)
+          .where(eq(organization.id, item.organizationId))
+          .limit(1)
+      : [];
+
+    const lineRows = await this.loadItemLinesWithComponents([item.id]);
+    const earnings = lineRows.filter((row) => row.line.lineType === 'earning').map((row) => ({
+      label: row.componentName,
+      amount: Number(row.line.amount || 0),
     }));
-    const deductions = item.lines.filter((line) => line.lineType === 'deduction').map((line) => ({
-      label: line.component.name,
-      amount: Number(line.amount || 0),
+    const deductions = lineRows.filter((row) => row.line.lineType === 'deduction').map((row) => ({
+      label: row.componentName,
+      amount: Number(row.line.amount || 0),
     }));
-    const employerCosts = item.lines.filter((line) => line.lineType === 'employer_cost').map((line) => ({
-      label: line.component.name,
-      amount: Number(line.amount || 0),
+    const employerCosts = lineRows.filter((row) => row.line.lineType === 'employer_cost').map((row) => ({
+      label: row.componentName,
+      amount: Number(row.line.amount || 0),
     }));
 
     return this.generatePayslipTemplate({
-      worker_name: item.worker.fullName,
+      worker_name: worker?.fullName ?? '',
       worker_type: item.workerType,
-      organization_name: item.organization?.name || undefined,
+      organization_name: org?.name || undefined,
       period_label: `${run.name} (${run.month}/${run.year})`,
       currency: run.currency,
       earnings,
@@ -1733,34 +1858,29 @@ export class PayrollService {
   }
 
   async generateBankSchedule(runId: string) {
-    const run = await this.db.client.query.payrollRun.findFirst({
-      where: { id: runId, ...this.tenantWhere() },
-      include: {
-        items: {
-          include: {
-            worker: true,
-            organization: { select: { id: true, name: true } },
-          },
-          orderBy: { worker: { fullName: 'asc' } }
-        }
-      }
-    });
-    if (!run) throw new NotFoundException('Payroll run not found');
+    const run = await this.requireRunScoped(runId);
+
+    const items = await this.loadRunItems(runId);
+    const workers = await this.loadWorkersById(items.map((item) => item.workerId));
+    const orgs = await this.loadOrganizationsById(items.map((item) => item.organizationId));
 
     const rows = [
       ['Worker Name', 'Worker Type', 'Organization', 'Bank Name', 'Account Name', 'Account Number', 'Net Pay', 'Currency', 'Payment Status', 'Payment Reference'],
-      ...run.items.map((item) => [
-        item.worker.fullName,
-        item.workerType,
-        item.organization?.name || '',
-        item.worker.bankName || '',
-        item.worker.bankAccountName || '',
-        item.worker.bankAccountNumber || '',
-        Number(item.netPay || 0).toFixed(2),
-        run.currency,
-        item.paymentStatus,
-        item.paymentReference || '',
-      ]),
+      ...items.map((item) => {
+        const worker = workers.get(item.workerId);
+        return [
+          worker?.fullName ?? '',
+          item.workerType,
+          (item.organizationId ? orgs.get(item.organizationId)?.name : '') || '',
+          worker?.bankName || '',
+          worker?.bankAccountName || '',
+          worker?.bankAccountNumber || '',
+          Number(item.netPay || 0).toFixed(2),
+          run.currency,
+          item.paymentStatus,
+          item.paymentReference || '',
+        ];
+      }),
     ];
 
     const csv = rows
@@ -1779,37 +1899,34 @@ export class PayrollService {
   }
 
   async monthlyBreakdown(id: string) {
-    const run = await this.db.client.query.payrollRun.findFirst({
-      where: { id, ...this.tenantWhere() },
-      include: {
-        items: {
-          include: {
-            lines: {
-              include: { component: true }
-            },
-            worker: true
-          }
-        }
-      }
-    });
-    if (!run) throw new NotFoundException('Payroll run not found');
+    const run = await this.requireRunScoped(id);
 
-    const rows = (run.items ?? []).map((item) => {
+    const items = await this.loadRunItems(id);
+    const workers = await this.loadWorkersById(items.map((item) => item.workerId));
+    const lineRows = await this.loadItemLinesWithComponents(items.map((item) => item.id));
+    const linesByItem = new Map<string, typeof lineRows>();
+    for (const row of lineRows) {
+      const bucket = linesByItem.get(row.line.runItemId) ?? [];
+      bucket.push(row);
+      linesByItem.set(row.line.runItemId, bucket);
+    }
+
+    const rows = items.map((item) => {
       const earnings: any[] = [];
       const deductions: any[] = [];
       const employerCosts: any[] = [];
-      for (const line of item.lines ?? []) {
-        const comp = line.component;
-        if (!comp) continue;
-        const entry = { label: comp.name, amount: Number(line.amount || 0) };
-        if (comp.componentType === 'earning') earnings.push(entry);
-        else if (comp.componentType === 'deduction') deductions.push(entry);
-        else if (comp.componentType === 'employer_cost') employerCosts.push(entry);
+      for (const row of linesByItem.get(item.id) ?? []) {
+        if (!row.componentName) continue;
+        const entry = { label: row.componentName, amount: Number(row.line.amount || 0) };
+        if (row.componentType === 'earning') earnings.push(entry);
+        else if (row.componentType === 'deduction') deductions.push(entry);
+        else if (row.componentType === 'employer_cost') employerCosts.push(entry);
       }
+      const worker = workers.get(item.workerId);
       return {
-        worker_name: item.worker?.fullName ?? (item as any).workerName ?? '',
+        worker_name: worker?.fullName ?? '',
         worker_type: item.workerType ?? '',
-        staff_code: item.worker?.staffCode ?? '',
+        staff_code: worker?.staffCode ?? '',
         gross_pay: Number(item.grossPay || 0),
         total_deductions: Number(item.totalDeductions || 0),
         net_pay: Number(item.netPay || 0),
@@ -1849,17 +1966,16 @@ export class PayrollService {
   }
 
   async generateRunPayslipsPackage(runId: string) {
-    const run = await this.db.client.query.payrollRun.findFirst({
-      where: { id: runId, ...this.tenantWhere() },
-      include: this.runInclude()
-    });
-    if (!run) throw new NotFoundException('Payroll run not found');
+    const run = await this.requireRunScoped(runId);
+
+    const items = await this.loadRunItems(runId);
+    const workers = await this.loadWorkersById(items.map((item) => item.workerId));
 
     const zip = new JSZip();
     const folder = zip.folder(this.safeFileName(run.name));
     if (!folder) throw new BadRequestException('Unable to initialize payslip package');
 
-    for (const item of run.items || []) {
+    for (const item of items) {
       const payslip = await this.generateRunItemPayslip(runId, item.id);
       folder.file(payslip.file_name, Buffer.from(payslip.content_base64, 'base64'));
     }
@@ -1871,9 +1987,9 @@ export class PayrollService {
       `Payroll Run: ${run.name}`,
       `Period: ${run.month}/${run.year}`,
       `Status: ${run.status}`,
-      `Workers: ${run.items?.length || 0}`,
+      `Workers: ${items.length}`,
       '',
-      ...(run.items || []).map((item) => `${item.worker?.fullName || 'Worker'} - ${this.formatCurrency(Number(item.netPay || 0), run.currency)}`)
+      ...items.map((item) => `${workers.get(item.workerId)?.fullName || 'Worker'} - ${this.formatCurrency(Number(item.netPay || 0), run.currency)}`)
     ].join('\n');
     folder.file('README.txt', manifest);
 
@@ -1897,11 +2013,7 @@ export class PayrollService {
   }
 
   async distributeRunPayslips(runId: string, actorId?: string) {
-    const run = await this.db.client.query.payrollRun.findFirst({
-      where: { id: runId, ...this.tenantWhere() },
-      include: this.runInclude()
-    });
-    if (!run) throw new NotFoundException('Payroll run not found');
+    const run = await this.requireRunScoped(runId);
 
     const eligibleStatuses = ['approved', 'paid', 'closed'];
     if (!eligibleStatuses.includes(run.status)) {
@@ -1911,28 +2023,31 @@ export class PayrollService {
       throw new BadRequestException('Email delivery is not configured');
     }
 
+    const items = await this.loadRunItems(runId);
+    const workers = await this.loadWorkersById(items.map((item) => item.workerId));
+
     let sent = 0;
     let skipped = 0;
     const skippedWorkers: string[] = [];
     let failed = 0;
     const failedWorkers: Array<{ worker: string; error: string }> = [];
 
-    for (const item of run.items || []) {
-      const workerEmail = item.worker?.email?.trim();
+    for (const item of items) {
+      const worker = workers.get(item.workerId);
+      const workerName = worker?.fullName || 'Worker';
+      const workerEmail = worker?.email?.trim();
       if (!workerEmail) {
         skipped += 1;
-        skippedWorkers.push(item.worker?.fullName || item.id);
-        await this.db.client.query.payrollPayslipDistribution.create({
-          data: {
-            runId: run.id,
-            runItemId: item.id,
-            workerId: item.workerId,
-            recipientEmail: '',
-            status: 'skipped',
-            errorMessage: 'Worker has no email address',
-            sentBy: actorId ? toBigInt(actorId) : null,
-            metadata: { worker_name: item.worker?.fullName || null } as InputJsonValue,
-          }
+        skippedWorkers.push(worker?.fullName || item.id);
+        await this.db.client.insert(payrollPayslipDistribution).values({
+          runId: run.id,
+          runItemId: item.id,
+          workerId: item.workerId,
+          recipientEmail: '',
+          status: 'skipped',
+          errorMessage: 'Worker has no email address',
+          sentBy: actorId ? toBigInt(actorId) : null,
+          metadata: { worker_name: worker?.fullName || null } as InputJsonValue,
         });
         continue;
       }
@@ -1941,7 +2056,7 @@ export class PayrollService {
         await this.mailService.send({
           to: workerEmail,
           subject: `Payslip - ${run.name}`,
-          text: `Dear ${item.worker?.fullName || 'Worker'},\n\nYour payslip for ${run.name} is attached.\n\nRegards,\nStanforte Edge Payroll`,
+          text: `Dear ${workerName},\n\nYour payslip for ${run.name} is attached.\n\nRegards,\nStanforte Edge Payroll`,
           threadKey: `payroll-run-${run.id}`,
           attachments: [
             {
@@ -1951,20 +2066,18 @@ export class PayrollService {
             }
           ]
         });
-        await this.db.client.query.payrollPayslipDistribution.create({
-          data: {
-            runId: run.id,
-            runItemId: item.id,
-            workerId: item.workerId,
-            recipientEmail: workerEmail,
-            status: 'sent',
-            sentBy: actorId ? toBigInt(actorId) : null,
-            sentAt: new Date(),
-            metadata: { file_name: payslip.file_name } as InputJsonValue,
-          }
+        await this.db.client.insert(payrollPayslipDistribution).values({
+          runId: run.id,
+          runItemId: item.id,
+          workerId: item.workerId,
+          recipientEmail: workerEmail,
+          status: 'sent',
+          sentBy: actorId ? toBigInt(actorId) : null,
+          sentAt: new Date(),
+          metadata: { file_name: payslip.file_name } as InputJsonValue,
         });
-        if (item.worker?.profileId) {
-          await this.createPayrollNotification(item.worker.profileId.toString(), 'payslips', {
+        if (worker?.profileId) {
+          await this.createPayrollNotification(worker.profileId.toString(), 'payslips', {
             type: 'payroll.payslip.sent',
             title: 'Payslip available',
             message: `Your payslip for ${run.name} is available.`,
@@ -1981,28 +2094,23 @@ export class PayrollService {
       } catch (error: any) {
         const message = error?.message || 'Unable to send payslip';
         failed += 1;
-        failedWorkers.push({ worker: item.worker?.fullName || workerEmail, error: message });
-        await this.db.client.query.payrollPayslipDistribution.create({
-          data: {
-            runId: run.id,
-            runItemId: item.id,
-            workerId: item.workerId,
-            recipientEmail: workerEmail,
-            status: 'failed',
-            errorMessage: message,
-            sentBy: actorId ? toBigInt(actorId) : null,
-            metadata: { worker_name: item.worker?.fullName || null } as InputJsonValue,
-          }
+        failedWorkers.push({ worker: worker?.fullName || workerEmail, error: message });
+        await this.db.client.insert(payrollPayslipDistribution).values({
+          runId: run.id,
+          runItemId: item.id,
+          workerId: item.workerId,
+          recipientEmail: workerEmail,
+          status: 'failed',
+          errorMessage: message,
+          sentBy: actorId ? toBigInt(actorId) : null,
+          metadata: { worker_name: worker?.fullName || null } as InputJsonValue,
         });
       }
     }
 
     const summaryText = `sent=${sent}, skipped=${skipped}, failed=${failed}${skippedWorkers.length ? ` [skipped: ${skippedWorkers.join(', ')}]` : ''}${failedWorkers.length ? ` [failed: ${failedWorkers.map((row) => row.worker).join(', ')}]` : ''}`;
     const note = this.appendRunNote(run.notes, 'Payslips Distributed', summaryText, actorId);
-    await this.db.client.query.payrollRun.update({
-      where: { id: run.id },
-      data: { notes: note }
-    });
+    await this.db.client.update(payrollRun).set({ notes: note }).where(eq(payrollRun.id, run.id));
     await this.recordRunEvent(run.id, 'payslips_distributed', actorId, summaryText, {
       sent,
       skipped,
@@ -2040,26 +2148,58 @@ export class PayrollService {
 
   async reportsOverview(query: Record<string, any>) {
     const year = Number(query.year || new Date().getFullYear());
-    const orgFilter = query.organization_id ? { organizationId: toBigInt(String(query.organization_id)) } : {};
-    const [runs, workers] = await Promise.all([
-      this.db.client.query.payrollRun.findMany({
-        where: { year, ...orgFilter, ...this.tenantWhere() },
-        include: {
-          items: {
-            include: {
-              worker: { select: { workerType: true } },
-              organization: { select: { id: true, name: true } },
-              fund: { select: { id: true, code: true, name: true } },
-              grant: { select: { id: true, code: true, name: true } },
-            }
-          }
-        },
-        orderBy: [{ year: 'asc' }, { month: 'asc' }]
-      }),
-      this.db.client.query.payrollWorker.findMany({
-        where: { status: 'active', ...orgFilter, ...this.tenantWhere() },
-        select: { workerType: true, organizationId: true }
-      })
+    const orgId = query.organization_id ? toBigInt(String(query.organization_id)) : null;
+
+    const [itemRows, runs, workers] = await Promise.all([
+      this.db.client
+        .select({
+          runId: payrollRun.id,
+          runYear: payrollRun.year,
+          runMonth: payrollRun.month,
+          grossPay: payrollRunItem.grossPay,
+          totalDeductions: payrollRunItem.totalDeductions,
+          netPay: payrollRunItem.netPay,
+          employerCostTotal: payrollRunItem.employerCostTotal,
+          paymentStatus: payrollRunItem.paymentStatus,
+          organizationId: payrollRunItem.organizationId,
+          fundId: payrollRunItem.fundId,
+          grantId: payrollRunItem.grantId,
+          workerType: payrollWorker.workerType,
+          organizationName: organization.name,
+          fundName: financeFund.name,
+          fundCode: financeFund.code,
+          grantName: financeGrant.name,
+          grantCode: financeGrant.code,
+        })
+        .from(payrollRun)
+        .innerJoin(payrollRunItem, eq(payrollRunItem.runId, payrollRun.id))
+        .leftJoin(payrollWorker, eq(payrollWorker.id, payrollRunItem.workerId))
+        .leftJoin(organization, eq(organization.id, payrollRunItem.organizationId))
+        .leftJoin(financeFund, eq(financeFund.id, payrollRunItem.fundId))
+        .leftJoin(financeGrant, eq(financeGrant.id, payrollRunItem.grantId))
+        .where(this.combine(
+          eq(payrollRun.year, year),
+          orgId ? eq(payrollRun.organizationId, orgId) : undefined,
+          this.tenantCond(payrollRun.tenantId),
+        ))
+        .orderBy(asc(payrollRun.year), asc(payrollRun.month)),
+      this.db.client
+        .select()
+        .from(payrollRun)
+        .where(this.combine(
+          eq(payrollRun.year, year),
+          orgId ? eq(payrollRun.organizationId, orgId) : undefined,
+          this.tenantCond(payrollRun.tenantId),
+        ))
+        .orderBy(asc(payrollRun.year), asc(payrollRun.month)),
+      this.db.client
+        .select({ workerType: payrollWorker.workerType, organizationId: payrollWorker.organizationId })
+        .from(payrollWorker)
+        .where(this.combine(
+          eq(payrollWorker.status, 'active'),
+          orgId ? eq(payrollWorker.organizationId, orgId) : undefined,
+          this.tenantCond(payrollWorker.tenantId),
+        )),
     ]);
 
     const monthly = Array.from({ length: 12 }, (_, index) => ({
@@ -2076,46 +2216,45 @@ export class PayrollService {
     const grantTotals = new Map<string, { label: string; gross: number; net: number }>();
     const paymentStatusCounts = new Map<string, number>();
 
-    for (const run of runs) {
-      const bucket = monthly[run.month - 1];
-      for (const item of run.items || []) {
-        const gross = Number(item.grossPay || 0);
-        const deductions = Number(item.totalDeductions || 0);
-        const net = Number(item.netPay || 0);
-        const employerCost = Number(item.employerCostTotal || 0);
-        bucket.gross += gross;
-        bucket.deductions += deductions;
-        bucket.net += net;
-        bucket.employer_cost += employerCost;
-        bucket.worker_count += 1;
+    for (const item of itemRows) {
+      const bucket = monthly[item.runMonth - 1];
+      if (!bucket) continue;
+      const gross = Number(item.grossPay || 0);
+      const deductions = Number(item.totalDeductions || 0);
+      const net = Number(item.netPay || 0);
+      const employerCost = Number(item.employerCostTotal || 0);
+      bucket.gross += gross;
+      bucket.deductions += deductions;
+      bucket.net += net;
+      bucket.employer_cost += employerCost;
+      bucket.worker_count += 1;
 
-        const workerType = item.worker?.workerType || 'unknown';
-        const typeEntry = workerTypeTotals.get(workerType) || { gross: 0, net: 0, count: 0 };
-        typeEntry.gross += gross;
-        typeEntry.net += net;
-        typeEntry.count += 1;
-        workerTypeTotals.set(workerType, typeEntry);
+      const workerType = item.workerType || 'unknown';
+      const typeEntry = workerTypeTotals.get(workerType) || { gross: 0, net: 0, count: 0 };
+      typeEntry.gross += gross;
+      typeEntry.net += net;
+      typeEntry.count += 1;
+      workerTypeTotals.set(workerType, typeEntry);
 
-        const orgKey = item.organizationId?.toString() || 'unassigned';
-        const orgEntry = organizationTotals.get(orgKey) || { label: item.organization?.name || 'Unassigned', gross: 0, net: 0 };
-        orgEntry.gross += gross;
-        orgEntry.net += net;
-        organizationTotals.set(orgKey, orgEntry);
+      const orgKey = item.organizationId?.toString() || 'unassigned';
+      const orgEntry = organizationTotals.get(orgKey) || { label: item.organizationName || 'Unassigned', gross: 0, net: 0 };
+      orgEntry.gross += gross;
+      orgEntry.net += net;
+      organizationTotals.set(orgKey, orgEntry);
 
-        const fundKey = item.fundId || 'unassigned';
-        const fundEntry = fundTotals.get(fundKey) || { label: item.fund?.name || item.fund?.code || 'Unassigned', gross: 0, net: 0 };
-        fundEntry.gross += gross;
-        fundEntry.net += net;
-        fundTotals.set(fundKey, fundEntry);
+      const fundKey = item.fundId || 'unassigned';
+      const fundEntry = fundTotals.get(fundKey) || { label: item.fundName || item.fundCode || 'Unassigned', gross: 0, net: 0 };
+      fundEntry.gross += gross;
+      fundEntry.net += net;
+      fundTotals.set(fundKey, fundEntry);
 
-        const grantKey = item.grantId || 'unassigned';
-        const grantEntry = grantTotals.get(grantKey) || { label: item.grant?.name || item.grant?.code || 'Unassigned', gross: 0, net: 0 };
-        grantEntry.gross += gross;
-        grantEntry.net += net;
-        grantTotals.set(grantKey, grantEntry);
+      const grantKey = item.grantId || 'unassigned';
+      const grantEntry = grantTotals.get(grantKey) || { label: item.grantName || item.grantCode || 'Unassigned', gross: 0, net: 0 };
+      grantEntry.gross += gross;
+      grantEntry.net += net;
+      grantTotals.set(grantKey, grantEntry);
 
-        paymentStatusCounts.set(item.paymentStatus, (paymentStatusCounts.get(item.paymentStatus) || 0) + 1);
-      }
+      paymentStatusCounts.set(item.paymentStatus, (paymentStatusCounts.get(item.paymentStatus) || 0) + 1);
     }
 
     const summary = monthly.reduce((acc, row) => {
@@ -2145,30 +2284,24 @@ export class PayrollService {
   }
 
   async updateRunItem(runId: string, itemId: string, dto: UpdatePayrollRunItem, actorId?: string) {
-    const run = await this.findRunScoped(runId);
-    if (!run) throw new NotFoundException('Payroll run not found');
-    const item = await this.db.client.query.payrollRunItem.findFirst({ where: { id: itemId, runId }, include: { run: { include: { postings: true } } } });
-    if (!item) throw new NotFoundException('Payroll run item not found');
-    if (['paid', 'closed'].includes(item.run.status) || item.run.postings.length > 0) {
-      throw new BadRequestException('Paid, closed, or posted payroll runs cannot be edited');
-    }
+    const { item } = await this.requireEditableRunItem(runId, itemId);
     const computedNetPay = dto.net_pay ?? Number(item.computedNetPay || item.netPay || 0);
     const actualNetPay = dto.actual_net_pay ?? dto.net_pay ?? Number(item.actualNetPay || item.netPay || 0);
-    await this.db.client.query.payrollRunItem.update({
-      where: { id: itemId },
-      data: {
-        grossPay: dto.gross_pay ?? undefined,
-        totalDeductions: dto.total_deductions ?? undefined,
-        employerCostTotal: dto.employer_cost_total ?? undefined,
-        computedNetPay,
-        actualNetPay,
-        netAdjustmentAmount: actualNetPay - computedNetPay,
-        netAdjustmentReason: dto.net_adjustment_reason ?? undefined,
-        netPay: actualNetPay,
-        paymentStatus: dto.payment_status ?? undefined,
-        paymentReference: dto.payment_reference ?? undefined,
-      }
-    });
+    await this.db.client
+      .update(payrollRunItem)
+      .set({
+        ...(dto.gross_pay != null ? { grossPay: String(dto.gross_pay) } : {}),
+        ...(dto.total_deductions != null ? { totalDeductions: String(dto.total_deductions) } : {}),
+        ...(dto.employer_cost_total != null ? { employerCostTotal: String(dto.employer_cost_total) } : {}),
+        computedNetPay: String(computedNetPay),
+        actualNetPay: String(actualNetPay),
+        netAdjustmentAmount: String(actualNetPay - computedNetPay),
+        ...(dto.net_adjustment_reason != null ? { netAdjustmentReason: dto.net_adjustment_reason } : {}),
+        netPay: String(actualNetPay),
+        ...(dto.payment_status != null ? { paymentStatus: dto.payment_status } : {}),
+        ...(dto.payment_reference != null ? { paymentReference: dto.payment_reference } : {}),
+      })
+      .where(eq(payrollRunItem.id, itemId));
     await this.recordRunEvent(runId, 'item_updated', actorId, `Updated payroll run item ${itemId}`, {
       item_id: itemId,
       payment_status: dto.payment_status ?? null,
@@ -2178,36 +2311,27 @@ export class PayrollService {
   }
 
   async updateRunItemAllocations(runId: string, itemId: string, dto: UpdatePayrollRunAllocations, actorId?: string) {
-    const run = await this.findRunScoped(runId);
-    if (!run) throw new NotFoundException('Payroll run not found');
-    const item = await this.db.client.query.payrollRunItem.findFirst({ where: { id: itemId, runId }, include: { run: { include: { postings: true } } } });
-    if (!item) throw new NotFoundException('Payroll run item not found');
-    if (['paid', 'closed'].includes(item.run.status) || item.run.postings.length > 0) {
-      throw new BadRequestException('Paid, closed, or posted payroll runs cannot be edited');
-    }
+    await this.requireEditableRunItem(runId, itemId);
     const totalPercent = dto.allocations.reduce((sum, row) => sum + Number(row.allocation_percent || 0), 0);
     if (Math.abs(totalPercent - 100) > 0.01) throw new BadRequestException('Allocation percent must total 100');
     await this.db.client.transaction(async (tx) => {
-      await tx.payrollRunItemAllocation.deleteMany({ where: { runItemId: itemId } });
+      await tx.delete(payrollRunItemAllocation).where(eq(payrollRunItemAllocation.runItemId, itemId));
       if (dto.allocations.length) {
-        await tx.payrollRunItemAllocation.createMany({
-          data: dto.allocations.map((row, index) => ({
+        await tx.insert(payrollRunItemAllocation).values(
+          dto.allocations.map((row, index) => ({
             runItemId: itemId,
             organizationId: row.organization_id ? this.parseBigInt(row.organization_id, 'organization id') : null,
             teamId: row.team_id ? this.parseBigInt(row.team_id, 'team id') : null,
             projectId: row.project_id ? this.parseBigInt(row.project_id, 'project id') : null,
             fundId: row.fund_id || null,
             grantId: row.grant_id || null,
-            allocationPercent: row.allocation_percent,
-            allocationAmount: row.allocation_amount ?? null,
+            allocationPercent: String(row.allocation_percent),
+            allocationAmount: row.allocation_amount == null ? null : String(row.allocation_amount),
             sortOrder: index,
-          }))
-        });
+          })),
+        );
       }
-      await tx.payrollRunItem.update({
-        where: { id: itemId },
-        data: { allocationSource: 'manual_override' }
-      });
+      await tx.update(payrollRunItem).set({ allocationSource: 'manual_override' }).where(eq(payrollRunItem.id, itemId));
       await this.recordRunEventTx(tx, runId, 'allocations_updated', actorId, `Updated allocations for payroll run item ${itemId}`, {
         item_id: itemId,
         allocation_count: dto.allocations.length,
@@ -2217,20 +2341,31 @@ export class PayrollService {
   }
 
   async updateRunWorkerTimesheetAllocations(runId: string, workerId: string, dto: UpdatePayrollRunTimesheetAllocations, actorId?: string) {
-    const run = await this.db.client.query.payrollRun.findFirst({ where: { id: runId, ...this.tenantWhere() }, include: { postings: true } });
+    const run = await this.findRunScoped(runId);
     if (!run) throw new NotFoundException('Payroll run not found');
-    if (['paid', 'closed'].includes(run.status) || run.postings.length > 0) {
+    const [posting] = await this.db.client
+      .select({ c: count() })
+      .from(payrollAccountingPosting)
+      .where(eq(payrollAccountingPosting.runId, runId));
+    if (['paid', 'closed'].includes(run.status) || (posting?.c ?? 0) > 0) {
       throw new BadRequestException('Paid, closed, or posted payroll runs cannot be edited');
     }
-    const worker = await this.db.client.query.payrollWorker.findFirst({ where: { id: workerId, ...this.tenantWhere() } });
+    const [worker] = await this.db.client
+      .select()
+      .from(payrollWorker)
+      .where(and(eq(payrollWorker.id, workerId), this.tenantCond(payrollWorker.tenantId)))
+      .limit(1);
     if (!worker) throw new NotFoundException('Payroll worker not found');
 
     const normalized = this.normalizeTimesheetInputRows(dto.allocations);
     await this.db.client.transaction(async (tx) => {
-      await tx.payrollRunTimesheetAllocation.deleteMany({ where: { runId, workerId } });
+      await tx.delete(payrollRunTimesheetAllocation).where(and(
+        eq(payrollRunTimesheetAllocation.runId, runId),
+        eq(payrollRunTimesheetAllocation.workerId, workerId),
+      ));
       if (normalized.length) {
-        await tx.payrollRunTimesheetAllocation.createMany({
-          data: normalized.map((row, index) => ({
+        await tx.insert(payrollRunTimesheetAllocation).values(
+          normalized.map((row, index) => ({
             runId,
             workerId,
             organizationId: row.organization_id ? this.parseBigInt(row.organization_id, 'organization id') : null,
@@ -2238,14 +2373,14 @@ export class PayrollService {
             projectId: row.project_id ? this.parseBigInt(row.project_id, 'project id') : null,
             fundId: row.fund_id || null,
             grantId: row.grant_id || null,
-            hours: row.hours ?? 0,
-            allocationPercent: row.allocation_percent ?? 0,
+            hours: String(row.hours ?? 0),
+            allocationPercent: String(row.allocation_percent ?? 0),
             source: row.source || 'manual',
             notes: row.notes || null,
             sortOrder: index,
             approvedAt: new Date(),
           })),
-        });
+        );
       }
       await this.recordRunEventTx(tx, runId, 'timesheet_allocations_updated', actorId, `Updated timesheet allocations for worker ${worker.fullName}`, {
         worker_id: workerId,
@@ -2263,40 +2398,33 @@ export class PayrollService {
   async listImportJobs(query: Record<string, any>) {
     const page = Math.max(1, Number(query.page ?? 1));
     const perPage = Math.min(50, Math.max(1, Number(query.per_page ?? 10)));
-    const where: WhereInput = {};
-    if (query.status) where.status = String(query.status);
+    const conds: Array<SQL | undefined> = [
+      query.status ? eq(payrollImportJob.status, String(query.status)) : undefined,
+    ];
 
-    const [rows, total] = await Promise.all([
-      this.db.client.query.payrollImportJob.findMany({
-        where,
-        include: {
-          uploadedByUser: { select: { id: true, firstName: true, lastName: true, email: true } },
-          retriedByUser: { select: { id: true, firstName: true, lastName: true, email: true } },
-          retryOfJob: { select: { id: true, fileName: true } },
-          _count: { select: { rows: true } },
-        },
-        orderBy: [{ createdAt: 'desc' }],
-        skip: (page - 1) * perPage,
-        take: perPage,
-      }),
-      this.db.client.query.payrollImportJob.count({ where }),
+    const [raw, [totalRow]] = await Promise.all([
+      this.db.client
+        .select()
+        .from(payrollImportJob)
+        .where(this.combine(...conds))
+        .orderBy(desc(payrollImportJob.createdAt))
+        .limit(perPage)
+        .offset((page - 1) * perPage),
+      this.db.client
+        .select({ c: count() })
+        .from(payrollImportJob)
+        .where(this.combine(...conds)),
     ]);
 
-    return paginatedResponse(rows.map((row) => this.serializeImportJobSummary(row)), { page, per_page: perPage, total });
+    const rows = await this.hydrateImportJobs(raw);
+    return paginatedResponse(rows.map((row) => this.serializeImportJobSummary(row)), { page, per_page: perPage, total: Number(totalRow?.c ?? 0) });
   }
 
   async getImportJob(id: string) {
-    const job = await this.db.client.query.payrollImportJob.findUnique({
-      where: { id },
-      include: {
-        uploadedByUser: { select: { id: true, firstName: true, lastName: true, email: true } },
-        retriedByUser: { select: { id: true, firstName: true, lastName: true, email: true } },
-        retryOfJob: { select: { id: true, fileName: true } },
-        rows: { orderBy: [{ createdAt: 'asc' }] },
-      }
-    });
+    const [job] = await this.db.client.select().from(payrollImportJob).where(eq(payrollImportJob.id, id)).limit(1);
     if (!job) throw new NotFoundException('Payroll import job not found');
-    return this.serializeImportJob(job);
+    const [hydrated] = await this.hydrateImportJobs([job], true);
+    return this.serializeImportJob(hydrated);
   }
 
   async commitImport(dto: PayrollImport, actorId?: string) {
@@ -2309,17 +2437,15 @@ export class PayrollService {
   }
 
   async retryFailedImport(id: string, actorId?: string) {
-    const sourceJob = await this.db.client.query.payrollImportJob.findUnique({
-      where: { id },
-      include: { rows: { where: { status: 'error' }, orderBy: [{ createdAt: 'asc' }] } }
-    });
+    const [sourceJob] = await this.db.client.select().from(payrollImportJob).where(eq(payrollImportJob.id, id)).limit(1);
     if (!sourceJob) throw new NotFoundException('Payroll import job not found');
-    if (!sourceJob.rows.length) {
+    const sourceRows = await this.loadImportJobRows(id, 'error');
+    if (!sourceRows.length) {
       throw new BadRequestException('There are no failed payroll import rows to retry');
     }
 
     const payload: PayrollImport = { update_existing: true, runs: [], workers: [], lines: [], allocations: [], payments: [] };
-    for (const row of sourceJob.rows) {
+    for (const row of sourceRows) {
       const parsed = row.payload as Record<string, any>;
       if (row.sheetName === 'Runs') payload.runs?.push(parsed);
       if (row.sheetName === 'Workers') payload.workers?.push(parsed);
@@ -2557,8 +2683,9 @@ export class PayrollService {
     options?: { fileName?: string; retryOfJobId?: string; retriedBy?: bigint | null }
   ) {
     const fileName = options?.fileName || `payroll-import-${new Date().toISOString().slice(0, 10)}.xlsx`;
-    const job = await this.db.client.query.payrollImportJob.create({
-      data: {
+    const [job] = await this.db.client
+      .insert(payrollImportJob)
+      .values({
         fileName,
         status: 'processing',
         updateExisting,
@@ -2569,8 +2696,8 @@ export class PayrollService {
           ...analysis.summary,
           status_counts: { pending: analysis.workers.length + analysis.runs.length + analysis.lineGroups.length + analysis.payments.length }
         } as InputJsonValue,
-      }
-    });
+      })
+      .returning();
 
     const workerMap = new Map<string, any>();
     const runMap = new Map<string, any>();
@@ -2604,7 +2731,21 @@ export class PayrollService {
 
     for (const grouped of analysis.lineGroups) {
       const key = `${grouped.run_name}::${grouped.worker_ref}`;
-      const run = runMap.get(grouped.run_name) || (await this.db.client.query.payrollRun.findFirst({ where: { ...this.tenantWhere(), OR: [{ name: grouped.run_name }, { AND: [{ year: analysis.runs.find((row) => row.run_name === grouped.run_name)?.year ?? -1 }, { month: analysis.runs.find((row) => row.run_name === grouped.run_name)?.month ?? -1 }] }] } }));
+      const sourceRun = analysis.runs.find((row) => row.run_name === grouped.run_name);
+      const run = runMap.get(grouped.run_name) ?? (await this.db.client
+        .select()
+        .from(payrollRun)
+        .where(this.combine(
+          this.tenantCond(payrollRun.tenantId),
+          or(
+            eq(payrollRun.name, grouped.run_name),
+            and(
+              eq(payrollRun.year, sourceRun?.year ?? -1),
+              eq(payrollRun.month, sourceRun?.month ?? -1),
+            ),
+          ),
+        ))
+        .limit(1))[0] ?? null;
       const worker = workerMap.get(grouped.worker_ref) || await this.findImportedWorker(grouped.worker_ref, analysis.workers);
       const payload = { run_name: grouped.run_name, worker_ref: grouped.worker_ref, lines: grouped.lines, allocations: analysis.allocationsByKey.get(key) ?? [] } as InputJsonValue;
       if (!run || !worker) {
@@ -2633,13 +2774,13 @@ export class PayrollService {
         continue;
       }
       try {
-        await this.db.client.query.payrollRunItem.update({
-          where: { id: target.itemId },
-          data: {
+        await this.db.client
+          .update(payrollRunItem)
+          .set({
             paymentStatus: payment.payment_status || 'pending',
             paymentReference: payment.payment_reference || null,
-          }
-        });
+          })
+          .where(eq(payrollRunItem.id, target.itemId));
         rowResults.push({ sheetName: 'Payments', rowNumber: payment.row_number, rowKey: key, action: 'update', status: 'success', payload: payment as InputJsonValue, linkedRunId: target.runId, linkedRunItemId: target.itemId });
         statusCounts.success += 1;
       } catch (error: any) {
@@ -2650,16 +2791,21 @@ export class PayrollService {
 
     const successfulRunIds = Array.from(new Set(rowResults.filter((row) => row.linkedRunId && row.status === 'success').map((row) => row.linkedRunId!)));
     for (const runId of successfulRunIds) {
-      const run = await this.db.client.query.payrollRun.findFirst({ where: { id: runId, ...this.tenantWhere() }, include: { items: true } });
+      const [run] = await this.db.client
+        .select()
+        .from(payrollRun)
+        .where(and(eq(payrollRun.id, runId), this.tenantCond(payrollRun.tenantId)))
+        .limit(1);
       if (!run) continue;
+      const runItems = await this.loadRunItems(runId);
       const matchingSource = analysis.runs.find((row) => run.name === row.run_name || (run.year === row.year && run.month === row.month));
-      const nextStatus = matchingSource?.status || (run.items.some((item) => item.paymentStatus === 'paid') ? 'paid' : 'prepared');
-      await this.db.client.query.payrollRun.update({ where: { id: runId }, data: { status: nextStatus } });
+      const nextStatus = matchingSource?.status || (runItems.some((item) => item.paymentStatus === 'paid') ? 'paid' : 'prepared');
+      await this.db.client.update(payrollRun).set({ status: nextStatus }).where(eq(payrollRun.id, runId));
     }
 
     if (rowResults.length) {
-      await this.db.client.query.payrollImportRow.createMany({
-        data: rowResults.map((row) => ({
+      await this.db.client.insert(payrollImportRow).values(
+        rowResults.map((row) => ({
           jobId: job.id,
           sheetName: row.sheetName,
           rowNumber: row.rowNumber ?? null,
@@ -2670,13 +2816,13 @@ export class PayrollService {
           payload: row.payload,
           linkedRunId: row.linkedRunId ?? null,
           linkedRunItemId: row.linkedRunItemId ?? null,
-        }))
-      });
+        })),
+      );
     }
 
-    const completedJob = await this.db.client.query.payrollImportJob.update({
-      where: { id: job.id },
-      data: {
+    const [updatedJob] = await this.db.client
+      .update(payrollImportJob)
+      .set({
         status: statusCounts.error > 0 ? (statusCounts.success > 0 ? 'partial' : 'failed') : 'completed',
         completedAt: new Date(),
         summary: {
@@ -2687,14 +2833,10 @@ export class PayrollService {
           processed_payments: analysis.payments.length,
           status_counts: statusCounts,
         } as InputJsonValue,
-      },
-      include: {
-        uploadedByUser: { select: { id: true, firstName: true, lastName: true, email: true } },
-        retriedByUser: { select: { id: true, firstName: true, lastName: true, email: true } },
-        retryOfJob: { select: { id: true, fileName: true } },
-        rows: { orderBy: [{ createdAt: 'asc' }] },
-      }
-    });
+      })
+      .where(eq(payrollImportJob.id, job.id))
+      .returning();
+    const [completedJob] = await this.hydrateImportJobs([updatedJob], true);
 
     if (actorId && ['partial', 'failed'].includes(completedJob.status)) {
       await this.createPayrollNotification(actorId, 'import_issues', {
@@ -3474,7 +3616,7 @@ export class PayrollService {
 
   private calculateEmployeePaye(input: {
     grossPay: number;
-    lines: Array<{ componentId: string; lineType: string; amount: Decimal; affectsNetPay?: boolean }>;
+    lines: Array<{ componentId: string; lineType: string; amount: number; affectsNetPay?: boolean }>;
     componentsById: Map<string, any>;
     taxTable: any | null;
     fallbackRate: number;
@@ -3578,20 +3720,25 @@ export class PayrollService {
     const run = runs[0] ?? null;
     if (!run) return null;
     if (['approved', 'authorized', 'paid', 'closed'].includes(run.status)) return null;
-    const approvedRows = await this.db.client.query.projectTimesheetEntry.findMany({
-      where: {
-        workerId,
-        status: 'approved',
-        workDate: { gte: periodStart, lte: periodEnd },
-      },
-      orderBy: [{ workDate: 'asc' }, { createdAt: 'asc' }]
-    });
+    const approvedRows = await this.db.client
+      .select()
+      .from(projectTimesheetEntry)
+      .where(and(
+        eq(projectTimesheetEntry.workerId, workerId),
+        eq(projectTimesheetEntry.status, 'approved'),
+        gte(projectTimesheetEntry.workDate, periodStart),
+        lte(projectTimesheetEntry.workDate, periodEnd),
+      ))
+      .orderBy(asc(projectTimesheetEntry.workDate), asc(projectTimesheetEntry.createdAt));
     const totalHours = approvedRows.reduce((sum, row) => sum + Number(row.hours || 0), 0);
     await this.db.client.transaction(async (tx) => {
-      await tx.payrollRunTimesheetAllocation.deleteMany({ where: { runId: run.id, workerId } });
+      await tx.delete(payrollRunTimesheetAllocation).where(and(
+        eq(payrollRunTimesheetAllocation.runId, run.id),
+        eq(payrollRunTimesheetAllocation.workerId, workerId),
+      ));
       if (approvedRows.length) {
-        await tx.payrollRunTimesheetAllocation.createMany({
-          data: approvedRows.map((row, index) => ({
+        await tx.insert(payrollRunTimesheetAllocation).values(
+          approvedRows.map((row, index) => ({
             runId: run.id,
             workerId,
             organizationId: row.organizationId,
@@ -3599,19 +3746,21 @@ export class PayrollService {
             projectId: row.projectId,
             fundId: row.fundId,
             grantId: row.grantId,
-            hours: row.hours,
-            allocationPercent: totalHours > 0 ? (Number(row.hours || 0) / totalHours) * 100 : 0,
+            hours: String(row.hours ?? 0),
+            allocationPercent: String(totalHours > 0 ? (Number(row.hours || 0) / totalHours) * 100 : 0),
             source: 'timesheet',
             notes: row.description,
             sortOrder: index,
             approvedAt: row.approvedAt ?? new Date(),
-          }))
-        });
+          })),
+        );
       }
-      await tx.projectTimesheetEntry.updateMany({
-        where: { id: { in: approvedRows.map((row) => row.id) } },
-        data: { syncedRunId: run.id }
-      });
+      if (approvedRows.length) {
+        await tx
+          .update(projectTimesheetEntry)
+          .set({ syncedRunId: run.id })
+          .where(inArray(projectTimesheetEntry.id, approvedRows.map((row) => row.id)));
+      }
     });
     return run.id;
   }
@@ -3819,13 +3968,13 @@ export class PayrollService {
   }
 
   private expandProfileComponentLines(component: any, amount: number, rate: number | null, notes: string | null) {
-    const lineRate = rate == null ? null : new Decimal(rate);
+    const lineRate = rate == null ? null : rate;
     const employerSharePercent = Math.max(0, Math.min(100, Number(component.employerSharePercent || 0)));
     if (component.componentType === 'earning' || component.componentType === 'employer_cost') {
       return [{
         componentId: component.id,
         lineType: component.componentType,
-        amount: new Decimal(amount),
+        amount: Number(amount),
         rate: lineRate,
         notes,
         affectsNetPay: component.componentType === 'earning' ? true : false,
@@ -3835,7 +3984,7 @@ export class PayrollService {
       return [{
         componentId: component.id,
         lineType: 'employer_cost',
-        amount: new Decimal(amount),
+        amount: Number(amount),
         rate: lineRate,
         notes,
         affectsNetPay: false,
@@ -3848,7 +3997,7 @@ export class PayrollService {
         ...(employeeAmount > 0 ? [{
           componentId: component.id,
           lineType: 'deduction',
-          amount: new Decimal(employeeAmount),
+          amount: Number(employeeAmount),
           rate: lineRate,
           notes: notes || 'Employee share',
           affectsNetPay: true,
@@ -3856,7 +4005,7 @@ export class PayrollService {
         ...(employerAmount > 0 ? [{
           componentId: component.id,
           lineType: 'employer_cost',
-          amount: new Decimal(employerAmount),
+          amount: Number(employerAmount),
           rate: lineRate,
           notes: notes || 'Employer share',
           affectsNetPay: false,
@@ -3866,7 +4015,7 @@ export class PayrollService {
     return [{
       componentId: component.id,
       lineType: 'deduction',
-      amount: new Decimal(amount),
+      amount: Number(amount),
       rate: lineRate,
       notes,
       affectsNetPay: component.affectsNetPay !== false,
@@ -3999,7 +4148,7 @@ export class PayrollService {
     const componentCodes = Array.from(new Set(lines.map((row) => row.component_code).filter(Boolean)));
 
     const components = componentCodes.length
-      ? await this.db.client.query.payrollComponent.findMany({ where: { code: { in: componentCodes } } })
+      ? await this.db.client.select({ code: payrollComponent.code }).from(payrollComponent).where(inArray(payrollComponent.code, componentCodes))
       : [];
     const componentSet = new Set(components.map((row) => row.code));
 
@@ -4012,11 +4161,17 @@ export class PayrollService {
       if (!row.period_start) rowIssues.push('period_start is required');
       if (!row.period_end) rowIssues.push('period_end is required');
       if (runRows.has(row.run_name)) rowIssues.push('run_name must be unique');
-      const existing = row.year && row.month ? await this.db.client.query.payrollRun.findFirst({ where: { year: row.year, month: row.month, ...this.tenantWhere() } }) : null;
+      const existing = row.year && row.month
+        ? (await this.db.client
+            .select({ status: payrollRun.status })
+            .from(payrollRun)
+            .where(this.combine(eq(payrollRun.year, row.year), eq(payrollRun.month, row.month), this.tenantCond(payrollRun.tenantId)))
+            .limit(1))[0] ?? null
+        : null;
       if (existing && dto.update_existing !== true) rowIssues.push(`run already exists for ${row.month}/${row.year}`);
       if (existing && existing.status === 'paid') rowIssues.push('existing paid runs cannot be overwritten');
       if (row.paid_from_account) {
-        const account = await this.resolveFinanceAccountLookup(this.db.client.query, row.paid_from_account);
+        const account = await this.resolveFinanceAccountLookup(this.db.client, row.paid_from_account);
         if (!account) rowIssues.push(`payment account not found: ${row.paid_from_account}`);
       }
       runRows.set(row.run_name, row);
@@ -4033,22 +4188,22 @@ export class PayrollService {
         if (matches.length > 1) rowIssues.push('worker_ref must be unique');
       }
       if (row.organization) {
-        const orgId = await this.resolveOrganizationLookup(this.db.client.query, row.organization);
+        const orgId = await this.resolveOrganizationLookup(this.db.client, row.organization);
         if (!orgId) rowIssues.push(`organization not found: ${row.organization}`);
       }
       if (row.team) {
-        const teamId = await this.resolveTeamLookup(this.db.client.query, row.team);
+        const teamId = await this.resolveTeamLookup(this.db.client, row.team);
         if (!teamId) rowIssues.push(`team not found: ${row.team}`);
       }
       if (row.fund) {
-        const fundId = await this.resolveFundLookup(this.db.client.query, row.fund);
+        const fundId = await this.resolveFundLookup(this.db.client, row.fund);
         if (!fundId) rowIssues.push(`fund not found: ${row.fund}`);
       }
       if (row.grant) {
-        const grantId = await this.resolveGrantLookup(this.db.client.query, row.grant);
+        const grantId = await this.resolveGrantLookup(this.db.client, row.grant);
         if (!grantId) rowIssues.push(`grant not found: ${row.grant}`);
       }
-      if (row.profile_id && !await this.db.client.query.profile.findUnique({ where: { id: this.parseBigInt(row.profile_id, 'profile id') } })) {
+      if (row.profile_id && !await this.db.client.select({ id: profile.id }).from(profile).where(eq(profile.id, this.parseBigInt(row.profile_id, 'profile id'))).limit(1)) {
         rowIssues.push(`profile not found: ${row.profile_id}`);
       }
       if (rowIssues.length) issues.push({ sheet: 'Workers', row_number: row.row_number, key: row.worker_ref || `row-${row.row_number}`, issues: rowIssues });
@@ -4073,19 +4228,19 @@ export class PayrollService {
       if (row.run_name && !runNames.has(row.run_name)) rowIssues.push(`unknown run_name: ${row.run_name}`);
       if (row.worker_ref && !workerRefs.has(row.worker_ref)) rowIssues.push(`unknown worker_ref: ${row.worker_ref}`);
       if (row.organization) {
-        const orgId = await this.resolveOrganizationLookup(this.db.client.query, row.organization);
+        const orgId = await this.resolveOrganizationLookup(this.db.client, row.organization);
         if (!orgId) rowIssues.push(`organization not found: ${row.organization}`);
       }
       if (row.team) {
-        const teamId = await this.resolveTeamLookup(this.db.client.query, row.team);
+        const teamId = await this.resolveTeamLookup(this.db.client, row.team);
         if (!teamId) rowIssues.push(`team not found: ${row.team}`);
       }
       if (row.fund) {
-        const fundId = await this.resolveFundLookup(this.db.client.query, row.fund);
+        const fundId = await this.resolveFundLookup(this.db.client, row.fund);
         if (!fundId) rowIssues.push(`fund not found: ${row.fund}`);
       }
       if (row.grant) {
-        const grantId = await this.resolveGrantLookup(this.db.client.query, row.grant);
+        const grantId = await this.resolveGrantLookup(this.db.client, row.grant);
         if (!grantId) rowIssues.push(`grant not found: ${row.grant}`);
       }
       if (row.allocation_percent <= 0) rowIssues.push('allocation_percent must be greater than zero');
@@ -4151,17 +4306,22 @@ export class PayrollService {
     };
   }
 
-  private async upsertImportedWorkerTx(tx: AppDb, row: any) {
+  private async upsertImportedWorkerTx(tx: TxClient, row: any) {
     const profileId = row.profile_id ? this.parseBigInt(row.profile_id, 'profile id') : null;
     const organizationId = row.organization ? await this.resolveOrganizationLookup(tx, row.organization) : null;
     const teamId = row.team ? await this.resolveTeamLookup(tx, row.team) : null;
     const fundId = row.fund ? await this.resolveFundLookup(tx, row.fund) : null;
     const grantId = row.grant ? await this.resolveGrantLookup(tx, row.grant) : null;
 
+    const workerFinder = (conds: Array<SQL | undefined>) =>
+      tx.select().from(payrollWorker).where(this.combine(this.tenantCond(payrollWorker.tenantId), ...conds)).limit(1);
+
     const existing =
-      (profileId ? await tx.payrollWorker.findFirst({ where: { profileId } }) : null) ||
-      (row.staff_code ? await tx.payrollWorker.findFirst({ where: { staffCode: row.staff_code } }) : null) ||
-      (row.email ? await tx.payrollWorker.findFirst({ where: { email: row.email, fullName: row.full_name } }) : null);
+      (profileId ? (await workerFinder([eq(payrollWorker.profileId, profileId)]))[0] ?? null : null) ||
+      (row.staff_code ? (await workerFinder([eq(payrollWorker.staffCode, row.staff_code)]))[0] ?? null : null) ||
+      (row.email
+        ? (await workerFinder([eq(payrollWorker.email, row.email), eq(payrollWorker.fullName, row.full_name)]))[0] ?? null
+        : null);
 
     const payload = {
       profileId,
@@ -4182,36 +4342,42 @@ export class PayrollService {
     };
 
     const worker = existing
-      ? await tx.payrollWorker.update({ where: { id: existing.id }, data: payload })
-      : await tx.payrollWorker.create({ data: payload });
+      ? (await tx.update(payrollWorker).set(payload).where(eq(payrollWorker.id, existing.id)).returning())[0]
+      : (await tx.insert(payrollWorker).values(payload).returning())[0];
 
     if (row.effective_from || Number(row.base_amount || 0) > 0) {
-      await tx.payrollWorkerProfile.create({
-        data: {
-          workerId: worker.id,
-          effectiveFrom: new Date(row.effective_from || new Date().toISOString().slice(0, 10)),
-          baseAmount: Number(row.base_amount || 0),
-          payFrequency: 'monthly',
-          paymentMode: 'bank_transfer',
-        }
+      await tx.insert(payrollWorkerProfile).values({
+        workerId: worker.id,
+        effectiveFrom: new Date(row.effective_from || new Date().toISOString().slice(0, 10)),
+        baseAmount: String(Number(row.base_amount || 0)),
+        payFrequency: 'monthly',
+        paymentMode: 'bank_transfer',
       });
     }
 
     return worker;
   }
 
-  private async upsertImportedRunTx(tx: AppDb, row: any, updateExisting: boolean, actorId?: string) {
+  private async upsertImportedRunTx(tx: TxClient, row: any, updateExisting: boolean, actorId?: string) {
     const paidFromAccount = row.paid_from_account ? await this.resolveFinanceAccountLookup(tx, row.paid_from_account) : null;
-    const existing = await tx.payrollRun.findFirst({ where: { year: row.year, month: row.month }, include: { postings: true } });
+    const [existing] = await tx
+      .select()
+      .from(payrollRun)
+      .where(this.combine(this.tenantCond(payrollRun.tenantId), eq(payrollRun.year, row.year), eq(payrollRun.month, row.month)))
+      .limit(1);
     if (existing) {
       if (!updateExisting) return existing;
-      if (existing.postings.length > 0 || existing.status === 'paid') {
+      const [postingCount] = await tx
+        .select({ c: count() })
+        .from(payrollAccountingPosting)
+        .where(eq(payrollAccountingPosting.runId, existing.id));
+      if ((postingCount?.c ?? 0) > 0 || existing.status === 'paid') {
         throw new BadRequestException(`Payroll run ${row.run_name} cannot be overwritten because it is already posted or paid`);
       }
-      await tx.payrollRunItem.deleteMany({ where: { runId: existing.id } });
-      return tx.payrollRun.update({
-        where: { id: existing.id },
-        data: {
+      await tx.delete(payrollRunItem).where(eq(payrollRunItem.runId, existing.id));
+      return (await tx
+        .update(payrollRun)
+        .set({
           name: row.run_name,
           periodStart: new Date(row.period_start),
           periodEnd: new Date(row.period_end),
@@ -4220,11 +4386,13 @@ export class PayrollService {
           notes: row.notes || null,
           paidFromAccountId: paidFromAccount?.id || null,
           preparedById: actorId ? toBigInt(actorId) : existing.preparedById,
-        }
-      });
+        })
+        .where(eq(payrollRun.id, existing.id))
+        .returning())[0];
     }
-    return tx.payrollRun.create({
-      data: {
+    return (await tx
+      .insert(payrollRun)
+      .values({
         name: row.run_name,
         year: row.year,
         month: row.month,
@@ -4235,12 +4403,12 @@ export class PayrollService {
         notes: row.notes || null,
         paidFromAccountId: paidFromAccount?.id || null,
         preparedById: actorId ? toBigInt(actorId) : null,
-      }
-    });
+      })
+      .returning())[0];
   }
 
   private async createImportedRunItemTx(
-    tx: AppDb,
+    tx: TxClient,
     runId: string,
     worker: any,
     grouped: { run_name: string; worker_ref: string; lines: any[] },
@@ -4248,15 +4416,18 @@ export class PayrollService {
     updateExisting = false
   ) {
     const componentCodes = grouped.lines.map((line) => line.component_code);
-    const components = await tx.payrollComponent.findMany({ where: { code: { in: componentCodes } } });
-        const componentMap = new Map<string, any>(components.map((row) => [row.code, row]));
+    const components = await tx
+      .select({ id: payrollComponent.id, code: payrollComponent.code, componentType: payrollComponent.componentType })
+      .from(payrollComponent)
+      .where(inArray(payrollComponent.code, componentCodes));
+    const componentMap = new Map<string, any>(components.map((row) => [row.code, row]));
 
     const typedLines = grouped.lines.map((line) => {
       const component = componentMap.get(line.component_code);
       return {
         componentId: component!.id,
         lineType: component!.componentType,
-        amount: new Decimal(Number(line.amount || 0)),
+        amount: Number(Number(line.amount || 0)),
         notes: line.notes || null,
       };
     });
@@ -4266,58 +4437,45 @@ export class PayrollService {
     const employerCostTotal = typedLines.filter((line) => line.lineType === 'employer_cost').reduce((sum, line) => sum + Number(line.amount), 0);
     const netPay = grossPay - totalDeductions;
 
-    const existing = await tx.payrollRunItem.findFirst({ where: { runId, workerId: worker.id } });
+    const [existing] = await tx
+      .select({ id: payrollRunItem.id })
+      .from(payrollRunItem)
+      .where(and(eq(payrollRunItem.runId, runId), eq(payrollRunItem.workerId, worker.id)))
+      .limit(1);
+    const itemPayload = {
+      workerType: worker.workerType,
+      organizationId: worker.organizationId,
+      teamId: worker.teamId,
+      projectId: worker.projectId,
+      fundId: worker.defaultFundId,
+      grantId: worker.defaultGrantId,
+      grossPay: String(grossPay),
+      totalDeductions: String(totalDeductions),
+      employerCostTotal: String(employerCostTotal),
+      netPay: String(netPay),
+    };
     let item;
     if (existing) {
       if (!updateExisting) {
         throw new BadRequestException(`Payroll run item already exists for ${grouped.worker_ref}`);
       }
-      await tx.payrollRunItemLine.deleteMany({ where: { runItemId: existing.id } });
-      await tx.payrollRunItemAllocation.deleteMany({ where: { runItemId: existing.id } });
-      item = await tx.payrollRunItem.update({
-        where: { id: existing.id },
-        data: {
-          workerType: worker.workerType,
-          organizationId: worker.organizationId,
-          teamId: worker.teamId,
-          projectId: worker.projectId,
-          fundId: worker.defaultFundId,
-          grantId: worker.defaultGrantId,
-          grossPay,
-          totalDeductions,
-          employerCostTotal,
-          netPay,
-        }
-      });
+      await tx.delete(payrollRunItemLine).where(eq(payrollRunItemLine.runItemId, existing.id));
+      await tx.delete(payrollRunItemAllocation).where(eq(payrollRunItemAllocation.runItemId, existing.id));
+      item = (await tx.update(payrollRunItem).set(itemPayload).where(eq(payrollRunItem.id, existing.id)).returning())[0];
     } else {
-      item = await tx.payrollRunItem.create({
-        data: {
-          runId,
-          workerId: worker.id,
-          workerType: worker.workerType,
-          organizationId: worker.organizationId,
-          teamId: worker.teamId,
-          projectId: worker.projectId,
-          fundId: worker.defaultFundId,
-          grantId: worker.defaultGrantId,
-          grossPay,
-          totalDeductions,
-          employerCostTotal,
-          netPay,
-        }
-      });
+      item = (await tx.insert(payrollRunItem).values({ runId, workerId: worker.id, ...itemPayload }).returning())[0];
     }
 
     if (typedLines.length) {
-      await tx.payrollRunItemLine.createMany({
-        data: typedLines.map((line) => ({
+      await tx.insert(payrollRunItemLine).values(
+        typedLines.map((line) => ({
           runItemId: item.id,
           componentId: line.componentId,
           lineType: line.lineType,
-          amount: line.amount,
+          amount: String(line.amount),
           notes: line.notes,
-        }))
-      });
+        })),
+      );
     }
 
     const normalizedAllocations = allocationRows.length
@@ -4342,18 +4500,20 @@ export class PayrollService {
           sortOrder: 0,
         }];
 
-    await tx.payrollRunItemAllocation.createMany({
-      data: normalizedAllocations.map((allocation) => ({
-        runItemId: item.id,
-        organizationId: allocation.organizationId,
-        teamId: allocation.teamId,
-        projectId: allocation.projectId,
-        fundId: allocation.fundId,
-        grantId: allocation.grantId,
-        allocationPercent: allocation.allocationPercent,
-        sortOrder: allocation.sortOrder,
-      }))
-    });
+    if (normalizedAllocations.length) {
+      await tx.insert(payrollRunItemAllocation).values(
+        normalizedAllocations.map((allocation) => ({
+          runItemId: item.id,
+          organizationId: allocation.organizationId,
+          teamId: allocation.teamId,
+          projectId: allocation.projectId,
+          fundId: allocation.fundId,
+          grantId: allocation.grantId,
+          allocationPercent: String(allocation.allocationPercent),
+          sortOrder: allocation.sortOrder,
+        })),
+      );
+    }
 
     return item;
   }
@@ -4362,10 +4522,18 @@ export class PayrollService {
     const row = workers.find((entry) => entry.worker_ref === workerRef);
     if (!row) return null;
     const profileId = row.profile_id ? this.parseBigInt(row.profile_id, 'profile id') : null;
+    const finder = (conds: Array<SQL | undefined>) =>
+      this.db.client
+        .select()
+        .from(payrollWorker)
+        .where(this.combine(this.tenantCond(payrollWorker.tenantId), ...conds))
+        .limit(1);
     return (
-      (profileId ? await this.db.client.query.payrollWorker.findFirst({ where: { profileId, ...this.tenantWhere() } }) : null) ||
-      (row.staff_code ? await this.db.client.query.payrollWorker.findFirst({ where: { staffCode: row.staff_code, ...this.tenantWhere() } }) : null) ||
-      (row.email ? await this.db.client.query.payrollWorker.findFirst({ where: { email: row.email, fullName: row.full_name, ...this.tenantWhere() } }) : null)
+      (profileId ? (await finder([eq(payrollWorker.profileId, profileId)]))[0] ?? null : null) ||
+      (row.staff_code ? (await finder([eq(payrollWorker.staffCode, row.staff_code)]))[0] ?? null : null) ||
+      (row.email
+        ? (await finder([eq(payrollWorker.email, row.email), eq(payrollWorker.fullName, row.full_name)]))[0] ?? null
+        : null)
     );
   }
 
@@ -4376,66 +4544,102 @@ export class PayrollService {
     runMap: Map<string, any>
   ) {
     const [runName, workerRef] = key.split('::');
-    const run = runMap.get(runName) || await this.db.client.query.payrollRun.findFirst({ where: { name: runName, ...this.tenantWhere() } });
+    const run = runMap.get(runName) ?? (await this.db.client
+      .select({ id: payrollRun.id })
+      .from(payrollRun)
+      .where(and(eq(payrollRun.name, runName), this.tenantCond(payrollRun.tenantId)))
+      .limit(1))[0] ?? null;
     const worker = workerMap.get(workerRef) || await this.findImportedWorker(workerRef, analysis.workers);
     if (!run || !worker) return null;
-    const item = await this.db.client.query.payrollRunItem.findFirst({ where: { runId: run.id, workerId: worker.id } });
+    const [item] = await this.db.client
+      .select({ id: payrollRunItem.id })
+      .from(payrollRunItem)
+      .where(and(eq(payrollRunItem.runId, run.id), eq(payrollRunItem.workerId, worker.id)))
+      .limit(1);
     return item ? { itemId: item.id, runId: run.id } : null;
   }
 
-  private async resolveOrganizationLookup(client: AppDb, value: string) {
+  private async resolveOrganizationLookup(client: LookupClient, value: string) {
     const trimmed = String(value || '').trim();
     if (!trimmed) return null;
     if (/^\d+$/.test(trimmed)) {
-      const exact = await client.organization.findUnique({ where: { id: BigInt(trimmed) } });
+      const [exact] = await client
+        .select({ id: organization.id })
+        .from(organization)
+        .where(eq(organization.id, BigInt(trimmed)))
+        .limit(1);
       if (exact) return exact.id;
     }
-    const match = await client.organization.findFirst({ where: { OR: [{ name: { equals: trimmed, mode: 'insensitive' } }, { code: { equals: trimmed, mode: 'insensitive' } }] } });
+    const [match] = await client
+      .select({ id: organization.id })
+      .from(organization)
+      .where(or(ilike(organization.name, trimmed), ilike(organization.code, trimmed)))
+      .limit(1);
     return match?.id ?? null;
   }
 
-  private async resolveTeamLookup(client: AppDb, value: string) {
+  private async resolveTeamLookup(client: LookupClient, value: string) {
     const trimmed = String(value || '').trim();
     if (!trimmed) return null;
     if (/^\d+$/.test(trimmed)) {
-      const exact = await client.group.findUnique({ where: { id: BigInt(trimmed) } });
+      const [exact] = await client
+        .select({ id: group.id })
+        .from(group)
+        .where(eq(group.id, BigInt(trimmed)))
+        .limit(1);
       if (exact) return exact.id;
     }
-    const match = await client.group.findFirst({ where: { name: { equals: trimmed, mode: 'insensitive' } } });
+    const [match] = await client
+      .select({ id: group.id })
+      .from(group)
+      .where(ilike(group.name, trimmed))
+      .limit(1);
     return match?.id ?? null;
   }
 
-  private async resolveFundLookup(client: AppDb, value: string) {
+  private async resolveFundLookup(client: LookupClient, value: string) {
     const trimmed = String(value || '').trim();
     if (!trimmed) return null;
-    const match = await client.financeFund.findFirst({
-      where: {
-        OR: [{ id: trimmed }, { name: { equals: trimmed, mode: 'insensitive' } }, { code: { equals: trimmed, mode: 'insensitive' } }]
-      }
-    });
+    const [match] = await client
+      .select({ id: financeFund.id })
+      .from(financeFund)
+      .where(or(
+        eq(financeFund.id, trimmed),
+        ilike(financeFund.name, trimmed),
+        ilike(financeFund.code, trimmed),
+      ))
+      .limit(1);
     return match?.id ?? null;
   }
 
-  private async resolveGrantLookup(client: AppDb, value: string) {
+  private async resolveGrantLookup(client: LookupClient, value: string) {
     const trimmed = String(value || '').trim();
     if (!trimmed) return null;
-    const match = await client.financeGrant.findFirst({
-      where: {
-        OR: [{ id: trimmed }, { name: { equals: trimmed, mode: 'insensitive' } }, { code: { equals: trimmed, mode: 'insensitive' } }]
-      }
-    });
+    const [match] = await client
+      .select({ id: financeGrant.id })
+      .from(financeGrant)
+      .where(or(
+        eq(financeGrant.id, trimmed),
+        ilike(financeGrant.name, trimmed),
+        ilike(financeGrant.code, trimmed),
+      ))
+      .limit(1);
     return match?.id ?? null;
   }
 
-  private async resolveFinanceAccountLookup(client: AppDb, value: string) {
+  private async resolveFinanceAccountLookup(client: LookupClient, value: string) {
     const trimmed = String(value || '').trim();
     if (!trimmed) return null;
-    const match = await client.financeAccount.findFirst({
-      where: {
-        OR: [{ id: trimmed }, { name: { equals: trimmed, mode: 'insensitive' } }, { code: { equals: trimmed, mode: 'insensitive' } }]
-      }
-    });
-    return match;
+    const [match] = await client
+      .select({ id: financeAccount.id, code: financeAccount.code, name: financeAccount.name })
+      .from(financeAccount)
+      .where(or(
+        eq(financeAccount.id, trimmed),
+        ilike(financeAccount.name, trimmed),
+        ilike(financeAccount.code, trimmed),
+      ))
+      .limit(1);
+    return match ?? null;
   }
 
   private formatCurrency(amount: number, currency: string) {
@@ -4467,16 +4671,11 @@ export class PayrollService {
       includeRoleRecipients?: string[];
     }
   ) {
-    const run = await this.db.client.query.payrollRun.findFirst({
-      where: { id: runId, ...this.tenantWhere() },
-      select: {
-        id: true,
-        name: true,
-        preparedById: true,
-        reviewedById: true,
-        approvedById: true,
-      }
-    });
+    const [run] = await this.db.client
+      .select({ id: payrollRun.id, name: payrollRun.name, preparedById: payrollRun.preparedById, reviewedById: payrollRun.reviewedById, approvedById: payrollRun.approvedById })
+      .from(payrollRun)
+      .where(and(eq(payrollRun.id, runId), this.tenantCond(payrollRun.tenantId)))
+      .limit(1);
     if (!run) return;
 
     const actor = input.actorId ? toBigInt(input.actorId) : null;
@@ -4533,9 +4732,11 @@ export class PayrollService {
   }
 
   private async resolveNotificationChannels(userId: string, category: string) {
-    const row = await this.db.client.query.payrollNotificationPreference.findUnique({
-      where: { userId: toBigInt(userId) }
-    });
+    const [row] = await this.db.client
+      .select({ config: payrollNotificationPreference.config })
+      .from(payrollNotificationPreference)
+      .where(eq(payrollNotificationPreference.userId, toBigInt(userId)))
+      .limit(1);
     const config = this.normalizeNotificationPreferenceConfig((row?.config || {}) as Record<string, any>);
     const categoryConfig = config[category] || { in_app: true, email: false };
     const sentVia: string[] = [];
@@ -4578,33 +4779,29 @@ export class PayrollService {
     note?: string,
     metadata?: Record<string, any>
   ) {
-    await this.db.client.query.payrollRunEvent.create({
-      data: {
-        runId,
-        actorId: actorId ? toBigInt(actorId) : null,
-        eventType,
-        note: note || null,
-        metadata: (metadata || {}) as InputJsonValue,
-      }
+    await this.db.client.insert(payrollRunEvent).values({
+      runId,
+      actorId: actorId ? toBigInt(actorId) : null,
+      eventType,
+      note: note || null,
+      metadata: (metadata || {}) as InputJsonValue,
     });
   }
 
   private async recordRunEventTx(
-    tx: AppDb,
+    tx: TxClient,
     runId: string,
     eventType: string,
     actorId?: string,
     note?: string,
     metadata?: Record<string, any>
   ) {
-    await tx.payrollRunEvent.create({
-      data: {
-        runId,
-        actorId: actorId ? toBigInt(actorId) : null,
-        eventType,
-        note: note || null,
-        metadata: (metadata || {}) as InputJsonValue,
-      }
+    await tx.insert(payrollRunEvent).values({
+      runId,
+      actorId: actorId ? toBigInt(actorId) : null,
+      eventType,
+      note: note || null,
+      metadata: (metadata || {}) as InputJsonValue,
     });
   }
 
@@ -4655,6 +4852,3 @@ export class PayrollService {
     }
   }
 }
-
-
-

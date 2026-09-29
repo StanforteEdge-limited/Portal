@@ -7,13 +7,12 @@ export type { EmployeeSummary, EmployeeDetail, HrSummary, EmployeeAction, Employ
 export { createResourceApi } from "./api/resource-api";
 export type {
   OrganizationItem,
-  ProjectCardPayload,
-  ProjectCardUpdatePayload,
   TeamItem,
   TeamOption,
   TeamMember,
   OrganizationMapping,
 } from "./api/resource-api";
+
 export { createPolicyApi } from "./api/policy-api";
 export { createDocumentApi } from "./api/document-api";
 export type { DocumentRecord, DocumentAcknowledgementRecord } from "./api/document-api";
@@ -25,6 +24,9 @@ export type { ScopeType, PolicyRecord } from "./api/policy-api";
 export type { AttendanceDaily, StaffDailyRow, AdminCorrectionRow, OfficeLocation } from "./api/attendance-api";
 export type {
   WorkItem,
+  WorkItemAttachment,
+  WorkItemComment,
+  WorkItemUserRef,
   WorkLog,
   WorkGoal,
   WorkObjective,
@@ -33,6 +35,7 @@ export type {
   WorkItemPriority,
   WorkItemStatus,
   CreateWorkItemDto,
+  CreateWorkItemCommentDto,
   CreateWorkGoalDto,
   CreateWorkObjectiveDto,
   CreateWorkKpiDto,
