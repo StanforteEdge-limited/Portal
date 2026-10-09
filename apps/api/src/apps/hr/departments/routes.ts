@@ -81,7 +81,7 @@ export const DepartmentsRoutes: FastifyPluginAsync = async (fastify) => {
     '/:id/members/:profileId',
     { preHandler: write, schema: { params: DepartmentMemberParamsSchema } },
     async (request) => {
-      const { departmentId, profileId } = member(request);
+      const { id: departmentId, profileId } = member(request);
       return departments().removeMember(departmentId, profileId);
     },
   );

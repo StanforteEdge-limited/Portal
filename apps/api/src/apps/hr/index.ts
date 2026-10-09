@@ -13,4 +13,5 @@ export * as projects from './projects';
 export * as requests from './requests';
 export * as tasks from './tasks';
 export * as taxonomy from './taxonomy';
+export * as timesheets from './timesheets';
 export * as workflow from './workflow';

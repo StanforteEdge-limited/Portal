@@ -25,7 +25,14 @@ import {
 } from "@stanforte/contract";
 import { DbService } from "$core/db";
 import { TenantContextService } from "$core/auth/tenant-context.service";
-import { parseBigIntId } from "$core/utils";
+import {
+  assertDateRange,
+  isTrueQueryFlag,
+  parseBigIntId,
+  parseDateOnly,
+  parseOptionalDateOnly,
+  todayDateOnly,
+} from "$core/utils";
 import {
   BadRequestException,
   ConflictException,
@@ -34,26 +41,6 @@ import {
 import { department, departmentMember } from "./model";
 import { profile } from "$apps/identity/users/model";
 import { organization } from "$apps/hr/organizations/model";
-
-/** `YYYY-MM-DD` in UTC, matching the date columns' mode. */
-function today(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-/** The `effective_from`/`effective_to` columns are `date` mode, so they take a Date. */
-function toDate(value: string): Date {
-  const parsed = new Date(`${value.slice(0, 10)}T00:00:00.000Z`);
-  if (Number.isNaN(parsed.getTime()))
-    throw new BadRequestException("Invalid date");
-  return parsed;
-}
-
-/** Optional counterpart: an omitted or blank date means an open-ended stint. */
-function toOptionalDate(value?: string | null): Date | null {
-  if (value === undefined || value === null || !String(value).trim())
-    return null;
-  return toDate(String(value));
-}
 
 /**
  * Departments exist so an approver resolver can answer "who manages the
@@ -81,7 +68,7 @@ export class DepartmentsService {
     const perPage = this.perPageOf(query);
 
     const conditions: SQL[] = [eq(department.tenantId, tenantId)];
-    if (query.include_inactive !== "true")
+    if (!isTrueQueryFlag(query.include_inactive))
       conditions.push(eq(department.isActive, true));
     if (query.parent_department_id) {
       conditions.push(
@@ -302,9 +289,9 @@ export class DepartmentsService {
     const page = this.pageOf(query);
     const perPage = this.perPageOf(query);
     const conditions: SQL[] = [eq(departmentMember.departmentId, row.id)];
-    if (query.managers_only === "true")
+    if (isTrueQueryFlag(query.managers_only))
       conditions.push(eq(departmentMember.isManager, true));
-    if (query.include_ended !== "true")
+    if (!isTrueQueryFlag(query.include_ended))
       conditions.push(isNull(departmentMember.effectiveTo));
     const where = and(...conditions);
 
@@ -354,7 +341,10 @@ export class DepartmentsService {
     const profileRow = await this.findProfile(profileId);
     if (!profileRow) throw new NotFoundException("Profile not found");
 
-    const effectiveFrom = dto.effective_from?.trim() || today();
+    const effectiveFrom = dto.effective_from?.trim() || todayDateOnly();
+    const effectiveFromDate = parseDateOnly(effectiveFrom);
+    const effectiveToDate = parseOptionalDateOnly(dto.effective_to);
+    assertDateRange(effectiveFromDate, effectiveToDate);
 
     const [open] = await this.db.client
       .select()
@@ -381,8 +371,8 @@ export class DepartmentsService {
         departmentId: row.id,
         profileId,
         isManager: dto.is_manager ?? false,
-        effectiveFrom: toDate(effectiveFrom),
-        effectiveTo: toOptionalDate(dto.effective_to),
+        effectiveFrom: effectiveFromDate,
+        effectiveTo: effectiveToDate,
         createdBy: this.actor(actorId),
       })
       .returning();
@@ -413,7 +403,7 @@ export class DepartmentsService {
     // historical request still needs to see who was a member at the time.
     const [ended] = await this.db.client
       .update(departmentMember)
-      .set({ effectiveTo: toDate(today()) })
+      .set({ effectiveTo: parseDateOnly(todayDateOnly()) })
       .where(eq(departmentMember.id, open.id))
       .returning();
 
@@ -439,7 +429,8 @@ export class DepartmentsService {
       typeof profileId === "bigint"
         ? profileId
         : parseBigIntId(profileId, "profile id");
-    const on = asOf?.trim() || today();
+    const on = asOf?.trim() || todayDateOnly();
+    const asOfDate = parseDateOnly(on);
 
     const memberships = await this.db.client
       .select({ departmentId: departmentMember.departmentId })
@@ -448,7 +439,11 @@ export class DepartmentsService {
         and(
           eq(departmentMember.tenantId, tenantId),
           eq(departmentMember.profileId, pid),
-          isNull(departmentMember.effectiveTo),
+          lte(departmentMember.effectiveFrom, asOfDate),
+          or(
+            isNull(departmentMember.effectiveTo),
+            gt(departmentMember.effectiveTo, asOfDate),
+          ),
         ),
       );
     const departmentIds = memberships.map((row) => row.departmentId);
@@ -464,10 +459,10 @@ export class DepartmentsService {
           inArray(departmentMember.departmentId, departmentIds),
           eq(departmentMember.isManager, true),
           // In post on the date in question, and not the requester themselves.
-          lte(departmentMember.effectiveFrom, toDate(on)),
+          lte(departmentMember.effectiveFrom, asOfDate),
           or(
             isNull(departmentMember.effectiveTo),
-            gt(departmentMember.effectiveTo, toDate(on)),
+            gt(departmentMember.effectiveTo, asOfDate),
           ),
           ne(departmentMember.profileId, pid),
         ),

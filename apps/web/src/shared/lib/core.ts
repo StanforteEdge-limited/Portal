@@ -6,6 +6,7 @@ import {
   createDocumentApi,
   createAttendanceApi,
   createWorkApi,
+  createTimesheetApi,
   createRequestApi,
   createAdminUsersApi,
   createFinanceApi,
@@ -33,6 +34,7 @@ export const policyApi = createPolicyApi(httpRequest);
 export const documentApi = createDocumentApi(httpRequest);
 export const attendanceApi = createAttendanceApi(httpRequest);
 export const workApi = createWorkApi(httpRequest);
+export const timesheetApi = createTimesheetApi(httpRequest);
 export const requestApi = createRequestApi(httpRequest);
 export const adminUsersApi = createAdminUsersApi(httpRequest);
 export const financeApi = createFinanceApi(httpRequest);

@@ -63,7 +63,7 @@ import {
 } from './model';
 import { group } from '$apps/communication/groups/model';
 import { organization } from '$apps/hr/organizations/model';
-import { projectTimesheetEntry } from '$apps/hr/tasks/model';
+import { projectTimesheetEntry } from '$apps/hr/timesheets/model';
 import { profile } from '$apps/identity/users/model';
 import { notification } from '$apps/hr/notifications/model';
 import {
@@ -327,31 +327,6 @@ export class PayrollService {
     return { ...row, worker: workerRow, component: componentRow, repayments: repaymentRows };
   }
 
-  private async hydrateProjectTimesheet(row: any): Promise<any> {
-    if (!row) return row;
-    const [workerRow, componentRow, organizationRow, fundRow, grantRow, runRow] = await Promise.all([
-      row.workerId
-        ? this.db.client.select({ id: payrollWorker.id, fullName: payrollWorker.fullName, workerType: payrollWorker.workerType, email: payrollWorker.email }).from(payrollWorker).where(eq(payrollWorker.id, row.workerId)).limit(1).then((r) => r[0])
-        : Promise.resolve(null),
-      row.componentId
-        ? this.db.client.select({ id: payrollComponent.id, code: payrollComponent.code, name: payrollComponent.name }).from(payrollComponent).where(eq(payrollComponent.id, row.componentId)).limit(1).then((r) => r[0])
-        : Promise.resolve(null),
-      row.organizationId
-        ? this.db.client.select({ id: organization.id, name: organization.name }).from(organization).where(eq(organization.id, row.organizationId)).limit(1).then((r) => r[0])
-        : Promise.resolve(null),
-      row.fundId
-        ? this.db.client.select({ id: financeFund.id, code: financeFund.code, name: financeFund.name }).from(financeFund).where(eq(financeFund.id, row.fundId)).limit(1).then((r) => r[0])
-        : Promise.resolve(null),
-      row.grantId
-        ? this.db.client.select({ id: financeGrant.id, code: financeGrant.code, name: financeGrant.name }).from(financeGrant).where(eq(financeGrant.id, row.grantId)).limit(1).then((r) => r[0])
-        : Promise.resolve(null),
-      row.syncedRunId
-        ? this.db.client.select({ id: payrollRun.id, name: payrollRun.name, year: payrollRun.year, month: payrollRun.month, status: payrollRun.status }).from(payrollRun).where(eq(payrollRun.id, row.syncedRunId)).limit(1).then((r) => r[0])
-        : Promise.resolve(null),
-    ]);
-    return { ...row, worker: workerRow, component: componentRow, organization: organizationRow, fund: fundRow, grant: grantRow, syncedRun: runRow };
-  }
-
   async summary(query: Record<string, any> = {}) {
     const orgFilter = query.organization_id ? { organizationId: toBigInt(String(query.organization_id)) } : {};
     const tid = this.tenantContext.currentTenantId();
@@ -549,38 +524,6 @@ export class PayrollService {
     const row = matchRows[0];
     if (!row) throw new NotFoundException('Payslip not found');
     return this.generateRunItemPayslip(runId, itemId);
-  }
-
-  async listMyProjectTimesheets(userId: string, query: Record<string, any>) {
-    const worker = await this.resolveWorkerForUser(userId);
-    return this.listProjectTimesheets({ ...query, worker_id: worker.id });
-  }
-
-  async createMyProjectTimesheet(userId: string, dto: any) {
-    const worker = await this.resolveWorkerForUser(userId);
-    return this.createProjectTimesheet({ ...dto, worker_id: worker.id }, userId);
-  }
-
-  async updateMyProjectTimesheet(userId: string, id: string, dto: any) {
-    const worker = await this.resolveWorkerForUser(userId);
-    const entryRows = await this.db.client.select().from(projectTimesheetEntry).where(eq(projectTimesheetEntry.id, id)).limit(1);
-    const row = entryRows[0];
-    if (!row || row.workerId !== worker.id) throw new NotFoundException('Project timesheet entry not found');
-    if (!['draft', 'rejected'].includes(row.status)) {
-      throw new BadRequestException('Only draft or rejected timesheets can be edited');
-    }
-    return this.updateProjectTimesheet(id, { ...dto, worker_id: worker.id, status: row.status }, userId);
-  }
-
-  async submitMyProjectTimesheet(userId: string, id: string) {
-    const worker = await this.resolveWorkerForUser(userId);
-    const entryRows = await this.db.client.select().from(projectTimesheetEntry).where(eq(projectTimesheetEntry.id, id)).limit(1);
-    const row = entryRows[0];
-    if (!row || row.workerId !== worker.id) throw new NotFoundException('Project timesheet entry not found');
-    if (!['draft', 'rejected'].includes(row.status)) {
-      throw new BadRequestException('Only draft or rejected timesheets can be submitted');
-    }
-    return this.submitProjectTimesheet(id);
   }
 
   async getInbox(userId: string, permissions: string[] = [], query: Record<string, any> = {}) {
@@ -997,56 +940,6 @@ export class PayrollService {
     });
 
     return this.serializeLoan(row);
-  }
-
-  async listProjectTimesheets(query: Record<string, any>) {
-    const rows = await this.db.client.select().from(projectTimesheetEntry)
-      .where(this.combine(
-        query.worker_id ? eq(projectTimesheetEntry.workerId, String(query.worker_id)) : undefined,
-        query.status ? eq(projectTimesheetEntry.status, String(query.status)) : undefined,
-        query.project_id ? eq(projectTimesheetEntry.projectId, this.parseBigInt(String(query.project_id), 'project id')) : undefined,
-      ))
-      .orderBy(desc(projectTimesheetEntry.workDate), desc(projectTimesheetEntry.createdAt));
-    const hydrated = await Promise.all(rows.map((row) => this.hydrateProjectTimesheet(row)));
-    const items = hydrated.map((row) => this.serializeProjectTimesheet(row));
-    return paginatedResponse(items, { page: 1, per_page: items.length, total: items.length });
-  }
-
-  async createProjectTimesheet(dto: any, actorId?: string) {
-    const created = await this.db.client.insert(projectTimesheetEntry).values(this.mapProjectTimesheetDto(dto, actorId)).returning().then((r) => r[0]);
-    return this.serializeProjectTimesheet(await this.hydrateProjectTimesheet(created));
-  }
-
-  async updateProjectTimesheet(id: string, dto: any, actorId?: string) {
-    const existingRows = await this.db.client.select().from(projectTimesheetEntry).where(eq(projectTimesheetEntry.id, id)).limit(1);
-    const existing = existingRows[0];
-    if (!existing) throw new NotFoundException('Project timesheet entry not found');
-    const updated = await this.db.client.update(projectTimesheetEntry).set(this.mapProjectTimesheetDto(dto, actorId, true))
-      .where(eq(projectTimesheetEntry.id, id)).returning().then((r) => r[0]);
-    return this.serializeProjectTimesheet(await this.hydrateProjectTimesheet(updated));
-  }
-
-  async submitProjectTimesheet(id: string) {
-    const updated = await this.db.client.update(projectTimesheetEntry).set({ status: 'submitted' })
-      .where(eq(projectTimesheetEntry.id, id)).returning().then((r) => r[0]);
-    return this.serializeProjectTimesheet(await this.hydrateProjectTimesheet(updated));
-  }
-
-  async approveProjectTimesheet(id: string, actorId?: string) {
-    const updated = await this.db.client.update(projectTimesheetEntry).set({ status: 'approved', approvedBy: actorId ? toBigInt(actorId) : null, approvedAt: new Date() })
-      .where(eq(projectTimesheetEntry.id, id)).returning().then((r) => r[0]);
-    await this.syncApprovedTimesheetsToPayrollRun(updated.workerId, updated.workDate);
-    return this.serializeProjectTimesheet(await this.hydrateProjectTimesheet(updated));
-  }
-
-  async rejectProjectTimesheet(id: string) {
-    const existingRows = await this.db.client.select().from(projectTimesheetEntry).where(eq(projectTimesheetEntry.id, id)).limit(1);
-    const existing = existingRows[0];
-    if (!existing) throw new NotFoundException('Project timesheet entry not found');
-    const updated = await this.db.client.update(projectTimesheetEntry).set({ status: 'rejected' })
-      .where(eq(projectTimesheetEntry.id, id)).returning().then((r) => r[0]);
-    await this.syncApprovedTimesheetsToPayrollRun(updated.workerId, updated.workDate);
-    return this.serializeProjectTimesheet(await this.hydrateProjectTimesheet(updated));
   }
 
   async listComponents(query: Record<string, any>) {
@@ -3512,35 +3405,6 @@ export class PayrollService {
     };
   }
 
-  private serializeProjectTimesheet(row: any) {
-    return {
-      id: row.id,
-      worker_id: row.workerId,
-      worker: row.worker
-        ? { id: row.worker.id, full_name: row.worker.fullName, worker_type: row.worker.workerType, email: row.worker.email }
-        : null,
-      component_id: row.componentId ?? null,
-      component: row.component || null,
-      organization_id: row.organizationId?.toString() ?? null,
-      organization: row.organization ? { id: row.organization.id.toString(), name: row.organization.name } : null,
-      team_id: row.teamId?.toString() ?? null,
-      project_id: row.projectId?.toString() ?? null,
-      fund_id: row.fundId ?? null,
-      fund: row.fund || null,
-      grant_id: row.grantId ?? null,
-      grant: row.grant || null,
-      synced_run_id: row.syncedRunId ?? null,
-      synced_run: row.syncedRun || null,
-      work_date: row.workDate,
-      hours: Number(row.hours || 0),
-      description: row.description,
-      status: row.status,
-      approved_at: row.approvedAt,
-      created_at: row.createdAt,
-      updated_at: row.updatedAt,
-    };
-  }
-
   private mapTaxTableDto(dto: UpsertPayrollTaxTable) {
     return {
       organizationId: dto.organization_id ? this.parseBigInt(dto.organization_id, 'organization id') : null,
@@ -3567,16 +3431,6 @@ export class PayrollService {
         sortOrder: row.sort_order ?? index,
       }))
       .sort((a, b) => a.sortOrder - b.sortOrder || Number(a.lowerBound) - Number(b.lowerBound));
-  }
-
-  private async resolveWorkerForUser(userId: string) {
-    const worker = await this.db.client.select({ id: payrollWorker.id, fullName: payrollWorker.fullName, workerType: payrollWorker.workerType })
-      .from(payrollWorker)
-      .where(eq(payrollWorker.profileId, toBigInt(userId)))
-      .limit(1)
-      .then((r) => r[0]);
-    if (!worker) throw new NotFoundException('Payroll worker profile not found for this user');
-    return worker;
   }
 
   private async resolveEmployeeTaxTableTx(
@@ -3688,81 +3542,6 @@ export class PayrollService {
       const endsOk = !profile.effectiveTo || profile.effectiveTo >= periodStart;
       return startsOk && endsOk;
     }) || null;
-  }
-
-  private mapProjectTimesheetDto(dto: any, actorId?: string, preserveCreator = false) {
-    return {
-      workerId: dto.worker_id,
-      componentId: dto.component_id || null,
-      organizationId: dto.organization_id ? this.parseBigInt(dto.organization_id, 'organization id') : null,
-      teamId: dto.team_id ? this.parseBigInt(dto.team_id, 'team id') : null,
-      projectId: dto.project_id ? this.parseBigInt(dto.project_id, 'project id') : null,
-      fundId: dto.fund_id || null,
-      grantId: dto.grant_id || null,
-      workDate: new Date(dto.work_date),
-      hours: this.toScaleOrZero(dto.hours),
-      description: dto.description || null,
-      status: dto.status || 'draft',
-      createdBy: preserveCreator ? undefined : (actorId ? toBigInt(actorId) : undefined),
-    };
-  }
-
-  private async syncApprovedTimesheetsToPayrollRun(workerId: string, workDate: Date) {
-    const month = workDate.getUTCMonth() + 1;
-    const year = workDate.getUTCFullYear();
-    const periodStart = new Date(Date.UTC(year, month - 1, 1));
-    const periodEnd = new Date(Date.UTC(year, month, 0));
-    const runs = await this.db.client
-      .select()
-      .from(payrollRun)
-      .where(and(eq(payrollRun.year, year), eq(payrollRun.month, month), this.tenantCond(payrollRun.tenantId)))
-      .limit(1);
-    const run = runs[0] ?? null;
-    if (!run) return null;
-    if (['approved', 'authorized', 'paid', 'closed'].includes(run.status)) return null;
-    const approvedRows = await this.db.client
-      .select()
-      .from(projectTimesheetEntry)
-      .where(and(
-        eq(projectTimesheetEntry.workerId, workerId),
-        eq(projectTimesheetEntry.status, 'approved'),
-        gte(projectTimesheetEntry.workDate, periodStart),
-        lte(projectTimesheetEntry.workDate, periodEnd),
-      ))
-      .orderBy(asc(projectTimesheetEntry.workDate), asc(projectTimesheetEntry.createdAt));
-    const totalHours = approvedRows.reduce((sum, row) => sum + Number(row.hours || 0), 0);
-    await this.db.client.transaction(async (tx) => {
-      await tx.delete(payrollRunTimesheetAllocation).where(and(
-        eq(payrollRunTimesheetAllocation.runId, run.id),
-        eq(payrollRunTimesheetAllocation.workerId, workerId),
-      ));
-      if (approvedRows.length) {
-        await tx.insert(payrollRunTimesheetAllocation).values(
-          approvedRows.map((row, index) => ({
-            runId: run.id,
-            workerId,
-            organizationId: row.organizationId,
-            teamId: row.teamId,
-            projectId: row.projectId,
-            fundId: row.fundId,
-            grantId: row.grantId,
-            hours: String(row.hours ?? 0),
-            allocationPercent: String(totalHours > 0 ? (Number(row.hours || 0) / totalHours) * 100 : 0),
-            source: 'timesheet',
-            notes: row.description,
-            sortOrder: index,
-            approvedAt: row.approvedAt ?? new Date(),
-          })),
-        );
-      }
-      if (approvedRows.length) {
-        await tx
-          .update(projectTimesheetEntry)
-          .set({ syncedRunId: run.id })
-          .where(inArray(projectTimesheetEntry.id, approvedRows.map((row) => row.id)));
-      }
-    });
-    return run.id;
   }
 
   private async resolvePayrollSettingTx(tx: TxClient, organizationId: bigint | null) {

@@ -8,13 +8,8 @@ import {
   Icon,
 } from "@/shared";
 import { DataTable } from "@/shared/components/ui/DataTable";
-import { useCachedQuery, httpRequest } from "@/shared/lib/core";
-import { formatDisplayDate } from "@stanforte/shared";
-import {
-  listMyProjectTimesheets,
-  submitMyProjectTimesheet,
-  type TimesheetRow,
-} from "@/shared/api/payroll-api";
+import { useCachedQuery, timesheetApi } from "@/shared/lib/core";
+import { formatDisplayDate, type TimesheetEntry } from "@stanforte/shared";
 import { AccountShellPage } from "./page-helpers";
 import TimesheetEditorSlideOver from "./TimesheetEditorSlideOver";
 
@@ -30,25 +25,26 @@ export default function TimesheetsPage() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const { data: timesheets = [], loading, refetch } = useCachedQuery(
-    "payroll:my-timesheets",
-    () => listMyProjectTimesheets({ page: 1, per_page: 500 }),
+  const { data: timesheetRows, loading, refetch } = useCachedQuery(
+    "timesheets:my-entries",
+    () => timesheetApi.listMyEntries({ page: 1, per_page: 500 }),
     { ttlMs: 1000 * 60, storage: "memory" }
   );
+  const timesheets: TimesheetEntry[] = timesheetRows ?? [];
 
   const summary = useMemo(() => {
-    const totalHours = timesheets.reduce((sum: number, row: any) => sum + Number(row.hours || 0), 0);
+    const totalHours = timesheets.reduce((sum: number, row: TimesheetEntry) => sum + Number(row.hours || 0), 0);
     return {
       entries: timesheets.length,
       hours: totalHours,
-      submitted: timesheets.filter((row: any) => row.status === "submitted").length,
-      approved: timesheets.filter((row: any) => row.status === "approved").length,
+      submitted: timesheets.filter((row: TimesheetEntry) => row.status === "submitted").length,
+      approved: timesheets.filter((row: TimesheetEntry) => row.status === "approved").length,
     };
   }, [timesheets]);
 
   async function submitTimesheet(id: string) {
     try {
-      await submitMyProjectTimesheet(id);
+      await timesheetApi.submitMyEntry(id);
       showToast({ tone: "success", title: "Submitted", message: "Timesheet submitted for review." });
       void refetch();
     } catch (err: any) {

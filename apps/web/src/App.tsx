@@ -231,9 +231,10 @@ export default function App() {
         <Route path="/help" element={<HelpPage />} />
         <Route path="/download" element={<DownloadPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        {/* Self-service: `/v1/timesheets/my/*` only requires authentication, so this must not sit behind the payroll gate. */}
+        <Route path="/profile/timesheets" element={<TimesheetsPage />} />
         <Route element={<ModuleRoute moduleKey="payroll" />}>
           <Route path="/profile/payslips" element={<PayslipsPage />} />
-          <Route path="/profile/timesheets" element={<TimesheetsPage />} />
         </Route>
         <Route element={<ModuleRoute moduleKey="finance" />}>
           <Route element={<PermissionRoute requiredPermissions={["finance.view", "finance.manage", "finance.approve"]} any />}>

@@ -1,9 +1,11 @@
 import { Type, type Static } from '@sinclair/typebox';
-import { UuidSchema } from '../common/primitives';
+import { IsoDateSchema, UuidSchema } from '../common/primitives';
 
 /* -------------------------------------------------------------------------- */
 /* Departments                                                                 */
 /* -------------------------------------------------------------------------- */
+
+const QueryBooleanSchema = Type.Union([Type.Literal('true'), Type.Literal('false')]);
 
 export const CreateDepartmentSchema = Type.Object({
   name: Type.String({ minLength: 1, maxLength: 150 }),
@@ -32,8 +34,8 @@ export const DepartmentsListQuerySchema = Type.Object({
   search: Type.Optional(Type.String({ maxLength: 150 })),
   parent_department_id: Type.Optional(UuidSchema),
   organization_id: Type.Optional(Type.String({ pattern: '^\\d+$' })),
-  /** Compared against the literal string `'true'`, so it stays a string. */
-  include_inactive: Type.Optional(Type.String()),
+  /** Query params arrive as strings. */
+  include_inactive: Type.Optional(QueryBooleanSchema),
   page: Type.Optional(Type.String({ pattern: '^\\d+$' })),
   per_page: Type.Optional(Type.String({ pattern: '^\\d+$' })),
 });
@@ -51,16 +53,16 @@ export const AssignDepartmentMemberSchema = Type.Object({
   profile_id: Type.String({ pattern: '^\\d+$' }),
   /** A department may have more than one manager. */
   is_manager: Type.Optional(Type.Boolean()),
-  effective_from: Type.Optional(Type.String()),
+  effective_from: Type.Optional(IsoDateSchema),
   /** Omitted or null means an open-ended stint. */
-  effective_to: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  effective_to: Type.Optional(Type.Union([IsoDateSchema, Type.Null()])),
 });
 export type AssignDepartmentMember = Static<typeof AssignDepartmentMemberSchema>;
 
 export const DepartmentMembersListQuerySchema = Type.Object({
-  managers_only: Type.Optional(Type.String()),
+  managers_only: Type.Optional(QueryBooleanSchema),
   /** Defaults to current members only. */
-  include_ended: Type.Optional(Type.String()),
+  include_ended: Type.Optional(QueryBooleanSchema),
   page: Type.Optional(Type.String({ pattern: '^\\d+$' })),
   per_page: Type.Optional(Type.String({ pattern: '^\\d+$' })),
 });
@@ -77,7 +79,7 @@ export type DepartmentsIdParams = Static<typeof DepartmentsIdParamsSchema>;
 
 /** A member is addressed by department and profile. */
 export const DepartmentMemberParamsSchema = Type.Object({
-  departmentId: UuidSchema,
+  id: UuidSchema,
   profileId: Type.String({ pattern: '^\\d+$' }),
 });
 export type DepartmentMemberParams = Static<typeof DepartmentMemberParamsSchema>;

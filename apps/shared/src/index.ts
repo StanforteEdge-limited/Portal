@@ -18,6 +18,14 @@ export { createDocumentApi } from "./api/document-api";
 export type { DocumentRecord, DocumentAcknowledgementRecord } from "./api/document-api";
 export { createAttendanceApi } from "./api/attendance-api";
 export { createWorkApi } from "./api/work-api";
+export { createTimesheetApi } from "./api/timesheet-api";
+export type {
+  TimesheetEntry,
+  TimesheetStatus,
+  TimesheetListParams,
+  TimesheetSummaryRow,
+  UpsertTimesheetEntryPayload,
+} from "./api/timesheet-api";
 export { createRequestApi } from "./api/request-api";
 export { createAdminUsersApi } from "./api/admin-users-api";
 export type { ScopeType, PolicyRecord } from "./api/policy-api";

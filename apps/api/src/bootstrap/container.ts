@@ -43,6 +43,7 @@ import { OnboardingService } from "$apps/hr/onboarding/repository";
 import { AcknowledgementsService } from "$apps/hr/acknowledgements/repository";
 import { PoliciesService } from "$apps/hr/policies/repository";
 import { TasksService } from "$apps/hr/tasks/repository";
+import { TimesheetsService } from "$apps/hr/timesheets/repository";
 
 import { CrmAccountsService } from "$apps/crm/accounts/repository";
 import { CrmActivitiesService } from "$apps/crm/activities/repository";
@@ -394,7 +395,14 @@ export class Container {
   get tasks(): TasksService {
     return this.provide(
       "tasks",
-      () => new TasksService(this.db, this.tenantContext),
+      () => new TasksService(this.db, this.tenantContext, this.timesheets),
+    );
+  }
+
+  get timesheets(): TimesheetsService {
+    return this.provide(
+      "timesheets",
+      () => new TimesheetsService(this.db, this.tenantContext),
     );
   }
 

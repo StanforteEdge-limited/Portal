@@ -71,42 +71,6 @@ export async function downloadMyPayslip(runId: string, itemId: string) {
     { method: "POST" },
   );
 }
-export type TimesheetRow = {
-  id: string;
-  project_id?: string;
-  fund_id?: string;
-  grant_id?: string;
-  work_date: string;
-  hours: number;
-  description?: string;
-  status: string;
-  organization_id?: string;
-  team_id?: string;
-  project?: { name: string };
-  fund?: { name: string };
-  grant?: { name: string };
-};
-
-export async function listMyProjectTimesheets(params?: { page?: number; per_page?: number }) {
-  const query = new URLSearchParams();
-  if (params?.page) query.set("page", String(params.page));
-  if (params?.per_page) query.set("per_page", String(params.per_page));
-  const suffix = query.toString() ? `?${query.toString()}` : "";
-  const response = await httpRequest<any>(`/payroll/my/timesheets${suffix}`);
-  return (response as any)?.data?.items ?? [];
-}
-
-export async function createMyProjectTimesheet(payload: Record<string, unknown>) {
-  return httpRequest<any>("/payroll/my/timesheets", { method: "POST", body: payload });
-}
-
-export async function updateMyProjectTimesheet(id: string, payload: Record<string, unknown>) {
-  return httpRequest<any>(`/payroll/my/timesheets/${id}`, { method: "POST", body: payload });
-}
-
-export async function submitMyProjectTimesheet(id: string) {
-  return httpRequest<any>(`/payroll/my/timesheets/${id}/submit`, { method: "POST" });
-}
 
 export type PayrollRunSummary = {
   id: string;

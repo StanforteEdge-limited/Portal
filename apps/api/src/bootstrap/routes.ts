@@ -14,6 +14,7 @@ import { PoliciesRoutes } from '$apps/hr/policies/routes';
 import { OrganizationsRoutes } from '$apps/hr/organizations/routes';
 import { ProjectsRoutes } from '$apps/hr/projects/routes';
 import { TasksRoutes } from '$apps/hr/tasks/routes';
+import { TimesheetRoutes } from '$apps/hr/timesheets/routes';
 import { DocumentsRoutes } from '$apps/hr/documents/routes';
 import { FormsRoutes } from '$apps/hr/forms/routes';
 import { TaxonomyRoutes } from '$apps/hr/taxonomy/routes';
@@ -43,6 +44,7 @@ export const appRoutes: AppRoute[] = [
   { prefix: '/organizations', plugin: OrganizationsRoutes },
   { prefix: '/projects', plugin: ProjectsRoutes },
   { prefix: '/tasks', plugin: TasksRoutes },
+  { prefix: '/timesheets', plugin: TimesheetRoutes },
   { prefix: '/documents', plugin: DocumentsRoutes },
   { prefix: '/forms', plugin: FormsRoutes },
   { prefix: '/taxonomy', plugin: TaxonomyRoutes },

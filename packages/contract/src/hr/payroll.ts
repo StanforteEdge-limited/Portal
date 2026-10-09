@@ -349,30 +349,6 @@ export const UpsertPayrollWorkerSchema = Type.Object({
 });
 export type UpsertPayrollWorker = Static<typeof UpsertPayrollWorkerSchema>;
 
-export const UpsertProjectTimesheetEntrySchema = Type.Object({
-  worker_id: Type.String(),
-  component_id: Type.Optional(Type.String()),
-  organization_id: Type.Optional(Type.String()),
-  team_id: Type.Optional(Type.String()),
-  project_id: Type.Optional(Type.String()),
-  fund_id: Type.Optional(Type.String()),
-  grant_id: Type.Optional(Type.String()),
-  work_date: IsoDateOrDateTimeSchema,
-  hours: Type.Number({ minimum: 0 }),
-  description: Type.Optional(Type.String()),
-  status: Type.Optional(
-    Type.Union([
-      Type.Literal('draft'),
-      Type.Literal('submitted'),
-      Type.Literal('approved'),
-      Type.Literal('rejected'),
-    ]),
-  ),
-});
-export type UpsertProjectTimesheetEntry = Static<
-  typeof UpsertProjectTimesheetEntrySchema
->;
-
 /* -------------------------------------------------------------------------- */
 /* Bulk import                                                                */
 /* -------------------------------------------------------------------------- */

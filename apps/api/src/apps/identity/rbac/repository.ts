@@ -17,7 +17,7 @@ import { role as roleTable, permission as permissionTable, rolePermission, userR
 import { profile } from '$apps/identity/users/model';
 import { organization } from '$apps/hr/organizations/model';
 import { tenantMembership } from '$apps/tenancy/model';
-import { BadRequestException, NotFoundException } from '$core/errors';
+import { BadRequestException, ForbiddenException, NotFoundException } from '$core/errors';
 
 export class RbacService {
   constructor(
@@ -270,6 +270,9 @@ private templateScopeCondition(table: typeof roleTable | typeof permissionTable,
       .where(and(eq(roleTable.id, id), roleCond))
       .limit(1);
     if (!role) throw new NotFoundException('Role not found');
+    if (role.isSystem) {
+      throw new ForbiddenException('System roles cannot be deleted');
+    }
 
     const assignments = await this.db.client
       .select({ id: userRoleTable.id, profileId: userRoleTable.profileId, organizationId: userRoleTable.organizationId, isPrimaryRole: userRoleTable.isPrimaryRole })
@@ -277,12 +280,13 @@ private templateScopeCondition(table: typeof roleTable | typeof permissionTable,
       .where(and(eq(userRoleTable.roleId, id), tid ? eq(userRoleTable.tenantId, tid) : undefined));
 
     let replacementId: bigint | null = null;
-    if (assignments.length > 0) {
-      if (!replacementRoleId) {
-        throw new BadRequestException(
-          `Role is assigned to ${assignments.length} user-role record(s). Provide replacement_role_id to reassign before delete.`,
-        );
-      }
+    if (assignments.length > 0 && !replacementRoleId) {
+      throw new BadRequestException(
+        `Role is assigned to ${assignments.length} user-role record(s). Provide replacement_role_id to reassign before delete.`,
+      );
+    }
+
+    if (replacementRoleId) {
       replacementId = parseBigIntId(replacementRoleId, 'replacement role id');
       if (replacementId === id) {
         throw new BadRequestException('Replacement role must be different from role being deleted');

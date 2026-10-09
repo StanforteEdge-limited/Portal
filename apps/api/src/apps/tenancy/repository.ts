@@ -10,7 +10,7 @@ import { policy } from '$apps/hr/policies/model';
 import { taxonomy, taxonomyTerm } from '$apps/hr/taxonomy/model';
 import { workflow, workflowStep, workflowStepApprover, workflowTransition } from '$apps/hr/workflow/model';
 
-import { and, asc, eq, inArray, SQL, sql, count, isNull } from 'drizzle-orm';
+import { and, asc, eq, inArray, SQL, sql, count, isNull, or } from 'drizzle-orm';
 import { AppDb, DbService } from '$core/db';
 import { TenantContext } from '$core/auth/tenant-context';
 import { TenantContextService } from '$core/auth/tenant-context.service';
@@ -264,18 +264,33 @@ export class TenancyService {
 
     const normalized = Array.from(new Set(roleSlugs.map((role) => role.trim()).filter(Boolean)));
     const roles = await this.db.client
-      .select({ id: role.id, slug: role.slug })
+      .select({ id: role.id, slug: role.slug, tenantId: role.tenantId })
       .from(role)
-      .where(and(inArray(role.slug, normalized), eq(role.isActive, true)));
-    if (roles.length !== normalized.length) {
-      const found = new Set(roles.map((role) => role.slug));
+      .where(
+        and(
+          inArray(role.slug, normalized),
+          eq(role.isActive, true),
+          or(eq(role.tenantId, context.tenantId), isNull(role.tenantId)),
+        ),
+      );
+    const found = new Set(roles.map((role) => role.slug));
+    if (found.size !== normalized.length) {
+      throw new BadRequestException(`Unknown role(s): ${normalized.filter((role) => !found.has(role)).join(', ')}`);
+    }
+    const resolved = normalized
+      .map((slug) => {
+        const matches = roles.filter((role) => role.slug === slug);
+        return matches.find((role) => role.tenantId != null) ?? matches[0];
+      })
+      .filter((role): role is { id: bigint; slug: string; tenantId: bigint | null } => Boolean(role));
+    if (resolved.length !== normalized.length) {
       throw new BadRequestException(`Unknown role(s): ${normalized.filter((role) => !found.has(role)).join(', ')}`);
     }
 
     await this.db.client.transaction(async (tx) => {
       await tx.delete(userRole).where(and(eq(userRole.profileId, profileId), eq(userRole.tenantId, context.tenantId)));
-      if (roles.length > 0) {
-        await tx.insert(userRole).values(roles.map((role, index) => ({
+      if (resolved.length > 0) {
+        await tx.insert(userRole).values(resolved.map((role, index) => ({
           profileId,
           roleId: role.id,
           tenantId: context.tenantId,
@@ -284,7 +299,7 @@ export class TenancyService {
       }
     });
 
-    return { success: true, profileId: profileId.toString(), roles: roles.map((role) => role.slug) };
+    return { success: true, profileId: profileId.toString(), roles: resolved.map((role) => role.slug) };
   }
 
   async transferOwnership(context: TenantContext, targetProfileId: bigint) {

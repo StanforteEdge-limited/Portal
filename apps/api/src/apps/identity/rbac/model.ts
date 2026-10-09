@@ -10,6 +10,7 @@ export const role = pgTable("sta_roles", {
   name: varchar("name", { length: 50 }).notNull(),
   description: text("description"),
   slug: varchar("slug", { length: 50 }).notNull(),
+  isSystem: boolean("is_system").default(false).notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at", { mode: 'date', precision: 6 }).notNull(),
   updatedAt: timestamp("updated_at", { mode: 'date', precision: 6 }).notNull(),

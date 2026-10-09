@@ -29,6 +29,7 @@ export * from './hr/projects';
 export * from './hr/requests';
 export * from './hr/tasks';
 export * from './hr/taxonomy';
+export * from './hr/timesheets';
 export * from './hr/workflow';
 export * from './identity/audit';
 export * from './identity/auth';

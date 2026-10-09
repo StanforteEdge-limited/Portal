@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from 'crypto';
 import { BadRequestException } from '$core/errors';
-import { toBigInt as sharedToBigInt, parseBigIntId as sharedParseBigIntId } from '@stanforte/contract';
+import { toBigInt as sharedToBigInt, parseBigIntId as sharedParseBigIntId, type UserRef } from '@stanforte/contract';
+import { profile } from '$apps/identity/users/model';
 import assert from 'assert';
 
 export type LeavePolicyScopeContext = {
@@ -38,6 +39,34 @@ export function parseBigIntId(value: string | number | bigint, label: string): b
   } catch {
     throw new BadRequestException(`Invalid ${label}`);
   }
+}
+
+export function todayDateOnly(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+export function parseDateOnly(value: string): Date {
+  const normalized = String(value).trim().slice(0, 10);
+  const parsed = new Date(`${normalized}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime()))
+    throw new BadRequestException("Invalid date");
+  return parsed;
+}
+
+export function parseOptionalDateOnly(value?: string | null): Date | null {
+  if (value === undefined || value === null || !String(value).trim())
+    return null;
+  return parseDateOnly(String(value));
+}
+
+export function assertDateRange(from: Date, to: Date | null): void {
+  if (to && to <= from) {
+    throw new BadRequestException("effective_to must be after effective_from");
+  }
+}
+
+export function isTrueQueryFlag(value?: string): boolean {
+  return String(value ?? "").toLowerCase() === "true";
 }
 
 export function objectSchema(value: unknown): Record<string, unknown> {
@@ -105,4 +134,82 @@ export async function generateUniqueUsername(
     if (!(await exists(candidate))) return candidate;
   }
   return `${cleanSeed}.${Date.now().toString().slice(-6)}`;
+}
+
+export type ProfileRefRow = {
+  id: bigint | null;
+  email: string | null;
+  username: string | null;
+  firstName: string | null;
+  lastName: string | null;
+};
+
+export function parseWorkBigInt(value: string, label: string) {
+  return parseBigIntId(value, label);
+}
+
+export function optionalString(value?: string | null) {
+  if (value == null) return null;
+  const next = String(value).trim();
+  return next.length ? next : null;
+}
+
+export function optionalBigInt(value: string | null | undefined, label: string) {
+  const next = optionalString(value);
+  return next ? parseWorkBigInt(next, label) : null;
+}
+
+export function normalizeTags(tags?: string[] | null) {
+  if (!tags) return [];
+  return Array.from(new Set(tags.map((tag) => tag.trim()).filter(Boolean)));
+}
+
+export function serializeProfile(row: any) {
+  return {
+    id: row.id.toString(),
+    full_name: [row.firstName, row.lastName].filter(Boolean).join(' ') || row.email,
+    email: row.email,
+  };
+}
+
+export function serializeProfileRef(row: ProfileRefRow | null): UserRef | null {
+  return row?.id
+    ? {
+        id: row.id.toString(),
+        email: row.email ?? '',
+        username: row.username,
+        first_name: row.firstName,
+        last_name: row.lastName,
+      }
+    : null;
+}
+
+export function profileRefColumns() {
+  return {
+    id: profile.id,
+    email: profile.email,
+    username: profile.username,
+    firstName: profile.firstName,
+    lastName: profile.lastName,
+  };
+}
+
+export function serializeFileAsset(file: {
+  id: string | null;
+  fileName: string | null;
+  mimeType: string | null;
+  fileSize: bigint | null;
+  publicUrl: string | null;
+  storagePath: string | null;
+} | null) {
+  return file?.id
+    ? {
+        id: file.id,
+        file_name: file.fileName,
+        mime_type: file.mimeType,
+        file_size: file.fileSize ? file.fileSize.toString() : null,
+        public_url: file.publicUrl,
+        storage_path: file.storagePath,
+      }
+    : null;
 }

@@ -50,8 +50,10 @@ export { notification, notificationJob } from '$apps/hr/notifications/model';
 export type { Notification, NewNotification, NotificationJob, NewNotificationJob } from '$apps/hr/notifications/model';
 export { project, projectGovernance, projectMember } from '$apps/hr/projects/model';
 export type { Project, NewProject, ProjectGovernance, NewProjectGovernance, ProjectMember, NewProjectMember } from '$apps/hr/projects/model';
-export { projectTimesheetEntry, teamGoal, teamObjective, teamKpi, workItem, workItemComment, workItemCommentMention, workItemAttachment, workLog, sprint, workItemTypeEnum, workItemStatusEnum, workPriorityEnum, workLogApprovalStatusEnum } from '$apps/hr/tasks/model';
-export type { ProjectTimesheetEntry, NewProjectTimesheetEntry, TeamGoal, NewTeamGoal, TeamObjective, NewTeamObjective, TeamKpi, NewTeamKpi, WorkItem, NewWorkItem, WorkItemComment, NewWorkItemComment, WorkItemCommentMention, NewWorkItemCommentMention, WorkItemAttachment, NewWorkItemAttachment, WorkLog, NewWorkLog, Sprint, NewSprint, WorkItemType, WorkItemStatus, WorkPriority, WorkLogApprovalStatus } from '$apps/hr/tasks/model';
+export { teamGoal, teamObjective, teamKpi, workItem, workItemComment, workItemCommentMention, workItemAttachment, workLog, sprint, workItemTypeEnum, workItemStatusEnum, workPriorityEnum, workLogApprovalStatusEnum } from '$apps/hr/tasks/model';
+export type { TeamGoal, NewTeamGoal, TeamObjective, NewTeamObjective, TeamKpi, NewTeamKpi, WorkItem, NewWorkItem, WorkItemComment, NewWorkItemComment, WorkItemCommentMention, NewWorkItemCommentMention, WorkItemAttachment, NewWorkItemAttachment, WorkLog, NewWorkLog, Sprint, NewSprint, WorkItemType, WorkItemStatus, WorkPriority, WorkLogApprovalStatus } from '$apps/hr/tasks/model';
+export { projectTimesheetEntry } from '$apps/hr/timesheets/model';
+export type { ProjectTimesheetEntry, NewProjectTimesheetEntry } from '$apps/hr/timesheets/model';
 
 export { subscriptionPlan, subscriptionPlanPrice, tenantSubscription, billingInvoice, billingPaymentAttempt, billingWebhookEvent } from '$apps/platform/billing/model';
 export type { SubscriptionPlan, NewSubscriptionPlan, SubscriptionPlanPrice, NewSubscriptionPlanPrice, TenantSubscription, NewTenantSubscription } from '$apps/platform/billing/model';

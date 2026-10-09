@@ -10,11 +10,7 @@ import {
   TextInput,
   useToast,
 } from "@/shared";
-import { httpRequest, useDirectory } from "@/shared/lib/core";
-import {
-  createMyProjectTimesheet,
-  updateMyProjectTimesheet,
-} from "@/shared/api/payroll-api";
+import { httpRequest, timesheetApi, useDirectory } from "@/shared/lib/core";
 
 interface SlideOverProps {
   open: boolean;
@@ -88,11 +84,9 @@ export default function TimesheetEditorSlideOver({
   async function loadTimesheet() {
     try {
       setLoading(true);
-      // Wait, there is no getMyProjectTimesheet endpoint in payroll-api.ts
-      // We will have to fetch the list and find it.
-      const res = await httpRequest<any>(`/payroll/my/timesheets?page=1&per_page=500`);
-      const list = Array.isArray(res) ? res : (res?.data || []);
-      const item = list.find((t: any) => t.id === timesheetId);
+      // There is no get-by-id route, so pull the caller's entries and find it.
+      const list = await timesheetApi.listMyEntries({ page: 1, per_page: 500 });
+      const item = list.find((t) => t.id === timesheetId);
       if (item) {
         setForm({
           work_date: item.work_date ? String(item.work_date).slice(0, 10) : "",
@@ -132,9 +126,9 @@ export default function TimesheetEditorSlideOver({
       };
 
       if (timesheetId) {
-        await updateMyProjectTimesheet(timesheetId, payload);
+        await timesheetApi.updateMyEntry(timesheetId, payload);
       } else {
-        await createMyProjectTimesheet(payload);
+        await timesheetApi.createMyEntry(payload);
       }
       
       showToast({ tone: "success", title: "Success", message: "Timesheet saved successfully." });

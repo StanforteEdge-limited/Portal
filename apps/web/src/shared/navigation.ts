@@ -75,6 +75,7 @@ export function buildAppNavigation(options?: {
         { label: "My Profile", icon: "person", path: "/profile" },
         { label: "Policies & Sign-offs", icon: "policy", path: "/policies" },
         { label: "Payslips", icon: "receipt_long", path: "/profile/payslips" },
+        { label: "Timesheets", icon: "schedule", path: "/profile/timesheets" },
         { label: "Leave", icon: "event_available", path: "/leave" },
         { label: "Settings", icon: "settings", path: "/settings" },
       ],

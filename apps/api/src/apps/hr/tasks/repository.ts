@@ -14,11 +14,9 @@ import { DbService } from '$core/db';
 import { TenantContextService } from '$core/auth/tenant-context.service';
 import { paginatedResponse } from '$core/pagination';
 
-import { NewPayrollRunTimesheetAllocation, payrollRun, payrollRunTimesheetAllocation, payrollWorker } from '$apps/hr/payroll/model';
 import {
   NewWorkItem,
   NewWorkLog,
-  projectTimesheetEntry,
   sprint,
   teamGoal,
   teamKpi,
@@ -29,6 +27,7 @@ import {
   workItemCommentMention,
   workLog,
 } from './model';
+import { TimesheetsService } from '$apps/hr/timesheets/repository';
 import { profile } from '$apps/identity/users/model';
 import { organization } from '$apps/hr/organizations/model';
 import { group, groupUser } from '$apps/communication/groups/model';
@@ -46,20 +45,23 @@ import {
   serializeFileAsset,
   serializeProfile,
   serializeProfileRef,
-} from './utils';
+} from '$core/utils';
 
 
 /**
  * Owns everything work-item related: the task board, sprints, team OKRs, task
- * comments and mentions, attachments, and the daily work logs that feed
- * payroll. Project metadata and membership live in `$apps/hr/projects`.
+ * comments and mentions, attachments, and the daily work logs.
+ *
+ * Timesheet entries live in `$apps/hr/timesheets`; a submitted or approved work
+ * log is handed to that module to be projected into the payroll run. Project
+ * metadata and membership live in `$apps/hr/projects`.
  */
 export class TasksService {
   constructor(
     private readonly db: DbService,
     private readonly tenantContext: TenantContextService,
+    private readonly timesheets: TimesheetsService,
   ) {}
-
 
   private tenantOrgTeamScope(orgCol: any, teamCol: any, tid: bigint): SQL {
     return or(
@@ -849,7 +851,7 @@ or(
     const existing = await this.requireOwnLog(id, userId);
     if (!['draft', 'rejected'].includes(existing.approvalStatus)) throw new BadRequestException('Only draft or rejected logs can be submitted');
     await this.db.client.update(workLog).set({ approvalStatus: 'submitted' }).where(eq(workLog.id, id));
-    await this.syncWorkLogToProjectTimesheet(id, 'submitted');
+    await this.timesheets.syncFromWorkLog(id, 'submitted');
     return this.getLog(actorId, id);
   }
 
@@ -876,11 +878,16 @@ or(
         approvedAt: approve ? new Date() : null,
       })
       .where(eq(workLog.id, id));
-    await this.syncWorkLogToProjectTimesheet(id, approve ? 'approved' : 'rejected', managerId);
+    await this.timesheets.syncFromWorkLog(id, approve ? 'approved' : 'rejected', managerId);
     return this.getLog(actorId, id);
   }
 
 
+  /**
+   * Served at `/v1/timesheets/my/summary`, but the rollup is computed from the
+   * caller's own work logs rather than from stored timesheet entries, so the
+   * work-log hydration lives here with the table it reads.
+   */
   async myTimesheetSummary(actorId: string, query: Record<string, any>) {
     const userId = parseWorkBigInt(actorId, 'user id');
     const conditions: SQL[] = [
@@ -1461,124 +1468,4 @@ or(
     };
   }
 
-  private async syncWorkLogToProjectTimesheet(workLogId: string, status: 'submitted' | 'approved' | 'rejected', actorId?: bigint) {
-    const tid = this.tenantContext.requireTenantId();
-    const [log] = await this.db.client.select().from(workLog).where(eq(workLog.id, workLogId)).limit(1);
-    if (!log) return null;
-
-    const [workItemRow] = await this.db.client.select().from(workItem).where(eq(workItem.id, log.workItemId)).limit(1);
-
-    const [payrollWorkerRow] = await this.db.client
-      .select()
-      .from(payrollWorker)
-      .where(and(eq(payrollWorker.profileId, log.staffId), eq(payrollWorker.status, 'active'), eq(payrollWorker.tenantId, tid)))
-      .orderBy(desc(payrollWorker.createdAt))
-      .limit(1);
-
-    if (!payrollWorkerRow) return null;
-
-    const payload = {
-      sourceWorkLogId: log.id,
-      workerId: payrollWorkerRow.id,
-      organizationId: log.organizationId ?? workItemRow.organizationId ?? payrollWorkerRow.organizationId ?? null,
-      teamId: log.teamId ?? workItemRow.ownerTeamId ?? payrollWorkerRow.teamId ?? null,
-      projectId: log.projectId ?? workItemRow.projectId ?? payrollWorkerRow.projectId ?? null,
-      fundId: log.fundId ?? workItemRow.fundId ?? payrollWorkerRow.defaultFundId ?? null,
-      grantId: log.grantId ?? workItemRow.grantId ?? payrollWorkerRow.defaultGrantId ?? null,
-      workDate: log.logDate,
-      hours: log.hoursSpent,
-      description: log.note || workItemRow.title,
-      status,
-      approvedBy: status === 'approved' ? actorId ?? null : null,
-      approvedAt: status === 'approved' ? new Date() : null,
-      createdBy: log.staffId
-    };
-
-    const [existing] = await this.db.client
-      .select()
-      .from(projectTimesheetEntry)
-      .where(eq(projectTimesheetEntry.sourceWorkLogId, log.id))
-      .limit(1);
-
-    const entry = existing
-      ? await this.db.client
-          .update(projectTimesheetEntry)
-          .set({
-            organizationId: payload.organizationId,
-            teamId: payload.teamId,
-            projectId: payload.projectId,
-            fundId: payload.fundId,
-            grantId: payload.grantId,
-            workDate: payload.workDate,
-            hours: payload.hours,
-            description: payload.description,
-            status,
-            approvedBy: payload.approvedBy,
-            approvedAt: payload.approvedAt,
-            createdBy: payload.createdBy
-          })
-          .where(eq(projectTimesheetEntry.id, existing.id))
-          .returning()
-          .then((rows) => rows[0] ?? null)
-      : await this.db.client.insert(projectTimesheetEntry).values(payload).returning().then((rows) => rows[0] ?? null);
-
-    await this.syncProjectTimesheetWorkerMonthToPayroll(payrollWorkerRow.id, log.logDate);
-    return entry;
-  }
-
-  private async syncProjectTimesheetWorkerMonthToPayroll(workerId: string, workDate: Date) {
-    const month = workDate.getUTCMonth() + 1;
-    const year = workDate.getUTCFullYear();
-    const periodStart = new Date(Date.UTC(year, month - 1, 1));
-    const periodEnd = new Date(Date.UTC(year, month, 0));
-    const tid = this.tenantContext.requireTenantId();
-    const [run] = await this.db.client
-      .select()
-      .from(payrollRun)
-      .where(and(eq(payrollRun.year, year), eq(payrollRun.month, month), eq(payrollRun.tenantId, tid)))
-      .limit(1);
-    if (!run) return null;
-
-    const approvedRows = await this.db.client
-      .select()
-      .from(projectTimesheetEntry)
-      .where(and(
-        eq(projectTimesheetEntry.workerId, workerId),
-        eq(projectTimesheetEntry.status, 'approved'),
-        gte(projectTimesheetEntry.workDate, periodStart),
-        lte(projectTimesheetEntry.workDate, periodEnd)
-      ))
-      .orderBy(asc(projectTimesheetEntry.workDate), asc(projectTimesheetEntry.createdAt));
-
-    const totalHours = approvedRows.reduce((sum, row) => sum + Number(row.hours || 0), 0);
-    const allocations: NewPayrollRunTimesheetAllocation[] = approvedRows.map((row, index) => ({
-      runId: run.id,
-      workerId,
-      organizationId: row.organizationId,
-      teamId: row.teamId,
-      projectId: row.projectId,
-      fundId: row.fundId,
-      grantId: row.grantId,
-      hours: row.hours,
-      allocationPercent: String(totalHours > 0 ? (Number(row.hours || 0) / totalHours) * 100 : 0),
-      source: 'timesheet' as const,
-      notes: row.description,
-      sortOrder: index,
-      approvedAt: row.approvedAt ?? new Date()
-    }));
-    await this.db.client.transaction(async (tx) => {
-      await tx
-        .delete(payrollRunTimesheetAllocation)
-        .where(and(eq(payrollRunTimesheetAllocation.runId, run.id), eq(payrollRunTimesheetAllocation.workerId, workerId)));
-      if (allocations.length) {
-        await tx.insert(payrollRunTimesheetAllocation).values(allocations);
-      }
-      await tx
-        .update(projectTimesheetEntry)
-        .set({ syncedRunId: run.id })
-        .where(inArray(projectTimesheetEntry.id, approvedRows.map((row) => row.id)));
-    });
-    return run.id;
-  }
 }
-

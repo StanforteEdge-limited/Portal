@@ -33,8 +33,9 @@ import { tasksPermissions } from './permissions';
  * Mounted at `/v1/tasks`.
  *
  * Owns the work item board plus everything hanging off it: sprints, team OKRs,
- * comments and mentions, attachments, and the daily logs that feed payroll.
- * Project metadata and membership live at `/v1/projects`.
+ * comments and mentions, attachments, and the daily logs staff key their time
+ * against. Timesheet entries live at `/v1/timesheets`; project metadata and
+ * membership live at `/v1/projects`.
  *
  * Routes mirror `apps/shared/src/api/work-api.ts`: `/items/:id` accepts POST
  * for both create and update so the client can upsert with one method.
@@ -125,10 +126,6 @@ export const TasksRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.get('/team/logs', { preHandler: read, schema: { querystring: TasksListQuerySchema } }, async (request) =>
     tasks().listTeamLogs(actor(request), requestQuery<TasksListQuery>(request)),
-  );
-
-  fastify.get('/my/timesheet', { preHandler: read, schema: { querystring: TasksListQuerySchema } }, async (request) =>
-    tasks().myTimesheetSummary(actor(request), requestQuery<TasksListQuery>(request)),
   );
 
   fastify.get('/logs/:id', { preHandler: read, schema: { params: WorkItemParamsSchema } }, async (request) =>
