@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.9.1",
     "@stanforte/contract": "workspace:*",
     "@stanforte/shared": "workspace:*",
     "@types/dompurify": "^3.0.5",
@@ -16,6 +17,7 @@
     "pdf-lib": "^1.17.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-hook-form": "^7.89.0",
     "react-router": "^6.21.1",
     "react-router-dom": "^6.21.1",
     "xlsx": "^0.18.5"

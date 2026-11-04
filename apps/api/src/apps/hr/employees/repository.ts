@@ -36,6 +36,7 @@ import { document as documentTable } from '$apps/hr/documents/model';
 import { policy } from '$apps/hr/policies/model';
 import { requestType } from '$apps/hr/requests/model';
 import { BadRequestException, NotFoundException, UnauthorizedException } from '$core/errors';
+import { UsersService } from '$apps/identity/users/repository';
 
 
 
@@ -48,6 +49,7 @@ export class EmployeesService {
   constructor(
     private readonly db: DbService,
     private readonly tenantContext: TenantContextService,
+    private readonly usersService: UsersService,
   ) {}
 
   private currentTenantId(): bigint | undefined {
@@ -104,7 +106,7 @@ export class EmployeesService {
       await tx.update(profile).set({ passwordHash, status: 'active' }).where(eq(profile.id, tokenRow.profileId));
       await tx
         .insert(onboardingProgress)
-        .values({ userId: tokenRow.profileId, status: 'accepted', currentStep: 'profile' })
+        .values({ userId: tokenRow.profileId, status: 'accepted', currentStep: 'profile', updatedAt: new Date() })
         .onConflictDoUpdate({
           target: onboardingProgress.userId,
           set: { status: 'accepted', currentStep: 'profile' }
@@ -251,6 +253,9 @@ export class EmployeesService {
 
   async createEmployee(dto: UpsertEmployee) {
     try {
+      const tenantId = this.currentTenantId();
+      if (!tenantId) throw new BadRequestException('A tenant context is required to create an employee');
+
       const profileId = await this.db.client.transaction(async (tx) => {
         let profileId: bigint;
         let resolvedPrimaryOrganizationId = dto.primary_organization_id?.trim() || undefined;
@@ -323,8 +328,46 @@ export class EmployeesService {
           null
         );
 
+        await tx
+          .insert(tenantMembership)
+          .values({ tenantId, profileId, status: 'active', isOwner: false })
+          .onConflictDoUpdate({
+            target: [tenantMembership.tenantId, tenantMembership.profileId],
+            set: { status: 'active', removedAt: null },
+          });
+
+        const requestedRoles = Array.from(new Set((dto.roles ?? ['staff']).map((slug) => slug.trim()).filter(Boolean)));
+        const availableRoles = await tx
+          .select({ id: role.id, slug: role.slug, tenantId: role.tenantId })
+          .from(role)
+          .where(and(
+            inArray(role.slug, requestedRoles),
+            eq(role.isActive, true),
+            or(eq(role.tenantId, tenantId), isNull(role.tenantId)),
+          ));
+        const foundRoles = new Set(availableRoles.map((item) => item.slug));
+        const missingRoles = requestedRoles.filter((slug) => !foundRoles.has(slug));
+        if (missingRoles.length > 0) {
+          throw new BadRequestException(`Unknown role(s): ${missingRoles.join(', ')}`);
+        }
+        const resolvedRoles = requestedRoles
+          .map((slug) => availableRoles.find((item) => item.slug === slug && item.tenantId != null) ?? availableRoles.find((item) => item.slug === slug))
+          .filter((item): item is { id: bigint; slug: string; tenantId: bigint | null } => Boolean(item));
+        await tx.delete(userRole).where(and(eq(userRole.profileId, profileId), eq(userRole.tenantId, tenantId)));
+        await tx.insert(userRole).values(resolvedRoles.map((item, index) => ({
+          profileId,
+          roleId: item.id,
+          tenantId,
+          organizationId: null,
+          isPrimaryRole: index === 0,
+        }))).onConflictDoNothing();
+
         return profileId;
       });
+
+      await this.usersService.inviteUser(profileId.toString(), {
+        message: 'You have been added as an employee. Use the invitation link to activate your account and complete onboarding.',
+      }, tenantId);
 
       const createdProfile = await this.findEmployeeProfile(profileId);
 
@@ -332,7 +375,10 @@ export class EmployeesService {
         throw new NotFoundException('Employee not found');
       }
 
-      return this.serializeEmployee(createdProfile);
+      return {
+        ...(this.serializeEmployee(createdProfile) as Record<string, unknown>),
+        invitation_sent: true,
+      };
     } catch (error) {
       this.handleEmployeePersistenceError(error);
       throw error;

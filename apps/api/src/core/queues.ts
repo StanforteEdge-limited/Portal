@@ -2,10 +2,19 @@ import { Queue, type JobsOptions, type QueueOptions } from 'bullmq';
 import { Logger } from '$core/logger';
 
 export function redisConnection() {
+  const redisUrl = process.env.REDIS_URL?.trim();
+  if (redisUrl) {
+    return {
+      url: redisUrl,
+      maxRetriesPerRequest: null,
+    };
+  }
+
   return {
     host: process.env.REDIS_HOST ?? '127.0.0.1',
     port: Number(process.env.REDIS_PORT ?? 6379),
     password: process.env.REDIS_PASSWORD || undefined,
+    maxRetriesPerRequest: null,
   };
 }
 

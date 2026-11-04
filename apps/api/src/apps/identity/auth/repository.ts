@@ -9,7 +9,9 @@ import {
   type Login,
   type LoginResponse,
   type Refresh,
+  type ResendVerification,
   type ResetPassword,
+  type VerifyEmail,
 } from '@stanforte/contract';
 import { sha256, randomToken } from '$core/utils';
 import { toBigInt } from '$core/utils';
@@ -70,6 +72,9 @@ export class AuthService {
     }
 
     if (profile.status !== 'active') {
+      if (profile.status === 'pending') {
+        this.throwUnauthorized('Email verification is required before signing in.', 'AUTH_EMAIL_NOT_VERIFIED');
+      }
       this.throwUnauthorized('Account is inactive. Contact administrator.', 'AUTH_ACCOUNT_INACTIVE');
     }
     if (!profile.passwordHash) {
@@ -454,6 +459,69 @@ export class AuthService {
       userId: profile.id
     });
     return { success: true };
+  }
+
+  async verifyEmail(dto: VerifyEmail) {
+    const tokenHash = sha256(dto.token);
+    const [tokenRow] = await this.db.client
+      .select()
+      .from(tokenTable)
+      .where(and(eq(tokenTable.tokenHash, tokenHash), eq(tokenTable.type, 'verify_email')))
+      .limit(1);
+
+    if (!tokenRow) this.throwUnauthorized('Invalid verification token', 'AUTH_VERIFICATION_TOKEN_INVALID');
+    if (tokenRow.expiresAt.getTime() < Date.now()) {
+      await this.db.client.delete(tokenTable).where(eq(tokenTable.id, tokenRow.id));
+      this.throwUnauthorized('Verification token expired', 'AUTH_VERIFICATION_TOKEN_EXPIRED');
+    }
+
+    await this.db.client.transaction(async (tx) => {
+      await tx.update(profileTable).set({ status: 'active' }).where(eq(profileTable.id, tokenRow.profileId));
+      await tx.delete(tokenTable).where(and(eq(tokenTable.profileId, tokenRow.profileId), eq(tokenTable.type, 'verify_email')));
+    });
+
+    return { success: true };
+  }
+
+  async resendVerification(dto: ResendVerification) {
+    const email = dto.email.trim().toLowerCase();
+    const [profile] = await this.db.client
+      .select()
+      .from(profileTable)
+      .where(eq(profileTable.email, email))
+      .limit(1);
+    if (!profile || profile.status !== 'pending') return { success: true };
+
+    const verificationToken = randomToken(32);
+    const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24);
+    await this.db.client.transaction(async (tx) => {
+      await tx.delete(tokenTable).where(and(eq(tokenTable.profileId, profile.id), eq(tokenTable.type, 'verify_email')));
+      await tx.insert(tokenTable).values({
+        id: randomToken(24),
+        profileId: profile.id,
+        tenantId: null,
+        type: 'verify_email',
+        tokenHash: sha256(verificationToken),
+        expiresAt,
+      });
+    });
+    await this.enqueueVerificationEmail(profile.email, profile.id, verificationToken, profile.firstName, profile.lastName);
+    return { success: true };
+  }
+
+  private async enqueueVerificationEmail(email: string, profileId: bigint, verificationToken: string, firstName?: string | null, lastName?: string | null) {
+    const portalUrl = (process.env.PWA_URL || process.env.APP_URL || process.env.APP_BASE_URL || 'http://localhost:5173').replace(/\/$/, '');
+    const verificationUrl = `${portalUrl}/verify-email?token=${encodeURIComponent(verificationToken)}`;
+    const displayName = `${firstName ?? ''} ${lastName ?? ''}`.trim() || email;
+    await this.mailQueue.enqueue({
+      to: email,
+      subject: 'Verify your StanforteEdge email address',
+      text: `Verify your email address: ${verificationUrl}`,
+      template: 'verify_email',
+      templateContext: { subject: 'Verify your StanforteEdge email address', displayName, verificationUrl },
+      threadKey: `auth-verification-${profileId.toString()}`,
+      userId: profileId,
+    });
   }
 
   async resetPassword(dto: ResetPassword) {

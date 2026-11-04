@@ -1,6 +1,7 @@
 import { normalizeTokens } from "./tokens";
 import type { HttpRequest } from "./http-client";
 import type { AuthStatusResponse, AuthTokens, AuthUser } from "./types";
+import type { CreateWorkspace } from "@stanforte/contract";
 
 function normalizeStringArray(value: unknown): string[] {
   return Array.isArray(value)
@@ -84,6 +85,14 @@ export function createAuthApi(httpRequest: HttpRequest) {
     return { tokens, user };
   }
 
+  function createWorkspace(payload: CreateWorkspace) {
+    return httpRequest<any>("/tenancy/workspaces", {
+      method: "POST",
+      body: payload,
+      auth: false,
+    });
+  }
+
   async function logout() {
     try {
       await httpRequest("/auth/logout", {
@@ -143,6 +152,22 @@ export function createAuthApi(httpRequest: HttpRequest) {
     });
   }
 
+  function verifyEmail(token: string) {
+    return httpRequest("/auth/verify-email", {
+      method: "POST",
+      body: { token },
+      auth: false,
+    });
+  }
+
+  function resendVerification(email: string) {
+    return httpRequest("/auth/resend-verification", {
+      method: "POST",
+      body: { email },
+      auth: false,
+    });
+  }
+
   function acceptInvite(payload: {
     token: string;
     first_name?: string;
@@ -159,11 +184,14 @@ export function createAuthApi(httpRequest: HttpRequest) {
 
   return {
     login,
+    createWorkspace,
     logout,
     fetchStatus,
     fetchCurrentUser,
     requestPasswordReset,
     resetPassword,
+    verifyEmail,
+    resendVerification,
     acceptInvite,
   };
 }

@@ -1,7 +1,7 @@
 import { defineRelationsPart } from 'drizzle-orm';
 import { bigint, bigserial, boolean, date, doublePrecision, index, integer, jsonb, numeric, pgEnum, pgTable, serial, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
 
-export const tokenTypeEnum = pgEnum("token_type", ["access", "refresh", "reset", "invite"]);
+export const tokenTypeEnum = pgEnum("token_type", ["access", "refresh", "reset", "invite", "verify_email"]);
 export type TokenType = typeof tokenTypeEnum.enumValues[number];
 import { profile } from '$apps/identity/users/model';
 import { tenant } from '$apps/tenancy/model';

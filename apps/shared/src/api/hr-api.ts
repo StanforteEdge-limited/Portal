@@ -160,6 +160,24 @@ export function createHrApi(httpRequest: HttpRequest) {
       return normalizeEmployeeDetail(raw?.data ?? raw);
     },
 
+    async getMyOnboarding() {
+      const raw = await httpRequest<any>('/onboarding');
+      return raw?.data ?? raw;
+    },
+
+    async updateMyOnboarding(dto: { action: 'save_profile' | 'save_contacts' | 'complete_step'; step_key?: string; payload?: Record<string, unknown> }) {
+      const raw = await httpRequest<any>('/onboarding', { method: 'POST', body: dto });
+      return raw?.data ?? raw;
+    },
+
+    async submitOnboardingForm(formId: string, payload?: Record<string, unknown>) {
+      const raw = await httpRequest<any>('/onboarding/forms', {
+        method: 'POST',
+        body: { form_id: formId, payload },
+      });
+      return raw?.data ?? raw;
+    },
+
     async addOrganization(id: string, dto: { organization_id: string; is_primary?: boolean }) {
       return httpRequest<void>(`/hr/employees/${id}/organizations`, {
         method: 'POST',

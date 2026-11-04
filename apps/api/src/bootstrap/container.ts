@@ -4,7 +4,7 @@ import { TenantContextService } from "$core/auth/tenant-context.service";
 import { DistributedLockService } from "$core/locks";
 import { MailService } from "$core/mail";
 import { MailTemplatesService } from "$core/mail";
-import { MailQueueService } from "$app/jobs/queues";
+import { MailQueueService, MailQueueWorker } from "$app/jobs/queues";
 import { PdfService } from "$core/pdf";
 import { CacheService } from "$core/cache";
 import { QueueRegistry } from "$core/queues";
@@ -138,6 +138,10 @@ export class Container {
       "mailQueue",
       () => new MailQueueService(this.queues.get("mail")),
     );
+  }
+
+  get mailWorker(): MailQueueWorker {
+    return this.provide("mailWorker", () => new MailQueueWorker(this.mail));
   }
 
   get mailCrypto(): MailCryptoService {
@@ -331,7 +335,7 @@ export class Container {
   get employees(): EmployeesService {
     return this.provide(
       "employees",
-      () => new EmployeesService(this.db, this.tenantContext),
+      () => new EmployeesService(this.db, this.tenantContext, this.users),
     );
   }
 
@@ -476,7 +480,7 @@ export class Container {
   get tenancy(): TenancyService {
     return this.provide(
       "tenancy",
-      () => new TenancyService(this.db, this.users, this.tenantContext),
+      () => new TenancyService(this.db, this.users, this.tenantContext, this.mailQueue),
     );
   }
 

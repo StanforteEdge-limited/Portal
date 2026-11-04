@@ -18,6 +18,7 @@ import {
 describe('tenancy routes (integration)', () => {
   let db: TestDb;
   let app: any;
+  let mailEnqueue: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     db = await createTestDb();
@@ -26,8 +27,9 @@ describe('tenancy routes (integration)', () => {
       { prefix: '/tenancy', plugin: TenancyRoutes },
     ]);
 
+    mailEnqueue = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(appContainer(), 'mailQueue', {
-      value: { enqueue: vi.fn().mockResolvedValue(undefined) },
+      value: { enqueue: mailEnqueue },
       configurable: true,
       writable: true,
     });
@@ -105,6 +107,50 @@ describe('tenancy routes (integration)', () => {
       email: 'founder@example.com',
       role: 'owner',
     });
+  });
+
+  it('requires email verification before allowing the workspace owner to sign in', async () => {
+    const registration = await app.inject({
+      method: 'POST',
+      url: `${TEST_API_PREFIX}/tenancy/workspaces`,
+      payload: {
+        name: 'Verified Workspace',
+        slug: 'verified-workspace',
+        email: 'verified@example.com',
+        first_name: 'Vera',
+        last_name: 'Founder',
+        password: 'Password123!',
+      },
+    });
+    expect(registration.statusCode).toBe(200);
+    expect(registration.json().data.verification_required).toBe(true);
+    expect(mailEnqueue).toHaveBeenCalledWith(expect.objectContaining({ template: 'verify_email' }));
+
+    const verificationUrl = mailEnqueue.mock.calls[0][0].templateContext.verificationUrl as string;
+    const verificationToken = new URL(verificationUrl).searchParams.get('token');
+    expect(verificationToken).toBeTruthy();
+
+    const blockedLogin = await app.inject({
+      method: 'POST',
+      url: `${TEST_API_PREFIX}/auth/login`,
+      payload: { email: 'verified@example.com', password: 'Password123!' },
+    });
+    expect(blockedLogin.statusCode).toBe(401);
+
+    const verified = await app.inject({
+      method: 'POST',
+      url: `${TEST_API_PREFIX}/auth/verify-email`,
+      payload: { token: verificationToken },
+    });
+    expect(verified.statusCode).toBe(200);
+
+    const login = await app.inject({
+      method: 'POST',
+      url: `${TEST_API_PREFIX}/auth/login`,
+      payload: { email: 'verified@example.com', password: 'Password123!' },
+    });
+    expect(login.statusCode).toBe(200);
+    expect(login.json().data.user.email).toBe('verified@example.com');
   });
 
   it('requires authentication for tenant reads', async () => {

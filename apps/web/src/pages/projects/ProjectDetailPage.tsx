@@ -6,7 +6,7 @@ import { useAuth } from "@/shared/context/AuthProvider";
 import { useCachedQuery } from "@/shared/lib/core";
 import { buildAppNavigation, buildAppMobileNav } from "@/shared/navigation";
 import { getWorkspaceProfile } from "@/shared/api/workspace-api";
-import { resourceApi } from "@/shared/lib/core";
+import { financeApi, resourceApi, workApi } from "@/shared/lib/core";
 import { useParams } from "react-router";
 import BudgetWorkspace from "@/features/budgets/BudgetWorkspace";
 
@@ -34,6 +34,24 @@ export default function ProjectDetailPage() {
     `project:detail:${id}`,
     () => id ? resourceApi.getProject(id) : Promise.resolve(null),
     { ttlMs: 1000 * 60 * 5, storage: "memory" },
+  );
+  const { data: projectTasks, loading: projectTasksLoading } = useCachedQuery(
+    `project:tasks:${id}`,
+    () => id ? workApi.listTeamWorkItems({ project_id: id }) : Promise.resolve([]),
+    { ttlMs: 30_000, storage: "memory" },
+  );
+  const { data: projectFinance, loading: projectFinanceLoading } = useCachedQuery(
+    `project:finance:${id}`,
+    async () => {
+      if (!id) return { funds: [], grants: [], expenses: [] };
+      const [funds, grants, expenses] = await Promise.all([
+        financeApi.listFunds({ project_id: id }),
+        financeApi.listGrants({ project_id: id }),
+        resourceApi.listFinanceExpenses({ project_id: id, per_page: 100 }),
+      ]);
+      return { funds, grants, expenses: expenses.result };
+    },
+    { ttlMs: 60_000, storage: "memory" },
   );
 
   const userName =
@@ -151,11 +169,13 @@ export default function ProjectDetailPage() {
         </SectionCard> : null}
 
         {activeTab === "tasks" ? <SectionCard title="Tasks" description="Project tasks and delivery execution.">
-          <div className="text-slate-500 text-sm py-4 text-center">Project tasks workspace coming soon.</div>
+          {projectTasksLoading ? <p className="py-6 text-center text-sm text-slate-500">Loading tasks...</p> : projectTasks?.length ? (
+            <div className="divide-y divide-slate-100">{projectTasks.map((task: any) => <div key={task.id} className="flex items-center justify-between gap-4 py-3"><div><p className="text-sm font-semibold text-slate-900">{task.title}</p><p className="text-xs capitalize text-slate-500">{String(task.status || "planned").replaceAll("_", " ")}</p></div><span className="text-xs capitalize text-slate-500">{task.priority || "medium"}</span></div>)}</div>
+          ) : <p className="py-6 text-center text-sm text-slate-500">No tasks are linked to this project.</p>}
         </SectionCard> : null}
 
         {activeTab === "members" ? <SectionCard title="Members" description="Project team and responsibilities.">
-          <div className="text-slate-500 text-sm py-4 text-center">Project members will appear here once configured.</div>
+          {(project as any).members?.length ? <div className="divide-y divide-slate-100">{(project as any).members.map((member: any) => { const name = [member.user?.firstName, member.user?.lastName].filter(Boolean).join(" ") || member.user?.email || "Member"; return <div key={member.userId || member.user?.id} className="flex items-center justify-between gap-4 py-3"><div><p className="text-sm font-semibold text-slate-900">{name}</p><p className="text-xs text-slate-500">{member.user?.email}</p></div><span className="text-xs capitalize text-slate-500">{member.role || "member"}</span></div>; })}</div> : <p className="py-6 text-center text-sm text-slate-500">No members are assigned to this project.</p>}
         </SectionCard> : null}
 
         {activeTab === "requests" ? <SectionCard title="Requests" description="Requests connected to this project.">
@@ -167,7 +187,7 @@ export default function ProjectDetailPage() {
         </SectionCard> : null}
 
         {activeTab === "funds" ? <SectionCard title="Funds / Spend" description="Funds, allocations, and spend visibility for this project.">
-          <div className="text-slate-500 text-sm py-4 text-center">Project fund and spend view coming soon.</div>
+          {projectFinanceLoading ? <p className="py-6 text-center text-sm text-slate-500">Loading financial data...</p> : <div className="grid gap-4 md:grid-cols-3"><StatCard label="Funds" value={String(projectFinance?.funds.length ?? 0)} tone="neutral" /><StatCard label="Grants" value={String(projectFinance?.grants.length ?? 0)} tone="neutral" /><StatCard label="Expense records" value={String(projectFinance?.expenses.length ?? 0)} tone="neutral" /></div>}
         </SectionCard> : null}
 
         {activeTab === "partners" ? <SectionCard title="Partners" description="Organizations and implementation partners linked to this project.">

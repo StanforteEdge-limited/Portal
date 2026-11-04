@@ -92,7 +92,7 @@ export default function AdminUserBulkPage() {
     }
   ];
 
-  const sampleUsers = [
+  const sampleUsers: CreateAdminUser[] = [
     {
       first_name: "Jane",
       last_name: "Smith",

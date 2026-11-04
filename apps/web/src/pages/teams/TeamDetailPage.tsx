@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { AppShell, PageHeader, SectionCard } from "@/shared";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { useCachedQuery } from "@/shared/lib/core";
+import { resourceApi, workApi } from "@/shared/lib/core";
 import { buildAppNavigation, buildAppMobileNav } from "@/shared/navigation";
 import { getWorkspaceProfile } from "@/shared/api/workspace-api";
 import BudgetWorkspace from "@/features/budgets/BudgetWorkspace";
@@ -35,8 +36,19 @@ export default function TeamDetailPage() {
     { ttlMs: 60_000, storage: "memory" },
   );
 
+  const { data: groupDetail, loading: groupLoading } = useCachedQuery(
+    `group:detail:${id}`,
+    () => id ? resourceApi.getGroupDetail(id) : Promise.resolve(null),
+    { ttlMs: 60_000, storage: "memory" },
+  );
+  const { data: groupTasks, loading: tasksLoading } = useCachedQuery(
+    `group:tasks:${id}`,
+    () => id ? workApi.listTeamWorkItems({ team_id: id }) : Promise.resolve([]),
+    { ttlMs: 30_000, storage: "memory" },
+  );
+
   const allTeams = profile?.teams ?? profile?.groups ?? [];
-  const team: Record<string, unknown> | undefined = allTeams.find((t: any) => t.id === id);
+  const team: Record<string, any> | undefined = (groupDetail as any) ?? allTeams.find((t: any) => t.id === id);
   const groupName = String(team?.name ?? "Group");
   const groupType = String(team?.type ?? "other").toLowerCase();
   const role = String(team?.role ?? "member").toLowerCase();
@@ -89,18 +101,36 @@ export default function TeamDetailPage() {
       )}
 
       {activeTab === "tasks" && (
-        <SectionCard title="Tasks" description="Shared tasks for this group will appear here.">
-          <div style={{ textAlign: "center", padding: "24px", color: "#94a3b8", fontSize: "14px" }}>
-            Group tasks workspace coming soon.
-          </div>
+        <SectionCard title="Tasks" description="Shared work items assigned to this group.">
+          {tasksLoading ? <p className="py-6 text-center text-sm text-slate-500">Loading tasks...</p> : groupTasks?.length ? (
+            <div className="divide-y divide-slate-100">
+              {groupTasks.map((task: any) => (
+                <div key={task.id} className="flex items-center justify-between gap-4 py-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-slate-900">{task.title}</p>
+                    <p className="text-xs capitalize text-slate-500">{String(task.status || "planned").replaceAll("_", " ")}</p>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium capitalize text-slate-600">{task.priority || "medium"}</span>
+                </div>
+              ))}
+            </div>
+          ) : <p className="py-6 text-center text-sm text-slate-500">No tasks are assigned to this group.</p>}
         </SectionCard>
       )}
 
       {activeTab === "members" && (
-        <SectionCard title="Members" description="Group members will appear here.">
-          <div style={{ textAlign: "center", padding: "24px", color: "#94a3b8", fontSize: "14px" }}>
-            Group member list coming soon.
-          </div>
+        <SectionCard title="Members" description="People assigned to this group and their roles.">
+          {groupLoading ? <p className="py-6 text-center text-sm text-slate-500">Loading members...</p> : team?.members?.length ? (
+            <div className="divide-y divide-slate-100">
+              {team.members.map((member: any) => {
+                const name = [member.user?.firstName, member.user?.lastName].filter(Boolean).join(" ") || member.user?.email || "Member";
+                return <div key={member.userId || member.user?.id} className="flex items-center justify-between gap-4 py-3">
+                  <div><p className="text-sm font-semibold text-slate-900">{name}</p><p className="text-xs text-slate-500">{member.user?.email}</p></div>
+                  <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium capitalize text-blue-700">{member.role || "member"}</span>
+                </div>;
+              })}
+            </div>
+          ) : <p className="py-6 text-center text-sm text-slate-500">No members are assigned to this group.</p>}
         </SectionCard>
       )}
 

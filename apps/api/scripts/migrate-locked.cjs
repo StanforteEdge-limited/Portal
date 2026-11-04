@@ -24,7 +24,7 @@ async function main() {
   const lockTimeoutMs = Number(process.env.MIGRATE_LOCK_TIMEOUT_MS || 300_000);
   let acquired = false;
   try {
-    await client.query('SET lock_timeout = $1', [lockTimeoutMs]);
+    await client.query('SELECT set_config($1, $2, false)', ['lock_timeout', `${lockTimeoutMs}ms`]);
     await client.query('SELECT pg_advisory_lock($1)', [ADVISORY_LOCK_KEY]);
     acquired = true;
     console.log('[migrate-locked] advisory lock acquired; running migrations');

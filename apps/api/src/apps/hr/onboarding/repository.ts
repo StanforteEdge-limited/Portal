@@ -423,7 +423,7 @@ private async findUserWithOnboarding(userId: bigint) {
   }
 
   private async createOnboardingProgress(values: typeof onboardingProgress.$inferInsert) {
-    const [progress] = await this.db.client.insert(onboardingProgress).values(values).returning();
+    const [progress] = await this.db.client.insert(onboardingProgress).values({ ...values, updatedAt: new Date() }).returning();
     return progress;
   }
 }

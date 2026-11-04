@@ -802,6 +802,7 @@ async inviteUser(userId: string, dto: InviteUser, tenantId?: bigint) {
           status: 'invited',
           currentStep: 'invite',
           dueDate: expiresAt,
+          updatedAt: new Date(),
         })
         .onConflictDoUpdate({
           target: onboardingProgress.userId,

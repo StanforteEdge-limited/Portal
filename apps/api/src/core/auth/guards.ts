@@ -73,6 +73,8 @@ export function currentTenant(request: FastifyRequest): TenantContext {
 
 export const requireAuth = async (request: FastifyRequest): Promise<void> => {
   await authenticate(request);
+  const container = (request as any).server?.container as Container | undefined;
+  if (container) container.tenantContext.enter(currentTenant(request));
 };
 
 export type GuardHook = (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
@@ -86,6 +88,8 @@ export function composeGuards(...hooks: GuardHook[]): GuardHook[] {
 export function requirePermissions(...permissions: string[]) {
   return async (request: FastifyRequest, _reply: FastifyReply): Promise<void> => {
     const user = (request.user as AuthenticatedUser | undefined) ?? (await authenticate(request));
+    const container = (request as any).server?.container as Container | undefined;
+    if (container && request.user) container.tenantContext.enter(currentTenant(request));
     if (!permissions.length) return;
     const granted = user?.permissions ?? [];
     if (granted.includes('*')) return;

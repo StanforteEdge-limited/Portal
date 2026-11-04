@@ -9,6 +9,7 @@ const SUPPORTED_TEMPLATE_FILES: Record<string, string> = {
   invitation: 'invitation.hbs',
   welcome: 'welcome.hbs',
   reset_password: 'reset-password.hbs',
+  verify_email: 'verify-email.hbs',
 };
 
 export type SendMailInput = {
@@ -152,13 +153,13 @@ export class MailService {
     const user = process.env.SMTP_USER;
     const pass = process.env.SMTP_PASS;
 
-    if (!host || !user || !pass) return null;
+    if (!host) return null;
 
     return nodemailer.createTransport({
       host,
       port,
       secure: String(process.env.SMTP_SECURE || '').toLowerCase() === 'true',
-      auth: { user, pass },
+      ...(user && pass ? { auth: { user, pass } } : {}),
     });
   }
 

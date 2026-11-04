@@ -21,7 +21,7 @@ import type { AdminUser } from "@stanforte/shared";
 import AdminUserCreateSlideOver from "./AdminUserCreateSlideOver";
 import { BulkImportDashboard, type BulkColumnSchema } from "@/shared/components/feedback/BulkImportDashboard";
 
-function formatDate(value?: string) {
+function formatDate(value?: string | null) {
   if (!value) return "-";
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "-";

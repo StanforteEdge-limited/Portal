@@ -4,14 +4,18 @@ import {
   ForgotPasswordSchema,
   LoginSchema,
   RefreshSchema,
+  ResendVerificationSchema,
   ResetPasswordSchema,
   SwitchTenantSchema,
+  VerifyEmailSchema,
   type ChangePassword,
   type ForgotPassword,
   type Login,
   type Refresh,
+  type ResendVerification,
   type ResetPassword,
   type SwitchTenant,
+  type VerifyEmail,
 } from '@stanforte/contract';
 import { requireAuth } from '$core/auth/guards';
 import { requestBody, requestQuery, responseAdapter } from '$core/routes';
@@ -33,6 +37,14 @@ export const AuthRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.post('/reset-password', { schema: { body: ResetPasswordSchema } }, async (request) =>
     auth().resetPassword(requestBody<ResetPassword>(request)),
+  );
+
+  fastify.post('/verify-email', { schema: { body: VerifyEmailSchema } }, async (request) =>
+    auth().verifyEmail(requestBody<VerifyEmail>(request)),
+  );
+
+  fastify.post('/resend-verification', { schema: { body: ResendVerificationSchema } }, async (request) =>
+    auth().resendVerification(requestBody<ResendVerification>(request)),
   );
 
   fastify.get('/google', async (_request, reply) => {

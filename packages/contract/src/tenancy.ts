@@ -24,6 +24,13 @@ export const CreateWorkspaceSchema = Type.Object({
 });
 export type CreateWorkspace = Static<typeof CreateWorkspaceSchema>;
 
+/** Form payload used by clients before confirm_password is removed for the API. */
+export const CreateWorkspaceFormSchema = Type.Object({
+  ...CreateWorkspaceSchema.properties,
+  confirm_password: Type.String({ minLength: 1 }),
+});
+export type CreateWorkspaceForm = Static<typeof CreateWorkspaceFormSchema>;
+
 /** Irreversible tenant teardown. `confirm` must be sent explicitly. */
 export const DecommissionTenantSchema = Type.Object({
   confirm: Type.Boolean(),

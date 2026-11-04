@@ -24,7 +24,13 @@ export const httpPlugin: FastifyPluginAsync = fp(async (fastify) => {
   fastify.decorate('container', container);
 
   await container.cache.connect();
+  if ((fastify as any).redis) {
+    container.mailWorker.start();
+  } else {
+    logger.warn('Redis is unavailable; BullMQ mail worker was not started');
+  }
   fastify.addHook('onClose', async () => {
+    if (container.isProvided('mailWorker')) await container.mailWorker.close();
     if (container.isProvided('queues')) await container.queues.close();
   });
 

@@ -46,7 +46,7 @@ export function PublicOnlyRoute() {
   }
 
   if (status === "authenticated") {
-    return <Navigate to="/requests" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <Outlet />;

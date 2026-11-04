@@ -15,10 +15,14 @@ import { AppDb, DbService } from '$core/db';
 import { TenantContext } from '$core/auth/tenant-context';
 import { TenantContextService } from '$core/auth/tenant-context.service';
 import { UsersService } from '$apps/identity/users/repository';
+import { MailQueueService } from '$app/jobs/queues';
+import { token as tokenTable } from '$apps/identity/auth/model';
+import { randomToken, sha256 } from '$core/utils';
 
 import { profile } from '$apps/identity/users/model';
 import { role, userRole } from '$apps/identity/rbac/model';
-import { tenant, tenantMembership } from './model';
+import { tenant, tenantMembership, tenantOrganization } from './model';
+import { organization, profileOrganization } from '$apps/hr/organizations/model';
 import { BadRequestException, NotFoundException } from '$core/errors';
 
 
@@ -96,6 +100,7 @@ export class TenancyService {
     private readonly db: DbService,
     private readonly usersService: UsersService,
     private readonly tenantContext: TenantContextService,
+    private readonly mailQueue: MailQueueService,
   ) {}
 
   private requireOwner(context: TenantContext) {
@@ -387,6 +392,8 @@ async createWorkspace(dto: CreateWorkspace) {
     });
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
+    const verificationToken = randomToken(32);
+    const verificationExpiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24);
     const username = await generateUniqueUsername(
       makeUsernameSeed(dto.first_name, dto.last_name, email.split('@')[0]), async (candidate) =>
         await this.tenantContext.runSystem('workspace.createWorkspace.username', () =>
@@ -394,7 +401,7 @@ async createWorkspace(dto: CreateWorkspace) {
         ),
     );
 
-    return this.tenantContext.runSystem('workspace.createWorkspace', () =>
+    const result = await this.tenantContext.runSystem('workspace.createWorkspace', () =>
       this.db.client.transaction(async (tx) => {
         const [tenantRecord] = await tx.insert(tenant)
           .values({ name, slug, plan: dto.plan?.trim() || 'trial' })
@@ -402,13 +409,25 @@ async createWorkspace(dto: CreateWorkspace) {
 
         const defaults = await this.cloneTemplates(tx, tenantRecord.id);
 
+        const [defaultOrganization] = await tx.insert(organization)
+          .values({
+            tenantId: tenantRecord.id,
+            name,
+            code: `WS_${tenantRecord.id.toString()}`,
+            organizationType: 'venture',
+            isActive: true,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .returning();
+
         const [owner] = await tx.insert(profile)
           .values({
             username,
             email,
             passwordHash,
             type: 'admin',
-            status: 'active',
+            status: 'pending',
             firstName: dto.first_name,
             lastName: dto.last_name,
           })
@@ -416,6 +435,26 @@ async createWorkspace(dto: CreateWorkspace) {
 
         await tx.insert(tenantMembership)
           .values({ tenantId: tenantRecord.id, profileId: owner.id, status: 'active', isOwner: true });
+
+        await tx.insert(tokenTable).values({
+          id: randomToken(24),
+          profileId: owner.id,
+          tenantId: tenantRecord.id,
+          type: 'verify_email',
+          tokenHash: sha256(verificationToken),
+          expiresAt: verificationExpiresAt,
+        });
+
+        await tx.insert(tenantOrganization)
+          .values({ tenantId: tenantRecord.id, organizationId: defaultOrganization.id });
+        await tx.insert(profileOrganization)
+          .values({
+            tenantId: tenantRecord.id,
+            profileId: owner.id,
+            organizationId: defaultOrganization.id,
+            isPrimary: true,
+            createdAt: new Date(),
+          });
 
         const adminRoles = await tx
           .select({ id: role.id })
@@ -442,10 +481,26 @@ async createWorkspace(dto: CreateWorkspace) {
           owner_id: owner.id.toString(),
           email: owner.email,
           role: adminRoles.length > 0 ? 'administrator' : 'owner',
+          verification_required: true,
           defaults,
         };
       }),
     );
+
+    const portalUrl = (process.env.PWA_URL || process.env.APP_URL || process.env.APP_BASE_URL || 'http://localhost:5173').replace(/\/$/, '');
+    const verificationUrl = `${portalUrl}/verify-email?token=${encodeURIComponent(verificationToken)}`;
+    const displayName = `${dto.first_name ?? ''} ${dto.last_name ?? ''}`.trim() || email;
+    await this.mailQueue.enqueue({
+      to: email,
+      subject: 'Verify your StanforteEdge email address',
+      text: `Verify your email address: ${verificationUrl}`,
+      template: 'verify_email',
+      templateContext: { subject: 'Verify your StanforteEdge email address', displayName, verificationUrl },
+      threadKey: `auth-verification-${result.owner_id}`,
+      userId: result.owner_id,
+    });
+
+    return result;
   }
 
   async bootstrapDefaults(context: TenantContext) {

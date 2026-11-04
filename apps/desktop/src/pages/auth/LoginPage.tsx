@@ -43,7 +43,7 @@ export default function LoginPage() {
 
   const redirectPath = useMemo(() => {
     const state = location.state as LocationState | null;
-    return state?.from && state.from.startsWith("/") ? state.from : "/requests";
+    return state?.from && state.from.startsWith("/") ? state.from : "/dashboard";
   }, [location.state]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -75,8 +75,9 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await signIn(trimmedEmail, password);
-      navigate(redirectPath, { replace: true });
+      const signedInUser = await signIn(trimmedEmail, password);
+      const onboardingStatuses = new Set(["invited", "accepted", "profile_pending", "forms_pending"]);
+      navigate(onboardingStatuses.has(String(signedInUser.onboarding_status)) ? "/onboarding" : redirectPath, { replace: true });
     } catch (authError) {
       setError(
         authError instanceof Error ? authError.message : "Unable to sign in.",
@@ -207,6 +208,12 @@ export default function LoginPage() {
                 Sign in with Google
               </a>
             </form>
+            <p className="mt-5 text-center text-sm text-slate-500">
+              Need a workspace?{" "}
+              <Link to="/register" className="font-semibold text-primary hover:underline">
+                Create one
+              </Link>
+            </p>
           </div>
 
           <aside className="rounded-3xl border border-white/60 bg-gradient-to-br from-primary-fixed/40 to-secondary-fixed/30 p-8 shadow-soft">
@@ -370,6 +377,12 @@ export default function LoginPage() {
                 Sign in with Google
               </a>
             </form>
+            <p className="mt-5 text-center text-sm text-slate-500">
+              Need a workspace?{" "}
+              <Link to="/register" className="font-semibold text-primary hover:underline">
+                Create one
+              </Link>
+            </p>
           </div>
         </div>
       </section>

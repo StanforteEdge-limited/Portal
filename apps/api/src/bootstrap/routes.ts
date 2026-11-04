@@ -20,6 +20,9 @@ import { FormsRoutes } from '$apps/hr/forms/routes';
 import { TaxonomyRoutes } from '$apps/hr/taxonomy/routes';
 import { WorkflowRoutes } from '$apps/hr/workflow/routes';
 import { DepartmentsRoutes } from '$apps/hr/departments/routes';
+import { AttendanceRoutes } from '$apps/hr/attendance/routes';
+import { GroupsRoutes } from '$apps/communication/groups/routes';
+import { TenancyRoutes } from '$apps/tenancy/routes';
 
 export interface AppRoute {
   prefix: string;
@@ -35,6 +38,7 @@ export const appRoutes: AppRoute[] = [
   { prefix: '/admin/rbac', plugin: RbacRoutes },
   { prefix: '/audit', plugin: AuditRoutes },
   { prefix: '/employees', plugin: EmployeesRoutes },
+  { prefix: '/attendance', plugin: AttendanceRoutes },
   { prefix: '/designations', plugin: DesignationsRoutes },
   { prefix: '/leave', plugin: LeaveRoutes },
   { prefix: '/acknowledgements', plugin: AcknowledgementsRoutes },
@@ -50,4 +54,26 @@ export const appRoutes: AppRoute[] = [
   { prefix: '/taxonomy', plugin: TaxonomyRoutes },
   { prefix: '/workflow', plugin: WorkflowRoutes },
   { prefix: '/departments', plugin: DepartmentsRoutes },
+  // HR-prefixed aliases used by the web and desktop clients. Keep the
+  // existing root routes above for backwards compatibility.
+  { prefix: '/hr', plugin: EmployeesRoutes },
+  { prefix: '/hr/employees', plugin: EmployeesRoutes },
+  { prefix: '/hr/attendance', plugin: AttendanceRoutes },
+  { prefix: '/hr/designations', plugin: DesignationsRoutes },
+  { prefix: '/hr/leave', plugin: LeaveRoutes },
+  { prefix: '/hr/acknowledgements', plugin: AcknowledgementsRoutes },
+  { prefix: '/hr/notifications', plugin: NotificationsRoutes },
+  { prefix: '/hr/onboarding', plugin: OnboardingRoutes },
+  { prefix: '/hr/policies', plugin: PoliciesRoutes },
+  { prefix: '/hr/organizations', plugin: OrganizationsRoutes },
+  { prefix: '/hr/projects', plugin: ProjectsRoutes },
+  { prefix: '/hr/tasks', plugin: TasksRoutes },
+  { prefix: '/hr/timesheets', plugin: TimesheetRoutes },
+  { prefix: '/hr/documents', plugin: DocumentsRoutes },
+  { prefix: '/hr/forms', plugin: FormsRoutes },
+  { prefix: '/hr/taxonomy', plugin: TaxonomyRoutes },
+  { prefix: '/hr/workflow', plugin: WorkflowRoutes },
+  { prefix: '/hr/departments', plugin: DepartmentsRoutes },
+  { prefix: '/groups', plugin: GroupsRoutes },
+  { prefix: '/tenancy', plugin: TenancyRoutes },
 ];

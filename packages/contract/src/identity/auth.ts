@@ -41,6 +41,16 @@ export const ResetPasswordSchema = Type.Object({
 });
 export type ResetPassword = Static<typeof ResetPasswordSchema>;
 
+export const VerifyEmailSchema = Type.Object({
+  token: Type.String({ minLength: 1 }),
+});
+export type VerifyEmail = Static<typeof VerifyEmailSchema>;
+
+export const ResendVerificationSchema = Type.Object({
+  email: EmailSchema,
+});
+export type ResendVerification = Static<typeof ResendVerificationSchema>;
+
 export const AcceptInviteSchema = Type.Object({
   token: Type.String(),
   new_password: PasswordSchema,

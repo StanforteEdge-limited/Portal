@@ -1,5 +1,6 @@
-import type { Queue } from 'bullmq';
-import type { SendMailInput } from '$core/mail';
+import { Worker, type Queue } from 'bullmq';
+import { redisConnection } from '$core/queues';
+import type { MailService, SendMailInput } from '$core/mail';
 
 export type QueuedMailInput = SendMailInput & {
   userId?: string | bigint;
@@ -34,5 +35,42 @@ export class MailQueueService {
       return attachment;
     });
     return { ...input, attachments };
+  }
+}
+
+export class MailQueueWorker {
+  private worker?: Worker;
+
+  constructor(private readonly mail: MailService) {}
+
+  start() {
+    if (this.worker) return;
+
+    this.worker = new Worker(
+      'mail',
+      async (job) => {
+        const result = await this.mail.send(job.data as QueuedMailInput);
+        if (!result.sent) {
+          throw new Error(`Email delivery failed: ${result.reason}`);
+        }
+        return result;
+      },
+      {
+        connection: redisConnection(),
+        concurrency: Math.max(1, Number(process.env.MAIL_WORKER_CONCURRENCY || 5)),
+      },
+    );
+
+    this.worker.on('completed', (job) => {
+      console.info(`[MailQueueWorker] completed job ${job.id}`);
+    });
+    this.worker.on('failed', (job, error) => {
+      console.error(`[MailQueueWorker] failed job ${job?.id ?? 'unknown'}: ${error.message}`);
+    });
+  }
+
+  async close() {
+    await this.worker?.close();
+    this.worker = undefined;
   }
 }

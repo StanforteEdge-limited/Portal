@@ -6,19 +6,23 @@ RUN corepack enable && corepack prepare pnpm@10.33.0 --activate \
 
 WORKDIR /app
 
+ENV NODE_OPTIONS=--max-old-space-size=4096
+
 # Workspace manifests + lockfile first for layer caching
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/api/package.json apps/api/package.json
 COPY apps/shared/package.json apps/shared/package.json
 COPY apps/web/package.json apps/web/package.json
 COPY apps/desktop/package.json apps/desktop/package.json
+COPY packages/contract/package.json packages/contract/package.json
 
 RUN pnpm install --frozen-lockfile
 
 # Full source (only apps/api is needed at runtime, but keep the workspace layout)
+COPY packages/contract packages/contract
 COPY apps/api apps/api
 
-RUN pnpm --dir apps/api build
+RUN pnpm --filter @stanforte/contract build && pnpm --dir apps/api build
 
 ENV NODE_ENV=production \
     PDF_BROWSER_PATH=/usr/bin/chromium-browser
@@ -28,4 +32,4 @@ EXPOSE 3000
 
 # Apply pending migrations under a Postgres advisory lock (single replica wins),
 # then boot the compiled app
-CMD ["sh", "-c", "pnpm drizzle:migrate:locked && node -r ./path-alias-register.js dist/main.js"]
+CMD ["sh", "-c", "pnpm drizzle:migrate:locked && node -r ./path-alias-register.cjs dist/server.js"]

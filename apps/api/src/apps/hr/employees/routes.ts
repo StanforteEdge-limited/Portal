@@ -23,7 +23,7 @@ import {
   type UpdateOnboardingFormAssignment,
   type UpsertEmployee,
 } from '@stanforte/contract';
-import { composeGuards, requireAuth, requirePermissions } from '$core/auth/guards';
+import { composeGuards, currentTenant, requireAuth, requirePermissions } from '$core/auth/guards';
 import { requestBody, requestParams, requestQuery } from '$core/routes';
 import { employeesPermissions } from './permissions';
 
@@ -34,6 +34,8 @@ export const EmployeesRoutes: FastifyPluginAsync = async (fastify) => {
   const write = composeGuards(requireAuth, requirePermissions(employeesPermissions.write));
   const id = (request: FastifyRequest) => requestParams<EmployeesIdParams>(request).id;
   const pathId = (request: FastifyRequest, key: string) => requestParams<Record<string, string>>(request)[key];
+  const inTenant = (request: FastifyRequest, operation: () => Promise<unknown> | unknown) =>
+    fastify.container.tenantContext.run(currentTenant(request), operation);
 
   /* ---------------------------------------------------------------------- */
   /* Invitation acceptance — public, the invite token is the credential     */
@@ -47,18 +49,18 @@ export const EmployeesRoutes: FastifyPluginAsync = async (fastify) => {
   /* Dashboard                                                              */
   /* ---------------------------------------------------------------------- */
 
-  fastify.get('/summary', { preHandler: read }, async () => employees().summary());
+  fastify.get('/summary', { preHandler: read }, async (request) => inTenant(request, () => employees().summary()));
 
   /* ---------------------------------------------------------------------- */
   /* Employees                                                              */
   /* ---------------------------------------------------------------------- */
 
   fastify.get('/', { preHandler: read, schema: { querystring: EmployeesListQuerySchema } }, async (request) =>
-    employees().listEmployees(requestQuery<EmployeesListQuery>(request)),
+    inTenant(request, () => employees().listEmployees(requestQuery<EmployeesListQuery>(request))),
   );
 
   fastify.post('/', { preHandler: write, schema: { body: UpsertEmployeeSchema } }, async (request) =>
-    employees().createEmployee(requestBody<UpsertEmployee>(request)),
+    inTenant(request, () => employees().createEmployee(requestBody<UpsertEmployee>(request))),
   );
 
   // Static segments are registered before `/:id` so they are never captured as

@@ -6,6 +6,7 @@ import {
   Chip,
   Icon,
   SectionCard,
+  StatCard,
   TextField,
   SelectField,
   TextAreaField,
@@ -42,6 +43,10 @@ export default function AdminSettingsPage() {
   const [categoryFilter, setCategoryFilter] = useState("");
   const [taxonomies, setTaxonomies] = useState<ManagedTaxonomy[]>([]);
   const [editingTaxonomy, setEditingTaxonomy] = useState<ManagedTaxonomy | null | boolean>(false);
+  const [tenant, setTenant] = useState<any>(null);
+  const [tenantForm, setTenantForm] = useState({ name: "", plan: "trial" });
+  const [tenantSaving, setTenantSaving] = useState(false);
+  const [securityOverview, setSecurityOverview] = useState<any>(null);
 
 
 
@@ -92,6 +97,20 @@ export default function AdminSettingsPage() {
     }
   }, [activeTab, requestsSubTab]);
 
+  useEffect(() => {
+    if (activeTab === "general") {
+      void httpRequest<any>("/tenancy").then((response) => {
+        const value = response?.data ?? response;
+        setTenant(value);
+        setTenantForm({ name: value?.name ?? "", plan: value?.plan ?? "trial" });
+      }).catch(() => showToast({ tone: "danger", title: "Error", message: "Failed to load workspace settings." }));
+    }
+    if (activeTab === "security") {
+      void httpRequest<any>("/admin/rbac").then((response) => setSecurityOverview(response?.data ?? response))
+        .catch(() => showToast({ tone: "danger", title: "Error", message: "Failed to load access settings." }));
+    }
+  }, [activeTab]);
+
   const filterByGroup = (id: string) => id && groups.some((g) => g.id === id) ? id : "";
 
   const handleDeleteType = async (type: RequestType) => {
@@ -110,6 +129,33 @@ export default function AdminSettingsPage() {
         title: "Delete failed",
         message: err instanceof Error ? err.message : "Unable to delete type.",
       });
+    }
+  };
+
+  const handleSaveTenant = async () => {
+    if (!tenantForm.name.trim()) {
+      showToast({ tone: "warning", title: "Name required", message: "Enter a workspace name." });
+      return;
+    }
+    try {
+      setTenantSaving(true);
+      const response = await httpRequest<any>("/tenancy", { method: "PATCH", body: { name: tenantForm.name.trim(), plan: tenantForm.plan } });
+      setTenant(response?.data ?? response);
+      showToast({ tone: "success", title: "Saved", message: "Workspace settings updated." });
+    } catch (err) {
+      showToast({ tone: "danger", title: "Save failed", message: err instanceof Error ? err.message : "Unable to update workspace settings." });
+    } finally {
+      setTenantSaving(false);
+    }
+  };
+
+  const handleTenantStatus = async (status: "active" | "suspended") => {
+    try {
+      const response = await httpRequest<any>("/tenancy/status", { method: "POST", body: { status } });
+      setTenant((current: any) => ({ ...current, status: response?.data?.status ?? response?.status ?? status }));
+      showToast({ tone: "success", title: "Status updated", message: `Workspace is now ${status}.` });
+    } catch (err) {
+      showToast({ tone: "danger", title: "Status update failed", message: err instanceof Error ? err.message : "Unable to update workspace status." });
     }
   };
 
@@ -502,14 +548,36 @@ export default function AdminSettingsPage() {
             )}
 
             {activeTab === "general" && (
-              <div className="py-10 text-center text-slate-400">
-                General system settings coming soon.
+              <div className="space-y-6">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <TextField label="Workspace name" value={tenantForm.name} onChange={(e) => setTenantForm((current) => ({ ...current, name: e.target.value }))} />
+                  <SelectField label="Plan" value={tenantForm.plan} onChange={(e) => setTenantForm((current) => ({ ...current, plan: e.target.value }))}>
+                    <option value="trial">Trial</option>
+                    <option value="standard">Standard</option>
+                    <option value="enterprise">Enterprise</option>
+                  </SelectField>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button onClick={() => void handleSaveTenant()} disabled={tenantSaving}>{tenantSaving ? "Saving..." : "Save workspace"}</Button>
+                  <Chip variant={tenant?.status === "active" ? "success" : "warning"}>{tenant?.status ?? "unknown"}</Chip>
+                  {tenant?.status === "active" ? <Button variant="ghost" onClick={() => void handleTenantStatus("suspended")}>Suspend workspace</Button> : <Button variant="ghost" onClick={() => void handleTenantStatus("active")}>Activate workspace</Button>}
+                </div>
+                <p className="text-xs text-slate-500">Workspace slug: <span className="font-mono">{tenant?.slug ?? "-"}</span></p>
               </div>
             )}
 
             {activeTab === "security" && (
-              <div className="py-10 text-center text-slate-400">
-                Security and access control settings coming soon.
+              <div className="space-y-6">
+                <div className="grid gap-4 md:grid-cols-3">
+                  <StatCard label="Roles" value={String(securityOverview?.roles ?? 0)} tone="neutral" />
+                  <StatCard label="Permissions" value={String(securityOverview?.permissions ?? 0)} tone="neutral" />
+                  <StatCard label="Assigned users" value={String(securityOverview?.assigned_users ?? 0)} tone="neutral" />
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                  <h4 className="font-semibold text-slate-900">Role and permission management</h4>
+                  <p className="mt-1 text-sm text-slate-500">Review roles, assign permissions, and control access for this workspace.</p>
+                  <a href="/admin/roles" className="mt-4 inline-flex rounded-full bg-brand-900 px-4 py-2 text-sm font-semibold text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/20">Manage roles</a>
+                </div>
               </div>
             )}
           </SectionCard>

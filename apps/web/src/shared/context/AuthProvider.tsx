@@ -20,7 +20,7 @@ type AuthContextValue = {
   initialized: boolean;
   authIssue: AuthIssue;
   lastKnownEmail: string | null;
-  signIn: (email: string, password: string) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<AuthUser>;
   signOut: () => Promise<void>;
   refreshStatus: () => Promise<void>;
 };
@@ -116,6 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus("authenticated");
     setAuthIssue(null);
     setInitialized(true);
+    return authUser;
   }, []);
 
   const signOut = useCallback(async () => {
