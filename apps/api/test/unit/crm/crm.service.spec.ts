@@ -21,3 +21,4 @@ describe('CrmLeadsService (unit, fake db)', () => {
     await expect(service.getLead('999')).rejects.toBeInstanceOf(NotFoundException);
   });
 });
+

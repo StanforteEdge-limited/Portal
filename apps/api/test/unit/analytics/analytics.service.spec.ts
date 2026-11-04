@@ -28,3 +28,4 @@ describe('AnalyticsService (unit, fake db)', () => {
     expect(db.inserts.some((i) => i.table === analyticsEvent)).toBe(true);
   });
 });
+

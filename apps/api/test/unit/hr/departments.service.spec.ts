@@ -64,3 +64,4 @@ describe('DepartmentsService (unit, fake db)', () => {
     await expect(service.delete('dept_parent')).rejects.toBeInstanceOf(ConflictException);
   });
 });
+

@@ -19,3 +19,4 @@ describe('DesignationsService (unit, fake db)', () => {
     await expect(service.get('999')).rejects.toBeInstanceOf(NotFoundException);
   });
 });
+

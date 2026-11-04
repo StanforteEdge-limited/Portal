@@ -28,3 +28,4 @@ describe('PayrollService (unit, fake db)', () => {
     await expect(service.getWorker('pw_missing')).rejects.toBeInstanceOf(NotFoundException);
   });
 });
+

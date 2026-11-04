@@ -82,3 +82,4 @@ describe('RequestsService (unit, fake db)', () => {
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 });
+

@@ -26,3 +26,4 @@ describe('AttendanceService (unit, fake db)', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 });
+
