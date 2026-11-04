@@ -59,3 +59,4 @@ describe('HealthService (unit)', () => {
     expect(report.checks).toEqual({ database: false, redis: false });
   });
 });
+

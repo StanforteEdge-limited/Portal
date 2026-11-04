@@ -120,3 +120,4 @@ describe('BackgroundJobsService (unit, fake db)', () => {
     expect(job.status).toBe('completed');
   });
 });
+

@@ -180,3 +180,4 @@ describe('BillingService (unit, fake db)', () => {
     expect(db.updates.some((u) => u.table === billingInvoice && u.values.status === 'paid')).toBe(true);
   });
 });
+

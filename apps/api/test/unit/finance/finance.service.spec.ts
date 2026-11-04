@@ -88,3 +88,4 @@ describe('FinanceService (unit, fake db)', () => {
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 });
+

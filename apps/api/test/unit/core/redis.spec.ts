@@ -87,3 +87,4 @@ describe('redis configuration helpers (unit)', () => {
     expect(redisKeyPrefix()).toBe('staging:');
   });
 });
+
