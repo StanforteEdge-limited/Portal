@@ -43,12 +43,16 @@ export interface FakeDb {
 }
 
 class FakeQuery {
+  private table?: Table;
+
   constructor(
     private readonly db: FakeDbState,
     private readonly selection?: Record<string, unknown>,
   ) {}
 
   private record(table: Table, joins: Table[] = [], where?: unknown): FakeQuery {
+    this.table = table;
+    this.db.lastTable = table;
     this.db.selects.push({ table, selection: this.selection, joins, where });
     return this;
   }
@@ -101,7 +105,7 @@ class FakeQuery {
     onfulfilled?: ((value: Row[]) => TResult1 | PromiseLike<TResult1>) | null,
     onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null,
   ) {
-    return this.db.resolveSelect().then(onfulfilled, onrejected);
+    return this.db.resolveSelect(this.table).then(onfulfilled, onrejected);
   }
   catch(onrejected?: any) {
     return this.then(undefined, onrejected);
@@ -147,7 +151,7 @@ interface FakeDbState {
   transactions: number;
   lastTable: Table;
   lastWhere?: unknown;
-  resolveSelect(): Promise<Row[]>;
+  resolveSelect(queryTable?: Table): Promise<Row[]>;
   insertRows(table: Table): Row[];
 }
 
@@ -162,9 +166,8 @@ export function createFakeDb(): FakeDb {
     transactions: 0,
     lastTable: undefined,
     lastWhere: undefined,
-    resolveSelect() {
-      const last = this.selects[this.selects.length - 1];
-      const table = last?.table;
+    resolveSelect(queryTable?: Table) {
+      const table = queryTable ?? this.selects[this.selects.length - 1]?.table;
       const queued = table ? this.queues.get(table) : undefined;
       if (!queued || queued.length === 0) return Promise.resolve([]);
       return Promise.resolve(queued.length === 1 ? queued[0] : queued.shift()!);
@@ -206,6 +209,7 @@ export function createFakeDb(): FakeDb {
       state.transactions += 1;
       return Promise.resolve(fn(client));
     },
+    execute: (_sql: any) => Promise.resolve([]),
   };
 
   const db: FakeDb = {
