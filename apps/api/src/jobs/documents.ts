@@ -8,9 +8,20 @@ import {
   type DocumentIds,
   type DocumentOutput,
   type DocumentResponse,
+  type RequestThread,
+  type Signatory,
+  type ThreadEntry,
 } from '$core/documents';
 
-export * from '$core/documents';
+export type {
+  Document,
+  DocumentIds,
+  DocumentOutput,
+  DocumentResponse,
+  RequestThread,
+  Signatory,
+  ThreadEntry,
+} from '$core/documents';
 
 export type EmailDeliveryResponse = {
   success: true;

@@ -21,6 +21,8 @@ import { TaxonomyRoutes } from '$apps/hr/taxonomy/routes';
 import { WorkflowRoutes } from '$apps/hr/workflow/routes';
 import { DepartmentsRoutes } from '$apps/hr/departments/routes';
 import { AttendanceRoutes } from '$apps/hr/attendance/routes';
+import { PayrollRoutes } from '$apps/hr/payroll/routes';
+import { RequestsRoutes } from '$apps/hr/requests/routes';
 import { GroupsRoutes } from '$apps/communication/groups/routes';
 import { TenancyRoutes } from '$apps/tenancy/routes';
 
@@ -54,6 +56,8 @@ export const appRoutes: AppRoute[] = [
   { prefix: '/taxonomy', plugin: TaxonomyRoutes },
   { prefix: '/workflow', plugin: WorkflowRoutes },
   { prefix: '/departments', plugin: DepartmentsRoutes },
+  { prefix: '/payroll', plugin: PayrollRoutes },
+  { prefix: '/requests', plugin: RequestsRoutes },
   // HR-prefixed aliases used by the web and desktop clients. Keep the
   // existing root routes above for backwards compatibility.
   { prefix: '/hr', plugin: EmployeesRoutes },
@@ -74,6 +78,8 @@ export const appRoutes: AppRoute[] = [
   { prefix: '/hr/taxonomy', plugin: TaxonomyRoutes },
   { prefix: '/hr/workflow', plugin: WorkflowRoutes },
   { prefix: '/hr/departments', plugin: DepartmentsRoutes },
+  { prefix: '/hr/payroll', plugin: PayrollRoutes },
+  { prefix: '/hr/requests', plugin: RequestsRoutes },
   { prefix: '/groups', plugin: GroupsRoutes },
   { prefix: '/tenancy', plugin: TenancyRoutes },
 ];
