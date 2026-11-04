@@ -33,7 +33,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Generate Drizzle Client
-        run: pnpm --filter portal-api drizzle:generate
+        run: pnpm --filter portal-api-fastify drizzle:generate
 
       - name: Build API
         run: pnpm run build:api
@@ -55,7 +55,6 @@ jobs:
             git pull origin main
             export DATABASE_URL="$(grep '^DATABASE_URL=' apps/api/.env | cut -d= -f2-)"
             pnpm install --frozen-lockfile
-            pnpm run deploy:server
-            node apps/api/scripts/seed-rbac.js
-            pnpm --filter portal-api seed:release-baseline
+            pnpm --filter portal-api-fastify build
+            pnpm --filter portal-api-fastify drizzle:migrate:locked
             pm2 startOrReload apps/api/ecosystem.config.cjs --env production

@@ -33,11 +33,20 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build Contracts
+        run: pnpm --filter @stanforte/contract build
+
       - name: Generate Drizzle Client
-        run: pnpm --filter portal-api drizzle:generate
+        run: pnpm --filter portal-api-fastify drizzle:generate
+
+      - name: Run API Unit Tests
+        run: pnpm --filter portal-api-fastify test:unit
 
       - name: Build Web PWA
         run: pnpm run build:pwa2
+
+      - name: Build Desktop Frontend
+        run: pnpm run build:desktop
 
       - name: Build API
         run: pnpm run build:api
