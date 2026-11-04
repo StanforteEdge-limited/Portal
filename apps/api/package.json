@@ -15,12 +15,7 @@
     "drizzle:migrate": "drizzle-kit migrate",
     "drizzle:migrate:locked": "node scripts/migrate-locked.cjs",
     "drizzle:push": "drizzle-kit push",
-    "drizzle:studio": "drizzle-kit studio",
-    "scaffold:apps": "node scripts/scaffold-app-files.cjs",
-    "migrate:db-schema": "node scripts/migrate-db-schema.cjs",
-    "migrate:schemas": "node scripts/migrate-schemas.cjs",
-    "migrate:services": "node scripts/migrate-services.cjs",
-    "normalize:services": "node scripts/normalize-service-files.cjs"
+    "drizzle:studio": "drizzle-kit studio"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.782.0",
