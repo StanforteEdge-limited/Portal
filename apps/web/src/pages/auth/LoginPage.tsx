@@ -18,7 +18,6 @@ import {
   TrendingUp,
   Globe,
   ArrowRight,
-  ExternalLink,
 } from "lucide-react";
 
 type LocationState = {
@@ -89,6 +88,16 @@ export default function LoginPage() {
     window.location.href = targetUrl;
   }
 
+  function handleSwitchWorkspace() {
+    if (window.location.search.includes("slug=") || window.location.search.includes("org=")) {
+      window.location.href = "/login";
+    } else if (detectedSubdomain && window.location.hostname.includes(detectedSubdomain)) {
+      window.location.href = window.location.origin.replace(`${detectedSubdomain}.`, "") + "/login";
+    } else {
+      window.location.href = "/login";
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
@@ -113,9 +122,6 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // If user is on a dedicated workspace subdomain (e.g. acme.stanforteedge.com),
-      // detectedSubdomain is automatically passed so login is scoped to that organization.
-      // If on the generic domain, no organization code is passed, allowing backend to auto-resolve.
       const signedInUser = await signIn(trimmedEmail, password, detectedSubdomain || undefined);
       const onboardingStatuses = new Set(["invited", "accepted", "profile_pending", "forms_pending"]);
       navigate(onboardingStatuses.has(String(signedInUser.onboarding_status)) ? "/onboarding" : redirectPath, { replace: true });
@@ -232,11 +238,7 @@ export default function LoginPage() {
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  window.location.href = window.location.origin.includes(detectedSubdomain)
-                    ? window.location.origin.replace(`${detectedSubdomain}.`, "") + "/login"
-                    : "/login";
-                }}
+                onClick={handleSwitchWorkspace}
                 className="text-xs font-bold text-slate-600 hover:text-slate-900 px-2.5 py-1.5 rounded-lg hover:bg-white transition-colors"
               >
                 Switch

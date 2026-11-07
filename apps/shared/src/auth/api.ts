@@ -48,24 +48,18 @@ function normalizeUser(payload: any): AuthUser {
 
 export function createAuthApi(httpRequest: HttpRequest) {
   async function fetchCurrentUser(): Promise<AuthUser | null> {
-    // Primary: /me (standard "who am I with auth context" endpoint)
     try {
-      const payload = await httpRequest<any>("/me");
+      const payload = await httpRequest<any>("/me", {
+        auth: true,
+        retryOnUnauthorized: false,
+      });
       if (payload) {
         const inner = (payload as any)?.data ?? payload;
         const user = normalizeUser(inner?.user ?? inner?.profile ?? inner);
         if (user.id && user.id !== "undefined") return user;
       }
     } catch {
-      // fall through
-    }
-
-    // Fallback: re-use the status endpoint which always carries roles/permissions
-    try {
-      const result = await fetchStatus();
-      if (result.authenticated && result.user) return result.user;
-    } catch {
-      // fall through
+      // unauthenticated
     }
 
     return null;
@@ -108,33 +102,39 @@ export function createAuthApi(httpRequest: HttpRequest) {
   }
 
   async function fetchStatus(): Promise<AuthStatusResponse> {
-    const payload = await httpRequest<any>("/auth/status");
-    // Unwrap { success, data } envelope if present
-    const inner = (payload as any)?.data ?? payload;
+    try {
+      const payload = await httpRequest<any>("/auth/status", {
+        auth: false,
+        retryOnUnauthorized: false,
+      });
+      // Unwrap { success, data } envelope if present
+      const inner = (payload as any)?.data ?? payload;
 
-    if (typeof inner?.authenticated === "boolean") {
-      return {
-        authenticated: inner.authenticated,
-        user: inner.user ? normalizeUser(inner.user) : null,
-      };
+      if (typeof inner?.authenticated === "boolean") {
+        return {
+          authenticated: inner.authenticated,
+          user: inner.user ? normalizeUser(inner.user) : null,
+        };
+      }
+
+      if (inner?.id && inner?.email) {
+        return {
+          authenticated: true,
+          user: normalizeUser(inner),
+        };
+      }
+
+      if (inner?.user) {
+        return {
+          authenticated: true,
+          user: normalizeUser(inner.user),
+        };
+      }
+
+      return { authenticated: false, user: null };
+    } catch {
+      return { authenticated: false, user: null };
     }
-
-    // Some backends return user fields directly from /auth/status without an `authenticated` flag.
-    if (inner?.id && inner?.email) {
-      return {
-        authenticated: true,
-        user: normalizeUser(inner),
-      };
-    }
-
-    if (inner?.user) {
-      return {
-        authenticated: true,
-        user: normalizeUser(inner.user),
-      };
-    }
-
-    return { authenticated: false, user: null };
   }
 
   function requestPasswordReset(email: string) {

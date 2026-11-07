@@ -2,8 +2,7 @@
  * Subdomain and Multi-Tenant Workspace Resolution Utility
  * Supports:
  * - Production: `<slug>.stanforteedge.com` -> returns `<slug>`
- * - Local Dev: `<slug>.localhost:5173` or `<slug>.lvh.me:5173` -> returns `<slug>`
- * - Query param override for testing: `?org=<slug>` or `?slug=<slug>`
+ * - Local Dev: `<slug>.localhost:5173` or `<slug>.lvh.me:5173` or `?slug=<slug>`
  * - Disregards reserved subdomains (www, app, api, admin, portal, staging)
  */
 
@@ -87,9 +86,12 @@ export function buildTenantUrl(slug: string, path = "/dashboard"): string {
   const port = window.location.port ? `:${window.location.port}` : "";
   const protocol = window.location.protocol;
 
-  if (hostname === "localhost" || hostname.includes("localhost") || hostname === "127.0.0.1") {
-    // If browser supports subdomains on localhost
-    return `${protocol}//${slug}.localhost${port}${path}`;
+  // For localhost development on Windows, subdomains like `acme.localhost`
+  // often fail DNS resolution or hang unless manually added to C:\Windows\System32\drivers\etc\hosts.
+  // Using query param ?slug=<slug> on localhost works reliably and instantly in all browsers.
+  if (hostname === "localhost" || hostname === "127.0.0.1") {
+    const separator = path.includes("?") ? "&" : "?";
+    return `${protocol}//${hostname}${port}${path}${separator}slug=${encodeURIComponent(slug)}`;
   }
 
   const baseDomain = getProjectBaseDomain();

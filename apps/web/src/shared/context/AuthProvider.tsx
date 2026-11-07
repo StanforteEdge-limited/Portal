@@ -44,41 +44,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLastKnownEmail(result.user.email || null);
         setStatus("authenticated");
         setAuthIssue(null);
-        // Pre-fetch profile to cache for use throughout the app
         getWorkspaceProfile().catch(() => {});
       } else {
-        const fallbackUser = await authApi.fetchCurrentUser();
-        if (fallbackUser) {
-          setUser(fallbackUser);
-          setLastKnownEmail(fallbackUser.email || null);
-          setStatus("authenticated");
-          setAuthIssue(null);
-          // Pre-fetch profile to cache
-          getWorkspaceProfile().catch(() => {});
-        } else {
-          setUser(null);
-          setStatus("unauthenticated");
-          setAuthIssue(null);
-        }
-      }
-    } catch {
-      try {
-        const fallbackUser = await authApi.fetchCurrentUser();
-        if (fallbackUser) {
-          setUser(fallbackUser);
-          setLastKnownEmail(fallbackUser.email || null);
-          setStatus("authenticated");
-          setAuthIssue(null);
-        } else {
-          setUser(null);
-          setStatus("unauthenticated");
-          setAuthIssue(null);
-        }
-      } catch {
         setUser(null);
         setStatus("unauthenticated");
         setAuthIssue(null);
       }
+    } catch {
+      setUser(null);
+      setStatus("unauthenticated");
+      setAuthIssue(null);
     } finally {
       setInitialized(true);
     }

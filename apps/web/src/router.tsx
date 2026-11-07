@@ -66,7 +66,13 @@ const indexRoute = createRoute({
   },
   component: () => {
     const { status, initialized } = useAuth();
-    if (!initialized || status === "checking") return null;
+    if (!initialized || status === "checking") {
+      return (
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-full border-2 border-[#ff6900] border-t-transparent animate-spin" />
+        </div>
+      );
+    }
     if (status === "authenticated") return <DashboardPage />;
     return <HomePage />;
   },
