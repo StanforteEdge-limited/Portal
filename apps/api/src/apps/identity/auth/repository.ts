@@ -184,7 +184,7 @@ export class AuthService {
     organizationCode?: string
   ): Promise<{ id: bigint; name: string; code: string; metadata: unknown } | null> {
     if (organizationCode) {
-      const [org] = await this.db.client
+      let [org] = await this.db.client
         .select({
           id: organizationTable.id,
           name: organizationTable.name,
@@ -194,6 +194,24 @@ export class AuthService {
         .from(organizationTable)
         .where(ilike(organizationTable.code, organizationCode))
         .limit(1);
+
+      if (!org) {
+        const [tenantOrg] = await this.db.client
+          .select({
+            id: organizationTable.id,
+            name: organizationTable.name,
+            code: organizationTable.code,
+            metadata: organizationTable.metadata
+          })
+          .from(organizationTable)
+          .innerJoin(tenantTable, eq(organizationTable.tenantId, tenantTable.id))
+          .where(ilike(tenantTable.slug, organizationCode))
+          .limit(1);
+        if (tenantOrg) {
+          org = tenantOrg;
+        }
+      }
+
       if (!org) return null;
       const [membership] = await this.db.client
         .select({ id: profileOrganizationTable.id })
@@ -790,6 +808,17 @@ export class AuthService {
         .where(eq(tenantOrganizationTable.organizationId, organizationId))
         .limit(1);
       tenantOrganization = row ?? null;
+
+      if (!tenantOrganization) {
+        const [orgRow] = await this.db.client
+          .select({ tenantId: organizationTable.tenantId })
+          .from(organizationTable)
+          .where(eq(organizationTable.id, organizationId))
+          .limit(1);
+        if (orgRow?.tenantId) {
+          tenantOrganization = { tenantId: orgRow.tenantId, organizationId };
+        }
+      }
     } else if (requestedTenantId != null) {
       const [row] = await this.db.client
         .select({ tenantId: tenantOrganizationTable.tenantId, organizationId: tenantOrganizationTable.organizationId })
