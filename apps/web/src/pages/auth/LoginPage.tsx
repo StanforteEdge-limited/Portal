@@ -18,7 +18,7 @@ type LocationState = {
 
 function GoogleIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+    <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true" className="shrink-0">
       <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
       <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
       <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
@@ -29,7 +29,7 @@ function GoogleIcon() {
 
 function MicrosoftIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 23 23" aria-hidden="true">
+    <svg width="18" height="18" viewBox="0 0 23 23" aria-hidden="true" className="shrink-0">
       <path fill="#f35325" d="M1 1h10v10H1z"/>
       <path fill="#81bc06" d="M12 1h10v10H12z"/>
       <path fill="#05a6f0" d="M1 12h10v10H1z"/>
@@ -103,194 +103,206 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 sm:p-6 lg:p-10">
-      <div className="w-full max-w-5xl bg-white rounded-3xl shadow-2xl overflow-hidden grid grid-cols-1 md:grid-cols-2 min-h-[640px]">
-        {/* Left Column: Dark Navy Corporate Visual */}
-        <div className="relative bg-[#070e20] text-white p-8 sm:p-12 flex flex-col justify-between overflow-hidden">
-          {/* Skyscraper Background Image with Dark Gradient Overlay */}
-          <div className="absolute inset-0 z-0">
-            <img
-              src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=80"
-              alt="Corporate Headquarters"
-              className="w-full h-full object-cover opacity-20"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#070e20] via-[#070e20]/80 to-[#070e20]/60" />
+    <div className="min-h-screen w-full bg-white flex flex-col lg:flex-row selection:bg-[#ff6900] selection:text-white">
+      {/* 1. Left Half: Full-Bleed Dark Navy Visual (50% on desktop) */}
+      <div className="relative w-full lg:w-1/2 bg-[#070e20] text-white p-8 sm:p-12 lg:p-16 flex flex-col justify-between overflow-hidden min-h-[420px] lg:min-h-screen">
+        {/* Modern Skyscraper Dusk Background Photo */}
+        <div className="absolute inset-0 z-0">
+          <img
+            src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1600&q=85"
+            alt="Corporate Headquarters"
+            className="w-full h-full object-cover object-center opacity-30 mix-blend-luminosity"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#070e20] via-[#070e20]/85 to-[#070e20]/75" />
+          <div className="absolute inset-0 bg-radial-gradient from-transparent to-[#070e20]/90" />
+        </div>
+
+        {/* Decorative Orange Arc Concentric Lines at Bottom Left */}
+        <svg
+          className="absolute -bottom-16 -left-16 w-64 h-64 pointer-events-none z-10"
+          viewBox="0 0 200 200"
+          fill="none"
+        >
+          <circle cx="20" cy="180" r="140" stroke="#ff6900" strokeWidth="2" strokeOpacity="0.3" />
+          <circle cx="20" cy="180" r="100" stroke="#ff6900" strokeWidth="2" strokeOpacity="0.4" />
+          <circle cx="20" cy="180" r="60" stroke="#ff6900" strokeWidth="2.5" strokeOpacity="0.55" />
+        </svg>
+
+        {/* Top Logo */}
+        <div className="relative z-10">
+          <Link to="/" className="inline-block hover:opacity-90 transition-opacity">
+            <StanforteLogo variant="dark" className="h-9" />
+          </Link>
+        </div>
+
+        {/* Center: Welcome Back & 3 Feature Badges */}
+        <div className="relative z-10 my-auto py-10 max-w-md space-y-8">
+          <div className="space-y-3">
+            <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-white font-headline leading-tight">
+              Welcome Back
+            </h1>
+            <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
+              Sign in to access your enterprise workspace.
+            </p>
           </div>
 
-          {/* Top Brand Logo */}
-          <div className="relative z-10">
-            <Link to="/" className="inline-block">
-              <StanforteLogo variant="dark" className="h-8" />
-            </Link>
-          </div>
-
-          {/* Center Content: Welcome Back & 3 Feature Badges */}
-          <div className="relative z-10 my-auto py-8 space-y-6">
-            <div className="space-y-2">
-              <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight font-headline">
-                Welcome Back
-              </h1>
-              <p className="text-sm text-slate-300">
-                Sign in to access your enterprise workspace.
-              </p>
+          {/* 3 Badges */}
+          <div className="space-y-3.5 pt-2">
+            <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
+              <div className="w-10 h-10 rounded-xl bg-orange-500/20 text-[#ff6900] flex items-center justify-center shrink-0 border border-orange-500/30">
+                <Shield className="h-5 w-5" />
+              </div>
+              <span className="text-sm font-semibold text-slate-200">Secure & Reliable</span>
             </div>
 
-            <div className="space-y-3 pt-2">
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm">
-                <div className="w-9 h-9 rounded-lg bg-orange-500/20 text-[#ff6900] flex items-center justify-center">
-                  <Shield className="h-4 w-4" />
-                </div>
-                <span className="text-xs font-semibold text-slate-200">Secure & Reliable</span>
+            <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
+              <div className="w-10 h-10 rounded-xl bg-orange-500/20 text-[#ff6900] flex items-center justify-center shrink-0 border border-orange-500/30">
+                <Building2 className="h-5 w-5" />
               </div>
-
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm">
-                <div className="w-9 h-9 rounded-lg bg-orange-500/20 text-[#ff6900] flex items-center justify-center">
-                  <Building2 className="h-4 w-4" />
-                </div>
-                <span className="text-xs font-semibold text-slate-200">Multi-Branch Support</span>
-              </div>
-
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm">
-                <div className="w-9 h-9 rounded-lg bg-orange-500/20 text-[#ff6900] flex items-center justify-center">
-                  <TrendingUp className="h-4 w-4" />
-                </div>
-                <span className="text-xs font-semibold text-slate-200">Real-Time Insights</span>
-              </div>
+              <span className="text-sm font-semibold text-slate-200">Multi-Branch Support</span>
             </div>
-          </div>
 
-          {/* Bottom Tagline & Decorative Curve */}
-          <div className="relative z-10 pt-4 border-t border-white/10 flex items-center justify-between text-xs text-slate-400">
-            <span>Smarter Operations. Greater Productivity.</span>
-            {/* Subtle orange accent curve */}
-            <div className="w-8 h-8 rounded-full border-2 border-[#ff6900]/40 -mr-4 -mb-4 opacity-50" />
+            <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
+              <div className="w-10 h-10 rounded-xl bg-orange-500/20 text-[#ff6900] flex items-center justify-center shrink-0 border border-orange-500/30">
+                <TrendingUp className="h-5 w-5" />
+              </div>
+              <span className="text-sm font-semibold text-slate-200">Real-Time Insights</span>
+            </div>
           </div>
         </div>
 
-        {/* Right Column: Clean White Sign In Form */}
-        <div className="bg-white p-8 sm:p-12 flex flex-col justify-center">
-          <div className="max-w-md w-full mx-auto space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold tracking-tight text-slate-900 font-headline">
-                Sign In
-              </h2>
-              <p className="text-xs text-slate-500 mt-1">
-                Enter your credentials to continue
-              </p>
+        {/* Bottom Tagline */}
+        <div className="relative z-10 pt-6 border-t border-white/10 flex items-center justify-between text-xs text-slate-400">
+          <span>Smarter Operations. Greater Productivity.</span>
+        </div>
+      </div>
+
+      {/* 2. Right Half: Full-Bleed Clean White Sign In Form */}
+      <div className="w-full lg:w-1/2 bg-white flex flex-col justify-center px-6 sm:px-12 lg:px-20 py-12 min-h-screen">
+        <div className="max-w-md w-full mx-auto space-y-7">
+          {/* Header */}
+          <div className="space-y-1.5">
+            <h2 className="text-3xl font-black tracking-tight text-slate-900 font-headline">
+              Sign In
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-500">
+              Enter your credentials to continue
+            </p>
+          </div>
+
+          {/* Error Alert */}
+          {error && (
+            <div
+              role="alert"
+              className="rounded-2xl border border-red-200 bg-red-50 p-3.5 text-xs text-red-600 font-medium"
+            >
+              {error}
+            </div>
+          )}
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Email Field */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700">Email Address</label>
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@company.com"
+                  required
+                  className="w-full pl-11 pr-4 py-3 text-xs sm:text-sm bg-white border border-slate-200 rounded-2xl outline-none transition focus:border-[#ff6900] focus:ring-4 focus:ring-orange-500/10 placeholder:text-slate-400"
+                />
+              </div>
             </div>
 
-            {error && (
-              <div
-                role="alert"
-                className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-600 font-medium"
-              >
-                {error}
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Email Field */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-700">Email Address</label>
-                <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@company.com"
-                    required
-                    className="w-full pl-10 pr-4 py-2.5 text-xs bg-white border border-slate-200 rounded-xl outline-none transition focus:border-[#ff6900] focus:ring-2 focus:ring-orange-500/10"
-                  />
-                </div>
-              </div>
-
-              {/* Password Field */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-700">Password</label>
-                <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your password"
-                    required
-                    className="w-full pl-10 pr-10 py-2.5 text-xs bg-white border border-slate-200 rounded-xl outline-none transition focus:border-[#ff6900] focus:ring-2 focus:ring-orange-500/10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Remember Me & Forgot Password */}
-              <div className="flex items-center justify-between text-xs pt-1">
-                <label className="flex items-center gap-2 cursor-pointer text-slate-600">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="rounded border-slate-300 text-[#ff6900] focus:ring-[#ff6900]"
-                  />
-                  <span>Remember me</span>
-                </label>
-                <Link
-                  to="/forgot-password"
-                  className="font-medium text-[#ff6900] hover:text-[#ea580c] transition-colors"
+            {/* Password Field */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700">Password</label>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  required
+                  className="w-full pl-11 pr-11 py-3 text-xs sm:text-sm bg-white border border-slate-200 rounded-2xl outline-none transition focus:border-[#ff6900] focus:ring-4 focus:ring-orange-500/10 placeholder:text-slate-400"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors"
                 >
-                  Forgot password?
-                </Link>
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
-
-              {/* Sign In Button */}
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3 rounded-xl font-bold text-xs bg-[#ff6900] hover:bg-[#ea580c] text-white shadow-md shadow-orange-500/25 transition-all disabled:opacity-50"
-              >
-                {loading ? "Signing in..." : "Sign In"}
-              </button>
-            </form>
-
-            {/* Social Logins Divider */}
-            <div className="relative flex items-center justify-center my-4">
-              <div className="border-t border-slate-200 w-full" />
-              <span className="bg-white px-3 text-[11px] text-slate-400 font-medium whitespace-nowrap">
-                or continue with
-              </span>
-              <div className="border-t border-slate-200 w-full" />
             </div>
 
-            {/* Social Buttons */}
-            <div className="grid grid-cols-2 gap-3">
-              <a
-                href={`${apiBase}/auth/google`}
-                className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-slate-200 hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors shadow-sm"
+            {/* Remember Me & Forgot Password */}
+            <div className="flex items-center justify-between text-xs pt-0.5">
+              <label className="flex items-center gap-2 cursor-pointer text-slate-600 font-medium select-none">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-300 text-[#ff6900] focus:ring-[#ff6900]"
+                />
+                <span>Remember me</span>
+              </label>
+              <Link
+                to="/forgot-password"
+                className="font-bold text-[#ff6900] hover:text-[#ea580c] transition-colors"
               >
-                <GoogleIcon />
-                <span>Google</span>
-              </a>
-              <button
-                type="button"
-                className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-slate-200 hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors shadow-sm"
-              >
-                <MicrosoftIcon />
-                <span>Microsoft</span>
-              </button>
-            </div>
-
-            {/* Register Link */}
-            <div className="text-center text-xs text-slate-500 pt-2">
-              Don't have an account?{" "}
-              <Link to="/register" className="font-bold text-[#ff6900] hover:underline">
-                Register
+                Forgot password?
               </Link>
             </div>
+
+            {/* Sign In Button */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3.5 rounded-2xl font-bold text-sm bg-[#ff6900] hover:bg-[#ea580c] text-white shadow-lg shadow-orange-500/25 transition-all transform hover:-translate-y-0.5 disabled:opacity-50"
+            >
+              {loading ? "Signing in..." : "Sign In"}
+            </button>
+          </form>
+
+          {/* Social Divider */}
+          <div className="relative flex items-center justify-center my-6">
+            <div className="border-t border-slate-200 w-full" />
+            <span className="bg-white px-3 text-[11px] text-slate-400 font-medium whitespace-nowrap">
+              or continue with
+            </span>
+            <div className="border-t border-slate-200 w-full" />
+          </div>
+
+          {/* Social Logins */}
+          <div className="grid grid-cols-2 gap-3.5">
+            <a
+              href={`${apiBase}/auth/google`}
+              className="flex items-center justify-center gap-2.5 py-3 px-4 rounded-2xl border border-slate-200 hover:bg-slate-50 text-xs font-bold text-slate-700 transition-colors shadow-xs"
+            >
+              <GoogleIcon />
+              <span>Google</span>
+            </a>
+            <button
+              type="button"
+              className="flex items-center justify-center gap-2.5 py-3 px-4 rounded-2xl border border-slate-200 hover:bg-slate-50 text-xs font-bold text-slate-700 transition-colors shadow-xs"
+            >
+              <MicrosoftIcon />
+              <span>Microsoft</span>
+            </button>
+          </div>
+
+          {/* Register Footer */}
+          <div className="text-center text-xs text-slate-500 pt-3">
+            Don&apos;t have an account?{" "}
+            <Link to="/register" className="font-extrabold text-[#ff6900] hover:underline">
+              Register
+            </Link>
           </div>
         </div>
       </div>
