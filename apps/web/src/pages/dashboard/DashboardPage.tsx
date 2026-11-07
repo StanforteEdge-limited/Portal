@@ -1,742 +1,381 @@
-import {
-  Button,
-  Chip,
-  PageHeader,
-  SectionCard,
-} from "@/shared";
-import { hasAnyPermission, humanize, userFirstName } from "@stanforte/shared";
-import { Link } from "react-router-dom";
-import { AppShell } from "@/shared/components/layout/AppShell";
+import { useState } from "react";
+import { Link } from "@/shared/router-adapter";
 import { useAuth } from "@/shared/context/AuthProvider";
-import { getMyAttendance } from "@/pages/hr/attendance/attendance-api";
+import { StanforteLogo } from "@/components/brand/StanforteLogo";
 import {
-  buildAppMobileNav,
-  buildRequestsNavigation,
-} from "@/pages/requests/requests-data";
-import { listApprovals, listRequests } from "@/pages/requests/requests-api";
-import {
-  formatDisplayDate,
-  formatRequestStatus,
-  requestCategoryFromRecord,
-  requestStatusTone,
-} from "@/pages/requests/request-helpers";
-import {
-  getWorkspaceProfile,
-  listWorkspaceNotifications,
-} from "@/shared/api/workspace-api";
-import { useCachedQuery } from "@/shared/lib/core";
-
-function greeting(now = new Date()) {
-  const hour = now.getHours();
-  if (hour < 12) return "Good morning";
-  if (hour < 18) return "Good afternoon";
-  return "Good evening";
-}
-
-function formatTodayLong(now = new Date()) {
-  return now.toLocaleDateString("en-NG", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
-
-function formatTime(value?: string | null) {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleTimeString("en-NG", {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
-function requestIcon(typeName?: string | null, category?: string) {
-  const name = String(typeName || "").toLowerCase();
-  if (category === "hr" || name.includes("leave")) return "beach_access";
-  if (
-    name.includes("petty") ||
-    name.includes("cash") ||
-    name.includes("expense")
-  )
-    return "payments";
-  if (name.includes("equipment") || name.includes("asset")) return "hardware";
-  if (name.includes("travel")) return "flight_takeoff";
-  return category === "financial" ? "receipt_long" : "description";
-}
-
-function requestSubtitle(row: {
-  request_number?: string;
-  created_at?: string;
-  data?: Record<string, unknown> | null;
-  items?: Array<{ description?: string }>;
-}) {
-  const purpose = typeof row.data?.purpose === "string" ? row.data.purpose : "";
-  const firstItem = row.items?.[0]?.description || "";
-  const detail = purpose || firstItem || row.request_number || "Request";
-  return `${detail} • ${formatDisplayDate(row.created_at)}`;
-}
-
-function summaryCardTone(count: number) {
-  return count > 0 ? "text-brand-900" : "text-slate-500";
-}
-
-function attentionHint(status: string, isApproval = false): {
-  label: string;
-  tone: "warning" | "danger" | "pending" | "neutral";
-} {
-  if (isApproval) return { label: "Approval needed", tone: "pending" };
-  const s = String(status || "").toLowerCase();
-  if (s === "draft") return { label: "Not submitted", tone: "warning" };
-  if (s === "returned") return { label: "Revision needed", tone: "danger" };
-  if (s === "disbursed") return { label: "Retirement required", tone: "warning" };
-  return { label: "Needs attention", tone: "neutral" };
-}
+  LayoutDashboard,
+  Users,
+  Clock,
+  CreditCard,
+  Building2,
+  FileCheck,
+  BarChart3,
+  Settings,
+  Search,
+  Bell,
+  ChevronDown,
+  TrendingUp,
+  CheckCircle2,
+  ArrowRight,
+  Calendar,
+  DollarSign,
+  UserCheck,
+} from "lucide-react";
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const { data: profile } = useCachedQuery(
-    "dashboard:profile",
-    () => getWorkspaceProfile(),
-    {
-      ttlMs: 1000 * 60,
-      storage: "memory",
-    },
-  );
-  const { data: requests, loading: loadingRequests } = useCachedQuery(
-    "dashboard:requests",
-    () => listRequests({ only_mine: "true" }),
-    {
-      ttlMs: 1000 * 30,
-      storage: "memory",
-    },
-  );
-  const { data: approvals } = useCachedQuery(
-    "dashboard:approvals",
-    () => listApprovals(),
-    {
-      ttlMs: 1000 * 30,
-      storage: "memory",
-    },
-  );
-  const { data: attendance } = useCachedQuery(
-    "dashboard:attendance",
-    () => {
-      const today = new Date().toISOString().slice(0, 10);
-      return getMyAttendance({ from: today, to: today });
-    },
-    {
-      ttlMs: 1000 * 30,
-      storage: "memory",
-    },
-  );
-  const { data: notifications } = useCachedQuery(
-    "dashboard:notifications",
-    () => listWorkspaceNotifications("unread"),
-    {
-      ttlMs: 1000 * 30,
-      storage: "memory",
-    },
-  );
+  const [activeNav, setActiveNav] = useState("Dashboard");
 
-  const myRequests = requests ?? [];
-  const myApprovals = approvals ?? [];
-  const pendingStatuses = [
-    "draft",
-    "sent",
-    "approval",
-    "submitted",
-    "under_review",
-    "review",
-    "prepared",
+  const userName = user?.first_name ? `${user.first_name} ${user.last_name || ""}`.trim() : "Daniel Owonikoko";
+  const userRole = user?.roles?.[0] ? String(user.roles[0]).replace(/_/g, " ") : "Admin";
+  const orgName = (user as any)?.workspace_name || "Acme Nigeria Ltd";
+
+  const navItems = [
+    { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
+    { label: "HR & Workforce", icon: Users, path: "/admin/users" },
+    { label: "Attendance", icon: Clock, path: "/attendance" },
+    { label: "Payroll", icon: CreditCard, path: "/finance" },
+    { label: "Finance & Procurement", icon: Building2, path: "/finance" },
+    { label: "Approvals", icon: FileCheck, path: "/approvals" },
+    { label: "Reports", icon: BarChart3, path: "/dashboard" },
+    { label: "Settings", icon: Settings, path: "/admin/settings" },
   ];
-  const doneStatuses = ["approved", "completed", "disbursed", "confirmed"];
-  const activeRequests = myRequests.filter(
-    (item) => !doneStatuses.includes(String(item.status || "").toLowerCase()),
-  ).length;
-  const pendingApprovals = myApprovals.filter((item) =>
-    pendingStatuses.includes(String(item.status || "").toLowerCase()),
-  ).length;
-  const organization =
-    profile?.organizations?.find((item) => item.is_primary) ||
-    profile?.organizations?.[0];
-  const groups = profile?.teams ?? [];
-  const primaryGroup = groups[0];
-  const today = attendance?.today;
-
-  // Requests needing staff action
-  const ATTENTION_STATUSES = ["draft", "returned", "disbursed"];
-  const attentionRequests = myRequests.filter((r) =>
-    ATTENTION_STATUSES.includes(String(r.status || "").toLowerCase()),
-  ).slice(0, 5);
-  const pendingApprovalItems = myApprovals
-    .filter((item) =>
-      pendingStatuses.includes(String(item.status || "").toLowerCase()),
-    )
-    .slice(0, 3);
-  const canApprove = hasAnyPermission(user, ["requests.approve"]);
-  const attentionVisible = attentionRequests.length + (canApprove ? pendingApprovalItems.length : 0);
-
-  const unreadNotifications = notifications ?? [];
-  const latestNotice = unreadNotifications[0];
-  const isClockedIn = attendance?.current_state?.is_clocked_in;
-  let nextShiftLabel = "";
-  let nextShiftDetail = "";
-  let nextShiftMode = "";
-
-  if (isClockedIn && today?.first_in_at) {
-    nextShiftLabel = "Clocked In";
-    nextShiftDetail = formatTime(today.first_in_at);
-    nextShiftMode = humanize(String(today.attendance_mode || today.expected_mode || "onsite"));
-  } else if (attendance?.policy?.start_time) {
-    const policy = attendance.policy;
-    const now = new Date();
-    const workWeekdays = [...new Set([
-      ...(policy.onsite_weekdays ?? []),
-      ...(policy.remote_weekdays ?? []),
-    ])];
-    const effectiveWorkdays = workWeekdays.length > 0 ? workWeekdays : [1, 2, 3, 4, 5];
-    const [endHour, endMin] = policy.end_time.split(":").map(Number);
-    const shiftEndToday = new Date();
-    shiftEndToday.setHours(endHour, endMin, 0, 0);
-    const todayIsWorkday = effectiveWorkdays.includes(now.getDay());
-    const shiftOverToday = now >= shiftEndToday;
-    nextShiftLabel = "Next Shift";
-    if (todayIsWorkday && !shiftOverToday) {
-      nextShiftDetail = `Today, ${policy.start_time}`;
-      nextShiftMode = humanize(String(today?.expected_mode || "onsite"));
-    } else {
-      nextShiftDetail = "No upcoming shift";
-      for (let i = 1; i <= 7; i++) {
-        const d = new Date(now);
-        d.setDate(now.getDate() + i);
-        if (effectiveWorkdays.includes(d.getDay())) {
-          const dateLabel = i === 1
-            ? "Tomorrow"
-            : d.toLocaleDateString("en-NG", { weekday: "long", day: "numeric", month: "short" });
-          nextShiftDetail = `${dateLabel}, ${policy.start_time}`;
-          const nextDay = d.getDay();
-          const isRemote = (policy.remote_weekdays ?? []).includes(nextDay);
-          nextShiftMode = humanize(isRemote ? "remote" : (today?.expected_mode || "onsite"));
-          break;
-        }
-      }
-      if (!nextShiftDetail || nextShiftDetail === "No upcoming shift") {
-        nextShiftMode = "";
-      }
-    }
-  } else {
-    nextShiftLabel = "No Shift";
-    nextShiftDetail = "No shift scheduled";
-    nextShiftMode = "";
-  }
-  const financeViewer = hasAnyPermission(user, ["finance.view", "finance.manage"]);
 
   return (
-    <AppShell
-      navigation={buildRequestsNavigation()}
-      activeLabel="Dashboard"
-      user={{
-        name: userFirstName(user),
-        role: profile?.employee_profile?.job_title || "Staff",
-      }}
-      mobileNav={buildAppMobileNav("Dashboard")}
-    >
-      <div className="hidden lg:block">
-        <PageHeader
-          breadcrumbs={[{ label: "Dashboard" }]}
-          title={`${greeting()}, ${userFirstName(user)}.`}
-          description={`${formatTodayLong()} • ${organization?.name || "No primary organization"}${primaryGroup ? ` • ${primaryGroup.name}` : ""}`}
-          actions={
-            <Link to="/requests/new" className="inline-flex">
-              <Button className="gap-2">
-                <span className="material-symbols-outlined text-[18px]">
-                  add
-                </span>
-                New Request
-              </Button>
+    <div className="min-h-screen bg-[#f4f7fc] flex font-sans text-slate-900 selection:bg-[#ff6900] selection:text-white">
+      {/* 1. Left Sidebar (Dark Navy #0a1128) */}
+      <aside className="w-64 bg-[#0a1128] text-white flex flex-col justify-between shrink-0 min-h-screen p-5">
+        <div className="space-y-8">
+          {/* Brand Logo */}
+          <div className="pt-2">
+            <Link to="/dashboard" className="inline-block">
+              <StanforteLogo variant="dark" className="h-8" />
             </Link>
-          }
-        />
+          </div>
 
-        <div className="grid gap-6 lg:grid-cols-12">
-          <div className="space-y-6 lg:col-span-8">
-            <div className="grid gap-4 md:grid-cols-3">
-              <article className="section-card flex items-center justify-between p-6">
-                <div>
-                  <p className="text-[0.72rem] font-bold uppercase tracking-[0.16em] text-slate-500">
-                    Active Requests
-                  </p>
-                  <p
-                    className={[
-                      "mt-3 text-[2.4rem] font-semibold leading-none tracking-tight",
-                      summaryCardTone(activeRequests),
-                    ].join(" ")}
-                  >
-                    {activeRequests}
-                  </p>
-                </div>
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-50 text-brand-900">
-                  <span className="material-symbols-outlined">
-                    pending_actions
-                  </span>
-                </div>
-              </article>
+          {/* Navigation Links */}
+          <nav className="space-y-1">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeNav === item.label;
+              return (
+                <Link
+                  key={item.label}
+                  to={item.path}
+                  onClick={() => setActiveNav(item.label)}
+                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                    isActive
+                      ? "bg-[#ff6900] text-white shadow-md shadow-orange-500/25"
+                      : "text-slate-300 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
 
-              {canApprove ? (
-              <article className="section-card flex items-center justify-between p-6">
-                <div>
-                  <p className="text-[0.72rem] font-bold uppercase tracking-[0.16em] text-slate-500">
-                    Pending Approvals
-                  </p>
-                  <p
-                    className={[
-                      "mt-3 text-[2.4rem] font-semibold leading-none tracking-tight",
-                      summaryCardTone(pendingApprovals),
-                    ].join(" ")}
-                  >
-                    {pendingApprovals}
-                  </p>
-                </div>
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-100 text-brand-900">
-                  <span className="material-symbols-outlined">verified</span>
-                </div>
-              </article>
-              ) : null}
+        {/* User Profile Pill at Bottom of Sidebar */}
+        <div className="pt-4 border-t border-white/10 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-full bg-orange-500/20 text-[#ff6900] font-bold text-xs flex items-center justify-center border border-orange-500/30">
+              {userName.split(" ").map((n) => n[0]).slice(0, 2).join("")}
+            </div>
+            <div className="leading-tight">
+              <div className="text-xs font-bold text-white truncate max-w-[120px]">{userName}</div>
+              <div className="text-[10px] text-slate-400 capitalize">{userRole}</div>
+            </div>
+          </div>
+          <ChevronDown className="h-3.5 w-3.5 text-slate-400 cursor-pointer hover:text-white" />
+        </div>
+      </aside>
 
-<article className="section-card flex items-center justify-between p-6">
-                 <div>
-                   <p className="text-[0.72rem] font-bold uppercase tracking-[0.16em] text-slate-500">
-                     {nextShiftLabel}
-                   </p>
-                   <p className="mt-3 text-lg font-semibold tracking-tight text-slate-950">
-                     {nextShiftDetail}
-                   </p>
-                   {nextShiftMode && (
-                     <p className="mt-1 text-sm text-slate-500">
-                       {nextShiftMode}
-                     </p>
-                   )}
-                 </div>
-                 <div className={`flex h-12 w-12 items-center justify-center rounded-full ${isClockedIn ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-700"}`}>
-                   <span className="material-symbols-outlined">{isClockedIn ? "timer" : "schedule"}</span>
-                 </div>
-               </article>
+      {/* 2. Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+        {/* Top Header Bar */}
+        <header className="h-16 bg-white border-b border-slate-200/80 px-8 flex items-center justify-between sticky top-0 z-30">
+          {/* Search Input */}
+          <div className="relative w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search anything..."
+              className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg outline-none transition focus:bg-white focus:border-[#ff6900]"
+            />
+          </div>
+
+          {/* Right Items: Notifications & Org Selector */}
+          <div className="flex items-center gap-4">
+            {/* Notification Bell */}
+            <div className="relative cursor-pointer p-2 rounded-lg hover:bg-slate-100 text-slate-600">
+              <Bell className="h-4 w-4" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 ring-2 ring-white" />
             </div>
 
-            <section className="relative overflow-hidden rounded-[1.5rem] bg-brand-900 p-8 text-white shadow-card">
-              <div className="absolute right-[-2rem] top-[-2rem] h-32 w-32 rounded-full bg-white/5" />
-              <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-                <div className="flex items-center gap-5">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/10">
-                    <span className="material-symbols-outlined text-3xl">
-                      {attendance?.current_state?.is_clocked_in
-                        ? "badge"
-                        : "meeting_room"}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="text-[0.72rem] font-bold uppercase tracking-[0.16em] text-white/70">
-                      Today&apos;s Attendance
-                    </p>
-                    <h3 className="mt-2 text-3xl font-semibold tracking-tight">
-                      {attendance?.current_state?.is_clocked_in
-                        ? "Clocked In"
-                        : "Not Clocked In"}
-                    </h3>
-                    <div className="mt-3 flex items-center gap-2 text-sm text-white/85">
-                      <span
-                        className={[
-                          "inline-block h-2 w-2 rounded-full",
-                          attendance?.current_state?.is_clocked_in
-                            ? "bg-emerald-300"
-                            : "bg-rose-300",
-                        ].join(" ")}
-                      />
-                      <span>
-                        {today
-                          ? `${humanize(String(today.attendance_mode || today.expected_mode || "onsite"))} • First in ${formatTime(today.first_in_at)}`
-                          : "No attendance record yet today."}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+            {/* Organization Selector */}
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-800 cursor-pointer hover:bg-slate-50 shadow-sm">
+              <Building2 className="h-3.5 w-3.5 text-slate-600" />
+              <span>{orgName}</span>
+              <ChevronDown className="h-3 w-3 text-slate-400" />
+            </div>
+          </div>
+        </header>
 
-                <div className="flex flex-wrap items-center gap-4">
-                  <div className="rounded-full bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-white/85">
-                    Mode:{" "}
-                    {humanize(
-                      String(
-                        today?.attendance_mode ||
-                          today?.expected_mode ||
-                          "onsite",
-                      ),
-                    )}
-                  </div>
-                  <Link to="/attendance" className="inline-flex">
-                    <Button
-                      variant="secondary"
-                      className="!border-white/10 !bg-white !text-brand-900 hover:!bg-slate-100"
-                    >
-                      Open Attendance
-                    </Button>
-                  </Link>
+        {/* Dashboard Body */}
+        <main className="p-8 space-y-6 max-w-7xl mx-auto w-full">
+          {/* Title Row & Date Filter */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight font-headline">
+                Dashboard
+              </h1>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Here&apos;s what&apos;s happening in your organization today.
+              </p>
+            </div>
+
+            {/* Date Filter Pill */}
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 shadow-sm cursor-pointer hover:bg-slate-50">
+              <span>Last 30 days</span>
+              <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+            </div>
+          </div>
+
+          {/* 4 Metric Cards in 1 Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Card 1: Total Employees */}
+            <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <Users className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="text-[11px] font-semibold text-slate-500">Total Employees</div>
+                  <div className="text-xl font-black text-slate-900 mt-0.5">1,240</div>
                 </div>
               </div>
-            </section>
+              <div className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-0.5">
+                <TrendingUp className="h-3 w-3" /> 12%
+              </div>
+            </div>
 
-            <SectionCard
-              title="Needs Your Attention"
-              action={
+            {/* Card 2: Present Today */}
+            <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <UserCheck className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="text-[11px] font-semibold text-slate-500">Present Today</div>
+                  <div className="text-xl font-black text-slate-900 mt-0.5">1,186</div>
+                </div>
+              </div>
+              <div className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                95.6%
+              </div>
+            </div>
+
+            {/* Card 3: Pending Approvals */}
+            <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                <Clock className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="text-[11px] font-semibold text-slate-500">Pending Approvals</div>
+                <div className="text-xl font-black text-slate-900 mt-0.5">23</div>
+              </div>
+            </div>
+
+            {/* Card 4: Payroll Status */}
+            <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <CheckCircle2 className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="text-[11px] font-semibold text-slate-500">Payroll Status</div>
+                <div className="text-xl font-black text-emerald-600 mt-0.5">Ready</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Grid Row: Attendance Overview + Quick Actions + Next Payroll */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* Left 6 Columns: Attendance Overview Chart */}
+            <div className="lg:col-span-6 p-5 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-slate-900">Attendance Overview</h3>
+                <div className="flex items-center gap-4 text-xs font-medium">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
+                    <span className="text-slate-600">Present</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#ff6900]" />
+                    <span className="text-slate-600">Absent</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Chart SVG Canvas */}
+              <div className="h-60 w-full pt-2">
+                <svg className="w-full h-full overflow-visible" viewBox="0 0 500 200" preserveAspectRatio="none">
+                  <defs>
+                    <linearGradient id="presentGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.25" />
+                      <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.0" />
+                    </linearGradient>
+                  </defs>
+
+                  {/* Horizontal Gridlines & Y-axis labels */}
+                  <g className="text-[10px] fill-slate-400">
+                    <line x1="30" y1="20" x2="490" y2="20" stroke="#f1f5f9" strokeWidth="1" />
+                    <text x="5" y="24">1.5k</text>
+
+                    <line x1="30" y1="70" x2="490" y2="70" stroke="#f1f5f9" strokeWidth="1" />
+                    <text x="12" y="74">1k</text>
+
+                    <line x1="30" y1="120" x2="490" y2="120" stroke="#f1f5f9" strokeWidth="1" />
+                    <text x="8" y="124">500</text>
+
+                    <line x1="30" y1="170" x2="490" y2="170" stroke="#e2e8f0" strokeWidth="1" />
+                    <text x="18" y="174">0</text>
+                  </g>
+
+                  {/* Present Area Gradient */}
+                  <path
+                    d="M 40 70 Q 110 50, 180 65 T 320 60 T 470 70 L 470 170 L 40 170 Z"
+                    fill="url(#presentGrad)"
+                  />
+
+                  {/* Present Spline Curve (Blue) */}
+                  <path
+                    d="M 40 70 Q 110 50, 180 65 T 320 60 T 470 70"
+                    fill="none"
+                    stroke="#2563eb"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                  />
+
+                  {/* Absent Spline Curve (Orange) */}
+                  <path
+                    d="M 40 155 Q 110 145, 180 150 T 320 148 T 470 155"
+                    fill="none"
+                    stroke="#ff6900"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                  />
+
+                  {/* X-Axis Days Labels */}
+                  <g className="text-[11px] fill-slate-500 font-medium">
+                    <text x="40" y="192" textAnchor="middle">Mon</text>
+                    <text x="110" y="192" textAnchor="middle">Tue</text>
+                    <text x="180" y="192" textAnchor="middle">Wed</text>
+                    <text x="250" y="192" textAnchor="middle">Thu</text>
+                    <text x="320" y="192" textAnchor="middle">Fri</text>
+                    <text x="390" y="192" textAnchor="middle">Sat</text>
+                    <text x="470" y="192" textAnchor="middle">Sun</text>
+                  </g>
+                </svg>
+              </div>
+            </div>
+
+            {/* Middle 3 Columns: Quick Actions */}
+            <div className="lg:col-span-3 p-5 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-4">
+              <h3 className="text-sm font-bold text-slate-900">Quick Actions</h3>
+
+              <div className="space-y-2.5">
+                {/* 1. Process Payroll */}
+                <Link
+                  to="/finance"
+                  className="flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:border-slate-200 bg-white hover:bg-slate-50 transition-colors shadow-xs group"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                      <DollarSign className="h-4 w-4" />
+                    </div>
+                    <span className="text-xs font-semibold text-slate-800">Process Payroll</span>
+                  </div>
+                  <ArrowRight className="h-3.5 w-3.5 text-slate-400 group-hover:text-slate-800 transition-colors" />
+                </Link>
+
+                {/* 2. Approve Requests */}
+                <Link
+                  to="/approvals"
+                  className="flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:border-slate-200 bg-white hover:bg-slate-50 transition-colors shadow-xs group"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                      <FileCheck className="h-4 w-4" />
+                    </div>
+                    <span className="text-xs font-semibold text-slate-800">Approve Requests</span>
+                  </div>
+                  <ArrowRight className="h-3.5 w-3.5 text-slate-400 group-hover:text-slate-800 transition-colors" />
+                </Link>
+
+                {/* 3. Request Leave */}
                 <Link
                   to="/requests"
-                  className="text-sm font-semibold text-brand-900"
+                  className="flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:border-slate-200 bg-white hover:bg-slate-50 transition-colors shadow-xs group"
                 >
-                  View all
-                </Link>
-              }
-            >
-              <div className="divide-y divide-slate-100">
-                {/* Pending approvals first — only for users with requests.approve */}
-                {canApprove && pendingApprovalItems.map((row) => {
-                  const category = requestCategoryFromRecord(row);
-                  const hint = attentionHint(row.status, true);
-                  return (
-                    <Link
-                      key={`approval-${row.id}`}
-                      to={`/requests/approvals`}
-                      className="flex items-center justify-between gap-4 px-1 py-4 transition hover:bg-slate-50/70"
-                    >
-                      <div className="flex min-w-0 items-center gap-4">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-900">
-                          <span className="material-symbols-outlined">
-                            {requestIcon(row.request_type?.name, category)}
-                          </span>
-                        </div>
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-slate-950">
-                            {row.request_type?.name ||
-                              row.request_number ||
-                              "Request"}
-                          </p>
-                          <p className="truncate text-xs text-slate-500">
-                            {requestSubtitle(row)}
-                          </p>
-                        </div>
-                      </div>
-                      <Chip variant={hint.tone}>{hint.label}</Chip>
-                    </Link>
-                  );
-                })}
-
-                {/* Own requests needing action */}
-                {attentionRequests.map((row) => {
-                  const category = requestCategoryFromRecord(row);
-                  const hint = attentionHint(row.status);
-                  return (
-                    <Link
-                      key={row.id}
-                      to={`/requests/${row.id}`}
-                      className="flex items-center justify-between gap-4 px-1 py-4 transition hover:bg-slate-50/70"
-                    >
-                      <div className="flex min-w-0 items-center gap-4">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
-                          <span className="material-symbols-outlined">
-                            {requestIcon(row.request_type?.name, category)}
-                          </span>
-                        </div>
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-slate-950">
-                            {row.request_type?.name ||
-                              row.request_number ||
-                              "Request"}
-                          </p>
-                          <p className="truncate text-xs text-slate-500">
-                            {requestSubtitle(row)}
-                          </p>
-                        </div>
-                      </div>
-                      <Chip variant={hint.tone}>{hint.label}</Chip>
-                    </Link>
-                  );
-                })}
-
-                {!loadingRequests && attentionVisible === 0 ? (
-                  <div className="flex items-center gap-3 px-1 py-8">
-                    <span className="material-symbols-outlined text-emerald-500">
-                      check_circle
-                    </span>
-                    <p className="text-sm text-slate-500">
-                      All caught up — no requests need your attention right now.
-                    </p>
-                  </div>
-                ) : null}
-              </div>
-            </SectionCard>
-          </div>
-
-          <div className="space-y-6 lg:col-span-4">
-            <section className="rounded-[1.5rem] bg-brand-900 p-6 text-white shadow-card">
-              <div className="mb-6 flex items-center gap-2">
-                <span className="material-symbols-outlined text-lg">bolt</span>
-                <h3 className="font-headline text-lg font-semibold tracking-tight">
-                  Quick Actions
-                </h3>
-              </div>
-
-              <div className="space-y-3">
-                <Link
-                  to="/requests/new"
-                  className="flex items-center justify-between rounded-2xl bg-white/10 px-4 py-3 transition hover:bg-white/15"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="material-symbols-outlined">
-                      add_circle
-                    </span>
-                    <span className="text-sm font-medium">New Request</span>
-                  </div>
-                  <span className="material-symbols-outlined text-white/60">
-                    arrow_forward
-                  </span>
-                </Link>
-
-                <Link
-                  to="/attendance"
-                  className="flex items-center justify-between rounded-2xl bg-white/10 px-4 py-3 transition hover:bg-white/15"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="material-symbols-outlined">
-                      history_edu
-                    </span>
-                    <span className="text-sm font-medium">Submit Timecard</span>
-                  </div>
-                  <span className="material-symbols-outlined text-white/60">
-                    arrow_forward
-                  </span>
-                </Link>
-
-                <Link
-                  to="/requests/new"
-                  className="flex items-center justify-between rounded-2xl bg-white/10 px-4 py-3 transition hover:bg-white/15"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="material-symbols-outlined">
-                      event_busy
-                    </span>
-                    <span className="text-sm font-medium">Request Leave</span>
-                  </div>
-                  <span className="material-symbols-outlined text-white/60">
-                    arrow_forward
-                  </span>
-                </Link>
-
-                {financeViewer ? (
-                  <Link
-                    to="/finance"
-                    className="flex items-center justify-between rounded-2xl bg-white/10 px-4 py-3 transition hover:bg-white/15"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="material-symbols-outlined">
-                        account_balance_wallet
-                      </span>
-                      <span className="text-sm font-medium">Finance Admin</span>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
+                      <Clock className="h-4 w-4" />
                     </div>
-                    <span className="material-symbols-outlined text-white/60">
-                      arrow_forward
-                    </span>
-                  </Link>
-                ) : null}
-              </div>
-            </section>
+                    <span className="text-xs font-semibold text-slate-800">Request Leave</span>
+                  </div>
+                  <ArrowRight className="h-3.5 w-3.5 text-slate-400 group-hover:text-slate-800 transition-colors" />
+                </Link>
 
-            <SectionCard
-              title="Team Context"
-              action={
-                unreadNotifications.length > 0 ? (
-                  <span className="rounded-md bg-brand-50 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-brand-900">
-                    {unreadNotifications.length} new
-                  </span>
-                ) : undefined
-              }
-              className="bg-slate-50/80"
-            >
-              <div className="space-y-4">
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
-                    Primary Context
-                  </p>
-                  <p className="mt-2 text-sm font-semibold text-slate-950">
-                    {organization?.name || "No primary organization"}
-                  </p>
-                  <p className="mt-1 text-sm text-slate-600">
-                    {primaryGroup?.name || "No group assigned"}
-                  </p>
+                {/* 4. Raise Purchase Order */}
+                <Link
+                  to="/finance"
+                  className="flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:border-slate-200 bg-white hover:bg-slate-50 transition-colors shadow-xs group"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-orange-50 text-[#ff6900] flex items-center justify-center">
+                      <Building2 className="h-4 w-4" />
+                    </div>
+                    <span className="text-xs font-semibold text-slate-800">Raise Purchase Order</span>
+                  </div>
+                  <ArrowRight className="h-3.5 w-3.5 text-slate-400 group-hover:text-slate-800 transition-colors" />
+                </Link>
+              </div>
+            </div>
+
+            {/* Right 3 Columns: Next Payroll in 5 Days Card */}
+            <div className="lg:col-span-3 p-6 rounded-2xl bg-gradient-to-b from-[#131d36] to-[#0a1128] text-white flex flex-col justify-between min-h-[280px] shadow-lg relative overflow-hidden">
+              {/* Background Glow */}
+              <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 rounded-full blur-2xl pointer-events-none" />
+
+              <div className="space-y-4 relative z-10 text-center flex flex-col items-center">
+                {/* Calendar Illustration Badge */}
+                <div className="w-16 h-16 rounded-2xl bg-white/10 border border-white/20 flex flex-col items-center justify-center relative shadow-inner">
+                  <Calendar className="h-8 w-8 text-white" />
+                  <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-[#ff6900] flex items-center justify-center text-white shadow-md">
+                    <Clock className="h-3.5 w-3.5" />
+                  </div>
                 </div>
 
-                {latestNotice ? (
-                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                    <div className="mb-2 flex items-center gap-2">
-                      <span className="material-symbols-outlined text-sm text-brand-900">
-                        campaign
-                      </span>
-                      <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-900">
-                        Announcement
-                      </p>
-                    </div>
-                    <p className="text-sm font-semibold text-slate-950">
-                      {latestNotice.title}
-                    </p>
-                    <p className="mt-1 text-sm leading-6 text-slate-600">
-                      {latestNotice.message}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-4 text-sm text-slate-500">
-                    No new team announcements right now.
-                  </div>
-                )}
+                <div>
+                  <h4 className="text-base font-extrabold text-white">Next Payroll</h4>
+                  <div className="text-xs text-orange-400 font-semibold mt-0.5">in 5 days</div>
+                </div>
               </div>
-            </SectionCard>
 
-            <section className="relative overflow-hidden rounded-[1.5rem] bg-gradient-to-br from-brand-900 via-brand-800 to-brand-700 p-6 text-white shadow-card">
-              <div className="absolute bottom-0 right-0 p-4 opacity-20">
-                <span className="material-symbols-outlined text-7xl">
-                  blur_on
-                </span>
-              </div>
-              <div className="relative">
-                <p className="text-[0.72rem] font-bold uppercase tracking-[0.18em] text-white/70">
-                  Stanforte Edge
-                </p>
-                <p className="mt-2 font-headline text-2xl font-semibold leading-tight">
-                  Shared Prosperity for modern operations
-                </p>
-              </div>
-            </section>
-          </div>
-        </div>
-      </div>
-
-      <div className="space-y-4 lg:hidden">
-        <div className="pt-1">
-          <p className="text-[0.72rem] font-bold uppercase tracking-[0.18em] text-slate-500">
-            Dashboard
-          </p>
-          <h1 className="page-title mt-2 text-[clamp(1.7rem,7vw,2.2rem)]">{`${greeting()}, ${userFirstName(user)}.`}</h1>
-          <p className="mt-3 max-w-xl text-sm leading-6 text-slate-500">
-            {formatTodayLong()}
-          </p>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <article className="section-card p-4">
-            <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-slate-500">
-              Active Requests
-            </p>
-            <p className="mt-3 text-2xl font-semibold tracking-tight text-slate-950">
-              {activeRequests}
-            </p>
-          </article>
-          {canApprove ? (
-          <article className="section-card p-4">
-            <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-slate-500">
-              Approvals
-            </p>
-            <p className="mt-3 text-2xl font-semibold tracking-tight text-slate-950">
-              {pendingApprovals}
-            </p>
-          </article>
-          ) : null}
-        </div>
-
-        <section className="rounded-[1.5rem] bg-brand-900 p-5 text-white shadow-card">
-          <p className="text-[0.72rem] font-bold uppercase tracking-[0.16em] text-white/70">
-            Today&apos;s Attendance
-          </p>
-          <h3 className="mt-2 text-2xl font-semibold tracking-tight">
-            {attendance?.current_state?.is_clocked_in
-              ? "Clocked In"
-              : "Not Clocked In"}
-          </h3>
-          <p className="mt-3 text-sm leading-6 text-white/80">
-            {today
-              ? `${humanize(String(today.attendance_mode || today.expected_mode || "onsite"))} • First in ${formatTime(today.first_in_at)}`
-              : "No attendance record yet today."}
-          </p>
-          <Link to="/attendance" className="mt-4 inline-flex">
-            <Button
-              variant="secondary"
-              className="!border-white/10 !bg-white !text-brand-900 hover:!bg-slate-100"
-            >
-              Open Attendance
-            </Button>
-          </Link>
-        </section>
-
-        <SectionCard
-          title="Needs Your Attention"
-          action={
-            <Link
-              to="/requests"
-              className="text-sm font-semibold text-brand-900"
-            >
-              View all
-            </Link>
-          }
-        >
-          <div className="space-y-3">
-            {pendingApprovalItems.map((row) => {
-              const hint = attentionHint(row.status, true);
-              return (
+              <div className="pt-4 relative z-10">
                 <Link
-                  key={`approval-${row.id}`}
-                  to="/requests/approvals"
-                  className="block rounded-2xl border border-brand-100 bg-brand-50/40 p-4 transition hover:bg-brand-50"
+                  to="/finance"
+                  className="w-full block py-2.5 px-4 rounded-xl font-bold text-xs bg-[#ff6900] hover:bg-[#ea580c] text-white text-center shadow-md shadow-orange-500/25 transition-all transform hover:-translate-y-0.5"
                 >
-                  <p className="text-sm font-semibold text-slate-950">
-                    {row.request_type?.name || row.request_number || "Request"}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-500">
-                    {formatDisplayDate(row.created_at)}
-                  </p>
-                  <div className="mt-3">
-                    <Chip variant={hint.tone}>{hint.label}</Chip>
-                  </div>
+                  View Details &rarr;
                 </Link>
-              );
-            })}
-            {attentionRequests.map((row) => {
-              const hint = attentionHint(row.status);
-              return (
-                <Link
-                  key={row.id}
-                  to={`/requests/${row.id}`}
-                  className="block rounded-2xl border border-slate-100 p-4 transition hover:bg-slate-50"
-                >
-                  <p className="text-sm font-semibold text-slate-950">
-                    {row.request_type?.name || row.request_number || "Request"}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-500">
-                    {formatDisplayDate(row.created_at)}
-                  </p>
-                  <div className="mt-3">
-                    <Chip variant={hint.tone}>{hint.label}</Chip>
-                  </div>
-                </Link>
-              );
-            })}
-            {!loadingRequests && attentionVisible === 0 ? (
-              <div className="flex items-center gap-2 py-4">
-                <span className="material-symbols-outlined text-emerald-500 text-[18px]">
-                  check_circle
-                </span>
-                <p className="text-sm text-slate-500">All caught up.</p>
               </div>
-            ) : null}
+            </div>
           </div>
-        </SectionCard>
+        </main>
       </div>
-    </AppShell>
+    </div>
   );
 }

@@ -1,8 +1,16 @@
 import { type FormEvent, useEffect, useMemo, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Button, Icon } from "@/shared";
+import { Link, useLocation, useNavigate } from "@/shared/router-adapter";
 import { useAuth } from "@/shared/context/AuthProvider";
-import brandLogo from "../../../../shared/assets/brand/stanforte-logo.png";
+import { StanforteLogo } from "@/components/brand/StanforteLogo";
+import {
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  Shield,
+  Building2,
+  TrendingUp,
+} from "lucide-react";
 
 type LocationState = {
   from?: string;
@@ -19,6 +27,17 @@ function GoogleIcon() {
   );
 }
 
+function MicrosoftIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 23 23" aria-hidden="true">
+      <path fill="#f35325" d="M1 1h10v10H1z"/>
+      <path fill="#81bc06" d="M12 1h10v10H12z"/>
+      <path fill="#05a6f0" d="M1 12h10v10H1z"/>
+      <path fill="#ffba08" d="M12 12h10v10H12z"/>
+    </svg>
+  );
+}
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -26,6 +45,7 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -67,11 +87,6 @@ export default function LoginPage() {
       return;
     }
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters long.");
-      return;
-    }
-
     setLoading(true);
 
     try {
@@ -88,304 +103,197 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="relative flex min-h-screen flex-col overflow-hidden bg-surface text-on-surface">
-      <div className="pointer-events-none absolute -left-24 top-0 h-80 w-80 rounded-full bg-primary-fixed/30 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-24 -right-24 h-80 w-80 rounded-full bg-secondary-fixed/40 blur-3xl" />
-
-      <section className="mx-auto hidden w-full max-w-7xl items-center justify-between px-8 py-8 md:flex">
-        <div className="flex items-center gap-4">
-          <img
-            src={brandLogo}
-            alt="Stanforte Edge"
-            className="h-11 w-auto object-contain"
-          />
-        </div>
-        <div className="flex items-center gap-6 text-sm font-semibold text-slate-500">
-          <span>Support</span>
-          <span>Documentation</span>
-        </div>
-      </section>
-
-      <section className="relative z-10 mx-auto flex w-full max-w-7xl flex-1 items-center px-6 pb-12 pt-4 md:px-10">
-        <div className="hidden w-full items-stretch gap-8 md:grid md:grid-cols-[minmax(0,480px)_minmax(0,1fr)]">
-          <div className="rounded-3xl border border-white/60 bg-white/85 p-10 shadow-card backdrop-blur-xl">
-            <h1 className="font-headline text-2xl font-bold text-primary">
-              Staff Portal Access
-            </h1>
-            <p className="mt-2 text-sm text-on-surface-variant">
-              Secure login for authorized Stanforte Edge personnel.
-            </p>
-
-            {error ? (
-              <div
-                role="alert"
-                className="mt-6 rounded-2xl border border-danger/20 bg-danger/10 px-4 py-3 text-sm text-danger"
-              >
-                {error}
-              </div>
-            ) : null}
-
-            <form className="mt-8 space-y-6" onSubmit={handleSubmit} noValidate>
-              <label className="block">
-                <span className="field-label">Work Email</span>
-                <div className="relative">
-                  <Icon
-                    name="mail"
-                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                  />
-                  <input
-                    className="input-base pl-10"
-                    autoComplete="email"
-                    type="email"
-                    placeholder="name@stanforteedge.com"
-                    required
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                  />
-                </div>
-              </label>
-
-              <label className="block">
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="field-label mb-0">Password</span>
-                  <Link
-                    to="/forgot-password"
-                    className="text-xs font-semibold text-primary hover:underline"
-                  >
-                    Forgot Password?
-                  </Link>
-                </div>
-                <div className="relative">
-                  <Icon
-                    name="lock"
-                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                  />
-                  <input
-                    className="input-base pl-10 pr-11"
-                    autoComplete="current-password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    required
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                  />
-                  <button
-                    type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface"
-                    onClick={() => setShowPassword((v) => !v)}
-                    aria-label={showPassword ? "Hide password" : "Show password"}
-                  >
-                    <Icon
-                      name={showPassword ? "visibility_off" : "visibility"}
-                      className="text-[20px]"
-                    />
-                  </button>
-                </div>
-              </label>
-
-              <Button
-                type="submit"
-                className="w-full justify-center py-4 text-base"
-                disabled={loading}
-              >
-                {loading ? "Signing In..." : "Log In"}
-                {!loading ? (
-                  <Icon name="arrow_forward" className="ml-2 text-[18px]" />
-                ) : null}
-              </Button>
-
-              <div className="relative flex items-center gap-3">
-                <div className="h-px flex-1 bg-slate-200" />
-                <span className="text-xs font-semibold text-slate-400">or</span>
-                <div className="h-px flex-1 bg-slate-200" />
-              </div>
-
-              <a
-                href={`${apiBase}/auth/google`}
-                className="flex w-full items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
-              >
-                <GoogleIcon />
-                Sign in with Google
-              </a>
-            </form>
-            <p className="mt-5 text-center text-sm text-slate-500">
-              Need a workspace?{" "}
-              <Link to="/register" className="font-semibold text-primary hover:underline">
-                Create one
-              </Link>
-            </p>
+    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 sm:p-6 lg:p-10">
+      <div className="w-full max-w-5xl bg-white rounded-3xl shadow-2xl overflow-hidden grid grid-cols-1 md:grid-cols-2 min-h-[640px]">
+        {/* Left Column: Dark Navy Corporate Visual */}
+        <div className="relative bg-[#070e20] text-white p-8 sm:p-12 flex flex-col justify-between overflow-hidden">
+          {/* Skyscraper Background Image with Dark Gradient Overlay */}
+          <div className="absolute inset-0 z-0">
+            <img
+              src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=80"
+              alt="Corporate Headquarters"
+              className="w-full h-full object-cover opacity-20"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#070e20] via-[#070e20]/80 to-[#070e20]/60" />
           </div>
 
-          <aside className="rounded-3xl border border-white/60 bg-gradient-to-br from-primary-fixed/40 to-secondary-fixed/30 p-8 shadow-soft">
-            <div className="rounded-2xl bg-white/80 p-6 backdrop-blur">
-              <h2 className="font-headline text-2xl font-bold text-primary">
-                One Portal, Daily Workflows
-              </h2>
-              <p className="mt-2 text-sm leading-6 text-on-surface-variant">
-                Handle staff requests, attendance, and approvals in one secure
-                workspace built for multi-organization teams.
-              </p>
+          {/* Top Brand Logo */}
+          <div className="relative z-10">
+            <Link to="/" className="inline-block">
+              <StanforteLogo variant="dark" className="h-8" />
+            </Link>
+          </div>
 
-              <div className="mt-6 grid gap-3">
-                {[
-                  {
-                    icon: "assignment",
-                    title: "Requests & Approvals",
-                    text: "Submit, review, and track request decisions end-to-end.",
-                  },
-                  {
-                    icon: "pending_actions",
-                    title: "Attendance Ops",
-                    text: "Clock-in, corrections, and exceptions with clear audit trails.",
-                  },
-                  {
-                    icon: "security",
-                    title: "Security by Default",
-                    text: "Session protection, role controls, and monitored access.",
-                  },
-                ].map((item) => (
-                  <article
-                    key={item.title}
-                    className="rounded-2xl bg-white px-4 py-4"
-                  >
-                    <div className="flex items-start gap-3">
-                      <span className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-primary-fixed/40 text-primary">
-                        <Icon name={item.icon} className="text-[18px]" />
-                      </span>
-                      <div>
-                        <h3 className="text-sm font-semibold text-on-surface">
-                          {item.title}
-                        </h3>
-                        <p className="mt-1 text-sm text-on-surface-variant">
-                          {item.text}
-                        </p>
-                      </div>
-                    </div>
-                  </article>
-                ))}
+          {/* Center Content: Welcome Back & 3 Feature Badges */}
+          <div className="relative z-10 my-auto py-8 space-y-6">
+            <div className="space-y-2">
+              <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight font-headline">
+                Welcome Back
+              </h1>
+              <p className="text-sm text-slate-300">
+                Sign in to access your enterprise workspace.
+              </p>
+            </div>
+
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm">
+                <div className="w-9 h-9 rounded-lg bg-orange-500/20 text-[#ff6900] flex items-center justify-center">
+                  <Shield className="h-4 w-4" />
+                </div>
+                <span className="text-xs font-semibold text-slate-200">Secure & Reliable</span>
+              </div>
+
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm">
+                <div className="w-9 h-9 rounded-lg bg-orange-500/20 text-[#ff6900] flex items-center justify-center">
+                  <Building2 className="h-4 w-4" />
+                </div>
+                <span className="text-xs font-semibold text-slate-200">Multi-Branch Support</span>
+              </div>
+
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm">
+                <div className="w-9 h-9 rounded-lg bg-orange-500/20 text-[#ff6900] flex items-center justify-center">
+                  <TrendingUp className="h-4 w-4" />
+                </div>
+                <span className="text-xs font-semibold text-slate-200">Real-Time Insights</span>
               </div>
             </div>
-          </aside>
-        </div>
-
-        <div className="mx-auto w-full max-w-sm md:hidden">
-          <div className="mb-10 text-center">
-            <img
-              src={brandLogo}
-              alt="Stanforte Edge"
-              className="mx-auto h-14 w-auto object-contain"
-            />
           </div>
 
-          <div className="rounded-3xl bg-white p-7 shadow-soft">
-            <h2 className="font-headline text-xl font-semibold text-on-surface">
-              Welcome back
-            </h2>
-            <p className="mt-1 text-sm text-on-surface-variant">
-              Please enter your credentials to continue
-            </p>
+          {/* Bottom Tagline & Decorative Curve */}
+          <div className="relative z-10 pt-4 border-t border-white/10 flex items-center justify-between text-xs text-slate-400">
+            <span>Smarter Operations. Greater Productivity.</span>
+            {/* Subtle orange accent curve */}
+            <div className="w-8 h-8 rounded-full border-2 border-[#ff6900]/40 -mr-4 -mb-4 opacity-50" />
+          </div>
+        </div>
 
-            {error ? (
+        {/* Right Column: Clean White Sign In Form */}
+        <div className="bg-white p-8 sm:p-12 flex flex-col justify-center">
+          <div className="max-w-md w-full mx-auto space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight text-slate-900 font-headline">
+                Sign In
+              </h2>
+              <p className="text-xs text-slate-500 mt-1">
+                Enter your credentials to continue
+              </p>
+            </div>
+
+            {error && (
               <div
                 role="alert"
-                className="mt-4 rounded-2xl border border-danger/20 bg-danger/10 px-4 py-3 text-sm text-danger"
+                className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-600 font-medium"
               >
                 {error}
               </div>
-            ) : null}
+            )}
 
-            <form className="mt-6 space-y-5" onSubmit={handleSubmit} noValidate>
-              <label className="block">
-                <span className="field-label">Corporate Email</span>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Email Field */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-700">Email Address</label>
                 <div className="relative">
-                  <Icon
-                    name="mail"
-                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-outline"
-                  />
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <input
-                    className="input-base h-14 pl-10"
-                    autoComplete="email"
                     type="email"
-                    placeholder="name@stanforte.com"
-                    required
                     value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                  />
-                </div>
-              </label>
-
-              <label className="block">
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="field-label mb-0">Security Key</span>
-                  <Link
-                    to="/forgot-password"
-                    className="text-xs font-semibold text-primary hover:underline"
-                  >
-                    Forgot?
-                  </Link>
-                </div>
-                <div className="relative">
-                  <Icon
-                    name="lock"
-                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-outline"
-                  />
-                  <input
-                    className="input-base h-14 pl-10 pr-11"
-                    autoComplete="current-password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@company.com"
                     required
+                    className="w-full pl-10 pr-4 py-2.5 text-xs bg-white border border-slate-200 rounded-xl outline-none transition focus:border-[#ff6900] focus:ring-2 focus:ring-orange-500/10"
+                  />
+                </div>
+              </div>
+
+              {/* Password Field */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-700">Password</label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <input
+                    type={showPassword ? "text" : "password"}
                     value={password}
-                    onChange={(event) => setPassword(event.target.value)}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter your password"
+                    required
+                    className="w-full pl-10 pr-10 py-2.5 text-xs bg-white border border-slate-200 rounded-xl outline-none transition focus:border-[#ff6900] focus:ring-2 focus:ring-orange-500/10"
                   />
                   <button
                     type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface"
-                    onClick={() => setShowPassword((v) => !v)}
-                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                   >
-                    <Icon
-                      name={showPassword ? "visibility_off" : "visibility"}
-                      className="text-[20px]"
-                    />
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
-              </label>
-
-              <Button
-                type="submit"
-                className="h-14 w-full justify-center text-base"
-                disabled={loading}
-              >
-                {loading ? "Signing In..." : "Log In"}
-                {!loading ? (
-                  <Icon name="arrow_forward" className="ml-2 text-[18px]" />
-                ) : null}
-              </Button>
-
-              <div className="relative flex items-center gap-3">
-                <div className="h-px flex-1 bg-slate-200" />
-                <span className="text-xs font-semibold text-slate-400">or</span>
-                <div className="h-px flex-1 bg-slate-200" />
               </div>
 
+              {/* Remember Me & Forgot Password */}
+              <div className="flex items-center justify-between text-xs pt-1">
+                <label className="flex items-center gap-2 cursor-pointer text-slate-600">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="rounded border-slate-300 text-[#ff6900] focus:ring-[#ff6900]"
+                  />
+                  <span>Remember me</span>
+                </label>
+                <Link
+                  to="/forgot-password"
+                  className="font-medium text-[#ff6900] hover:text-[#ea580c] transition-colors"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+
+              {/* Sign In Button */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 rounded-xl font-bold text-xs bg-[#ff6900] hover:bg-[#ea580c] text-white shadow-md shadow-orange-500/25 transition-all disabled:opacity-50"
+              >
+                {loading ? "Signing in..." : "Sign In"}
+              </button>
+            </form>
+
+            {/* Social Logins Divider */}
+            <div className="relative flex items-center justify-center my-4">
+              <div className="border-t border-slate-200 w-full" />
+              <span className="bg-white px-3 text-[11px] text-slate-400 font-medium whitespace-nowrap">
+                or continue with
+              </span>
+              <div className="border-t border-slate-200 w-full" />
+            </div>
+
+            {/* Social Buttons */}
+            <div className="grid grid-cols-2 gap-3">
               <a
                 href={`${apiBase}/auth/google`}
-                className="flex h-14 w-full items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
+                className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-slate-200 hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors shadow-sm"
               >
                 <GoogleIcon />
-                Sign in with Google
+                <span>Google</span>
               </a>
-            </form>
-            <p className="mt-5 text-center text-sm text-slate-500">
-              Need a workspace?{" "}
-              <Link to="/register" className="font-semibold text-primary hover:underline">
-                Create one
+              <button
+                type="button"
+                className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-slate-200 hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors shadow-sm"
+              >
+                <MicrosoftIcon />
+                <span>Microsoft</span>
+              </button>
+            </div>
+
+            {/* Register Link */}
+            <div className="text-center text-xs text-slate-500 pt-2">
+              Don't have an account?{" "}
+              <Link to="/register" className="font-bold text-[#ff6900] hover:underline">
+                Register
               </Link>
-            </p>
+            </div>
           </div>
         </div>
-      </section>
-    </main>
+      </div>
+    </div>
   );
 }
