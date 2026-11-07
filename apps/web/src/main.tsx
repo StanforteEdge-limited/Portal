@@ -1,10 +1,10 @@
 import React, { Component, type ReactNode } from "react";
 import ReactDOM from "react-dom/client";
-import { BrowserRouter } from "react-router-dom";
+import { RouterProvider } from "@tanstack/react-router";
 import { ToastProvider } from "@/shared";
-import App from "./App";
-import { AuthProvider } from "@/shared/context/AuthProvider";
-import { BrandingProvider } from "@/shared/branding/BrandingProvider";
+import { createRouter } from "./router";
+
+const router = createRouter();
 import { AppVersion } from "@/shared/components/AppVersion";
 import "./styles.css";
 import faviconUrl from "../../shared/assets/brand/stanforte-icon-white.png";
@@ -102,15 +102,9 @@ if (faviconLink) {
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <AppErrorBoundary>
-      <BrowserRouter basename={import.meta.env.BASE_URL}>
-        <AuthProvider>
-          <ToastProvider>
-            <BrandingProvider>
-              <App />
-            </BrandingProvider>
-          </ToastProvider>
-        </AuthProvider>
-      </BrowserRouter>
+      <ToastProvider>
+        <RouterProvider router={router} />
+      </ToastProvider>
     </AppErrorBoundary>
     <AppVersion />
   </React.StrictMode>,
