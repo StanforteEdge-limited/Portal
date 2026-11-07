@@ -1,10 +1,30 @@
 import { PublicLayout } from "./PublicLayout";
 import { Link } from "@/shared/router-adapter";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Users,
+  CreditCard,
+  Clock,
+  FileCheck,
+  ArrowRight,
+  ShieldCheck,
+  Layers,
+  CheckCircle2,
+} from "lucide-react";
 
 export default function FeaturesPage() {
   const suites = [
     {
       category: "Workforce & People Operations",
+      icon: Users,
       description: "Centralize employee information, contracts, and organizational reporting lines.",
       items: [
         {
@@ -27,6 +47,7 @@ export default function FeaturesPage() {
     },
     {
       category: "Automated Payroll & Statutory Compliance",
+      icon: CreditCard,
       description: "Eliminate manual payroll calculation errors and ensure full regulatory compliance.",
       items: [
         {
@@ -49,6 +70,7 @@ export default function FeaturesPage() {
     },
     {
       category: "Time, Shifts & Absence Management",
+      icon: Clock,
       description: "Accurately record employee hours, shifts, and absence without manual paper logs.",
       items: [
         {
@@ -71,6 +93,7 @@ export default function FeaturesPage() {
     },
     {
       category: "Approvals, Procurement & Financial Controls",
+      icon: FileCheck,
       description: "Enforce institutional financial discipline and transparent sign-off workflows.",
       items: [
         {
@@ -96,69 +119,77 @@ export default function FeaturesPage() {
   return (
     <PublicLayout activePath="/features">
       {/* Header */}
-      <section className="pt-16 pb-12 px-6 text-center max-w-4xl mx-auto">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold uppercase tracking-wider mb-6">
+      <section className="pt-16 pb-12 px-6 text-center max-w-4xl mx-auto space-y-4">
+        <Badge variant="outline" className="px-3 py-1 font-semibold text-xs tracking-wide">
           Platform Capabilities
-        </div>
+        </Badge>
         <h1 className="text-3xl sm:text-5xl font-bold text-slate-900 tracking-tight font-headline">
           Comprehensive tools for modern operations
         </h1>
-        <p className="mt-4 text-base sm:text-lg text-slate-600 max-w-2xl mx-auto">
+        <p className="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto">
           Every capability in Stanforte Edge is built to streamline institutional workflows, improve administrative accountability, and eliminate operational bottlenecks.
         </p>
       </section>
 
-      {/* Feature Suites */}
+      {/* Feature Suites with shadcn Cards */}
       <section className="px-6 max-w-7xl mx-auto pb-20 space-y-16">
-        {suites.map((suite, idx) => (
-          <div key={idx} className="border-t border-slate-200 pt-10">
-            <div className="max-w-2xl mb-8">
-              <h2 className="text-xl font-bold text-slate-900 font-headline">
-                {suite.category}
-              </h2>
-              <p className="text-sm text-slate-600 mt-1">
-                {suite.description}
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {suite.items.map((item, itemIdx) => (
-                <div key={itemIdx} className="p-6 border border-slate-200 rounded-lg bg-white">
-                  <h3 className="text-sm font-bold text-slate-900 mb-2">
-                    {item.title}
-                  </h3>
-                  <p className="text-xs text-slate-600 leading-relaxed">
-                    {item.description}
-                  </p>
+        {suites.map((suite, idx) => {
+          const Icon = suite.icon;
+          return (
+            <div key={idx} className="border-t border-slate-200 pt-10">
+              <div className="max-w-2xl mb-8 space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-md bg-slate-100 flex items-center justify-center text-slate-900">
+                    <Icon className="h-4 w-4" />
+                  </div>
+                  <h2 className="text-xl font-bold text-slate-900 font-headline">
+                    {suite.category}
+                  </h2>
                 </div>
-              ))}
+                <p className="text-sm text-slate-600">
+                  {suite.description}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {suite.items.map((item, itemIdx) => (
+                  <Card key={itemIdx}>
+                    <CardHeader>
+                      <CardTitle className="text-sm font-bold flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                        {item.title}
+                      </CardTitle>
+                      <CardDescription className="text-xs leading-relaxed pt-1 text-slate-600">
+                        {item.description}
+                      </CardDescription>
+                    </CardHeader>
+                  </Card>
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </section>
 
-      {/* Conversion Banner */}
-      <section className="border-t border-slate-200 bg-slate-50 py-16 px-6 text-center">
-        <div className="max-w-3xl mx-auto">
+      {/* Conversion Banner with shadcn Card & Button */}
+      <section className="border-t border-slate-200 bg-white py-16 px-6 text-center">
+        <div className="max-w-3xl mx-auto space-y-4">
+          <Badge variant="outline">Get Started</Badge>
           <h2 className="text-2xl font-bold text-slate-900 font-headline">
             Ready to evaluate Stanforte Edge for your organization?
           </h2>
-          <p className="text-sm text-slate-600 mt-2">
-            Get started with our free tier or request a guided demonstration with our solution team.
+          <p className="text-sm text-slate-600 max-w-xl mx-auto">
+            Get started with our free tier or request a guided consultation with our solution architecture team.
           </p>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
-            <Link
-              to="/register"
-              className="px-6 py-3 rounded-md font-semibold text-xs bg-slate-900 hover:bg-slate-800 text-white transition-colors"
-            >
-              Start Free Workspace
-            </Link>
-            <a
-              href="mailto:demo@stanforteedge.com"
-              className="px-6 py-3 rounded-md font-semibold text-xs border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 transition-colors"
-            >
-              Schedule Consultation
-            </a>
+          <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
+            <Button asChild size="lg">
+              <Link to="/register" className="flex items-center gap-2">
+                Start Free Workspace <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="lg">
+              <a href="mailto:demo@stanforteedge.com">Schedule Consultation</a>
+            </Button>
           </div>
         </div>
       </section>
