@@ -2,140 +2,166 @@ import { PublicLayout } from "./PublicLayout";
 import { Link } from "@/shared/router-adapter";
 
 export default function FeaturesPage() {
-  const modules = [
+  const suites = [
     {
-      id: "tenancy",
-      icon: "domain",
-      title: "Workspace Multi-Tenancy",
-      badge: "Core Platform",
-      description: "Self-serve workspace registration with strict row-level PostgreSQL data isolation, custom domain branding, and sub-organization hierarchies.",
-      bullets: ["Zero cross-tenant data leakage", "Automatic template cloning", "Custom theme branding"],
+      category: "Workforce & People Operations",
+      description: "Centralize employee information, contracts, and organizational reporting lines.",
+      items: [
+        {
+          title: "Staff Directory & Profiles",
+          description: "Maintain comprehensive digital employee records, job roles, emergency contacts, national identification, and bank details in a centralized directory.",
+        },
+        {
+          title: "Department & Branch Structure",
+          description: "Model multi-branch, multi-department corporate structures with clear management hierarchies and division-level reporting.",
+        },
+        {
+          title: "Structured Onboarding & Offboarding",
+          description: "Standardize onboarding task lists, policy acknowledgements, asset issuances, and exit handovers with automated status tracking.",
+        },
+        {
+          title: "Digital Document Storage",
+          description: "Secure repository for employee contracts, identification scans, qualification certificates, and annual appraisal files.",
+        },
+      ],
     },
     {
-      id: "payroll",
-      icon: "payments",
-      title: "Automated Monthly Payroll",
-      badge: "Finance & HR",
-      description: "Complete end-to-end salary processing with automated PAYE tax tables, statutory pension calculations, loan repayments, and PDF payslip generation.",
-      bullets: ["Statutory tax deductions (PAYE, NHF, Pension)", "Background BullMQ batch payslip email delivery", "Exportable bank disbursement CSVs"],
+      category: "Automated Payroll & Statutory Compliance",
+      description: "Eliminate manual payroll calculation errors and ensure full regulatory compliance.",
+      items: [
+        {
+          title: "Monthly Salary Calculation",
+          description: "Automatically compute gross to net salaries based on verified attendance, unpaid leave deductions, bonuses, and recurring allowances.",
+        },
+        {
+          title: "Statutory Tax & Pension Schedules",
+          description: "Generate compliant monthly PAYE tax deduction schedules, pension administrator remittances, and national housing fund contributions.",
+        },
+        {
+          title: "Commercial Bank Disbursement Batches",
+          description: "Export standardized payment schedule files ready for direct upload into commercial banking portals for batch salary disbursement.",
+        },
+        {
+          title: "Self-Service Digital Payslips",
+          description: "Automatically generate downloadable, password-protected PDF payslips accessible directly from employee self-service portals.",
+        },
+      ],
     },
     {
-      id: "attendance",
-      icon: "fingerprint",
-      title: "GPS-Geofenced Attendance",
-      badge: "People Operations",
-      description: "Eliminate attendance fraud with polygon GPS geofencing around corporate offices, biometric reconciliation, and supervisor shift digests.",
-      bullets: ["Multiple office coordinate perimeters", "Manager correction reviews", "Automated overtime & tardiness computation"],
+      category: "Time, Shifts & Absence Management",
+      description: "Accurately record employee hours, shifts, and absence without manual paper logs.",
+      items: [
+        {
+          title: "Biometric & Campus Attendance",
+          description: "Capture accurate clock-in times using integrated biometric hardware, office network detection, or authorized supervisor logbooks.",
+        },
+        {
+          title: "Shift Scheduling & Rosters",
+          description: "Plan recurring shift rotations for operational teams, weekend duties, and overtime allocations with automated conflict detection.",
+        },
+        {
+          title: "Leave Management & Balances",
+          description: "Manage annual, sick, compassionate, and maternity leave with real-time balance deductions and automated approval routing to managers.",
+        },
+        {
+          title: "Tardiness & Overtime Integration",
+          description: "Seamlessly feed attendance anomalies directly into monthly payroll computations to adjust allowances or deductions automatically.",
+        },
+      ],
     },
     {
-      id: "finance",
-      icon: "account_balance",
-      title: "General Ledger & Chart of Accounts",
-      badge: "Financial Accounting",
-      description: "Full double-entry general ledger tracking corporate debits and credits, journal vouchers, vendor payments, and asset disposals.",
-      bullets: ["Multi-tier chart of accounts (48+ ledgers)", "Real-time debit/credit reconciliation", "Audit trail with immutable timestamps"],
-    },
-    {
-      id: "workflows",
-      icon: "account_tree",
-      title: "Dynamic Request Workflows",
-      badge: "Operations",
-      description: "Visual approval routing that directs leave, travel advances, and expense reimbursements through custom multi-tiered management hierarchies.",
-      bullets: ["Configurable approval thresholds", "Line supervisor & finance clearances", "Email action token clearance"],
-    },
-    {
-      id: "procurement",
-      icon: "shopping_cart",
-      title: "Procurement & B2B Vendor Portal",
-      badge: "Supply Chain",
-      description: "External vendor bidding portal allowing suppliers to submit quotations, track purchase orders, and confirm goods deliveries.",
-      bullets: ["External vendor quotation bidding", "Automated PDF purchase order dispatch", "Supplier performance tiering"],
-    },
-    {
-      id: "tasks",
-      icon: "view_kanban",
-      title: "Agile Kanban Tasks & Sprints",
-      badge: "Productivity",
-      description: "Manage corporate initiatives with agile sprint cycles, drag-and-drop Kanban boards, daily activity logs, and story point tracking.",
-      bullets: ["Multi-project sprint boards", "Daily team activity logs", "Priority tags and milestone tracking"],
-    },
-    {
-      id: "storage",
-      icon: "cloud_upload",
-      title: "Secure S3 Cloud Storage & Policies",
-      badge: "Document Management",
-      description: "Centralized corporate document repository partitioned by tenant on AWS S3 with employee e-acknowledgements and quota controls.",
-      bullets: ["Tenant-partitioned S3 storage", "Mandatory policy acknowledgements", "Plan-based storage quota metering"],
-    },
-    {
-      id: "mail",
-      icon: "mail",
-      title: "Integrated Webmail Client",
-      badge: "Communications",
-      description: "Full-featured webmail interface supporting background IMAP/SMTP synchronization, multi-account management, and thread rendering.",
-      bullets: ["Background IMAP synchronization", "Cryptographic credential storage", "Attachments & rich HTML composing"],
+      category: "Approvals, Procurement & Financial Controls",
+      description: "Enforce institutional financial discipline and transparent sign-off workflows.",
+      items: [
+        {
+          title: "Configurable Approval Chains",
+          description: "Route purchase requests, travel advances, and expenditure claims through sequential management tiers based on departmental budget rules.",
+        },
+        {
+          title: "Expense Requisitions & Vouchers",
+          description: "Submit expense claims with supporting receipt uploads, cost-center tags, and two-step verification prior to cash disbursement.",
+        },
+        {
+          title: "Departmental Budget Tracking",
+          description: "Monitor departmental expenditures in real time against approved quarterly budgets to prevent budget overruns.",
+        },
+        {
+          title: "Immutable Operational Audit Trail",
+          description: "Every approval, voucher creation, and payroll sign-off is indelibly timestamped with user identification for regulatory review.",
+        },
+      ],
     },
   ];
 
   return (
     <PublicLayout activePath="/features">
       {/* Header */}
-      <section className="pt-20 pb-12 px-6 text-center max-w-4xl mx-auto">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold uppercase tracking-wider mb-6">
-          14 Integrated Suites
+      <section className="pt-16 pb-12 px-6 text-center max-w-4xl mx-auto">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold uppercase tracking-wider mb-6">
+          Platform Capabilities
         </div>
-        <h1 className="text-4xl sm:text-6xl font-extrabold text-white tracking-tight leading-tight">
-          Everything Your Enterprise Needs in One Unified Cloud
+        <h1 className="text-3xl sm:text-5xl font-bold text-slate-900 tracking-tight font-headline">
+          Comprehensive tools for modern operations
         </h1>
-        <p className="mt-6 text-lg text-slate-400 max-w-2xl mx-auto">
-          Replace disjointed tools with a unified suite. Manage people, money, workflows, and documents from a single, high-performance interface.
+        <p className="mt-4 text-base sm:text-lg text-slate-600 max-w-2xl mx-auto">
+          Every capability in Stanforte Edge is built to streamline institutional workflows, improve administrative accountability, and eliminate operational bottlenecks.
         </p>
       </section>
 
-      {/* Modules Grid */}
-      <section className="px-6 max-w-7xl mx-auto pb-20">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {modules.map((m) => (
-            <div
-              key={m.id}
-              className="p-8 rounded-3xl bg-slate-800/40 border border-slate-800 hover:border-blue-500/50 flex flex-col justify-between transition-all group"
-            >
-              <div>
-                <div className="flex items-center justify-between mb-6">
-                  <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <span className="material-symbols-outlined text-2xl">{m.icon}</span>
-                  </div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
-                    {m.badge}
-                  </span>
-                </div>
-
-                <h3 className="text-xl font-bold text-white mb-2">{m.title}</h3>
-                <p className="text-xs text-slate-400 leading-relaxed mb-6">{m.description}</p>
-
-                <ul className="space-y-2 border-t border-slate-800/80 pt-4">
-                  {m.bullets.map((b, i) => (
-                    <li key={i} className="flex items-center gap-2 text-xs text-slate-300">
-                      <span className="material-symbols-outlined text-xs text-emerald-400">check</span>
-                      {b}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="mt-8 pt-4">
-                <Link
-                  to="/register"
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors"
-                >
-                  Explore in Free Workspace <span className="material-symbols-outlined text-xs">arrow_forward</span>
-                </Link>
-              </div>
+      {/* Feature Suites */}
+      <section className="px-6 max-w-7xl mx-auto pb-20 space-y-16">
+        {suites.map((suite, idx) => (
+          <div key={idx} className="border-t border-slate-200 pt-10">
+            <div className="max-w-2xl mb-8">
+              <h2 className="text-xl font-bold text-slate-900 font-headline">
+                {suite.category}
+              </h2>
+              <p className="text-sm text-slate-600 mt-1">
+                {suite.description}
+              </p>
             </div>
-          ))}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {suite.items.map((item, itemIdx) => (
+                <div key={itemIdx} className="p-6 border border-slate-200 rounded-lg bg-white">
+                  <h3 className="text-sm font-bold text-slate-900 mb-2">
+                    {item.title}
+                  </h3>
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    {item.description}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </section>
+
+      {/* Conversion Banner */}
+      <section className="border-t border-slate-200 bg-slate-50 py-16 px-6 text-center">
+        <div className="max-w-3xl mx-auto">
+          <h2 className="text-2xl font-bold text-slate-900 font-headline">
+            Ready to evaluate Stanforte Edge for your organization?
+          </h2>
+          <p className="text-sm text-slate-600 mt-2">
+            Get started with our free tier or request a guided demonstration with our solution team.
+          </p>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
+            <Link
+              to="/register"
+              className="px-6 py-3 rounded-md font-semibold text-xs bg-slate-900 hover:bg-slate-800 text-white transition-colors"
+            >
+              Start Free Workspace
+            </Link>
+            <a
+              href="mailto:demo@stanforteedge.com"
+              className="px-6 py-3 rounded-md font-semibold text-xs border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 transition-colors"
+            >
+              Schedule Consultation
+            </a>
+          </div>
         </div>
       </section>
     </PublicLayout>
   );
 }
-
