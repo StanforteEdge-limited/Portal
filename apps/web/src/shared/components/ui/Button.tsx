@@ -12,20 +12,21 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   requiredPermissions?: string[];
 };
 
-const base = "inline-flex items-center justify-center rounded-full font-semibold transition focus:outline-none focus:ring-4 focus:ring-brand-900/10 disabled:cursor-not-allowed disabled:opacity-50";
+const base =
+  "inline-flex items-center justify-center rounded-xl font-bold transition focus:outline-none focus:ring-2 focus:ring-orange-500/20 disabled:cursor-not-allowed disabled:opacity-50";
 
 const variants: Record<ButtonVariant, string> = {
   primary:
-    "bg-brand-900 text-white shadow-soft hover:bg-brand-700 hover:shadow-card",
+    "bg-[#ff6900] text-white shadow-md shadow-orange-500/20 hover:bg-[#ea580c] hover:shadow-orange-500/30",
   secondary:
-    "border border-slate-200 bg-white text-slate-900 hover:bg-slate-50",
+    "border border-slate-200 bg-white text-slate-800 hover:bg-slate-50 shadow-sm",
   ghost: "bg-transparent text-slate-700 hover:bg-slate-100",
-  danger: "bg-danger text-white hover:opacity-90",
+  danger: "bg-rose-600 text-white hover:bg-rose-700 shadow-sm",
 };
 
 const sizes: Record<ButtonSize, string> = {
-  sm: "px-4 py-2 text-sm",
-  md: "px-5 py-3 text-sm",
+  sm: "px-3.5 py-1.5 text-xs",
+  md: "px-4 py-2 text-xs sm:text-sm",
 };
 
 export function Button({

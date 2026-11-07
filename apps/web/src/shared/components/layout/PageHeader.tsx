@@ -17,24 +17,28 @@ export function PageHeader({
   actions,
 }: PageHeaderProps) {
   return (
-    <section className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <section className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="max-w-3xl">
         {breadcrumbs?.length ? (
-          <div className="mb-2">
+          <div className="mb-1.5">
             <Breadcrumbs items={breadcrumbs} />
           </div>
         ) : null}
         {eyebrow ? (
-          <p className="section-kicker mb-2">{eyebrow}</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-[#ff6900] mb-1">
+            {eyebrow}
+          </p>
         ) : null}
-        <h1 className="page-title">{title}</h1>
+        <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight font-headline">
+          {title}
+        </h1>
         {description ? (
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500 sm:text-base">
+          <p className="mt-1 text-xs sm:text-sm text-slate-500 max-w-2xl">
             {description}
           </p>
         ) : null}
       </div>
-      {actions ? <div className="flex flex-wrap gap-3">{actions}</div> : null}
+      {actions ? <div className="flex flex-wrap items-center gap-3 self-start sm:self-auto">{actions}</div> : null}
     </section>
   );
 }

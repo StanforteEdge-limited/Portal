@@ -237,3 +237,4 @@ export function PortalLayout({ children, activeNav = "HR & Workforce" }: PortalL
     </div>
   );
 }
+

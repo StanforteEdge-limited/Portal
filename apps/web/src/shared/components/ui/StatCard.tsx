@@ -26,23 +26,36 @@ export function StatCard({
   if (requiredPermissions?.length && !hasAnyPermission(user, requiredPermissions)) {
     return null;
   }
+
+  const toneBg =
+    tone === "success"
+      ? "bg-emerald-50 text-emerald-600"
+      : tone === "warning" || tone === "pending"
+      ? "bg-amber-50 text-amber-600"
+      : tone === "danger"
+      ? "bg-rose-50 text-rose-600"
+      : "bg-blue-50 text-blue-600";
+
   return (
-    <article className="stat-card">
+    <article className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 flex flex-col justify-between space-y-3">
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[0.72rem] font-bold uppercase tracking-[0.16em] text-slate-500">
-            {label}
-          </p>
-          <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
-            {value}
-          </p>
+        <div className="space-y-1">
+          <p className="text-xs font-semibold text-slate-500">{label}</p>
+          <p className="text-2xl font-black tracking-tight text-slate-900">{value}</p>
         </div>
-        <div className="flex flex-col items-end gap-2">
-          {icon ? <Icon name={icon} className="text-slate-400" /> : null}
-          {delta ? <Chip variant={tone}>{delta}</Chip> : null}
-        </div>
+        {icon ? (
+          <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${toneBg}`}>
+            <Icon name={icon} className="text-[20px]" />
+          </div>
+        ) : null}
       </div>
-      {hint ? <p className="field-help mt-4">{hint}</p> : null}
+
+      {(delta || hint) ? (
+        <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
+          {delta ? <Chip variant={tone}>{delta}</Chip> : null}
+          {hint ? <p className="text-[11px] text-slate-400 truncate">{hint}</p> : null}
+        </div>
+      ) : null}
     </article>
   );
 }

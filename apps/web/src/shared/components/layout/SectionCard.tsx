@@ -24,24 +24,31 @@ export function SectionCard({
     return null;
   }
   return (
-    <section className={["section-card p-5 sm:p-6 mt-6", className].filter(Boolean).join(" ")}>
-      <div className="mb-5 flex items-start justify-between gap-3">
-        <div>
-          {title ? (
-            <>
-              <h2 className="font-headline text-lg font-semibold tracking-tight text-slate-950">
+    <section
+      className={[
+        "bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 sm:p-6 mt-6",
+        className,
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      {(title || action) ? (
+        <div className="mb-5 flex items-start justify-between gap-3">
+          <div>
+            {title ? (
+              <h2 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 font-headline">
                 {title}
               </h2>
-              {description ? (
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-                  {description}
-                </p>
-              ) : null}
-            </>
-          ) : null}
+            ) : null}
+            {description ? (
+              <p className="mt-1 max-w-2xl text-xs sm:text-sm text-slate-500">
+                {description}
+              </p>
+            ) : null}
+          </div>
+          {action ? <div className="shrink-0">{action}</div> : null}
         </div>
-        {action ? <div className="shrink-0">{action}</div> : null}
-      </div>
+      ) : null}
       {children}
     </section>
   );
