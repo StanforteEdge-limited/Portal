@@ -1,298 +1,341 @@
 import { useState } from "react";
 import { Link } from "@/shared/router-adapter";
 import { PublicLayout } from "./PublicLayout";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableHeader,
-  TableRow,
-  TableHead,
-  TableBody,
-  TableCell,
-} from "@/components/ui/table";
 import {
   Accordion,
   AccordionItem,
   AccordionTrigger,
   AccordionContent,
 } from "@/components/ui/accordion";
-import { Check, Minus, Sparkles } from "lucide-react";
+import { Check, Minus, Sparkles, ArrowRight } from "lucide-react";
 
 export default function PricingPage() {
   const [annualBilling, setAnnualBilling] = useState(true);
 
   return (
     <PublicLayout activePath="/pricing">
-      {/* Header */}
-      <section className="pt-16 pb-14 px-6 text-center max-w-5xl mx-auto space-y-4">
-        <Badge variant="outline" className="px-3 py-1 font-semibold text-xs tracking-wide">
-          Transparent Pricing
-        </Badge>
-        <h1 className="text-3xl sm:text-5xl font-bold text-slate-900 tracking-tight font-headline">
-          Plans designed for organizations of all sizes
+      {/* Header Section */}
+      <section className="pt-16 pb-12 px-6 text-center max-w-4xl mx-auto space-y-5">
+        <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-orange-50 border border-orange-200/80 text-[#ff6900] text-xs font-bold uppercase tracking-wider">
+          Transparent SaaS Plans
+        </div>
+
+        <h1 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight font-headline">
+          Plans Designed for Growing <br className="hidden sm:inline" />
+          <span className="text-[#ff6900]">Organizations</span>
         </h1>
-        <p className="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto">
-          Start with our complimentary tier for smaller teams, or upgrade to complete automated payroll and multi-level approvals as your workforce grows.
+
+        <p className="text-base text-slate-600 max-w-2xl mx-auto leading-relaxed">
+          Start with our free tier for early-stage teams, or scale to automated payroll, attendance tracking, and multi-tier approval chains as you grow.
         </p>
 
-        {/* Billing Switch */}
-        <div className="pt-4">
-          <div className="inline-flex items-center gap-1 p-1 bg-slate-100 border border-slate-200 rounded-lg">
-            <Button
-              variant={!annualBilling ? "default" : "ghost"}
-              size="sm"
+        {/* Monthly vs Annual Toggle */}
+        <div className="pt-2">
+          <div className="inline-flex items-center p-1.5 bg-slate-100 rounded-full border border-slate-200 text-xs font-semibold">
+            <button
+              type="button"
               onClick={() => setAnnualBilling(false)}
+              className={`px-5 py-2 rounded-full transition-all ${
+                !annualBilling
+                  ? "bg-[#ff6900] text-white shadow-md shadow-orange-500/25"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
             >
               Monthly Billing
-            </Button>
-            <Button
-              variant={annualBilling ? "default" : "ghost"}
-              size="sm"
+            </button>
+            <button
+              type="button"
               onClick={() => setAnnualBilling(true)}
-              className="gap-1.5"
+              className={`px-5 py-2 rounded-full transition-all flex items-center gap-1.5 ${
+                annualBilling
+                  ? "bg-[#ff6900] text-white shadow-md shadow-orange-500/25"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
             >
               Annual Billing
-              <Badge variant="success" className="text-[10px] px-1.5 py-0">
+              <span className="bg-white/20 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
                 Save 20%
-              </Badge>
-            </Button>
+              </span>
+            </button>
           </div>
         </div>
       </section>
 
-      {/* Pricing Cards with shadcn Card */}
+      {/* Pricing Cards Grid */}
       <section className="px-6 max-w-7xl mx-auto pb-16">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
-          {/* Starter */}
-          <Card className="flex flex-col justify-between">
-            <CardHeader>
+          {/* 1. Starter Tier */}
+          <div className="p-8 rounded-3xl border border-slate-200/90 bg-white flex flex-col justify-between shadow-sm">
+            <div>
               <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Starter</div>
-              <CardTitle className="text-3xl font-bold text-slate-900 mt-2">
+              <div className="text-4xl font-black text-slate-900 mt-2">
                 Free
-              </CardTitle>
-              <CardDescription className="text-xs text-slate-500">
-                For teams up to 15 employees
-              </CardDescription>
-              <p className="text-xs text-slate-600 pt-2 leading-relaxed">
-                Core tools to organize staff profiles, basic attendance tracking, and employee leave requests.
+              </div>
+              <div className="text-xs text-slate-500 mt-1">For teams up to 15 employees</div>
+              <p className="text-xs text-slate-600 mt-4 leading-relaxed">
+                Core staff records, profile directory, and self-service leave requests for small teams and branch offices.
               </p>
-            </CardHeader>
 
-            <CardContent className="space-y-4">
-              <div className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Included features:</div>
-              <ul className="space-y-2.5 text-xs text-slate-600">
-                <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-emerald-600 shrink-0" /> Up to 15 active staff records
+              <div className="border-t border-slate-100 my-6" />
+
+              <div className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-4">Included features:</div>
+              <ul className="space-y-3 text-xs text-slate-600">
+                <li className="flex items-center gap-2.5">
+                  <div className="w-4 h-4 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                    <Check className="h-3 w-3 stroke-[3]" />
+                  </div>
+                  Up to 15 active staff records
                 </li>
-                <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-emerald-600 shrink-0" /> Employee directory & profiles
+                <li className="flex items-center gap-2.5">
+                  <div className="w-4 h-4 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                    <Check className="h-3 w-3 stroke-[3]" />
+                  </div>
+                  Employee directory & profiles
                 </li>
-                <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-emerald-600 shrink-0" /> Standard leave tracking
+                <li className="flex items-center gap-2.5">
+                  <div className="w-4 h-4 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                    <Check className="h-3 w-3 stroke-[3]" />
+                  </div>
+                  Standard leave tracking
                 </li>
-                <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-emerald-600 shrink-0" /> Web-based clock-in / clock-out
+                <li className="flex items-center gap-2.5">
+                  <div className="w-4 h-4 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                    <Check className="h-3 w-3 stroke-[3]" />
+                  </div>
+                  Web-based clock-in / clock-out
                 </li>
-                <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-emerald-600 shrink-0" /> Role-based access permissions
+                <li className="flex items-center gap-2.5">
+                  <div className="w-4 h-4 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                    <Check className="h-3 w-3 stroke-[3]" />
+                  </div>
+                  Role-based access permissions
                 </li>
               </ul>
-            </CardContent>
-
-            <CardFooter>
-              <Button asChild variant="outline" className="w-full">
-                <Link to="/register">Create Free Account</Link>
-              </Button>
-            </CardFooter>
-          </Card>
-
-          {/* Growth (Recommended) */}
-          <Card className="flex flex-col justify-between border-2 border-slate-900 relative shadow-md">
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-              <Badge variant="default" className="text-[10px] uppercase font-bold tracking-wider px-3 py-0.5">
-                <Sparkles className="h-3 w-3 mr-1" /> Most Popular
-              </Badge>
             </div>
 
-            <CardHeader>
-              <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Growth</div>
-              <CardTitle className="text-3xl font-bold text-slate-900 mt-2">
+            <div className="mt-8">
+              <Link
+                to="/register"
+                className="w-full block text-center py-3 px-4 rounded-full font-bold text-xs border border-slate-300 text-slate-800 hover:bg-slate-50 transition-colors"
+              >
+                Create Free Account
+              </Link>
+            </div>
+          </div>
+
+          {/* 2. Growth Tier (Most Popular) */}
+          <div className="p-8 rounded-3xl border-2 border-[#ff6900] bg-white flex flex-col justify-between relative shadow-xl">
+            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+              <span className="bg-[#ff6900] text-white text-[10px] uppercase font-bold tracking-wider px-3.5 py-1 rounded-full shadow-sm flex items-center gap-1">
+                <Sparkles className="h-3 w-3" /> Most Popular
+              </span>
+            </div>
+
+            <div>
+              <div className="text-xs font-bold uppercase tracking-wider text-[#ff6900]">Growth</div>
+              <div className="text-4xl font-black text-slate-900 mt-2">
                 {annualBilling ? "$49" : "$59"}
                 <span className="text-xs font-normal text-slate-500"> / month</span>
-              </CardTitle>
-              <CardDescription className="text-xs text-slate-500">
-                Billed annually (or &#8358;35,000/mo)
-              </CardDescription>
-              <p className="text-xs text-slate-600 pt-2 leading-relaxed">
-                Complete automated payroll with tax calculations, multi-tier approvals, and departmental budgets for scaling firms.
+              </div>
+              <div className="text-xs text-slate-500 mt-1">Billed annually (or &#8358;35,000/mo)</div>
+              <p className="text-xs text-slate-600 mt-4 leading-relaxed">
+                Automated monthly salary calculation with local tax formulas, multi-tier approvals, and budget tracking.
               </p>
-            </CardHeader>
 
-            <CardContent className="space-y-4">
-              <div className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Everything in Starter, plus:</div>
-              <ul className="space-y-2.5 text-xs text-slate-600">
-                <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-emerald-600 shrink-0" /> Up to 100 active staff records
+              <div className="border-t border-slate-100 my-6" />
+
+              <div className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-4">Everything in Starter, plus:</div>
+              <ul className="space-y-3 text-xs text-slate-600">
+                <li className="flex items-center gap-2.5">
+                  <div className="w-4 h-4 rounded-full bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
+                    <Check className="h-3 w-3 stroke-[3]" />
+                  </div>
+                  Up to 100 active staff records
                 </li>
-                <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-emerald-600 shrink-0" /> Automated monthly payroll & tax schedules
+                <li className="flex items-center gap-2.5">
+                  <div className="w-4 h-4 rounded-full bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
+                    <Check className="h-3 w-3 stroke-[3]" />
+                  </div>
+                  Automated monthly payroll & tax schedules
                 </li>
-                <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-emerald-600 shrink-0" /> Multi-level approval chains
+                <li className="flex items-center gap-2.5">
+                  <div className="w-4 h-4 rounded-full bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
+                    <Check className="h-3 w-3 stroke-[3]" />
+                  </div>
+                  Multi-level approval chains
                 </li>
-                <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-emerald-600 shrink-0" /> Biometric & geofenced attendance
+                <li className="flex items-center gap-2.5">
+                  <div className="w-4 h-4 rounded-full bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
+                    <Check className="h-3 w-3 stroke-[3]" />
+                  </div>
+                  Biometric & geofenced attendance
                 </li>
-                <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-emerald-600 shrink-0" /> Expense & procurement requisitions
+                <li className="flex items-center gap-2.5">
+                  <div className="w-4 h-4 rounded-full bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
+                    <Check className="h-3 w-3 stroke-[3]" />
+                  </div>
+                  Expense & procurement requisitions
                 </li>
-                <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-emerald-600 shrink-0" /> Bank disbursement schedule exports
+                <li className="flex items-center gap-2.5">
+                  <div className="w-4 h-4 rounded-full bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
+                    <Check className="h-3 w-3 stroke-[3]" />
+                  </div>
+                  Commercial bank schedule CSV export
                 </li>
               </ul>
-            </CardContent>
+            </div>
 
-            <CardFooter>
-              <Button asChild className="w-full">
-                <Link to="/register">Start Growth Plan</Link>
-              </Button>
-            </CardFooter>
-          </Card>
+            <div className="mt-8">
+              <Link
+                to="/register"
+                className="w-full block text-center py-3.5 px-4 rounded-full font-bold text-xs bg-[#ff6900] hover:bg-[#ea580c] text-white shadow-md shadow-orange-500/25 transition-all transform hover:-translate-y-0.5"
+              >
+                Start Growth Plan &rarr;
+              </Link>
+            </div>
+          </div>
 
-          {/* Enterprise */}
-          <Card className="flex flex-col justify-between">
-            <CardHeader>
+          {/* 3. Enterprise Tier */}
+          <div className="p-8 rounded-3xl border border-slate-200/90 bg-white flex flex-col justify-between shadow-sm">
+            <div>
               <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Enterprise</div>
-              <CardTitle className="text-3xl font-bold text-slate-900 mt-2">
+              <div className="text-4xl font-black text-slate-900 mt-2">
                 Custom
-              </CardTitle>
-              <CardDescription className="text-xs text-slate-500">
-                Multi-branch & holding companies
-              </CardDescription>
-              <p className="text-xs text-slate-600 pt-2 leading-relaxed">
+              </div>
+              <div className="text-xs text-slate-500 mt-1">Multi-branch and conglomerate operations</div>
+              <p className="text-xs text-slate-600 mt-4 leading-relaxed">
                 Dedicated infrastructure, tailored statutory deductions, ERP integrations, and custom SLA commitments.
               </p>
-            </CardHeader>
 
-            <CardContent className="space-y-4">
-              <div className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Enterprise capabilities:</div>
-              <ul className="space-y-2.5 text-xs text-slate-600">
-                <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-emerald-600 shrink-0" /> Unlimited staff across multiple subsidiaries
+              <div className="border-t border-slate-100 my-6" />
+
+              <div className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-4">Enterprise capabilities:</div>
+              <ul className="space-y-3 text-xs text-slate-600">
+                <li className="flex items-center gap-2.5">
+                  <div className="w-4 h-4 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                    <Check className="h-3 w-3 stroke-[3]" />
+                  </div>
+                  Unlimited staff across multiple subsidiaries
                 </li>
-                <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-emerald-600 shrink-0" /> Custom approval hierarchies & budgets
+                <li className="flex items-center gap-2.5">
+                  <div className="w-4 h-4 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                    <Check className="h-3 w-3 stroke-[3]" />
+                  </div>
+                  Custom approval hierarchies & budgets
                 </li>
-                <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-emerald-600 shrink-0" /> 99.9% uptime Service Level Agreement
+                <li className="flex items-center gap-2.5">
+                  <div className="w-4 h-4 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                    <Check className="h-3 w-3 stroke-[3]" />
+                  </div>
+                  99.9% uptime Service Level Agreement
                 </li>
-                <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-emerald-600 shrink-0" /> Dedicated technical account manager
+                <li className="flex items-center gap-2.5">
+                  <div className="w-4 h-4 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                    <Check className="h-3 w-3 stroke-[3]" />
+                  </div>
+                  Dedicated technical account manager
                 </li>
-                <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-emerald-600 shrink-0" /> Custom payroll tax rule configuration
+                <li className="flex items-center gap-2.5">
+                  <div className="w-4 h-4 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                    <Check className="h-3 w-3 stroke-[3]" />
+                  </div>
+                  Custom payroll tax rule configuration
                 </li>
               </ul>
-            </CardContent>
+            </div>
 
-            <CardFooter>
-              <Button asChild variant="outline" className="w-full">
-                <a href="mailto:sales@stanforteedge.com">Contact Enterprise Sales</a>
-              </Button>
-            </CardFooter>
-          </Card>
+            <div className="mt-8">
+              <a
+                href="mailto:sales@stanforteedge.com"
+                className="w-full block text-center py-3 px-4 rounded-full font-bold text-xs border border-slate-300 text-slate-800 hover:bg-slate-50 transition-colors"
+              >
+                Contact Enterprise Sales
+              </a>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* Feature Comparison Matrix with shadcn Table */}
-      <section className="border-t border-slate-200 bg-white py-16 px-6">
+      {/* Feature Comparison Matrix */}
+      <section className="border-t border-slate-100 bg-slate-50/60 py-16 px-6">
         <div className="max-w-7xl mx-auto space-y-8">
           <div className="text-center space-y-2">
-            <h2 className="text-2xl font-bold text-slate-900 font-headline">
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight font-headline">
               Detailed Plan Comparison
             </h2>
-            <p className="text-xs text-slate-500">Compare operational capabilities and governance limits</p>
+            <p className="text-xs text-slate-500">Side-by-side feature capability breakdown</p>
           </div>
 
-          <Card>
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-slate-50/80">
-                  <TableHead className="w-1/2">Capability</TableHead>
-                  <TableHead className="text-center">Starter</TableHead>
-                  <TableHead className="text-center bg-slate-100/50">Growth</TableHead>
-                  <TableHead className="text-center">Enterprise</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow>
-                  <TableCell className="font-medium text-slate-900">Included Employee Seats</TableCell>
-                  <TableCell className="text-center">Up to 15</TableCell>
-                  <TableCell className="text-center font-semibold text-slate-900 bg-slate-50/50">Up to 100</TableCell>
-                  <TableCell className="text-center">Unlimited</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-medium text-slate-900">Automated Monthly Payroll</TableCell>
-                  <TableCell className="text-center"><Minus className="h-4 w-4 text-slate-300 mx-auto" /></TableCell>
-                  <TableCell className="text-center bg-slate-50/50"><Check className="h-4 w-4 text-emerald-600 mx-auto font-bold" /></TableCell>
-                  <TableCell className="text-center"><Check className="h-4 w-4 text-emerald-600 mx-auto font-bold" /></TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-medium text-slate-900">Statutory Tax & Pension Schedules</TableCell>
-                  <TableCell className="text-center"><Minus className="h-4 w-4 text-slate-300 mx-auto" /></TableCell>
-                  <TableCell className="text-center bg-slate-50/50"><Check className="h-4 w-4 text-emerald-600 mx-auto font-bold" /></TableCell>
-                  <TableCell className="text-center"><Check className="h-4 w-4 text-emerald-600 mx-auto font-bold" /></TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-medium text-slate-900">Multi-Tier Approval Routing</TableCell>
-                  <TableCell className="text-center">Single Level</TableCell>
-                  <TableCell className="text-center bg-slate-50/50">Up to 3 Levels</TableCell>
-                  <TableCell className="text-center">Custom Hierarchies</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-medium text-slate-900">Attendance Clock-in Validation</TableCell>
-                  <TableCell className="text-center">Web Portal</TableCell>
-                  <TableCell className="text-center bg-slate-50/50">Biometric & GPS Geofence</TableCell>
-                  <TableCell className="text-center">Hardware & API Sync</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-medium text-slate-900">Audit Trail Retention</TableCell>
-                  <TableCell className="text-center">30 Days</TableCell>
-                  <TableCell className="text-center bg-slate-50/50">1 Year</TableCell>
-                  <TableCell className="text-center font-semibold text-slate-900">Permanent (7+ Years)</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-medium text-slate-900">Technical Support</TableCell>
-                  <TableCell className="text-center">Email</TableCell>
-                  <TableCell className="text-center bg-slate-50/50 font-medium text-slate-900">Priority Email & Chat</TableCell>
-                  <TableCell className="text-center font-semibold text-slate-900">Dedicated Account Manager</TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </Card>
+          <div className="border border-slate-200/80 rounded-2xl overflow-hidden bg-white shadow-sm">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-700 font-semibold">
+                  <th className="p-4 w-1/2">Capability</th>
+                  <th className="p-4 text-center">Starter</th>
+                  <th className="p-4 text-center bg-orange-50/50 text-[#ff6900] font-bold">Growth</th>
+                  <th className="p-4 text-center">Enterprise</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-600">
+                <tr>
+                  <td className="p-4 font-medium text-slate-900">Included Employee Seats</td>
+                  <td className="p-4 text-center">Up to 15</td>
+                  <td className="p-4 text-center font-bold text-slate-900 bg-orange-50/20">Up to 100</td>
+                  <td className="p-4 text-center">Unlimited</td>
+                </tr>
+                <tr>
+                  <td className="p-4 font-medium text-slate-900">Automated Monthly Payroll</td>
+                  <td className="p-4 text-center"><Minus className="h-4 w-4 text-slate-300 mx-auto" /></td>
+                  <td className="p-4 text-center bg-orange-50/20"><Check className="h-4 w-4 text-[#ff6900] mx-auto font-bold stroke-[3]" /></td>
+                  <td className="p-4 text-center"><Check className="h-4 w-4 text-emerald-600 mx-auto font-bold stroke-[3]" /></td>
+                </tr>
+                <tr>
+                  <td className="p-4 font-medium text-slate-900">Statutory Tax & Pension Schedules</td>
+                  <td className="p-4 text-center"><Minus className="h-4 w-4 text-slate-300 mx-auto" /></td>
+                  <td className="p-4 text-center bg-orange-50/20"><Check className="h-4 w-4 text-[#ff6900] mx-auto font-bold stroke-[3]" /></td>
+                  <td className="p-4 text-center"><Check className="h-4 w-4 text-emerald-600 mx-auto font-bold stroke-[3]" /></td>
+                </tr>
+                <tr>
+                  <td className="p-4 font-medium text-slate-900">Multi-Tier Approval Routing</td>
+                  <td className="p-4 text-center">Single Level</td>
+                  <td className="p-4 text-center bg-orange-50/20 font-semibold text-slate-900">Up to 3 Levels</td>
+                  <td className="p-4 text-center">Custom Hierarchies</td>
+                </tr>
+                <tr>
+                  <td className="p-4 font-medium text-slate-900">Attendance Clock-in Validation</td>
+                  <td className="p-4 text-center">Web Portal</td>
+                  <td className="p-4 text-center bg-orange-50/20 text-slate-900">Biometric & GPS</td>
+                  <td className="p-4 text-center text-slate-900">Hardware & API Sync</td>
+                </tr>
+                <tr>
+                  <td className="p-4 font-medium text-slate-900">Audit Trail Retention</td>
+                  <td className="p-4 text-center">30 Days</td>
+                  <td className="p-4 text-center bg-orange-50/20 text-slate-900">1 Year</td>
+                  <td className="p-4 text-center font-bold text-slate-900">Permanent (7+ Years)</td>
+                </tr>
+                <tr>
+                  <td className="p-4 font-medium text-slate-900">Technical Support</td>
+                  <td className="p-4 text-center">Email</td>
+                  <td className="p-4 text-center bg-orange-50/20 font-medium text-slate-900">Priority Email & Chat</td>
+                  <td className="p-4 text-center font-bold text-slate-900">Dedicated Account Manager</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
 
-      {/* Frequently Asked Questions with shadcn Accordion */}
-      <section className="bg-slate-50 py-16 px-6 border-t border-slate-200">
+      {/* Frequently Asked Questions */}
+      <section className="bg-white py-16 px-6 border-t border-slate-100">
         <div className="max-w-3xl mx-auto space-y-8">
           <div className="text-center space-y-2">
-            <h2 className="text-2xl font-bold text-slate-900 font-headline">
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight font-headline">
               Frequently Asked Questions
             </h2>
-            <p className="text-xs text-slate-500">Common questions about plans, billing, and workforce setup</p>
+            <p className="text-xs text-slate-500">Everything you need to know about plans and billing</p>
           </div>
 
-          <Card className="p-6 bg-white">
+          <div className="p-6 rounded-2xl border border-slate-200/80 bg-white shadow-sm">
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="item-1">
                 <AccordionTrigger>Can I migrate our existing employee records from Excel?</AccordionTrigger>
@@ -319,7 +362,7 @@ export default function PricingPage() {
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
-          </Card>
+          </div>
         </div>
       </section>
     </PublicLayout>

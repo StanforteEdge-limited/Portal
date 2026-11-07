@@ -1,22 +1,11 @@
 import { PublicLayout } from "./PublicLayout";
 import { Link } from "@/shared/router-adapter";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   Users,
   CreditCard,
   Clock,
   FileCheck,
   ArrowRight,
-  ShieldCheck,
-  Layers,
   CheckCircle2,
 } from "lucide-react";
 
@@ -25,6 +14,7 @@ export default function FeaturesPage() {
     {
       category: "Workforce & People Operations",
       icon: Users,
+      iconColor: "text-blue-600 bg-blue-50",
       description: "Centralize employee information, contracts, and organizational reporting lines.",
       items: [
         {
@@ -48,6 +38,7 @@ export default function FeaturesPage() {
     {
       category: "Automated Payroll & Statutory Compliance",
       icon: CreditCard,
+      iconColor: "text-[#ff6900] bg-orange-50",
       description: "Eliminate manual payroll calculation errors and ensure full regulatory compliance.",
       items: [
         {
@@ -71,6 +62,7 @@ export default function FeaturesPage() {
     {
       category: "Time, Shifts & Absence Management",
       icon: Clock,
+      iconColor: "text-amber-600 bg-amber-50",
       description: "Accurately record employee hours, shifts, and absence without manual paper logs.",
       items: [
         {
@@ -94,6 +86,7 @@ export default function FeaturesPage() {
     {
       category: "Approvals, Procurement & Financial Controls",
       icon: FileCheck,
+      iconColor: "text-purple-600 bg-purple-50",
       description: "Enforce institutional financial discipline and transparent sign-off workflows.",
       items: [
         {
@@ -120,27 +113,28 @@ export default function FeaturesPage() {
     <PublicLayout activePath="/features">
       {/* Header */}
       <section className="pt-16 pb-12 px-6 text-center max-w-4xl mx-auto space-y-4">
-        <Badge variant="outline" className="px-3 py-1 font-semibold text-xs tracking-wide">
+        <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-orange-50 border border-orange-200/80 text-[#ff6900] text-xs font-bold uppercase tracking-wider">
           Platform Capabilities
-        </Badge>
-        <h1 className="text-3xl sm:text-5xl font-bold text-slate-900 tracking-tight font-headline">
-          Comprehensive tools for modern operations
+        </div>
+        <h1 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight font-headline">
+          Comprehensive Tools for <br className="hidden sm:inline" />
+          <span className="text-[#ff6900]">Modern Operations</span>
         </h1>
-        <p className="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto">
+        <p className="text-base text-slate-600 max-w-2xl mx-auto leading-relaxed">
           Every capability in Stanforte Edge is built to streamline institutional workflows, improve administrative accountability, and eliminate operational bottlenecks.
         </p>
       </section>
 
-      {/* Feature Suites with shadcn Cards */}
+      {/* Feature Suites */}
       <section className="px-6 max-w-7xl mx-auto pb-20 space-y-16">
         {suites.map((suite, idx) => {
           const Icon = suite.icon;
           return (
-            <div key={idx} className="border-t border-slate-200 pt-10">
+            <div key={idx} className="border-t border-slate-100 pt-10">
               <div className="max-w-2xl mb-8 space-y-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-md bg-slate-100 flex items-center justify-center text-slate-900">
-                    <Icon className="h-4 w-4" />
+                <div className="flex items-center gap-3">
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${suite.iconColor}`}>
+                    <Icon className="h-5 w-5" />
                   </div>
                   <h2 className="text-xl font-bold text-slate-900 font-headline">
                     {suite.category}
@@ -153,17 +147,15 @@ export default function FeaturesPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {suite.items.map((item, itemIdx) => (
-                  <Card key={itemIdx}>
-                    <CardHeader>
-                      <CardTitle className="text-sm font-bold flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                        {item.title}
-                      </CardTitle>
-                      <CardDescription className="text-xs leading-relaxed pt-1 text-slate-600">
-                        {item.description}
-                      </CardDescription>
-                    </CardHeader>
-                  </Card>
+                  <div key={itemIdx} className="p-6 rounded-2xl border border-slate-200/80 bg-white shadow-sm hover:border-slate-300 transition-all space-y-2">
+                    <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-[#ff6900] shrink-0" />
+                      {item.title}
+                    </h3>
+                    <p className="text-xs text-slate-600 leading-relaxed pl-6">
+                      {item.description}
+                    </p>
+                  </div>
                 ))}
               </div>
             </div>
@@ -171,25 +163,28 @@ export default function FeaturesPage() {
         })}
       </section>
 
-      {/* Conversion Banner with shadcn Card & Button */}
-      <section className="border-t border-slate-200 bg-white py-16 px-6 text-center">
+      {/* Conversion Banner */}
+      <section className="border-t border-slate-100 bg-slate-50/60 py-16 px-6 text-center">
         <div className="max-w-3xl mx-auto space-y-4">
-          <Badge variant="outline">Get Started</Badge>
-          <h2 className="text-2xl font-bold text-slate-900 font-headline">
+          <h2 className="text-2xl font-black text-slate-900 font-headline">
             Ready to evaluate Stanforte Edge for your organization?
           </h2>
           <p className="text-sm text-slate-600 max-w-xl mx-auto">
             Get started with our free tier or request a guided consultation with our solution architecture team.
           </p>
           <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
-            <Button asChild size="lg">
-              <Link to="/register" className="flex items-center gap-2">
-                Start Free Workspace <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-            <Button asChild variant="outline" size="lg">
-              <a href="mailto:demo@stanforteedge.com">Schedule Consultation</a>
-            </Button>
+            <Link
+              to="/register"
+              className="px-7 py-3 rounded-full font-bold text-xs bg-[#ff6900] hover:bg-[#ea580c] text-white shadow-md shadow-orange-500/25 transition-all transform hover:-translate-y-0.5 flex items-center gap-2"
+            >
+              Start Free Workspace <ArrowRight className="h-4 w-4" />
+            </Link>
+            <a
+              href="mailto:demo@stanforteedge.com"
+              className="px-7 py-3 rounded-full font-semibold text-xs border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 transition-all"
+            >
+              Schedule Consultation
+            </a>
           </div>
         </div>
       </section>

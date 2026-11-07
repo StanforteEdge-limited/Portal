@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
-import { Button, Icon } from "@/shared";
+import { useEffect, useState, type FormEvent } from "react";
+import { Link, useSearchParams } from "@/shared/router-adapter";
 import { authApi } from "@/shared/lib/core";
-import brandLogo from "../../../../shared/assets/brand/stanforte-logo.png";
+import { StanforteLogo } from "@/components/brand/StanforteLogo";
+import { Mail, CheckCircle2, ArrowLeft } from "lucide-react";
 
 export default function VerifyEmailPage() {
   const [params] = useSearchParams();
@@ -15,20 +15,124 @@ export default function VerifyEmailPage() {
     const token = params.get("token");
     if (!token) return;
     setLoading(true);
-    authApi.verifyEmail(token).then(() => setMessage("Email verified. You can now sign in to your workspace."))
+    authApi
+      .verifyEmail(token)
+      .then(() => setMessage("Email verified successfully! You can now sign in to your workspace."))
       .catch((requestError) => setError(requestError instanceof Error ? requestError.message : "Unable to verify email."))
       .finally(() => setLoading(false));
   }, [params]);
 
-  async function resend(event: React.FormEvent) {
+  async function resend(event: FormEvent) {
     event.preventDefault();
-    setError(null); setMessage(null);
-    if (!email.trim()) { setError("Enter the email used to create the workspace."); return; }
+    setError(null);
+    setMessage(null);
+    if (!email.trim()) {
+      setError("Please enter the email address used to create your workspace.");
+      return;
+    }
     setLoading(true);
-    try { await authApi.resendVerification(email.trim().toLowerCase()); setMessage("If the account is awaiting verification, a new link has been sent."); }
-    catch (requestError) { setError(requestError instanceof Error ? requestError.message : "Unable to resend verification email."); }
-    finally { setLoading(false); }
+    try {
+      await authApi.resendVerification(email.trim().toLowerCase());
+      setMessage("If the account is awaiting verification, a new link has been sent to your email.");
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Unable to resend verification email.");
+    } finally {
+      setLoading(false);
+    }
   }
 
-  return <main className="flex min-h-screen items-center justify-center bg-surface px-6 py-12"><section className="w-full max-w-lg rounded-3xl border border-white/70 bg-white/90 p-8 shadow-card"><img src={brandLogo} alt="Stanforte Edge" className="h-11 w-auto" /><div className="mt-8 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-container text-white"><Icon name="mail" /></div><h1 className="mt-5 font-headline text-2xl font-bold text-on-surface">Verify your email</h1><p className="mt-2 text-sm leading-6 text-on-surface-variant">Check your inbox for the verification link. You must verify your email before signing in.</p>{error ? <div role="alert" className="mt-5 rounded-2xl border border-danger/20 bg-danger/10 px-4 py-3 text-sm text-danger">{error}</div> : null}{message ? <div role="status" className="mt-5 rounded-2xl border border-success/20 bg-success/10 px-4 py-3 text-sm text-success">{message}</div> : null}<form onSubmit={resend} className="mt-6 space-y-4"><label className="block"><span className="field-label">Email address</span><input className="input-base" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@company.com" /></label><Button type="submit" className="w-full justify-center" disabled={loading}>{loading ? "Sending..." : "Resend verification email"}</Button></form><p className="mt-5 text-sm text-slate-500"><Link className="font-semibold text-brand-900" to="/login">Return to sign in</Link></p></section></main>;
+  return (
+    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 sm:p-6 lg:p-10">
+      <div className="w-full max-w-4xl bg-white rounded-3xl shadow-2xl overflow-hidden grid grid-cols-1 md:grid-cols-2 min-h-[500px]">
+        {/* Left Column: Dark Navy Brand Section */}
+        <div className="relative bg-[#070e20] text-white p-8 sm:p-12 flex flex-col justify-between overflow-hidden">
+          <div className="relative z-10">
+            <Link to="/" className="inline-block">
+              <StanforteLogo variant="dark" className="h-8" />
+            </Link>
+          </div>
+
+          <div className="relative z-10 my-auto py-8 space-y-4">
+            <h1 className="text-3xl font-extrabold tracking-tight font-headline">
+              Verify Your Email
+            </h1>
+            <p className="text-sm text-slate-300 leading-relaxed">
+              We&apos;ve sent a verification link to ensure the security of your new enterprise workspace.
+            </p>
+          </div>
+
+          <div className="relative z-10 pt-4 border-t border-white/10 flex items-center justify-between text-xs text-slate-400">
+            <span>Enterprise Workspace Activation</span>
+            <div className="w-8 h-8 rounded-full border-2 border-[#ff6900]/40 -mr-4 -mb-4 opacity-50" />
+          </div>
+        </div>
+
+        {/* Right Column: Clean White Form */}
+        <div className="bg-white p-8 sm:p-12 flex flex-col justify-center">
+          <div className="max-w-md w-full mx-auto space-y-5">
+            <div className="w-12 h-12 rounded-2xl bg-orange-50 text-[#ff6900] flex items-center justify-center">
+              <Mail className="h-6 w-6" />
+            </div>
+
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight text-slate-900 font-headline">
+                Check Your Inbox
+              </h2>
+              <p className="text-xs text-slate-500 mt-1">
+                Click the link sent to your email address to activate your account.
+              </p>
+            </div>
+
+            {error && (
+              <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-600 font-medium">
+                {error}
+              </div>
+            )}
+
+            {message && (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 text-xs text-emerald-800 font-medium flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                <span>{message}</span>
+              </div>
+            )}
+
+            <form onSubmit={resend} className="space-y-4 pt-1">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-700">Email Address</label>
+                <div className="relative">
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@company.com"
+                    required
+                    className="w-full pl-10 pr-4 py-2.5 text-xs bg-white border border-slate-200 rounded-xl outline-none transition focus:border-[#ff6900] focus:ring-2 focus:ring-orange-500/10"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 rounded-xl font-bold text-xs bg-[#ff6900] hover:bg-[#ea580c] text-white shadow-md shadow-orange-500/25 transition-all disabled:opacity-50"
+              >
+                {loading ? "Sending..." : "Resend Verification Email"}
+              </button>
+
+              <div className="pt-2 text-center">
+                <Link
+                  to="/login"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  Return to Sign In
+                </Link>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
