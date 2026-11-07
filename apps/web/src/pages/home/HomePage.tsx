@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "@/shared/router-adapter";
 import brandLogo from "../../../../shared/assets/brand/stanforte-logo.png";
 
 type ModuleTab = "dashboard" | "payroll" | "finance" | "workflow" | "procurement" | "tasks";
@@ -25,11 +25,11 @@ export default function HomePage() {
             </span>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
-            <a href="#modules" className="hover:text-white transition-colors">Modules</a>
+                    <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
+            <Link to="/features" className="hover:text-white transition-colors">Modules & Features</Link>
             <a href="#screens" className="hover:text-white transition-colors">Live Screenshots</a>
-            <a href="#architecture" className="hover:text-white transition-colors">Architecture</a>
-            <a href="#pricing" className="hover:text-white transition-colors">Plans & Pricing</a>
+            <Link to="/pricing" className="hover:text-white transition-colors">Plans & Pricing</Link>
+            <Link to="/security" className="hover:text-white transition-colors">Enterprise Security</Link>
           </nav>
 
           <div className="flex items-center gap-3">
@@ -609,7 +609,9 @@ export default function HomePage() {
           <div className="flex items-center gap-6">
             <Link to="/login" className="hover:text-slate-300 transition-colors">Sign In</Link>
             <Link to="/register" className="hover:text-slate-300 transition-colors">Register</Link>
-            <a href="#screens" className="hover:text-slate-300 transition-colors">Modules</a>
+            <Link to="/features" className="hover:text-slate-300 transition-colors">Modules</Link>
+            <Link to="/pricing" className="hover:text-slate-300 transition-colors">Pricing</Link>
+            <Link to="/security" className="hover:text-slate-300 transition-colors">Security</Link>
             <a href="http://localhost:3000/v1/health/healthz" target="_blank" rel="noreferrer" className="flex items-center gap-1.5 hover:text-emerald-400 transition-colors">
               <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
               API Status

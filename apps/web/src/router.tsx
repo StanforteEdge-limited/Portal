@@ -10,6 +10,9 @@ import { BrandingProvider } from "@/shared/branding/BrandingProvider";
 import { AuthProvider, useAuth } from "@/shared/context/AuthProvider";
 import { UpdateBanner } from "@/shared/components/ui/UpdateBanner";
 import HomePage from "@/pages/home/HomePage";
+import PricingPage from "@/pages/public/PricingPage";
+import FeaturesPage from "@/pages/public/FeaturesPage";
+import SecurityPage from "@/pages/public/SecurityPage";
 import LoginPage from "@/pages/auth/LoginPage";
 import RegisterPage from "@/pages/auth/RegisterPage";
 import ForgotPasswordPage from "@/pages/auth/ForgotPasswordPage";
@@ -70,6 +73,24 @@ const indexRoute = createRoute({
 });
 
 // 3. Dedicated SaaS Home Route (`/home`)
+const pricingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/pricing",
+  component: PricingPage,
+});
+
+const featuresRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/features",
+  component: FeaturesPage,
+});
+
+const securityRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/security",
+  component: SecurityPage,
+});
+
 const homeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/home",
@@ -218,6 +239,9 @@ const adminSettingsRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   indexRoute,
   homeRoute,
+  pricingRoute,
+  featuresRoute,
+  securityRoute,
   loginRoute,
   registerRoute,
   forgotPasswordRoute,

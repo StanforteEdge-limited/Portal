@@ -96,6 +96,8 @@ export default defineConfig(({ mode }) => {
       alias: {
         "@": fileURLToPath(new URL("./src", import.meta.url)),
         "@stanforte/shared": fileURLToPath(new URL("../shared/src/index.ts", import.meta.url)),
+        "react-router-dom": fileURLToPath(new URL("./src/shared/router-adapter.tsx", import.meta.url)),
+        "react-router": fileURLToPath(new URL("./src/shared/router-adapter.tsx", import.meta.url)),
       },
     },
     define: {
