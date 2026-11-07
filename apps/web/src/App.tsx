@@ -103,6 +103,8 @@ import {
   PermissionRoute,
 } from "@/shared/components/auth/AccessRoute";
 import { UpdateBanner } from "@/shared/components/ui/UpdateBanner";
+import { useAuth } from "@/shared/context/AuthProvider";
+import HomePage from "@/pages/home/HomePage";
 import AcceptInvitePage from "@/pages/auth/AcceptInvitePage";
 import ForgotPasswordPage from "@/pages/auth/ForgotPasswordPage";
 import LoginPage from "@/pages/auth/LoginPage";
@@ -143,10 +145,19 @@ function LegacyDetailRedirect(props: LegacyDetailRedirectProps) {
   return <Navigate to={`${props.toBase}/${id}`} replace />;
 }
 
+function RootRoute() {
+  const { status, initialized } = useAuth();
+  if (!initialized || status === "checking") return null;
+  if (status === "authenticated") return <DashboardPage />;
+  return <HomePage />;
+}
+
 export default function App() {
   return (
     <>
       <Routes>
+      <Route path="/" element={<RootRoute />} />
+      <Route path="/home" element={<HomePage />} />
       <Route element={<PublicOnlyRoute />}>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
@@ -159,7 +170,6 @@ export default function App() {
 
       <Route element={<ProtectedRoute />}>
         <Route path="/onboarding" element={<EmployeeOnboardingPage />} />
-        <Route path="/" element={<DashboardPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/attendance" element={<AttendancePage />} />
         <Route path="/leave" element={<LeavePage />} />
