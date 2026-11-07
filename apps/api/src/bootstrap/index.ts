@@ -1,5 +1,6 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import fastifyCookie from '@fastify/cookie';
+import fastifyCors from '@fastify/cors';
 import { appRoutes } from './routes';
 import { config } from '../config';
 import { dbPlugin } from '$plugins/db';
@@ -17,6 +18,14 @@ export async function buildServer(): Promise<FastifyInstance> {
   });
 
   server.register(fastifyCookie);
+  server.register(fastifyCors, {
+    origin: (origin, cb) => {
+      if (!origin || !config.isProduction) return cb(null, true);
+      if (config.corsOrigins.includes(origin)) return cb(null, true);
+      return cb(null, false);
+    },
+    credentials: true,
+  });
   server.register(dbPlugin);
   server.register(redisPlugin);
   server.register(httpPlugin);
