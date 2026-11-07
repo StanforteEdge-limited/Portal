@@ -1,12 +1,18 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "@/shared/router-adapter";
 import { authApi } from "@/shared/lib/core";
 import { StanforteLogo } from "@/components/brand/StanforteLogo";
-import { Mail, CheckCircle2, ArrowLeft } from "lucide-react";
+import {
+  getProjectBaseDomain,
+  buildTenantUrl,
+} from "@/shared/lib/tenant-subdomain";
+import { Mail, CheckCircle2, ArrowLeft, Globe, Building2 } from "lucide-react";
 
 export default function VerifyEmailPage() {
   const [params] = useSearchParams();
   const [email, setEmail] = useState(params.get("email") ?? "");
+  const slug = params.get("slug");
+  const baseDomain = useMemo(() => getProjectBaseDomain(), []);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -41,18 +47,36 @@ export default function VerifyEmailPage() {
     }
   }
 
+  const workspaceLoginUrl = slug ? buildTenantUrl(slug, "/login") : "/login";
+
   return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 sm:p-6 lg:p-10">
+    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 sm:p-6 lg:p-10 selection:bg-[#ff6900] selection:text-white">
       <div className="w-full max-w-4xl bg-white rounded-3xl shadow-2xl overflow-hidden grid grid-cols-1 md:grid-cols-2 min-h-[500px]">
         {/* Left Column: Dark Navy Brand Section */}
         <div className="relative bg-[#070e20] text-white p-8 sm:p-12 flex flex-col justify-between overflow-hidden">
+          {/* Background Skyscraper */}
+          <div className="absolute inset-0 z-0">
+            <img
+              src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1600&q=85"
+              alt="Corporate"
+              className="w-full h-full object-cover object-center opacity-25 mix-blend-luminosity"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#070e20] via-[#070e20]/90 to-[#070e20]/80" />
+          </div>
+
           <div className="relative z-10">
-            <Link to="/" className="inline-block">
+            <Link to="/" className="inline-block hover:opacity-90 transition-opacity">
               <StanforteLogo variant="dark" className="h-8" />
             </Link>
           </div>
 
           <div className="relative z-10 my-auto py-8 space-y-4">
+            {slug && (
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-500/20 text-[#ff6900] text-xs font-bold border border-orange-500/30">
+                <Globe className="h-3.5 w-3.5" />
+                <span>{slug}.{baseDomain}</span>
+              </div>
+            )}
             <h1 className="text-3xl font-extrabold tracking-tight font-headline">
               Verify Your Email
             </h1>
@@ -82,6 +106,18 @@ export default function VerifyEmailPage() {
                 Click the link sent to your email address to activate your account.
               </p>
             </div>
+
+            {slug && (
+              <div className="p-3.5 rounded-2xl bg-orange-50/70 border border-orange-200/80 flex items-center gap-3">
+                <Building2 className="h-5 w-5 text-[#ff6900] shrink-0" />
+                <div className="text-xs">
+                  <div className="font-bold text-slate-900">Your Dedicated Workspace URL</div>
+                  <div className="text-orange-700 font-mono font-medium">
+                    https://{slug}.{baseDomain}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {error && (
               <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-600 font-medium">
@@ -121,13 +157,13 @@ export default function VerifyEmailPage() {
               </button>
 
               <div className="pt-2 text-center">
-                <Link
-                  to="/login"
+                <a
+                  href={workspaceLoginUrl}
                   className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900"
                 >
                   <ArrowLeft className="h-3.5 w-3.5" />
-                  Return to Sign In
-                </Link>
+                  Return to {slug ? `${slug} Sign In` : "Sign In"}
+                </a>
               </div>
             </form>
           </div>

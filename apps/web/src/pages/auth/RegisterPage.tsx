@@ -1,7 +1,11 @@
-import { useState, type FormEvent } from "react";
+import { useState, useMemo, type FormEvent } from "react";
 import { Link, useNavigate } from "@/shared/router-adapter";
 import { authApi } from "@/shared/lib/core";
 import { StanforteLogo } from "@/components/brand/StanforteLogo";
+import {
+  getProjectBaseDomain,
+  formatWorkspaceSlug,
+} from "@/shared/lib/tenant-subdomain";
 import {
   Building2,
   User,
@@ -10,12 +14,17 @@ import {
   Eye,
   EyeOff,
   CheckCircle2,
+  Globe,
 } from "lucide-react";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
+  const baseDomain = useMemo(() => getProjectBaseDomain(), []);
+
   const [accountType, setAccountType] = useState<"organization" | "individual">("organization");
   const [name, setName] = useState("");
+  const [workspaceSlug, setWorkspaceSlug] = useState("");
+  const [isSlugCustomized, setIsSlugCustomized] = useState(false);
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
@@ -24,17 +33,37 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  function handleNameChange(value: string) {
+    setName(value);
+    if (!isSlugCustomized) {
+      setWorkspaceSlug(formatWorkspaceSlug(value));
+    }
+  }
+
+  function handleSlugChange(value: string) {
+    setIsSlugCustomized(true);
+    setWorkspaceSlug(formatWorkspaceSlug(value));
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
 
-    if (!name.trim()) {
+    const trimmedName = name.trim();
+    if (!trimmedName) {
       setError(accountType === "organization" ? "Please enter your organization name." : "Please enter your full name.");
       return;
     }
 
-    if (!email.trim()) {
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!trimmedEmail) {
       setError("Please enter your business email.");
+      return;
+    }
+
+    const finalSlug = accountType === "organization" ? (workspaceSlug.trim() || formatWorkspaceSlug(trimmedName)) : undefined;
+    if (accountType === "organization" && (!finalSlug || finalSlug.length < 2)) {
+      setError("Please provide a valid workspace subdomain (at least 2 alphanumeric characters).");
       return;
     }
 
@@ -51,12 +80,16 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      await authApi.createWorkspace({
-        name: name.trim(),
-        email: email.trim().toLowerCase(),
+      const result = await authApi.createWorkspace({
+        name: trimmedName,
+        slug: finalSlug,
+        email: trimmedEmail,
         password: password,
       });
-      navigate(`/verify-email?email=${encodeURIComponent(email.trim().toLowerCase())}`, { replace: true });
+
+      const assignedSlug = result?.slug || finalSlug;
+      const slugQuery = assignedSlug ? `&slug=${encodeURIComponent(assignedSlug)}` : "";
+      navigate(`/verify-email?email=${encodeURIComponent(trimmedEmail)}${slugQuery}`, { replace: true });
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Unable to create account.");
     } finally {
@@ -68,8 +101,16 @@ export default function RegisterPage() {
     <div className="min-h-screen w-full bg-white flex flex-col lg:flex-row selection:bg-[#ff6900] selection:text-white">
       {/* 1. Left Half: Full-Bleed Dark Navy Visual (50% on desktop) */}
       <div className="relative w-full lg:w-1/2 bg-[#070e20] text-white p-8 sm:p-12 lg:p-16 flex flex-col justify-between overflow-hidden min-h-[420px] lg:min-h-screen">
-        {/* Subtle Background Glow */}
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-orange-500/5 rounded-full blur-3xl pointer-events-none" />
+        {/* Modern Skyscraper Dusk Background Photo */}
+        <div className="absolute inset-0 z-0">
+          <img
+            src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1600&q=85"
+            alt="Corporate Headquarters"
+            className="w-full h-full object-cover object-center opacity-30 mix-blend-luminosity"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#070e20] via-[#070e20]/85 to-[#070e20]/75" />
+          <div className="absolute inset-0 bg-radial-gradient from-transparent to-[#070e20]/90" />
+        </div>
 
         {/* Decorative Orange Arc Concentric Lines at Bottom Left */}
         <svg
@@ -96,7 +137,7 @@ export default function RegisterPage() {
               Create Your Account
             </h1>
             <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
-              Get started with Stanforte Edge in just a few steps.
+              Get started with Stanforte Edge in just a few steps. Each organization receives a dedicated workspace domain.
             </p>
           </div>
 
@@ -106,21 +147,21 @@ export default function RegisterPage() {
               <div className="w-6 h-6 rounded-full bg-[#ff6900] text-white flex items-center justify-center shrink-0 shadow-sm shadow-orange-500/30">
                 <CheckCircle2 className="h-4 w-4" />
               </div>
-              <span className="text-sm font-semibold text-slate-100">Manage your workforce</span>
+              <span className="text-sm font-semibold text-slate-100">Manage your workforce & branches</span>
             </div>
 
             <div className="flex items-center gap-3.5">
               <div className="w-6 h-6 rounded-full bg-[#ff6900] text-white flex items-center justify-center shrink-0 shadow-sm shadow-orange-500/30">
                 <CheckCircle2 className="h-4 w-4" />
               </div>
-              <span className="text-sm font-semibold text-slate-100">Automate payroll</span>
+              <span className="text-sm font-semibold text-slate-100">Automate payroll with statutory accuracy</span>
             </div>
 
             <div className="flex items-center gap-3.5">
               <div className="w-6 h-6 rounded-full bg-[#ff6900] text-white flex items-center justify-center shrink-0 shadow-sm shadow-orange-500/30">
                 <CheckCircle2 className="h-4 w-4" />
               </div>
-              <span className="text-sm font-semibold text-slate-100">Streamline approvals</span>
+              <span className="text-sm font-semibold text-slate-100">Streamline multi-tier approvals</span>
             </div>
           </div>
         </div>
@@ -128,6 +169,7 @@ export default function RegisterPage() {
         {/* Bottom Tagline */}
         <div className="relative z-10 pt-6 border-t border-white/10 flex items-center justify-between text-xs text-slate-400">
           <span>Built for Modern Businesses</span>
+          <span className="font-mono text-[11px] text-[#ff6900]">Dedicated Multi-Tenant OS</span>
         </div>
       </div>
 
@@ -187,13 +229,45 @@ export default function RegisterPage() {
                 <input
                   type="text"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder={accountType === "organization" ? "e.g. Acme Ltd" : "e.g. Daniel Owonikoko"}
+                  onChange={(e) => handleNameChange(e.target.value)}
+                  placeholder={accountType === "organization" ? "e.g. Acme Nigeria Ltd" : "e.g. Daniel Owonikoko"}
                   required
                   className="w-full pl-11 pr-4 py-3 text-xs sm:text-sm bg-white border border-slate-200 rounded-2xl outline-none transition focus:border-[#ff6900] focus:ring-4 focus:ring-orange-500/10 placeholder:text-slate-400"
                 />
               </div>
             </div>
+
+            {/* Dedicated Workspace Subdomain URL (for Organization) */}
+            {accountType === "organization" && (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-700">
+                    Workspace Subdomain URL
+                  </label>
+                  <span className="text-[11px] text-slate-400">Unique enterprise address</span>
+                </div>
+                <div className="relative flex items-center">
+                  <Globe className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-[#ff6900]" />
+                  <input
+                    type="text"
+                    value={workspaceSlug}
+                    onChange={(e) => handleSlugChange(e.target.value)}
+                    placeholder="acme"
+                    required
+                    className="w-full pl-11 pr-32 py-3 text-xs sm:text-sm bg-white border border-slate-200 rounded-2xl outline-none transition focus:border-[#ff6900] focus:ring-4 focus:ring-orange-500/10 font-medium text-slate-900 placeholder:text-slate-400"
+                  />
+                  <div className="absolute right-4 text-xs font-semibold text-slate-400 pointer-events-none select-none">
+                    .{baseDomain}
+                  </div>
+                </div>
+                <p className="text-[11px] text-slate-500 pt-0.5">
+                  Your team will sign in at:{" "}
+                  <span className="font-semibold text-slate-800">
+                    https://{workspaceSlug || "your-slug"}.{baseDomain}
+                  </span>
+                </p>
+              </div>
+            )}
 
             {/* Business Email */}
             <div className="space-y-1">
@@ -206,6 +280,7 @@ export default function RegisterPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@company.com"
                   required
+                  autoComplete="email"
                   className="w-full pl-11 pr-4 py-3 text-xs sm:text-sm bg-white border border-slate-200 rounded-2xl outline-none transition focus:border-[#ff6900] focus:ring-4 focus:ring-orange-500/10 placeholder:text-slate-400"
                 />
               </div>
@@ -216,7 +291,7 @@ export default function RegisterPage() {
               <label className="text-xs font-bold text-slate-700">Phone Number</label>
               <div className="relative flex items-center">
                 <div className="absolute left-3.5 flex items-center gap-1.5 text-xs text-slate-700 font-semibold pointer-events-none select-none">
-                  <span>&#127475;&#127468;</span>
+                  <span>🇳🇬</span>
                   <span>+234</span>
                 </div>
                 <input
@@ -224,7 +299,7 @@ export default function RegisterPage() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="801 234 5678"
-                  className="w-full pl-22 pr-4 py-3 text-xs sm:text-sm bg-white border border-slate-200 rounded-2xl outline-none transition focus:border-[#ff6900] focus:ring-4 focus:ring-orange-500/10 font-mono placeholder:text-slate-400"
+                  className="w-full pl-20 pr-4 py-3 text-xs sm:text-sm bg-white border border-slate-200 rounded-2xl outline-none transition focus:border-[#ff6900] focus:ring-4 focus:ring-orange-500/10 font-mono placeholder:text-slate-400"
                 />
               </div>
             </div>
@@ -240,6 +315,7 @@ export default function RegisterPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Create a strong password"
                   required
+                  autoComplete="new-password"
                   className="w-full pl-11 pr-11 py-3 text-xs sm:text-sm bg-white border border-slate-200 rounded-2xl outline-none transition focus:border-[#ff6900] focus:ring-4 focus:ring-orange-500/10 placeholder:text-slate-400"
                 />
                 <button

@@ -20,7 +20,7 @@ type AuthContextValue = {
   initialized: boolean;
   authIssue: AuthIssue;
   lastKnownEmail: string | null;
-  signIn: (email: string, password: string) => Promise<AuthUser>;
+  signIn: (email: string, password: string, organization?: string) => Promise<AuthUser>;
   signOut: () => Promise<void>;
   refreshStatus: () => Promise<void>;
 };
@@ -104,8 +104,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const signIn = useCallback(async (email: string, password: string) => {
-    const { tokens, user: authUser } = await authApi.login(email, password);
+  const signIn = useCallback(async (email: string, password: string, organization?: string) => {
+    const { tokens, user: authUser } = await authApi.login(email, password, organization);
     authSession.persistSession(
       tokens.access_token,
       tokens.refresh_token,
@@ -123,13 +123,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await authApi.logout();
     authSession.clearSession();
     setUser(null);
+    setLastKnownEmail(null);
     setStatus("unauthenticated");
     setAuthIssue(null);
-    setLastKnownEmail(null);
     setInitialized(true);
   }, []);
 
-  const value = useMemo<AuthContextValue>(
+  const value = useMemo(
     () => ({
       status,
       user,
@@ -140,7 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
       refreshStatus,
     }),
-    [authIssue, initialized, lastKnownEmail, refreshStatus, signIn, signOut, status, user]
+    [authIssue, initialized, lastKnownEmail, refreshStatus, signIn, signOut, status, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -149,7 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error("useAuth must be used inside AuthProvider");
+    throw new Error("useAuth must be used within an AuthProvider");
   }
 
   return context;

@@ -3,6 +3,12 @@ import { Link, useLocation, useNavigate } from "@/shared/router-adapter";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { StanforteLogo } from "@/components/brand/StanforteLogo";
 import {
+  getTenantSlugFromHostname,
+  getProjectBaseDomain,
+  formatWorkspaceSlug,
+  buildTenantUrl,
+} from "@/shared/lib/tenant-subdomain";
+import {
   Mail,
   Lock,
   Eye,
@@ -10,6 +16,9 @@ import {
   Shield,
   Building2,
   TrendingUp,
+  Globe,
+  ArrowRight,
+  ExternalLink,
 } from "lucide-react";
 
 type LocationState = {
@@ -43,6 +52,12 @@ export default function LoginPage() {
   const location = useLocation();
   const { signIn } = useAuth();
 
+  // 1. Detect Tenant Subdomain (e.g. acme.stanforteedge.com -> "acme")
+  const detectedSubdomain = useMemo(() => getTenantSlugFromHostname(), []);
+  const baseDomain = useMemo(() => getProjectBaseDomain(), []);
+
+  const [customWorkspaceSlug, setCustomWorkspaceSlug] = useState("");
+  const [showWorkspacePrompt, setShowWorkspacePrompt] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
@@ -65,6 +80,14 @@ export default function LoginPage() {
     const state = location.state as LocationState | null;
     return state?.from && state.from.startsWith("/") ? state.from : "/dashboard";
   }, [location.state]);
+
+  function handleGoToWorkspace(e: FormEvent) {
+    e.preventDefault();
+    const cleanSlug = formatWorkspaceSlug(customWorkspaceSlug);
+    if (!cleanSlug) return;
+    const targetUrl = buildTenantUrl(cleanSlug, "/login");
+    window.location.href = targetUrl;
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -90,7 +113,10 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const signedInUser = await signIn(trimmedEmail, password);
+      // If user is on a dedicated workspace subdomain (e.g. acme.stanforteedge.com),
+      // detectedSubdomain is automatically passed so login is scoped to that organization.
+      // If on the generic domain, no organization code is passed, allowing backend to auto-resolve.
+      const signedInUser = await signIn(trimmedEmail, password, detectedSubdomain || undefined);
       const onboardingStatuses = new Set(["invited", "accepted", "profile_pending", "forms_pending"]);
       navigate(onboardingStatuses.has(String(signedInUser.onboarding_status)) ? "/onboarding" : redirectPath, { replace: true });
     } catch (authError) {
@@ -138,11 +164,19 @@ export default function LoginPage() {
         {/* Center: Welcome Back & 3 Feature Badges */}
         <div className="relative z-10 my-auto py-10 max-w-md space-y-8">
           <div className="space-y-3">
+            {detectedSubdomain && (
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-500/20 text-[#ff6900] text-xs font-bold border border-orange-500/30">
+                <Globe className="h-3.5 w-3.5" />
+                <span>{detectedSubdomain}.{baseDomain}</span>
+              </div>
+            )}
             <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-white font-headline leading-tight">
-              Welcome Back
+              {detectedSubdomain ? `Sign In to ${detectedSubdomain.toUpperCase()}` : "Welcome Back"}
             </h1>
             <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
-              Sign in to access your enterprise workspace.
+              {detectedSubdomain
+                ? `Enter your enterprise credentials for the ${detectedSubdomain} workspace.`
+                : "Sign in to access your enterprise workspace."}
             </p>
           </div>
 
@@ -177,16 +211,48 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* 2. Right Half: Full-Bleed Clean White Sign In Form */}
+      {/* 2. Right Half: Full-Bleed Clean White Generic Sign In Form */}
       <div className="w-full lg:w-1/2 bg-white flex flex-col justify-center px-6 sm:px-12 lg:px-20 py-12 min-h-screen">
         <div className="max-w-md w-full mx-auto space-y-7">
+          {/* Subdomain Workspace Pill (if on subdomain) */}
+          {detectedSubdomain ? (
+            <div className="flex items-center justify-between p-3 rounded-2xl bg-orange-50/70 border border-orange-200/80">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-[#ff6900] text-white flex items-center justify-center font-bold text-xs">
+                  {detectedSubdomain.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-slate-900 capitalize leading-tight">
+                    {detectedSubdomain} Workspace
+                  </div>
+                  <div className="text-[11px] font-medium text-orange-700/80">
+                    {detectedSubdomain}.{baseDomain}
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  window.location.href = window.location.origin.includes(detectedSubdomain)
+                    ? window.location.origin.replace(`${detectedSubdomain}.`, "") + "/login"
+                    : "/login";
+                }}
+                className="text-xs font-bold text-slate-600 hover:text-slate-900 px-2.5 py-1.5 rounded-lg hover:bg-white transition-colors"
+              >
+                Switch
+              </button>
+            </div>
+          ) : null}
+
           {/* Header */}
           <div className="space-y-1.5">
             <h2 className="text-3xl font-black tracking-tight text-slate-900 font-headline">
               Sign In
             </h2>
             <p className="text-xs sm:text-sm text-slate-500">
-              Enter your credentials to continue
+              {detectedSubdomain
+                ? `Enter your enterprise credentials for ${detectedSubdomain}`
+                : "Enter your work credentials to access your organization"}
             </p>
           </div>
 
@@ -201,7 +267,7 @@ export default function LoginPage() {
           )}
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {/* Email Field */}
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-700">Email Address</label>
@@ -213,6 +279,7 @@ export default function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@company.com"
                   required
+                  autoComplete="email"
                   className="w-full pl-11 pr-4 py-3 text-xs sm:text-sm bg-white border border-slate-200 rounded-2xl outline-none transition focus:border-[#ff6900] focus:ring-4 focus:ring-orange-500/10 placeholder:text-slate-400"
                 />
               </div>
@@ -229,6 +296,7 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
                   required
+                  autoComplete="current-password"
                   className="w-full pl-11 pr-11 py-3 text-xs sm:text-sm bg-white border border-slate-200 rounded-2xl outline-none transition focus:border-[#ff6900] focus:ring-4 focus:ring-orange-500/10 placeholder:text-slate-400"
                 />
                 <button
@@ -270,8 +338,61 @@ export default function LoginPage() {
             </button>
           </form>
 
+          {/* Dedicated Subdomain Navigation for Root Domain Users */}
+          {!detectedSubdomain && (
+            <div className="pt-1">
+              {!showWorkspacePrompt ? (
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={() => setShowWorkspacePrompt(true)}
+                    className="text-xs text-slate-500 hover:text-[#ff6900] font-semibold inline-flex items-center gap-1.5 transition-colors"
+                  >
+                    <Globe className="h-3.5 w-3.5 text-slate-400" />
+                    <span>Sign in with your organization workspace URL</span>
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleGoToWorkspace} className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700">Enter Organization Subdomain</label>
+                    <button
+                      type="button"
+                      onClick={() => setShowWorkspacePrompt(false)}
+                      className="text-[11px] text-slate-400 hover:text-slate-600"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1 flex items-center">
+                      <input
+                        type="text"
+                        value={customWorkspaceSlug}
+                        onChange={(e) => setCustomWorkspaceSlug(formatWorkspaceSlug(e.target.value))}
+                        placeholder="your-company"
+                        className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl outline-none focus:border-[#ff6900] font-medium"
+                      />
+                      <span className="absolute right-3 text-[11px] text-slate-400 pointer-events-none">
+                        .{baseDomain}
+                      </span>
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={!customWorkspaceSlug.trim()}
+                      className="px-3.5 py-2 text-xs font-bold bg-slate-900 text-white rounded-xl hover:bg-black disabled:opacity-40 transition-colors inline-flex items-center gap-1"
+                    >
+                      <span>Go</span>
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          )}
+
           {/* Social Divider */}
-          <div className="relative flex items-center justify-center my-6">
+          <div className="relative flex items-center justify-center my-3">
             <div className="border-t border-slate-200 w-full" />
             <span className="bg-white px-3 text-[11px] text-slate-400 font-medium whitespace-nowrap">
               or continue with
@@ -298,7 +419,7 @@ export default function LoginPage() {
           </div>
 
           {/* Register Footer */}
-          <div className="text-center text-xs text-slate-500 pt-3">
+          <div className="text-center text-xs text-slate-500 pt-1">
             Don&apos;t have an account?{" "}
             <Link to="/register" className="font-extrabold text-[#ff6900] hover:underline">
               Register

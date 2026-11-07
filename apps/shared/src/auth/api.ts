@@ -71,10 +71,14 @@ export function createAuthApi(httpRequest: HttpRequest) {
     return null;
   }
 
-  async function login(email: string, password: string): Promise<{ tokens: AuthTokens; user: AuthUser }> {
+  async function login(
+    email: string,
+    password: string,
+    organization?: string,
+  ): Promise<{ tokens: AuthTokens; user: AuthUser }> {
     const payload = await httpRequest<any>("/auth/login", {
       method: "POST",
-      body: { email, password },
+      body: { email, password, organization: organization || undefined },
       auth: false,
     });
 
