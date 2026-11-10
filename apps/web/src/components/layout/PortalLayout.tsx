@@ -44,6 +44,7 @@ import {
   ExternalLink,
   ShieldCheck,
   ArrowRight,
+  Globe,
 } from "lucide-react";
 
 export interface NavItemDef {
@@ -1255,6 +1256,26 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
                       );
                     })}
                   </div>
+                </div>
+
+                {/* Timezone & Regional Display */}
+                <div className="p-3 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-orange-500/15 text-[#ff6900] flex items-center justify-center shrink-0">
+                      <Globe className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-slate-400 uppercase font-semibold">Timezone &amp; Format</div>
+                      <div className="text-xs font-bold text-white mt-0.5">WAT (Africa/Lagos) &bull; 12-Hour</div>
+                    </div>
+                  </div>
+                  <Link
+                    to="/admin/settings"
+                    onClick={() => setUserDrawerOpen(false)}
+                    className="text-[11px] font-bold text-[#ff6900] hover:underline"
+                  >
+                    Adjust
+                  </Link>
                 </div>
               </div>
 

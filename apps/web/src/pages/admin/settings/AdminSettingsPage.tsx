@@ -35,9 +35,22 @@ import {
   Layers,
   Save,
   RefreshCw,
+  Globe,
+  Clock,
+  Calendar,
+  RotateCcw,
 } from "lucide-react";
+import {
+  useLocalization,
+  COMMON_TIMEZONES,
+  TIME_FORMAT_OPTIONS,
+  DATE_FORMAT_OPTIONS,
+  DEFAULT_LOCALIZATION_SETTINGS,
+  formatDisplayTime,
+  formatDisplayDateLocalized,
+} from "@/shared/lib/localization";
 
-type ActiveTab = "types" | "categories" | "general" | "security" | "taxonomy";
+type ActiveTab = "types" | "categories" | "general" | "localization" | "security" | "taxonomy";
 
 export default function AdminSettingsPage() {
   const { user } = useAuth();
@@ -219,11 +232,30 @@ export default function AdminSettingsPage() {
     }
   }
 
+  const localization = useLocalization();
+  const [localSettingsForm, setLocalSettingsForm] = useState(localization.settings);
+
+  useEffect(() => {
+    setLocalSettingsForm(localization.settings);
+  }, [localization.settings]);
+
+  function handleSaveLocalization() {
+    localization.update(localSettingsForm);
+    notify("Regional and timezone settings saved successfully.", "success");
+  }
+
+  function handleResetLocalization() {
+    localization.update(DEFAULT_LOCALIZATION_SETTINGS);
+    setLocalSettingsForm(DEFAULT_LOCALIZATION_SETTINGS);
+    notify("Reset to Nigerian standards (Africa/Lagos, 12-hour AM/PM).", "success");
+  }
+
   const tabs = [
     { id: "types" as const, label: "Request Types", icon: Sliders },
     { id: "categories" as const, label: "Categories", icon: FolderTree },
     { id: "taxonomy" as const, label: "Taxonomies", icon: Tags },
     { id: "general" as const, label: "Workspace Profile", icon: Building },
+    { id: "localization" as const, label: "Timezone & Regional", icon: Globe },
     { id: "security" as const, label: "Security & Access", icon: ShieldCheck },
   ];
 
@@ -711,6 +743,215 @@ export default function AdminSettingsPage() {
                 <Save className="h-4 w-4" />
                 <span>{tenantSaving ? "Saving..." : "Save Workspace Changes"}</span>
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Tab: Timezone & Regional Localization */}
+        {activeTab === "localization" && (
+          <div className="space-y-6">
+            {/* Live Preview Card */}
+            <div className="rounded-2xl border border-slate-200/80 bg-[#0a1128] text-white p-6 shadow-lg relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-52 h-52 bg-orange-500/10 rounded-full blur-3xl pointer-events-none" />
+
+              <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-orange-400">
+                    <Globe className="w-3.5 h-3.5" />
+                    <span>Live Display Preview</span>
+                  </div>
+                  <h3 className="text-xl font-black text-white mt-1">
+                    {formatDisplayTime(new Date(), localSettingsForm.timeFormat)}
+                  </h3>
+                  <p className="text-xs text-slate-300 mt-0.5">
+                    {formatDisplayDateLocalized(new Date(), localSettingsForm.dateFormat)} &bull; {localSettingsForm.timezone}
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="px-3.5 py-2 rounded-xl bg-white/10 border border-white/15 text-left">
+                    <div className="text-[10px] text-slate-400 uppercase font-semibold">Shift Hours Preview</div>
+                    <div className="text-xs font-bold text-orange-400 mt-0.5">
+                      {formatDisplayTime("09:00", localSettingsForm.timeFormat)} – {formatDisplayTime("17:00", localSettingsForm.timeFormat)}
+                    </div>
+                  </div>
+
+                  <div className="px-3.5 py-2 rounded-xl bg-white/10 border border-white/15 text-left">
+                    <div className="text-[10px] text-slate-400 uppercase font-semibold">Time Format</div>
+                    <div className="text-xs font-bold text-white mt-0.5">
+                      {localSettingsForm.timeFormat === "12h" ? "12-hour (1 AM, 3 PM)" : "24-hour (13:00)"}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Main Form */}
+            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 space-y-6">
+              <div>
+                <h2 className="text-base font-bold text-slate-900">Timezone &amp; Regional Formatting</h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Configure the primary organization timezone and time/date display standards. Nigerian workforces typically prefer 12-hour AM/PM and DD/MM/YYYY.
+                </p>
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-2">
+                {/* 1. Timezone Selector */}
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Organization Timezone
+                  </label>
+                  <select
+                    value={localSettingsForm.timezone}
+                    onChange={(e) => setLocalSettingsForm((p) => ({ ...p, timezone: e.target.value }))}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-800 focus:outline-none focus:bg-white focus:border-[#ff6900]"
+                  >
+                    {COMMON_TIMEZONES.map((tz) => (
+                      <option key={tz.value} value={tz.value}>
+                        {tz.label}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Used to calculate work sessions, attendance punches, scheduled reports, and payroll timestamps.
+                  </p>
+                </div>
+
+                {/* 2. Time Format (12h vs 24h) */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-2">
+                    Time Display Format
+                  </label>
+                  <div className="space-y-2.5">
+                    {TIME_FORMAT_OPTIONS.map((opt) => {
+                      const isSelected = localSettingsForm.timeFormat === opt.value;
+                      return (
+                        <label
+                          key={opt.value}
+                          onClick={() => setLocalSettingsForm((p) => ({ ...p, timeFormat: opt.value }))}
+                          className={`flex items-start justify-between p-3 rounded-xl border cursor-pointer transition ${
+                            isSelected
+                              ? "border-[#ff6900] bg-orange-50/20 shadow-xs"
+                              : "border-slate-200 bg-white hover:border-slate-300"
+                          }`}
+                        >
+                          <div className="flex items-start gap-2.5">
+                            <input
+                              type="radio"
+                              name="timeFormat"
+                              checked={isSelected}
+                              onChange={() => {}}
+                              className="mt-0.5 h-4 w-4 text-[#ff6900] focus:ring-[#ff6900]"
+                            />
+                            <div>
+                              <div className="text-xs font-bold text-slate-900">{opt.label}</div>
+                              <div className="text-[11px] text-slate-500 mt-0.5">
+                                e.g. <span className="font-semibold text-slate-700">{opt.preview}</span>
+                              </div>
+                            </div>
+                          </div>
+                          {isSelected && <CheckCircle2 className="w-4 h-4 text-[#ff6900] shrink-0" />}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 3. Date Format */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-2">
+                    Date Display Format
+                  </label>
+                  <div className="space-y-2.5">
+                    {DATE_FORMAT_OPTIONS.map((opt) => {
+                      const isSelected = localSettingsForm.dateFormat === opt.value;
+                      return (
+                        <label
+                          key={opt.value}
+                          onClick={() => setLocalSettingsForm((p) => ({ ...p, dateFormat: opt.value }))}
+                          className={`flex items-start justify-between p-3 rounded-xl border cursor-pointer transition ${
+                            isSelected
+                              ? "border-[#ff6900] bg-orange-50/20 shadow-xs"
+                              : "border-slate-200 bg-white hover:border-slate-300"
+                          }`}
+                        >
+                          <div className="flex items-start gap-2.5">
+                            <input
+                              type="radio"
+                              name="dateFormat"
+                              checked={isSelected}
+                              onChange={() => {}}
+                              className="mt-0.5 h-4 w-4 text-[#ff6900] focus:ring-[#ff6900]"
+                            />
+                            <div>
+                              <div className="text-xs font-bold text-slate-900">{opt.label}</div>
+                              <div className="text-[11px] text-slate-500 mt-0.5">
+                                e.g. <span className="font-semibold text-slate-700">{opt.preview}</span>
+                              </div>
+                            </div>
+                          </div>
+                          {isSelected && <CheckCircle2 className="w-4 h-4 text-[#ff6900] shrink-0" />}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 4. First Day of Week */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    First Day of Week
+                  </label>
+                  <select
+                    value={localSettingsForm.weekStartsOn}
+                    onChange={(e) =>
+                      setLocalSettingsForm((p) => ({ ...p, weekStartsOn: e.target.value as any }))
+                    }
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-800 focus:outline-none focus:bg-white focus:border-[#ff6900]"
+                  >
+                    <option value="monday">Monday (Nigeria / International Standard)</option>
+                    <option value="sunday">Sunday (US Standard)</option>
+                  </select>
+                </div>
+
+                {/* 5. Currency */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Operating Currency
+                  </label>
+                  <select
+                    value={localSettingsForm.currency}
+                    onChange={(e) => setLocalSettingsForm((p) => ({ ...p, currency: e.target.value }))}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-800 focus:outline-none focus:bg-white focus:border-[#ff6900]"
+                  >
+                    <option value="NGN">NGN (₦) — Nigerian Naira (Default)</option>
+                    <option value="USD">USD ($) — US Dollar</option>
+                    <option value="GBP">GBP (£) — British Pound</option>
+                    <option value="EUR">EUR (€) — Euro</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => handleResetLocalization()}
+                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition"
+                >
+                  <RotateCcw className="h-3.5 w-3.5 text-slate-400" />
+                  <span>Reset to Nigeria Standards</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSaveLocalization()}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#e05d00] text-white text-xs font-bold shadow-sm shadow-orange-500/20 transition active:scale-95"
+                >
+                  <Save className="h-4 w-4" />
+                  <span>Save Regional Preferences</span>
+                </button>
+              </div>
             </div>
           </div>
         )}

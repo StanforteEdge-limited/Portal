@@ -40,7 +40,9 @@ import {
   Info,
   Check,
   Send,
+  Globe,
 } from "lucide-react";
+import { formatDisplayTime, useLocalization } from "@/shared/lib/localization";
 
 const defaultCorrectionForm = {
   work_date: new Date().toISOString().slice(0, 10),
@@ -65,13 +67,7 @@ function formatDate(value?: string | null) {
 
 function formatClockTime(value?: string | null) {
   if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "-";
-  return date.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
+  return formatDisplayTime(value);
 }
 
 function formatMinutes(minutes?: number | null) {
@@ -86,6 +82,7 @@ function formatMinutes(minutes?: number | null) {
 export function AttendancePage() {
   const { showToast } = useToast();
   const { user: authUser } = useAuth();
+  const localization = useLocalization();
 
   // Current live clock
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -248,8 +245,8 @@ export function AttendancePage() {
 
   const isClockedIn = Boolean(currentState?.is_clocked_in);
   const clockInTime = currentState?.last_clock_in_at ? formatClockTime(currentState.last_clock_in_at) : null;
-  const shiftStartTime = policy?.start_time || "09:00 AM";
-  const shiftEndTime = policy?.end_time || "05:00 PM";
+  const shiftStartTime = formatDisplayTime(policy?.start_time || "09:00");
+  const shiftEndTime = formatDisplayTime(policy?.end_time || "17:00");
   const workedMinutesToday = today?.worked_minutes ?? (isClockedIn ? 245 : 0);
 
   return (
@@ -301,11 +298,28 @@ export function AttendancePage() {
             {/* Header with Digital Clock & Status Pill */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
               <div>
-                <div className="text-3xl sm:text-4xl font-black text-slate-900 font-headline tracking-tight">
-                  {currentTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                <div className="flex items-center gap-2">
+                  <span className="text-3xl sm:text-4xl font-black text-slate-900 font-headline tracking-tight">
+                    {currentTime.toLocaleTimeString("en-US", {
+                      hour: localization.settings.timeFormat === "12h" ? "numeric" : "2-digit",
+                      minute: "2-digit",
+                      second: "2-digit",
+                      hour12: localization.settings.timeFormat === "12h",
+                      timeZone: localization.settings.timezone,
+                    })}
+                  </span>
+                  <span className="rounded-lg bg-orange-50 px-2 py-0.5 text-[10px] font-bold text-[#ff6900] uppercase tracking-wider border border-orange-200/60">
+                    {localization.settings.timezone.includes("Lagos") ? "WAT (Nigeria)" : localization.settings.timezone}
+                  </span>
                 </div>
-                <div className="text-xs text-slate-500 font-medium mt-0.5">
-                  {currentTime.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+                <div className="text-xs text-slate-500 font-medium mt-1">
+                  {currentTime.toLocaleDateString("en-US", {
+                    weekday: "long",
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric",
+                    timeZone: localization.settings.timezone,
+                  })}
                 </div>
               </div>
 
