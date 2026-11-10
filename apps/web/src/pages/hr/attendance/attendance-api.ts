@@ -135,30 +135,42 @@ export async function getAttendanceStatus() {
 }
 
 export async function clockIn(payload?: {
-  source?: string;
+  source?: "web" | "mobile" | "admin" | "import" | string;
   at?: string;
   attendance_mode?: string;
   office_location_id?: string;
   latitude?: number;
   longitude?: number;
 }) {
+  const safeSource = ["web", "mobile", "admin", "import"].includes(payload?.source || "")
+    ? payload!.source
+    : "web";
   return httpRequest<{ success: boolean; daily: AttendanceDaily }>("/hr/attendance/clock-in", {
     method: "POST",
-    body: payload ?? {},
+    body: {
+      ...payload,
+      source: safeSource,
+    },
   });
 }
 
 export async function clockOut(payload?: {
-  source?: string;
+  source?: "web" | "mobile" | "admin" | "import" | string;
   at?: string;
   attendance_mode?: string;
   office_location_id?: string;
   latitude?: number;
   longitude?: number;
 }) {
+  const safeSource = ["web", "mobile", "admin", "import"].includes(payload?.source || "")
+    ? payload!.source
+    : "web";
   return httpRequest<{ success: boolean; daily: AttendanceDaily }>("/hr/attendance/clock-out", {
     method: "POST",
-    body: payload ?? {},
+    body: {
+      ...payload,
+      source: safeSource,
+    },
   });
 }
 

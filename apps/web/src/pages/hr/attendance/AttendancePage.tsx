@@ -178,7 +178,7 @@ export function AttendancePage() {
       setActing(type);
       const coords = await getCoords();
       const payload = {
-        source: "portal-web",
+        source: "web" as const,
         attendance_mode: selectedMode,
         office_location_id: selectedMode === "onsite" ? selectedOfficeLocationId || undefined : undefined,
         latitude: coords.latitude,
