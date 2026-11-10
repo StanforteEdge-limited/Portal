@@ -316,7 +316,7 @@ export default function RequestTypePage() {
 
                     <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between text-xs">
                       <span className="text-[11px] font-medium text-slate-400">
-                        Code: {type.code || "STD"}
+                        Code: {(type as any).code || "STD"}
                       </span>
                       <span className="font-bold text-[#ff6900] flex items-center gap-1 group-hover:translate-x-1 transition-transform">
                         <span>Open Form</span>

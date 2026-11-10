@@ -266,7 +266,7 @@ export default function ProjectsPage() {
                         <td className="py-3.5 px-5 text-right">
                           <Link
                             to={`/projects/${project.id}`}
-                            onClick={(e) => e.stopPropagation()}
+                            onClick={(e: React.MouseEvent) => e.stopPropagation()}
                             className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700 hover:text-white hover:bg-[#ff6900] border border-slate-200 hover:border-[#ff6900] transition shadow-sm"
                           >
                             <span>Open</span>

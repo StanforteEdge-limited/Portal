@@ -266,7 +266,7 @@ export default function ProjectDetailPage() {
                     Catalog Classification
                   </span>
                   <span className="text-xs font-bold text-slate-800 mt-0.5 block">
-                    {project.category || "General Initiative"}
+                    {(project as any).category || "General Initiative"}
                   </span>
                 </div>
                 <div>
