@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link } from "@/shared/router-adapter";
+import { Link } from "react-router-dom";
 import { PortalLayout } from "@/components/layout/PortalLayout";
 import { useToast } from "@/shared";
 import { useCachedQuery, timesheetApi } from "@/shared/lib/core";
@@ -16,25 +16,35 @@ import {
   Send,
   Edit2,
   FileText,
-  Building2,
-  FolderKanban,
+  Filter,
+  RefreshCw,
 } from "lucide-react";
 
 export default function TimesheetsPage() {
   const { showToast } = useToast();
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"all" | "draft" | "submitted" | "approved">("all");
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const { data: timesheetRows, loading, error, refetch } = useCachedQuery(
+  const {
+    data: timesheetRows,
+    loading,
+    error,
+    refetch,
+  } = useCachedQuery(
     "timesheets:my-entries",
     () => timesheetApi.listMyEntries({ page: 1, per_page: 500 }),
-    { ttlMs: 1000 * 60, storage: "memory" },
+    { ttlMs: 1000 * 60, storage: "memory" }
   );
 
-  const timesheets: TimesheetEntry[] = timesheetRows ?? [];
+  const timesheets: TimesheetEntry[] = useMemo(() => timesheetRows ?? [], [timesheetRows]);
 
   const summary = useMemo(() => {
-    const totalHours = timesheets.reduce((sum: number, r: TimesheetEntry) => sum + Number(r.hours || 0), 0);
+    const totalHours = timesheets.reduce(
+      (sum: number, r: TimesheetEntry) => sum + Number(r.hours || 0),
+      0
+    );
     const approvedHours = timesheets
       .filter((r: TimesheetEntry) => r.status === "approved")
       .reduce((sum: number, r: TimesheetEntry) => sum + Number(r.hours || 0), 0);
@@ -52,32 +62,54 @@ export default function TimesheetsPage() {
     };
   }, [timesheets]);
 
+  const filteredTimesheets = useMemo(() => {
+    return timesheets.filter((item: any) => {
+      const statusKey = String(item.status || "draft").toLowerCase();
+      if (activeTab === "draft" && statusKey !== "draft") return false;
+      if (activeTab === "submitted" && statusKey !== "submitted") return false;
+      if (activeTab === "approved" && statusKey !== "approved") return false;
+
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const projectName = String(item.project?.name || "").toLowerCase();
+        const desc = String(item.description || "").toLowerCase();
+        const fund = String(item.fund?.name || "").toLowerCase();
+        return projectName.includes(q) || desc.includes(q) || fund.includes(q);
+      }
+      return true;
+    });
+  }, [timesheets, activeTab, searchQuery]);
+
   async function submitTimesheet(id: string) {
     try {
       await timesheetApi.submitMyEntry(id);
       showToast({ tone: "success", title: "Submitted", message: "Timesheet submitted for review." });
       void refetch();
     } catch (err: any) {
-      showToast({ tone: "danger", title: "Cannot submit", message: err?.message || "Failed to submit timesheet." });
+      showToast({
+        tone: "danger",
+        title: "Cannot submit",
+        message: err?.message || "Failed to submit timesheet.",
+      });
     }
   }
 
   return (
     <PortalLayout activeNav="Timesheets">
-      <div className="space-y-6">
+      <div className="space-y-6 w-full min-w-0">
         {/* Breadcrumb & Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 text-xs font-medium text-slate-500 mb-1">
-              <Link to="/dashboard" className="hover:text-slate-800 transition">
-                Dashboard
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1">
+              <Link to="/" className="hover:text-slate-800 transition">
+                Workspace
               </Link>
-              <ChevronRight className="h-3 w-3" />
-              <Link to="/admin/users" className="hover:text-slate-800 transition">
-                HR & Workforce
+              <ChevronRight className="h-3 w-3 text-slate-400" />
+              <Link to="/attendance" className="hover:text-slate-800 transition">
+                Workforce
               </Link>
-              <ChevronRight className="h-3 w-3" />
-              <span className="text-slate-800 font-semibold">Timesheets</span>
+              <ChevronRight className="h-3 w-3 text-slate-400" />
+              <span className="text-[#ff6900] font-bold">Timesheets</span>
             </div>
             <h1 className="text-2xl font-black text-slate-900 tracking-tight font-headline">
               Project Timesheets
@@ -88,6 +120,16 @@ export default function TimesheetsPage() {
           </div>
 
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => void refetch()}
+              disabled={loading}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50 transition disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-slate-400" : ""}`} />
+              <span>Refresh</span>
+            </button>
+
             <button
               type="button"
               onClick={() => {
@@ -102,103 +144,176 @@ export default function TimesheetsPage() {
           </div>
         </div>
 
-        {/* 4 KPI Stat Cards */}
+        {/* 4 KPI Summary Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Card 1: Total Hours Logged */}
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between">
-            <div className="flex items-center gap-3">
+          {/* Card 1: Total Logged Hours */}
+          <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between">
+            <div className="flex items-center gap-3.5">
               <div className="w-10 h-10 rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
                 <Clock className="h-5 w-5" />
               </div>
               <div>
-                <div className="text-[11px] font-semibold text-slate-500">Total Hours Logged</div>
-                <div className="text-xl font-black text-slate-900 mt-0.5">
-                  {summary.totalHours.toFixed(1)} <span className="text-xs font-semibold text-slate-400">hrs</span>
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                  Total Logged
+                </div>
+                <div className="text-2xl font-black text-slate-900 mt-0.5">
+                  {summary.totalHours.toFixed(1)} <span className="text-xs font-medium text-slate-400">hrs</span>
                 </div>
               </div>
             </div>
-            <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
+            <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">
               {summary.entries} entries
             </span>
           </div>
 
           {/* Card 2: Approved Hours */}
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between">
-            <div className="flex items-center gap-3">
+          <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between">
+            <div className="flex items-center gap-3.5">
               <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
                 <CheckCircle2 className="h-5 w-5" />
               </div>
               <div>
-                <div className="text-[11px] font-semibold text-slate-500">Approved for Payroll</div>
-                <div className="text-xl font-black text-slate-900 mt-0.5">
-                  {summary.approvedHours.toFixed(1)} <span className="text-xs font-semibold text-slate-400">hrs</span>
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                  Approved Hours
+                </div>
+                <div className="text-2xl font-black text-slate-900 mt-0.5">
+                  {summary.approvedHours.toFixed(1)} <span className="text-xs font-medium text-slate-400">hrs</span>
                 </div>
               </div>
             </div>
-            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-              {summary.approved} approved
+            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full">
+              {summary.approved} signed-off
             </span>
           </div>
 
           {/* Card 3: Pending Submissions */}
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between">
-            <div className="flex items-center gap-3">
+          <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between">
+            <div className="flex items-center gap-3.5">
               <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
                 <Send className="h-5 w-5" />
               </div>
               <div>
-                <div className="text-[11px] font-semibold text-slate-500">Pending Review</div>
-                <div className="text-xl font-black text-slate-900 mt-0.5">{summary.submitted}</div>
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                  Pending Review
+                </div>
+                <div className="text-2xl font-black text-slate-900 mt-0.5">{summary.submitted}</div>
               </div>
             </div>
-            <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+            <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
               {summary.draft} drafts
             </span>
           </div>
 
           {/* Card 4: Active Projects */}
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between">
-            <div className="flex items-center gap-3">
+          <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between">
+            <div className="flex items-center gap-3.5">
               <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
                 <Briefcase className="h-5 w-5" />
               </div>
               <div>
-                <div className="text-[11px] font-semibold text-slate-500">Assigned Projects</div>
-                <div className="text-xl font-black text-slate-900 mt-0.5">{summary.projectCount}</div>
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                  Assigned Projects
+                </div>
+                <div className="text-2xl font-black text-slate-900 mt-0.5">{summary.projectCount}</div>
               </div>
             </div>
-            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+            <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">
               Allocated
             </span>
           </div>
         </div>
 
-        {/* Timesheets Table */}
+        {/* Timesheets Table Card */}
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
-          <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h2 className="text-base font-bold text-slate-900">Work Logs & Hours Logged</h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Submitted timesheet records feeding departmental budget lines and grant costing.
-              </p>
+          {/* Controls Bar */}
+          <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50">
+            {/* Filter Tabs */}
+            <div className="flex items-center gap-1 rounded-xl bg-slate-200/70 p-1">
+              <button
+                onClick={() => setActiveTab("all")}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                  activeTab === "all"
+                    ? "bg-white text-slate-900 shadow-sm"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                All ({timesheets.length})
+              </button>
+              <button
+                onClick={() => setActiveTab("draft")}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                  activeTab === "draft"
+                    ? "bg-white text-slate-900 shadow-sm"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Drafts ({summary.draft})
+              </button>
+              <button
+                onClick={() => setActiveTab("submitted")}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                  activeTab === "submitted"
+                    ? "bg-white text-slate-900 shadow-sm"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Submitted ({summary.submitted})
+              </button>
+              <button
+                onClick={() => setActiveTab("approved")}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                  activeTab === "approved"
+                    ? "bg-white text-slate-900 shadow-sm"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Approved ({summary.approved})
+              </button>
             </div>
-            <div className="text-xs font-semibold text-slate-500 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200/80">
-              {timesheets.length} recorded entries
+
+            {/* Keyword Search */}
+            <div className="relative w-full sm:w-64">
+              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search project, fund, notes..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-white py-1.5 pl-8 pr-3 text-xs text-slate-900 placeholder-slate-400 focus:border-[#ff6900] focus:outline-none focus:ring-1 focus:ring-[#ff6900]"
+              />
             </div>
           </div>
 
           {loading ? (
-            <div className="p-12 text-center text-xs text-slate-400">Loading timesheet records...</div>
+            <div className="p-12 text-center text-xs text-slate-400">
+              <RefreshCw className="mx-auto w-5 h-5 animate-spin text-slate-400 mb-2" />
+              <span>Loading timesheet records...</span>
+            </div>
           ) : error ? (
-            <div className="p-8 text-center text-xs text-rose-500">Error loading entries: {String(error)}</div>
-          ) : timesheets.length === 0 ? (
+            <div className="p-8 text-center bg-rose-50/50">
+              <AlertCircle className="mx-auto w-6 h-6 text-rose-500 mb-2" />
+              <p className="text-xs font-semibold text-rose-900">Unable to load timesheets</p>
+              <p className="mt-1 text-xs text-rose-600">{String(error)}</p>
+              <button
+                type="button"
+                onClick={() => void refetch()}
+                className="mt-3 px-3 py-1.5 text-xs font-semibold rounded-lg bg-rose-600 text-white hover:bg-rose-700 transition"
+              >
+                Retry
+              </button>
+            </div>
+          ) : filteredTimesheets.length === 0 ? (
             <div className="p-16 text-center">
               <div className="w-12 h-12 rounded-2xl bg-slate-50 text-slate-300 flex items-center justify-center mx-auto mb-3">
                 <CalendarCheck className="h-6 w-6" />
               </div>
-              <h3 className="text-sm font-bold text-slate-800">No timesheet entries yet</h3>
+              <h3 className="text-sm font-bold text-slate-800">
+                {searchQuery ? "No matching entries found" : "No timesheet entries yet"}
+              </h3>
               <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
-                Click &ldquo;Log Time Entry&rdquo; above to log your daily project hours and submit for manager sign-off.
+                {searchQuery
+                  ? "Try adjusting your search keywords or clear the filter."
+                  : 'Click "Log Time Entry" above to log your daily project hours and submit for manager sign-off.'}
               </p>
             </div>
           ) : (
@@ -207,7 +322,7 @@ export default function TimesheetsPage() {
                 <thead>
                   <tr className="border-b border-slate-100 bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-500">
                     <th className="py-3 px-5">Work Date</th>
-                    <th className="py-3 px-5">Project & Description</th>
+                    <th className="py-3 px-5">Project &amp; Description</th>
                     <th className="py-3 px-5">Funding / Grant</th>
                     <th className="py-3 px-5">Hours</th>
                     <th className="py-3 px-5">Approval Status</th>
@@ -215,7 +330,7 @@ export default function TimesheetsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs">
-                  {timesheets.map((row: any) => {
+                  {filteredTimesheets.map((row: any) => {
                     const statusKey = String(row.status || "draft").toLowerCase();
                     const isDraftOrRejected = ["draft", "rejected"].includes(statusKey);
 
@@ -263,7 +378,8 @@ export default function TimesheetsPage() {
                           <div className="text-[10px] text-slate-400">{row.grant?.name || "General Operating"}</div>
                         </td>
                         <td className="py-3.5 px-5 font-black text-slate-900">
-                          {Number(row.hours || 0).toFixed(1)} <span className="text-[10px] font-medium text-slate-400">hrs</span>
+                          {Number(row.hours || 0).toFixed(1)}{" "}
+                          <span className="text-[10px] font-medium text-slate-400">hrs</span>
                         </td>
                         <td className="py-3.5 px-5">{statusBadge}</td>
                         <td className="py-3.5 px-5 text-right whitespace-nowrap">
@@ -309,7 +425,7 @@ export default function TimesheetsPage() {
             <FileText className="h-4 w-4" />
           </div>
           <div className="text-xs">
-            <p className="font-bold text-slate-900">Timesheet Submission & Payroll Guidelines</p>
+            <p className="font-bold text-slate-900">Timesheet Submission &amp; Payroll Guidelines</p>
             <ul className="text-slate-500 mt-1 list-disc pl-4 space-y-1">
               <li>Approved entries directly feed payroll allocations and project costing.</li>
               <li>Draft entries can be edited freely. Once submitted, records are locked for managerial review.</li>

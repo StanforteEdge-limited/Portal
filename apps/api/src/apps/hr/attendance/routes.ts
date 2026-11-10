@@ -38,6 +38,10 @@ export const AttendanceRoutes: FastifyPluginAsync = async (fastify) => {
     attendance().myAttendance(actor(request), requestQuery<AttendanceListQuery>(request)),
   );
 
+  fastify.get('/me', { preHandler: authenticated, schema: { querystring: AttendanceListQuerySchema } }, async (request) =>
+    attendance().myAttendance(actor(request), requestQuery<AttendanceListQuery>(request)),
+  );
+
   fastify.post('/clock-in', { preHandler: authenticated, schema: { body: ClockAttendanceSchema } }, async (request) =>
     attendance().clockIn(actor(request), request, requestBody<ClockAttendance>(request)),
   );

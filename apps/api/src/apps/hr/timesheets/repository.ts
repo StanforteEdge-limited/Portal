@@ -12,6 +12,7 @@ import { workLog, workItem } from '$apps/hr/tasks/model';
 import { payrollComponent, payrollRun, payrollRunTimesheetAllocation, payrollWorker } from '$apps/hr/payroll/model';
 import { organization } from '$apps/hr/organizations/model';
 import { financeFund, financeGrant } from '$apps/finance/accounting/model';
+import { profile } from '$apps/identity/users/model';
 
 const LOCKED_RUN_STATUSES = ['approved', 'authorized', 'paid', 'closed'];
 
@@ -168,8 +169,15 @@ export class TimesheetsService {
   /* -------------------------------------------------------------------- */
 
   async listMyEntries(userId: string, query: Record<string, any> = {}) {
-    const worker = await this.resolveWorkerForUser(userId);
-    return this.listEntries({ ...query, worker_id: worker.id });
+    try {
+      const worker = await this.resolveWorkerForUser(userId);
+      return this.listEntries({ ...query, worker_id: worker.id });
+    } catch (err) {
+      if (err instanceof NotFoundException) {
+        return paginatedResponse([], { page: 1, per_page: 50, total: 0 });
+      }
+      throw err;
+    }
   }
 
   async createMyEntry(userId: string, dto: UpsertTimesheetEntry) {
@@ -300,12 +308,47 @@ export class TimesheetsService {
   }
 
   private async resolveWorkerForUser(userId: string) {
-    const worker = await this.db.client
+    let worker = await this.db.client
       .select({ id: payrollWorker.id, fullName: payrollWorker.fullName, workerType: payrollWorker.workerType })
       .from(payrollWorker)
       .where(eq(payrollWorker.profileId, toBigInt(userId)))
       .limit(1)
       .then((r) => r[0]);
+
+    if (!worker) {
+      // Auto-provision or link a payroll worker profile for this user if they exist in sta_profiles
+      const [userProfile] = await this.db.client
+        .select()
+        .from(profile)
+        .where(eq(profile.id, toBigInt(userId)))
+        .limit(1);
+
+      if (userProfile) {
+        const tid = this.tenantContext.currentTenantId();
+        const fullName =
+          `${userProfile.firstName || ''} ${userProfile.lastName || ''}`.trim() ||
+          userProfile.email ||
+          'Staff Member';
+
+        const [created] = await this.db.client
+          .insert(payrollWorker)
+          .values({
+            tenantId: tid,
+            profileId: toBigInt(userId),
+            fullName,
+            email: userProfile.email,
+            workerType: 'employee',
+            currency: 'NGN',
+            status: 'active',
+          })
+          .returning({ id: payrollWorker.id, fullName: payrollWorker.fullName, workerType: payrollWorker.workerType });
+
+        if (created) {
+          return created;
+        }
+      }
+    }
+
     if (!worker) throw new NotFoundException('Payroll worker profile not found for this user');
     return worker;
   }
