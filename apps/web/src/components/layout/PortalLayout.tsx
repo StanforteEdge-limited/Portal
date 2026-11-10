@@ -970,8 +970,8 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
           </div>
         </header>
 
-        {/* Inner Content View */}
-        <main className="p-4 sm:p-8 space-y-6 max-w-7xl mx-auto w-full flex-1 pb-16">
+        {/* Inner Content View - Full width dashboard layout */}
+        <main className="p-4 sm:p-6 lg:p-8 space-y-6 w-full flex-1 pb-16 min-w-0">
           {children}
         </main>
       </div>
