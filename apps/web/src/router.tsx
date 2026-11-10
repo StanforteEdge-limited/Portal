@@ -1,139 +1,145 @@
+import React from "react";
 import {
   createRouter as createTanStackRouter,
   createRootRoute,
   createRoute,
+  lazyRouteComponent,
   Outlet,
 } from "@tanstack/react-router";
 import { BrandingProvider } from "@/shared/branding/BrandingProvider";
 import { AuthProvider, useAuth } from "@/shared/context/AuthProvider";
 import { UpdateBanner } from "@/shared/components/ui/UpdateBanner";
 
-// Public Marketing & Auth Pages
-import HomePage from "@/pages/home/HomePage";
-import PricingPage from "@/pages/public/PricingPage";
-import FeaturesPage from "@/pages/public/FeaturesPage";
-import SecurityPage from "@/pages/public/SecurityPage";
-import LoginPage from "@/pages/auth/LoginPage";
-import RegisterPage from "@/pages/auth/RegisterPage";
-import ForgotPasswordPage from "@/pages/auth/ForgotPasswordPage";
-import ResetPasswordPage from "@/pages/auth/ResetPasswordPage";
-import VerifyEmailPage from "@/pages/auth/VerifyEmailPage";
-import AcceptInvitePage from "@/pages/auth/AcceptInvitePage";
-import EmployeeOnboardingPage from "@/pages/auth/EmployeeOnboardingPage";
+// Lazy-load page component helper for clean route code-splitting
+const lazy = (importer: () => Promise<{ default: React.ComponentType<any> }>) =>
+  lazyRouteComponent(importer);
 
-// Dashboard
-import DashboardPage from "@/pages/dashboard/DashboardPage";
-
-// HR & Workforce Pages
-import AttendancePage from "@/pages/hr/attendance/AttendancePage";
-import LeavePage from "@/pages/hr/leave/LeavePage";
-import AdminUsersPage from "@/pages/admin/users/AdminUsersPage";
-import AdminUserBulkPage from "@/pages/admin/users/AdminUserBulkPage";
-import AdminUserDetailPage from "@/pages/admin/users/AdminUserDetailPage";
-import AdminGroupsPage from "@/pages/admin/groups/AdminGroupsPage";
-import TeamsPage from "@/pages/teams/TeamsPage";
-import TeamDetailPage from "@/pages/teams/TeamDetailPage";
-import HrEmployeesPage from "@/pages/hr/employees/HrEmployeesPage";
-import HrEmployeeCreatePage from "@/pages/hr/employees/HrEmployeeCreatePage";
-import HrEmployeeDetailPage from "@/pages/hr/employees/HrEmployeeDetailPage";
-import HrEmployeeEditPage from "@/pages/hr/employees/HrEmployeeEditPage";
-
-// Account & Self-Service
-import TimesheetsPage from "@/pages/account/TimesheetsPage";
-import PayslipsPage from "@/pages/account/PayslipsPage";
-import ProfilePage from "@/pages/account/ProfilePage";
-import AccountSettingsPage from "@/pages/account/SettingsPage";
-import NotificationsPage from "@/pages/account/NotificationsPage";
-import HelpPage from "@/pages/account/HelpPage";
-import DownloadPage from "@/pages/account/DownloadPage";
-
-// Payroll Pages
-import AdminPayrollAuthorizationPage from "@/pages/admin/payroll/AdminPayrollAuthorizationPage";
-import AdminPayrollRunAuthorizePage from "@/pages/admin/payroll/AdminPayrollRunAuthorizePage";
-import FinancePayrollPage from "@/pages/finance/payroll/FinancePayrollPage";
-import FinancePayrollComponentsPage from "@/pages/finance/payroll/FinancePayrollComponentsPage";
-import FinancePayrollTaxTablesPage from "@/pages/finance/payroll/FinancePayrollTaxTablesPage";
-import FinancePayrollRunDetailPage from "@/pages/finance/payroll/FinancePayrollRunDetailPage";
-import HrPayrollLoansPage from "@/pages/hr/payroll/HrPayrollLoansPage";
-
-// Finance & Accounting Pages
-import FinanceDashboardPage from "@/pages/finance/dashboard/FinanceDashboardPage";
-import FinanceAccountsPage from "@/pages/finance/accounts/FinanceAccountsPage";
-import FinanceAccountDetailPage from "@/pages/finance/accounts/FinanceAccountDetailPage";
-import FinanceChartAccountsPage from "@/pages/finance/accounts/FinanceChartAccountsPage";
-import FinanceBudgetsPage from "@/pages/finance/budgets/FinanceBudgetsPage";
-import FinanceBudgetEditorPage from "@/pages/finance/budgets/FinanceBudgetEditorPage";
-import FinanceBudgetDetailPage from "@/pages/finance/budgets/FinanceBudgetDetailPage";
-import FinanceExpensesPage from "@/pages/finance/expenses/FinanceExpensesPage";
-import FinanceBillsPage from "@/pages/finance/bills/FinanceBillsPage";
-import FinanceSalesInvoicesPage from "@/pages/finance/invoices/FinanceSalesInvoicesPage";
-import FinanceAssetsPage from "@/pages/finance/assets/FinanceAssetsPage";
-import FinanceAssetEditorPage from "@/pages/finance/assets/FinanceAssetEditorPage";
-import FinanceAssetDisposalsPage from "@/pages/finance/assets/FinanceAssetDisposalsPage";
-import FinanceLedgerPage from "@/pages/finance/ledger/FinanceLedgerPage";
-import FinanceManualEntryPage from "@/pages/finance/ledger/FinanceManualEntryPage";
-import FinancePaymentVouchersPage from "@/pages/finance/payment-vouchers/FinancePaymentVouchersPage";
-import FinancePayablesPage from "@/pages/finance/payables/FinancePayablesPage";
-import FinanceReceivablesPage from "@/pages/finance/receivables/FinanceReceivablesPage";
-import StatutoryDeductionsPage from "@/pages/finance/deductions/StatutoryDeductionsPage";
-import FinanceDeductionTypesPage from "@/pages/finance/deductions/FinanceDeductionTypesPage";
-import FinanceReportsPage from "@/pages/finance/reports/FinanceReportsPage";
-import FinanceReportDetailPage from "@/pages/finance/reports/FinanceReportDetailPage";
-import FinanceContactsPage from "@/pages/finance/contacts";
-import FinanceSettingsPage from "@/pages/finance/settings/FinanceSettingsPage";
-import FinanceRequestsPage from "@/pages/finance/requests/FinanceRequestsPage";
-import FinanceRequestDetailsPage from "@/pages/finance/requests/FinanceRequestDetailsPage";
-
-// Workflows, Operations & Requests
-import RequestsListPage from "@/pages/requests/RequestsListPage";
-import RequestTypePage from "@/pages/requests/new/RequestTypePage";
-import RequestFormPage from "@/pages/requests/new/RequestFormPage";
-import RequestDetailsPage from "@/pages/requests/RequestDetailsPage";
-import ApprovalsPage from "@/pages/requests/ApprovalsPage";
-import ApprovalRequestDetailsPage from "@/pages/requests/ApprovalRequestDetailsPage";
-import ProjectsPage from "@/pages/projects/ProjectsPage";
-import ProjectDetailPage from "@/pages/projects/ProjectDetailPage";
-import AdminProjectsPage from "@/pages/admin/projects/AdminProjectsPage";
-import TasksPage from "@/pages/tasks/TasksPage";
-import ProcurementIndex from "@/pages/procurement/index";
-
-// Documents & Media
-import DocumentsListPage from "@/pages/documents/DocumentsListPage";
-import DocumentDetailPage from "@/pages/documents/DocumentDetailPage";
-import PoliciesListPage from "@/pages/documents/PoliciesListPage";
-import FilesPage from "@/pages/files/FilesPage";
-import MailPage from "@/pages/mail";
-
-// Administration & Governance
-import AdminRolesPage from "@/pages/admin/roles/AdminRolesPage";
-import AdminOrganizationsPage from "@/pages/admin/organizations/AdminOrganizationsPage";
-import AdminSettingsPage from "@/pages/admin/settings/AdminSettingsPage";
-
-// Vendor Portal
-import VendorDashboardPage from "@/pages/vendor-portal/dashboard";
-import VendorLoginPage from "@/pages/vendor-portal/login";
-import VendorDetailPage from "@/pages/vendor-portal/detail";
-
-import {
-  fetchHealthServerFn,
-  fetchSessionServerFn,
-  fetchDashboardMetricsServerFn,
-  fetchPublicStatsServerFn,
-} from "./server/functions";
-
-// 1. Root Route: App Shell & Global Providers
+// 1. Root Route: App Shell, Global Providers, and Suspense Boundary
 const rootRoute = createRootRoute({
   component: () => (
     <BrandingProvider>
       <AuthProvider>
         <UpdateBanner />
-        <Outlet />
+        <React.Suspense
+          fallback={
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-full border-2 border-[#ff6900] border-t-transparent animate-spin" />
+            </div>
+          }
+        >
+          <Outlet />
+        </React.Suspense>
       </AuthProvider>
     </BrandingProvider>
   ),
 });
 
-// 2. Index Route (`/`): Preloaded with SSR Server Functions
+import HomePage from "@/pages/home/HomePage";
+import DashboardPage from "@/pages/dashboard/DashboardPage";
+
+// Lazy Page Definitions
+const PricingPage = lazy(() => import("@/pages/public/PricingPage"));
+const FeaturesPage = lazy(() => import("@/pages/public/FeaturesPage"));
+const SecurityPage = lazy(() => import("@/pages/public/SecurityPage"));
+const LoginPage = lazy(() => import("@/pages/auth/LoginPage"));
+const RegisterPage = lazy(() => import("@/pages/auth/RegisterPage"));
+const ForgotPasswordPage = lazy(() => import("@/pages/auth/ForgotPasswordPage"));
+const ResetPasswordPage = lazy(() => import("@/pages/auth/ResetPasswordPage"));
+const VerifyEmailPage = lazy(() => import("@/pages/auth/VerifyEmailPage"));
+const AcceptInvitePage = lazy(() => import("@/pages/auth/AcceptInvitePage"));
+const EmployeeOnboardingPage = lazy(() => import("@/pages/auth/EmployeeOnboardingPage"));
+
+// HR & Workforce
+const AttendancePage = lazy(() => import("@/pages/hr/attendance/AttendancePage"));
+const LeavePage = lazy(() => import("@/pages/hr/leave/LeavePage"));
+const AdminUsersPage = lazy(() => import("@/pages/admin/users/AdminUsersPage"));
+const AdminUserBulkPage = lazy(() => import("@/pages/admin/users/AdminUserBulkPage"));
+const AdminUserDetailPage = lazy(() => import("@/pages/admin/users/AdminUserDetailPage"));
+const AdminGroupsPage = lazy(() => import("@/pages/admin/groups/AdminGroupsPage"));
+const TeamsPage = lazy(() => import("@/pages/teams/TeamsPage"));
+const TeamDetailPage = lazy(() => import("@/pages/teams/TeamDetailPage"));
+const HrEmployeesPage = lazy(() => import("@/pages/hr/employees/HrEmployeesPage"));
+const HrEmployeeCreatePage = lazy(() => import("@/pages/hr/employees/HrEmployeeCreatePage"));
+const HrEmployeeDetailPage = lazy(() => import("@/pages/hr/employees/HrEmployeeDetailPage"));
+const HrEmployeeEditPage = lazy(() => import("@/pages/hr/employees/HrEmployeeEditPage"));
+
+// Account Self-Service
+const TimesheetsPage = lazy(() => import("@/pages/account/TimesheetsPage"));
+const PayslipsPage = lazy(() => import("@/pages/account/PayslipsPage"));
+const ProfilePage = lazy(() => import("@/pages/account/ProfilePage"));
+const AccountSettingsPage = lazy(() => import("@/pages/account/SettingsPage"));
+const NotificationsPage = lazy(() => import("@/pages/account/NotificationsPage"));
+const HelpPage = lazy(() => import("@/pages/account/HelpPage"));
+const DownloadPage = lazy(() => import("@/pages/account/DownloadPage"));
+
+// Payroll
+const AdminPayrollAuthorizationPage = lazy(() => import("@/pages/admin/payroll/AdminPayrollAuthorizationPage"));
+const AdminPayrollRunAuthorizePage = lazy(() => import("@/pages/admin/payroll/AdminPayrollRunAuthorizePage"));
+const FinancePayrollPage = lazy(() => import("@/pages/finance/payroll/FinancePayrollPage"));
+const FinancePayrollComponentsPage = lazy(() => import("@/pages/finance/payroll/FinancePayrollComponentsPage"));
+const FinancePayrollTaxTablesPage = lazy(() => import("@/pages/finance/payroll/FinancePayrollTaxTablesPage"));
+const FinancePayrollRunDetailPage = lazy(() => import("@/pages/finance/payroll/FinancePayrollRunDetailPage"));
+const HrPayrollLoansPage = lazy(() => import("@/pages/hr/payroll/HrPayrollLoansPage"));
+
+// Finance & Accounting
+const FinanceDashboardPage = lazy(() => import("@/pages/finance/dashboard/FinanceDashboardPage"));
+const FinanceAccountsPage = lazy(() => import("@/pages/finance/accounts/FinanceAccountsPage"));
+const FinanceAccountDetailPage = lazy(() => import("@/pages/finance/accounts/FinanceAccountDetailPage"));
+const FinanceChartAccountsPage = lazy(() => import("@/pages/finance/accounts/FinanceChartAccountsPage"));
+const FinanceBudgetsPage = lazy(() => import("@/pages/finance/budgets/FinanceBudgetsPage"));
+const FinanceBudgetEditorPage = lazy(() => import("@/pages/finance/budgets/FinanceBudgetEditorPage"));
+const FinanceBudgetDetailPage = lazy(() => import("@/pages/finance/budgets/FinanceBudgetDetailPage"));
+const FinanceExpensesPage = lazy(() => import("@/pages/finance/expenses/FinanceExpensesPage"));
+const FinanceBillsPage = lazy(() => import("@/pages/finance/bills/FinanceBillsPage"));
+const FinanceSalesInvoicesPage = lazy(() => import("@/pages/finance/invoices/FinanceSalesInvoicesPage"));
+const FinanceAssetsPage = lazy(() => import("@/pages/finance/assets/FinanceAssetsPage"));
+const FinanceAssetEditorPage = lazy(() => import("@/pages/finance/assets/FinanceAssetEditorPage"));
+const FinanceAssetDisposalsPage = lazy(() => import("@/pages/finance/assets/FinanceAssetDisposalsPage"));
+const FinanceLedgerPage = lazy(() => import("@/pages/finance/ledger/FinanceLedgerPage"));
+const FinanceManualEntryPage = lazy(() => import("@/pages/finance/ledger/FinanceManualEntryPage"));
+const FinancePaymentVouchersPage = lazy(() => import("@/pages/finance/payment-vouchers/FinancePaymentVouchersPage"));
+const FinancePayablesPage = lazy(() => import("@/pages/finance/payables/FinancePayablesPage"));
+const FinanceReceivablesPage = lazy(() => import("@/pages/finance/receivables/FinanceReceivablesPage"));
+const StatutoryDeductionsPage = lazy(() => import("@/pages/finance/deductions/StatutoryDeductionsPage"));
+const FinanceDeductionTypesPage = lazy(() => import("@/pages/finance/deductions/FinanceDeductionTypesPage"));
+const FinanceReportsPage = lazy(() => import("@/pages/finance/reports/FinanceReportsPage"));
+const FinanceReportDetailPage = lazy(() => import("@/pages/finance/reports/FinanceReportDetailPage"));
+const FinanceContactsPage = lazy(() => import("@/pages/finance/contacts"));
+const FinanceSettingsPage = lazy(() => import("@/pages/finance/settings/FinanceSettingsPage"));
+const FinanceRequestsPage = lazy(() => import("@/pages/finance/requests/FinanceRequestsPage"));
+const FinanceRequestDetailsPage = lazy(() => import("@/pages/finance/requests/FinanceRequestDetailsPage"));
+
+// Workflows, Operations & Requests
+const RequestsListPage = lazy(() => import("@/pages/requests/RequestsListPage"));
+const RequestTypePage = lazy(() => import("@/pages/requests/new/RequestTypePage"));
+const RequestFormPage = lazy(() => import("@/pages/requests/new/RequestFormPage"));
+const RequestDetailsPage = lazy(() => import("@/pages/requests/RequestDetailsPage"));
+const ApprovalsPage = lazy(() => import("@/pages/requests/ApprovalsPage"));
+const ApprovalRequestDetailsPage = lazy(() => import("@/pages/requests/ApprovalRequestDetailsPage"));
+const ProjectsPage = lazy(() => import("@/pages/projects/ProjectsPage"));
+const ProjectDetailPage = lazy(() => import("@/pages/projects/ProjectDetailPage"));
+const AdminProjectsPage = lazy(() => import("@/pages/admin/projects/AdminProjectsPage"));
+const TasksPage = lazy(() => import("@/pages/tasks/TasksPage"));
+const ProcurementIndex = lazy(() => import("@/pages/procurement/index"));
+
+// Documents & Media
+const DocumentsListPage = lazy(() => import("@/pages/documents/DocumentsListPage"));
+const DocumentDetailPage = lazy(() => import("@/pages/documents/DocumentDetailPage"));
+const PoliciesListPage = lazy(() => import("@/pages/documents/PoliciesListPage"));
+const FilesPage = lazy(() => import("@/pages/files/FilesPage"));
+const MailPage = lazy(() => import("@/pages/mail"));
+
+// Administration
+const AdminRolesPage = lazy(() => import("@/pages/admin/roles/AdminRolesPage"));
+const AdminOrganizationsPage = lazy(() => import("@/pages/admin/organizations/AdminOrganizationsPage"));
+const AdminSettingsPage = lazy(() => import("@/pages/admin/settings/AdminSettingsPage"));
+
+// Vendor Portal
+const VendorDashboardPage = lazy(() => import("@/pages/vendor-portal/dashboard"));
+const VendorLoginPage = lazy(() => import("@/pages/vendor-portal/login"));
+const VendorDetailPage = lazy(() => import("@/pages/vendor-portal/detail"));
+
+// 2. Index Route (`/`): Dynamic Auth Routing
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
@@ -155,7 +161,6 @@ const indexRoute = createRoute({
 const homeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/home",
-  loader: async () => fetchPublicStatsServerFn(),
   component: HomePage,
 });
 
@@ -220,7 +225,7 @@ const onboardingRoute = createRoute({
   component: EmployeeOnboardingPage,
 });
 
-// 5. Protected Dashboard Route
+// 5. Dashboard Route
 const dashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/dashboard",
