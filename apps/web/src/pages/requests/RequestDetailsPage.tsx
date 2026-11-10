@@ -24,7 +24,7 @@ import {
 import { formatCurrency } from "@stanforte/shared";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AppShell } from "@/shared/components/layout/AppShell";
+import { PortalLayout } from "@/components/layout/PortalLayout";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { cacheStore, useCachedQuery } from "@/shared/lib/core";
 import {
@@ -1028,12 +1028,7 @@ export function RequestDetailsPage(props: RequestDetailsPageProps = {}) {
 
   if (!id) {
     return (
-      <AppShell
-        navigation={buildRequestsNavigation()}
-        activeLabel="My Requests"
-        user={{ name: "Alex Sterling", role: "Fleet Operations" }}
-        mobileNav={requestsMobileNav}
-      >
+      <PortalLayout activeNav="My Requests">
         <div className="shell-panel flex flex-col items-center justify-center gap-4 px-6 py-10 text-center">
           <EmptyState
             title="No request selected"
@@ -1046,23 +1041,13 @@ export function RequestDetailsPage(props: RequestDetailsPageProps = {}) {
             Back to {parentLabel}
           </Link>
         </div>
-      </AppShell>
+      </PortalLayout>
     );
   }
 
   return (
     <RequestDetailsContext.Provider value={contextValue}>
-      <AppShell
-        navigation={buildRequestsNavigation({
-          includeRequestDetails:
-            detailView === "mine" || detailView === "approvals",
-          requestDetailsPath: detailPathForView(detailView, id),
-          requestDetailsParent: detailView === "finance" ? "finance" : "requests",
-        })}
-        activeLabel={detailActiveLabel}
-        user={{ name: "Alex Sterling", role: "Fleet Operations" }}
-        mobileNav={detailMobileNav}
-      >
+      <PortalLayout activeNav="My Requests">
         {/* Desktop header */}
         <div className="hidden lg:block">
           <PageHeader
@@ -1179,7 +1164,7 @@ export function RequestDetailsPage(props: RequestDetailsPageProps = {}) {
             </div>
           </div>
         ) : null}
-      </AppShell>
+      </PortalLayout>
     </RequestDetailsContext.Provider>
   );
 }

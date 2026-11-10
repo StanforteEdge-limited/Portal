@@ -11,7 +11,7 @@ import {
 import { humanize } from "@stanforte/shared";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { AppShell } from "@/shared/components/layout/AppShell";
+import { PortalLayout } from "@/components/layout/PortalLayout";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { TagPicker } from "@/pages/requests/TagPicker";
 import { cacheStore, financeApi, useCachedQuery } from "@/shared/lib/core";
@@ -457,12 +457,7 @@ export function RequestFormPage() {
 
   if (!typeId && !editId) {
     return (
-      <AppShell
-        navigation={buildRequestsNavigation()}
-        activeLabel="New Request"
-        user={{ name: "Alex Sterling", role: "Fleet Operations" }}
-        mobileNav={requestsMobileNav}
-      >
+      <PortalLayout activeNav="My Requests">
         <div className="shell-panel flex flex-col items-center justify-center gap-4 px-6 py-10 text-center">
           <EmptyState
             title="Choose a request type first"
@@ -475,17 +470,12 @@ export function RequestFormPage() {
             Back to New Request
           </Link>
         </div>
-      </AppShell>
+      </PortalLayout>
     );
   }
 
   return (
-    <AppShell
-      navigation={buildRequestsNavigation()}
-      activeLabel="New Request"
-      user={{ name: "Alex Sterling", role: "Fleet Operations" }}
-      mobileNav={requestsMobileNav}
-    >
+    <PortalLayout activeNav="My Requests">
       {/* Desktop header */}
       <div className="hidden lg:block">
         <PageHeader
@@ -602,7 +592,7 @@ export function RequestFormPage() {
           )}
         </div>
       </div>
-    </AppShell>
+    </PortalLayout>
   );
 }
 

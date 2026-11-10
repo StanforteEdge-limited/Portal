@@ -12,7 +12,9 @@ import {
   DataTable,
   ColumnDef,
 } from "@/shared";
-import { AppShell } from "@/shared/components/layout/AppShell";
+import { PortalLayout } from "@/components/layout/PortalLayout";
+import { Link } from "@/shared/router-adapter";
+import { ChevronRight, Plus, RefreshCw, Wallet, CheckCircle2, DollarSign, Building } from "lucide-react";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { useCachedQuery } from "@/shared/lib/core";
 import { buildAppNavigation, buildAppMobileNav } from "@/shared/navigation";
@@ -242,24 +244,90 @@ export default function FinanceAccountsPage() {
   ], [navigate, openEdit, handleToggleStatus]);
 
   return (
-    <AppShell
-      navigation={buildAppNavigation()}
-      activeLabel="finance-accounts"
-      user={{ name: userName, role: profile?.employee_profile?.job_title || "Finance" }}
-      mobileNav={buildAppMobileNav("Dashboard")}
-    >
-      <PageHeader
-        breadcrumbs={[{ label: "Finance", path: "/finance" }, { label: "Accounts" }]}
-        title="Finance Accounts"
-        description="Manage bank, cash, and wallet accounts."
-      />
-
+    <PortalLayout activeNav="Accounts & Ledger">
       <div className="space-y-6">
-        <div className="grid gap-4 md:grid-cols-4">
-          <StatCard label="Total Accounts" value={String(accounts.length)} tone="neutral" />
-          <StatCard label="Active" value={String(accounts.filter((a: any) => a.is_active).length)} tone="success" />
-          <StatCard label="Opening Balance" value={formatCurrency(totalOpening)} tone="neutral" />
-          <StatCard label="Current Balance" value={formatCurrency(totalCurrent)} tone="neutral" />
+        {/* Breadcrumb & Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1">
+              <Link to="/finance" className="hover:text-slate-800 transition">
+                Finance
+              </Link>
+              <ChevronRight className="h-3 w-3 text-slate-400" />
+              <span className="text-[#ff6900]">Accounts & Ledger</span>
+            </div>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight font-headline">
+              Bank & Ledger Accounts
+            </h1>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Manage operating bank accounts, petty cash vaults, digital wallets, and general ledger balances.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={openCreate}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-bold shadow-md shadow-orange-500/20 transition transform hover:-translate-y-0.5"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>Add Account</span>
+            </button>
+          </div>
+        </div>
+
+        {/* 4 KPI Metric Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                <Wallet className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="text-[11px] font-semibold text-slate-500">Total Accounts</div>
+                <div className="text-xl font-black text-slate-900 mt-0.5">{accounts.length}</div>
+              </div>
+            </div>
+            <div className="text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+              Ledger
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+              <CheckCircle2 className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-[11px] font-semibold text-slate-500">Active Accounts</div>
+              <div className="text-xl font-black text-emerald-600 mt-0.5">
+                {accounts.filter((a: any) => a.is_active).length}
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
+              <Building className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-[11px] font-semibold text-slate-500">Opening Balance</div>
+              <div className="text-lg font-black text-slate-800 mt-0.5">
+                {formatCurrency(totalOpening)}
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
+              <DollarSign className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-[11px] font-semibold text-slate-500">Current Balance</div>
+              <div className="text-lg font-black text-[#ff6900] mt-0.5">
+                {formatCurrency(totalCurrent)}
+              </div>
+            </div>
+          </div>
         </div>
 
         <section className="section-card p-4 sm:p-5">
@@ -392,6 +460,6 @@ export default function FinanceAccountsPage() {
           </div>
         </div>
       )}
-    </AppShell>
+    </PortalLayout>
   );
 }

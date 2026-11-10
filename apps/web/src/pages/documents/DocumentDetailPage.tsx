@@ -1,47 +1,70 @@
 import { useState } from "react";
-import { AppShell, Button, Icon, PageHeader, SectionCard, useToast, TextField } from "@/shared";
-import { buildAppNavigation, buildAppMobileNav } from "@/shared/navigation";
+import { Link, useParams, useNavigate } from "@/shared/router-adapter";
+import { PortalLayout } from "@/components/layout/PortalLayout";
 import { useAuth } from "@/shared/context/AuthProvider";
+import { useToast } from "@/shared";
 import { useCachedQuery, documentApi } from "@/shared/lib/core";
 import { getWorkspaceProfile } from "@/shared/api/workspace-api";
-import { useParams, useNavigate } from "react-router-dom";
 import DocumentSlideOver from "./DocumentSlideOver";
+import {
+  FileText,
+  Calendar,
+  CheckCircle2,
+  AlertCircle,
+  Clock,
+  ShieldCheck,
+  ChevronRight,
+  ArrowLeft,
+  Edit3,
+  User,
+  ExternalLink,
+} from "lucide-react";
 
 export default function DocumentDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
+
   const [signature, setSignature] = useState("");
   const [agreed, setAgreed] = useState(false);
   const [submittingSign, setSubmittingSign] = useState(false);
   const [editingDoc, setEditingDoc] = useState(false);
 
-  const { data: profile } = useCachedQuery(
-    "hr:profile",
-    () => getWorkspaceProfile(),
-    { ttlMs: 1000 * 60, storage: "memory" }
-  );
-
-  const { data: documentRecord, refetch } = useCachedQuery(
+  const { data: documentRecord, loading, refetch } = useCachedQuery(
     `documents:detail:${id}`,
-    () => documentApi.get(id!)
+    () => (id ? documentApi.get(id) : Promise.resolve(null))
   );
 
-  const userName = `${user?.first_name || ""} ${user?.last_name || ""}`.trim() || user?.email || "Staff Member";
-  const userRole = profile?.employee_profile?.job_title || "Staff Member";
+  const userName =
+    `${user?.first_name || ""} ${user?.last_name || ""}`.trim() ||
+    user?.email ||
+    "Staff Member";
 
   const userPerms = user?.permissions ?? [];
-  const isHrOrAdmin = userPerms.includes('*') || userPerms.includes('hr.manage') || userPerms.includes('settings.manage');
+  const isHrOrAdmin =
+    userPerms.includes("*") ||
+    userPerms.includes("hr.manage") ||
+    userPerms.includes("settings.manage");
 
   async function handleAcknowledge() {
     if (!agreed) {
-      showToast({ tone: "warning", title: "Validation", message: "You must check the agreement box." });
+      showToast({
+        tone: "warning",
+        title: "Agreement Required",
+        message: "You must check the agreement box before submitting your signature.",
+      });
       return;
     }
-    const expectedName = `${user?.first_name || ""} ${user?.last_name || ""}`.trim().toLowerCase();
+    const expectedName = `${user?.first_name || ""} ${user?.last_name || ""}`
+      .trim()
+      .toLowerCase();
     if (signature.trim().toLowerCase() !== expectedName) {
-      showToast({ tone: "warning", title: "Validation", message: `Signature must exactly match your name: "${user?.first_name || ""} ${user?.last_name || ""}".` });
+      showToast({
+        tone: "warning",
+        title: "Signature Mismatch",
+        message: `Your signature must exactly match your full name: "${user?.first_name || ""} ${user?.last_name || ""}".`,
+      });
       return;
     }
 
@@ -49,192 +72,282 @@ export default function DocumentDetailPage() {
       setSubmittingSign(true);
       await documentApi.acknowledge(id!, {
         ip_address: "127.0.0.1",
-        user_agent: navigator.userAgent
+        user_agent: navigator.userAgent,
       });
-      showToast({ tone: "success", title: "Signed Off", message: "You have formally acknowledged this document." });
+      showToast({
+        tone: "success",
+        title: "Signed Off",
+        message: "You have formally acknowledged this document.",
+      });
       void refetch();
     } catch (err: any) {
-      showToast({ tone: "danger", title: "Failed", message: err?.message || "Failed to sign document" });
+      showToast({
+        tone: "danger",
+        title: "Signature Failed",
+        message: err?.message || "Failed to submit signature",
+      });
     } finally {
       setSubmittingSign(false);
     }
   }
 
-  if (!documentRecord) {
-    return <div className="p-8 text-center text-slate-500">Loading document details...</div>;
+  if (loading) {
+    return (
+      <PortalLayout activeNav="Documents">
+        <div className="flex flex-col items-center justify-center h-64 gap-3">
+          <div className="w-8 h-8 rounded-full border-2 border-[#ff6900] border-t-transparent animate-spin" />
+          <p className="text-xs font-semibold text-slate-500">Loading document details...</p>
+        </div>
+      </PortalLayout>
+    );
   }
 
-  // Determine acknowledgement status
-  const ack = Array.isArray(documentRecord.acknowledgements) ? documentRecord.acknowledgements[0] : null;
+  if (!documentRecord) {
+    return (
+      <PortalLayout activeNav="Documents">
+        <div className="p-12 text-center max-w-md mx-auto bg-white rounded-2xl border border-slate-200/80 shadow-sm mt-8">
+          <FileText className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+          <h2 className="text-base font-bold text-slate-900">Document Not Found</h2>
+          <p className="text-xs text-slate-500 mt-1 mb-5">
+            The requested document record does not exist or you do not have permission to view it.
+          </p>
+          <Link
+            to="/documents"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0a1128] text-white text-xs font-bold hover:bg-slate-800 transition"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            <span>Back to Documents</span>
+          </Link>
+        </div>
+      </PortalLayout>
+    );
+  }
+
+  const ack = Array.isArray(documentRecord.acknowledgements)
+    ? documentRecord.acknowledgements[0]
+    : null;
   const isSigned = !!ack;
 
   return (
-    <AppShell
-      navigation={buildAppNavigation()}
-      activeLabel="documents"
-      user={{ name: userName, role: userRole }}
-      mobileNav={buildAppMobileNav("Dashboard")}
-    >
-      <PageHeader
-        breadcrumbs={[
-          { label: "Workspace" },
-          { label: "Documents", path: "/documents" },
-          { label: "Details" }
-        ]}
-        title={documentRecord.title}
-        description={`Category: ${documentRecord.category?.toUpperCase()} | Version: ${documentRecord.version || "1.0"}`}
-        actions={
-          <div className="flex gap-2">
-            {isHrOrAdmin && (
-              <Button onClick={() => setEditingDoc(true)} className="gap-1">
-                <Icon name="edit" />
-                Edit Document
-              </Button>
-            )}
-            <Button variant="secondary" onClick={() => navigate("/documents")}>
-              Back to List
-            </Button>
+    <PortalLayout activeNav="Documents">
+      <div className="space-y-6">
+        {/* Breadcrumb & Navigation */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1">
+              <Link to="/documents" className="hover:text-slate-800 transition">
+                Documents
+              </Link>
+              <ChevronRight className="h-3 w-3 text-slate-400" />
+              <span className="text-[#ff6900] truncate max-w-xs">{documentRecord.title}</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight font-headline">
+                {documentRecord.title}
+              </h1>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700">
+                {documentRecord.category || "General"}
+              </span>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-blue-50 text-blue-700">
+                v{documentRecord.version || "1.0"}
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Effective Date:{" "}
+              {documentRecord.effective_date
+                ? new Date(documentRecord.effective_date).toLocaleDateString()
+                : "Active Immediately"}
+            </p>
           </div>
-        }
-      />
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-6">
-          <SectionCard title={documentRecord.title}>
-            {documentRecord.content_html ? (
-              <div
-                className="prose max-w-none text-slate-700 leading-7 text-sm"
-                dangerouslySetInnerHTML={{ __html: documentRecord.content_html }}
-              />
-            ) : (
-              <p className="text-slate-400 text-sm">No written content provided.</p>
+          <div className="flex items-center gap-2">
+            {isHrOrAdmin && (
+              <button
+                type="button"
+                onClick={() => setEditingDoc(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition shadow-sm"
+              >
+                <Edit3 className="h-3.5 w-3.5" />
+                <span>Edit Document</span>
+              </button>
             )}
-          </SectionCard>
 
-          {documentRecord.file && (
-            <SectionCard title="Attached File">
-              <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <Icon name="attach_file" className="text-xl" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-slate-900 truncate">{documentRecord.file.file_name}</p>
-                  {documentRecord.file.file_size && (
-                    <p className="text-xs text-slate-500">{(documentRecord.file.file_size / 1024).toFixed(1)} KB</p>
-                  )}
-                </div>
-                {documentRecord.file.public_url && (
-                  <a
-                    href={documentRecord.file.public_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-primary/90 transition"
-                  >
-                    <Icon name="download" className="text-sm" />
-                    Download
-                  </a>
-                )}
-              </div>
-            </SectionCard>
-          )}
-
-          {documentRecord.link_url && (
-            <SectionCard title="External Link">
-              <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <Icon name="link" className="text-xl" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-slate-900 truncate">{documentRecord.link_url}</p>
-                </div>
-                <a
-                  href={documentRecord.link_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-primary/90 transition"
-                >
-                  <Icon name="open_in_new" className="text-sm" />
-                  Open Link
-                </a>
-              </div>
-            </SectionCard>
-          )}
+            <Link
+              to="/documents"
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:bg-slate-50 transition shadow-sm"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              <span>Back to Directory</span>
+            </Link>
+          </div>
         </div>
 
-        <div className="space-y-6">
-          <SectionCard title="Metadata">
-            <div className="space-y-3 text-xs text-slate-600">
-              <div className="flex justify-between border-b pb-1.5 border-slate-100">
-                <span className="font-medium">Category</span>
-                <span className="capitalize">{documentRecord.category}</span>
-              </div>
-              <div className="flex justify-between border-b pb-1.5 border-slate-100">
-                <span className="font-medium">Version</span>
-                <span>v{documentRecord.version || "1.0"}</span>
-              </div>
-              <div className="flex justify-between border-b pb-1.5 border-slate-100">
-                <span className="font-medium">Effective Date</span>
-                <span>{documentRecord.effective_date ? new Date(documentRecord.effective_date).toLocaleDateString() : "-"}</span>
-              </div>
-              <div className="flex justify-between border-b pb-1.5 border-slate-100">
-                <span className="font-medium">Acknowledgement</span>
-                <span>{documentRecord.require_acknowledgement ? "Required" : "Optional"}</span>
+        {/* 4 Summary Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
+              <FileText className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-[11px] font-semibold text-slate-500">Document Type</div>
+              <div className="text-base font-black text-slate-900 capitalize mt-0.5">
+                {documentRecord.category || "General"}
               </div>
             </div>
-          </SectionCard>
+          </div>
 
-          {documentRecord.require_acknowledgement && (
-            <SectionCard title="Formal Sign-Off">
+          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+              <Clock className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-[11px] font-semibold text-slate-500">Revision</div>
+              <div className="text-base font-black text-slate-900 mt-0.5 font-mono">
+                Version {documentRecord.version || "1.0"}
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
+            <div
+              className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                isSigned
+                  ? "bg-emerald-50 text-emerald-600"
+                  : documentRecord.require_acknowledgement
+                  ? "bg-amber-50 text-amber-600"
+                  : "bg-slate-100 text-slate-600"
+              }`}
+            >
               {isSigned ? (
-                <div className="bg-success/5 border border-success/20 rounded-xl p-4 text-center space-y-2">
-                  <Icon name="check_circle" className="text-success text-3xl" />
-                  <h4 className="text-sm font-semibold text-slate-900">Signed & Acknowledged</h4>
-                  <p className="text-[0.7rem] text-slate-500">
-                    Acknowledged on: {new Date(ack.acknowledged_at).toLocaleString()}
-                  </p>
-                </div>
+                <CheckCircle2 className="h-5 w-5" />
               ) : (
-                <div className="space-y-4">
-                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-slate-700 text-xs leading-5">
-                    <p className="font-semibold text-amber-900 flex items-center gap-1 mb-1">
-                      <Icon name="warning" className="text-sm" /> Signature Required
-                    </p>
-                    This is an official document. Type your full name exactly as shown below to sign:
-                    <p className="font-bold text-slate-900 mt-1 select-none">"{user?.first_name} {user?.last_name}"</p>
-                  </div>
+                <ShieldCheck className="h-5 w-5" />
+              )}
+            </div>
+            <div>
+              <div className="text-[11px] font-semibold text-slate-500">Your Status</div>
+              <div
+                className={`text-base font-black capitalize mt-0.5 ${
+                  isSigned
+                    ? "text-emerald-600"
+                    : documentRecord.require_acknowledgement
+                    ? "text-amber-600"
+                    : "text-slate-700"
+                }`}
+              >
+                {isSigned
+                  ? "Acknowledged"
+                  : documentRecord.require_acknowledgement
+                  ? "Sign-off Needed"
+                  : "View Only"}
+              </div>
+            </div>
+          </div>
 
-                  <TextField
-                    label="Electronic Signature"
+          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+              <Calendar className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-[11px] font-semibold text-slate-500">Effective Date</div>
+              <div className="text-base font-black text-slate-900 mt-0.5">
+                {documentRecord.effective_date
+                  ? new Date(documentRecord.effective_date).toLocaleDateString()
+                  : "Immediate"}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Document Content Paper View */}
+        <div className="p-8 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-6">
+          {documentRecord.description && (
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 text-xs text-slate-600">
+              <p className="font-bold text-slate-900 mb-1">Scope & Purpose</p>
+              <p>{documentRecord.description}</p>
+            </div>
+          )}
+
+          <div className="prose prose-sm max-w-none text-slate-800 leading-relaxed font-sans">
+            {documentRecord.content ? (
+              <div
+                dangerouslySetInnerHTML={{ __html: documentRecord.content }}
+                className="space-y-4"
+              />
+            ) : (
+              <p className="text-slate-400 italic">No textual content provided for this document.</p>
+            )}
+          </div>
+        </div>
+
+        {/* Acknowledgement Sign-off Box */}
+        {documentRecord.require_acknowledgement && (
+          <div className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                <ShieldCheck className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">
+                  Formal Compliance Acknowledgement
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Your formal sign-off verifies that you have read and agreed to adhere to these provisions.
+                </p>
+              </div>
+            </div>
+
+            {isSigned ? (
+              <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between text-xs text-emerald-800">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                  <div>
+                    <p className="font-bold">Formally Signed and Verified</p>
+                    <p className="text-[11px] text-emerald-700">
+                      Acknowledged by {userName} on{" "}
+                      {new Date(ack.created_at || Date.now()).toLocaleDateString()}.
+                    </p>
+                  </div>
+                </div>
+                <span className="px-2.5 py-1 rounded-lg bg-emerald-100 font-mono text-[10px] font-bold text-emerald-800">
+                  SECURE COMPLIANT
+                </span>
+              </div>
+            ) : (
+              <div className="space-y-4 pt-2">
+                <label className="flex items-start gap-2.5 text-xs text-slate-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={agreed}
+                    onChange={(e) => setAgreed(e.target.checked)}
+                    className="mt-0.5 rounded border-slate-300 text-[#ff6900] focus:ring-[#ff6900]"
+                  />
+                  <span>
+                    I confirm that I have thoroughly read, understood, and agree to abide by all the terms, obligations, and directives set forth in this document.
+                  </span>
+                </label>
+
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 max-w-lg">
+                  <input
+                    type="text"
+                    placeholder={`Type "${userName}" to sign`}
                     value={signature}
                     onChange={(e) => setSignature(e.target.value)}
-                    placeholder="Type your first and last name"
+                    className="flex-1 px-3 py-2 text-xs bg-slate-50 rounded-xl border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
                   />
-
-                  <div className="flex items-start gap-2">
-                    <input
-                      type="checkbox"
-                      id="agreeCheck"
-                      checked={agreed}
-                      onChange={(e) => setAgreed(e.target.checked)}
-                      className="h-4 w-4 mt-0.5 rounded border-slate-300 text-primary focus:ring-primary"
-                    />
-                    <label htmlFor="agreeCheck" className="text-[0.7rem] leading-4 text-slate-600 select-none cursor-pointer">
-                      I confirm that I have read, understood, and agree to follow all conditions and guidelines stated in this document.
-                    </label>
-                  </div>
-
-                  <Button
-                    onClick={() => void handleAcknowledge()}
-                    disabled={submittingSign}
-                    className="w-full justify-center"
+                  <button
+                    type="button"
+                    onClick={handleAcknowledge}
+                    disabled={submittingSign || !agreed || !signature.trim()}
+                    className="px-5 py-2 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] disabled:opacity-50 text-white text-xs font-bold shadow-md shadow-orange-500/20 transition whitespace-nowrap"
                   >
-                    {submittingSign ? "Submitting..." : "Submit Acknowledgement"}
-                  </Button>
+                    {submittingSign ? "Submitting..." : "Sign Document"}
+                  </button>
                 </div>
-              )}
-            </SectionCard>
-          )}
-        </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {editingDoc && (
@@ -247,6 +360,6 @@ export default function DocumentDetailPage() {
           }}
         />
       )}
-    </AppShell>
+    </PortalLayout>
   );
 }

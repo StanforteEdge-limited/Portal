@@ -1,220 +1,75 @@
-import {
-  Button,
-  Chip,
-  EmptyState,
-  Icon,
-  PageHeader,
-  SectionCard,
-} from "@/shared";
-import { Link, useSearchParams } from "react-router-dom";
 import { useMemo, useRef, useState, useCallback, useEffect } from "react";
-import { AppShell } from "@/shared/components/layout/AppShell";
+import { Link, useSearchParams } from "react-router-dom";
+import { PortalLayout } from "@/components/layout/PortalLayout";
 import { useCachedQuery } from "@/shared/lib/core";
-import {
-  buildRequestsNavigation,
-  requestsMobileNav,
-} from "@/pages/requests/requests-data";
 import {
   listRequestTypes,
   listCategories,
   type RequestTypeOption,
   type RequestCategoryOption,
 } from "@/pages/requests/requests-api";
+import {
+  FileText,
+  CreditCard,
+  Calendar,
+  Building2,
+  ChevronRight,
+  ArrowRight,
+  CheckCircle2,
+  Clock,
+  HelpCircle,
+  FolderPlus,
+  Send,
+  Layers,
+  Sparkles,
+} from "lucide-react";
 
-/* ------------------------------------------------------------------ */
-/* Category icon mapping (by code)                                     */
-/* ------------------------------------------------------------------ */
-const CATEGORY_ICON: Record<string, string> = {
-  PAYMENT: "payments",
-  LEAVE: "event_available",
-  LOAN: "account_balance",
-};
-
-/* ------------------------------------------------------------------ */
-/* CategoryCard                                                        */
-/* ------------------------------------------------------------------ */
-function CategoryCard({
-  category,
-  icon,
-  count,
-  active,
-}: {
-  category: RequestCategoryOption | null;
-  icon: string;
-  count: number;
-  active: boolean;
-}) {
-  const name = category ? category.name : "Others";
-  const description = category
-    ? category.description
-    : "Miscellaneous request types without a specific category.";
-
-  return (
-    <div
-      className={[
-        "group flex h-full w-[240px] flex-shrink-0 flex-col rounded-[24px] border bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-card focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10",
-        active
-          ? "border-brand-900 ring-2 ring-brand-900/10"
-          : "border-slate-200",
-      ].join(" ")}
-    >
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-900/10 text-brand-900">
-          <Icon name={icon} className="text-[22px]" />
-        </div>
-        <Chip variant={active ? "pending" : "neutral"}>{count} types</Chip>
-      </div>
-      <h2 className="mt-5 text-lg font-semibold text-slate-950">{name}</h2>
-      <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">
-        {description}
-      </p>
-      <span className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-brand-900">
-        {active ? "Category selected" : "Choose category"}
-        <Icon name="arrow_forward" className="text-[18px]" />
-      </span>
-    </div>
-  );
-}
-
-type CategoryCardDef = {
-  category: RequestCategoryOption | null;
-  icon: string;
-  key: string;
-};
-
-/* ------------------------------------------------------------------ */
-/* Carousel arrow button                                               */
-/* ------------------------------------------------------------------ */
-function CarouselArrow({
-  direction,
-  onClick,
-  disabled,
-}: {
-  direction: "left" | "right";
-  onClick: () => void;
-  disabled: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={direction === "left" ? "Scroll left" : "Scroll right"}
-      className={[
-        "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white shadow-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10",
-        disabled ? "cursor-not-allowed opacity-30" : "cursor-pointer",
-      ].join(" ")}
-    >
-      <Icon
-        name={direction === "left" ? "chevron_left" : "chevron_right"}
-        className="text-[20px] text-slate-700"
-      />
-    </button>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* useCarouselScroll                                                    */
-/* ------------------------------------------------------------------ */
-function useCarouselScroll(scrollRef: React.RefObject<HTMLDivElement | null>) {
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
-
-  const checkScroll = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    setCanScrollLeft(el.scrollLeft > 4);
-    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
-  }, [scrollRef]);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    checkScroll();
-    el.addEventListener("scroll", checkScroll, { passive: true });
-    const observer = new ResizeObserver(checkScroll);
-    observer.observe(el);
-    return () => {
-      el.removeEventListener("scroll", checkScroll);
-      observer.disconnect();
-    };
-  }, [checkScroll, scrollRef]);
-
-  const scroll = useCallback(
-    (direction: "left" | "right") => {
-      const el = scrollRef.current;
-      if (!el) return;
-      const distance = el.clientWidth * 0.65;
-      el.scrollBy({
-        left: direction === "left" ? -distance : distance,
-        behavior: "smooth",
-      });
-    },
-    [scrollRef],
-  );
-
-  return { canScrollLeft, canScrollRight, scroll, checkScroll };
-}
-
-/* ------------------------------------------------------------------ */
-/* RequestTypePage                                                      */
-/* ------------------------------------------------------------------ */
-export function RequestTypePage() {
+export default function RequestTypePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const categoryIdParam = searchParams.get("categoryId");
   const teamIdParam = searchParams.get("team_id");
   const orgIdParam = searchParams.get("organization_id");
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const { canScrollLeft, canScrollRight, scroll, checkScroll } =
-    useCarouselScroll(scrollRef);
 
-  const {
-    data: requestTypes,
-    loading,
-    error,
-  } = useCachedQuery("requests:types", () => listRequestTypes(), {
-    ttlMs: 1000 * 60 * 10,
-    storage: "local",
-  });
-
-  const { data: categories } = useCachedQuery(
-    "requests:categories",
-    () => listCategories(),
-    { ttlMs: 1000 * 60 * 10, storage: "local" },
+  const { data: requestTypes, loading: typesLoading, error: typesError } = useCachedQuery(
+    "requests:types:all",
+    () => listRequestTypes(),
+    { ttlMs: 1000 * 60 * 5, storage: "memory" }
   );
 
-  const categoryCards: CategoryCardDef[] = useMemo(() => {
-    const sorted = [...(categories ?? [])].sort(
-      (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0),
-    );
-    const cards: CategoryCardDef[] = sorted.map((cat) => ({
-      category: cat,
-      icon: CATEGORY_ICON[cat.code] ?? "category",
-      key: cat.id,
+  const { data: categories, loading: categoriesLoading } = useCachedQuery(
+    "requests:categories:all",
+    () => listCategories(),
+    { ttlMs: 1000 * 60 * 5, storage: "memory" }
+  );
+
+  const loading = typesLoading || categoriesLoading;
+
+  const categoryCards = useMemo(() => {
+    const list = categories ?? [];
+    const cards = list.map((c) => ({
+      category: c,
+      key: c.id,
+      name: c.name,
+      description: c.description || "Operational workflow and approval chain.",
     }));
     cards.push({
-      category: null,
-      icon: "assignment",
+      category: null as any,
       key: "others",
+      name: "Others",
+      description: "Miscellaneous administrative workflows.",
     });
     return cards;
   }, [categories]);
-
-  // Trigger carousel scroll check once cards are rendered
-  useEffect(() => {
-    checkScroll();
-  }, [categoryCards, checkScroll]);
 
   const selectedTypes = useMemo(() => {
     if (!categoryIdParam || !requestTypes) return [];
     if (categoryIdParam === "others") {
       return (requestTypes as RequestTypeOption[]).filter(
-        (t) => !t.categoryId && !t.category_id,
+        (t) => !t.categoryId && !t.category_id
       );
     }
     return (requestTypes as RequestTypeOption[]).filter(
-      (t) =>
-        t.categoryId === categoryIdParam || t.category_id === categoryIdParam,
+      (t) => t.categoryId === categoryIdParam || t.category_id === categoryIdParam
     );
   }, [categoryIdParam, requestTypes]);
 
@@ -256,237 +111,277 @@ export function RequestTypePage() {
       }
       setSearchParams(next);
     },
-    [searchParams, setSearchParams],
-  );
-
-  /* ---------------------------------------------------------------- */
-  /* Desktop carousel                                                  */
-  /* ---------------------------------------------------------------- */
-  const renderDesktopCarousel = () => (
-    <section className="relative">
-      {/* Arrow controls row */}
-      <div className="mb-3 flex items-center justify-between">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
-          Request Categories
-        </p>
-        <div className="flex items-center gap-2">
-          <CarouselArrow
-            direction="left"
-            onClick={() => scroll("left")}
-            disabled={!canScrollLeft}
-          />
-          <CarouselArrow
-            direction="right"
-            onClick={() => scroll("right")}
-            disabled={!canScrollRight}
-          />
-        </div>
-      </div>
-
-      {/* Scrollable track */}
-      <div
-        ref={scrollRef}
-        className="no-scrollbar -mx-1 flex gap-4 overflow-x-auto px-1 pb-2"
-      >
-        {categoryCards.map((card) => (
-          <button
-            key={card.key}
-            type="button"
-            onClick={() => handleCategoryClick(card.key)}
-            className="block flex-shrink-0"
-          >
-            <CategoryCard
-              category={card.category}
-              icon={card.icon}
-              active={categoryIdParam === card.key}
-              count={typeCounts[card.key] ?? 0}
-            />
-          </button>
-        ))}
-      </div>
-
-      {/* Fade edges */}
-      {canScrollLeft && (
-        <div className="pointer-events-none absolute bottom-2 left-0 top-10 w-8 bg-gradient-to-r from-white to-transparent" />
-      )}
-      {canScrollRight && (
-        <div className="pointer-events-none absolute bottom-2 right-0 top-10 w-8 bg-gradient-to-l from-white to-transparent" />
-      )}
-    </section>
-  );
-
-  /* ---------------------------------------------------------------- */
-  /* Mobile category list (horizontal scroll)                          */
-  /* ---------------------------------------------------------------- */
-  const renderMobileCategories = () => (
-    <div className="no-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4 pb-2">
-      {categoryCards.map((card) => (
-        <button
-          key={card.key}
-          type="button"
-          onClick={() => handleCategoryClick(card.key)}
-          className="block flex-shrink-0"
-        >
-          <CategoryCard
-            category={card.category}
-            icon={card.icon}
-            active={categoryIdParam === card.key}
-            count={typeCounts[card.key] ?? 0}
-          />
-        </button>
-      ))}
-    </div>
+    [searchParams, setSearchParams]
   );
 
   return (
-    <AppShell
-      navigation={buildRequestsNavigation()}
-      activeLabel="New Request"
-      user={{ name: "Alex Sterling", role: "Fleet Operations" }}
-      mobileNav={requestsMobileNav}
-    >
-      <div className="hidden lg:block">
-        <PageHeader
-          breadcrumbs={[
-            { label: "Requests", path: "/requests" },
-            { label: "New Request" },
-          ]}
-          title="Create a new request"
-          description="Start by choosing a request category, then select the exact subtype you want to submit."
-        />
-
-        <div className="grid gap-6 lg:grid-cols-12">
-          <div className="space-y-6 lg:col-span-8">
-            {renderDesktopCarousel()}
-
-            <SectionCard
-              title={
-                categoryIdParam
-                  ? `${selectedCategoryLabel} request types`
-                  : "Choose a category first"
-              }
-              description={
-                categoryIdParam
-                  ? "Select the exact request subtype to open the right form structure."
-                  : "Each request category has its own subtypes, fields, and approval flow."
-              }
-            >
-              {!categoryIdParam ? (
-                <EmptyState
-                  title="Choose a request category"
-                  description="We'll then show the relevant request subtypes for that category."
-                />
-              ) : loading ? (
-                <div className="rounded-2xl bg-slate-50 px-4 py-6 text-sm text-slate-500">
-                  Loading request types...
-                </div>
-              ) : error ? (
-                <div className="rounded-2xl border border-danger/20 bg-danger/10 px-4 py-4 text-sm text-danger">
-                  {error}
-                </div>
-              ) : selectedTypes.length === 0 ? (
-                <EmptyState
-                  title="No request subtypes available"
-                  description="This category doesn't have active request types yet."
-                />
-              ) : (
-                <div className="grid gap-4 md:grid-cols-2">
-                  {selectedTypes.map((type) => (
-                    <Link
-                      key={type.id}
-                      to={formLink(type.id)}
-                      className="group rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-card focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-lg font-semibold text-slate-950">
-                            {type.name}
-                          </p>
-                          <p className="mt-2 text-sm leading-6 text-slate-500">
-                            {type.description ||
-                              "Open this workflow with the right fields and approval path."}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-brand-900">
-                        Open form
-                        <Icon name="arrow_forward" className="text-[18px]" />
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </SectionCard>
-          </div>
-
-          <div className="space-y-6 lg:col-span-4">
-            <SectionCard title="How this works">
-              <div className="space-y-3 text-sm leading-6 text-slate-600">
-                <p>1. Choose the request category.</p>
-                <p>2. Pick the exact subtype.</p>
-                <p>3. Complete the right form for that workflow.</p>
-              </div>
-            </SectionCard>
-
-            <SectionCard title="Need help choosing?">
-              <p className="text-sm leading-6 text-slate-600">
-                If you are not sure which request subtype to use, start with the
-                category that best matches the outcome you need.
-              </p>
-              <Button
-                variant="secondary"
-                className="mt-4 w-full justify-center"
-              >
-                Contact Support
-              </Button>
-            </SectionCard>
-          </div>
-        </div>
-      </div>
-
-      <div className="space-y-4 lg:hidden">
-        <div className="pt-1">
-          <p className="text-[0.72rem] font-bold uppercase tracking-[0.18em] text-slate-500">
-            Request Center
-          </p>
-          <h1 className="page-title mt-2 text-[clamp(1.7rem,7vw,2.2rem)]">
-            Create a new request
-          </h1>
-          <p className="mt-3 max-w-xl text-sm leading-6 text-slate-500">
-            Choose a request category first, then select the subtype to open the
-            right form.
-          </p>
-        </div>
-
-        {renderMobileCategories()}
-
-        {categoryIdParam ? (
-          <section className="section-card p-4">
-            <p className="text-[0.72rem] font-bold uppercase tracking-[0.18em] text-slate-500">
-              {selectedCategoryLabel} Request Types
-            </p>
-            <div className="mt-4 grid gap-3">
-              {selectedTypes.map((type) => (
-                <Link
-                  key={type.id}
-                  to={formLink(type.id)}
-                  className="rounded-[20px] border border-slate-200 bg-white px-4 py-4 shadow-sm"
-                >
-                  <p className="text-sm font-semibold text-slate-950">
-                    {type.name}
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-slate-500">
-                    {type.description ||
-                      "Open the right request form for this subtype."}
-                  </p>
-                </Link>
-              ))}
+    <PortalLayout activeNav="My Requests">
+      <div className="space-y-6">
+        {/* Breadcrumb & Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1">
+              <Link to="/requests" className="hover:text-slate-800 transition">
+                Requests
+              </Link>
+              <ChevronRight className="h-3 w-3 text-slate-400" />
+              <span className="text-[#ff6900]">New Request</span>
             </div>
-          </section>
-        ) : null}
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight font-headline">
+              Create New Request
+            </h1>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Select the designated request category and workflow subtype to initiate formal sign-off.
+            </p>
+          </div>
+
+          <Link
+            to="/requests"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:bg-slate-50 transition shadow-sm self-start sm:self-auto"
+          >
+            <Clock className="h-3.5 w-3.5 text-slate-400" />
+            <span>My Submitted Requests</span>
+          </Link>
+        </div>
+
+        {/* 4 KPI Metric Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
+                <Layers className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="text-[11px] font-semibold text-slate-500">Categories</div>
+                <div className="text-xl font-black text-slate-900 mt-0.5">
+                  {categories?.length || 0}
+                </div>
+              </div>
+            </div>
+            <div className="text-[11px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
+              Standard
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+              <FileText className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-[11px] font-semibold text-slate-500">Available Subtypes</div>
+              <div className="text-xl font-black text-slate-900 mt-0.5">
+                {requestTypes?.length || 0}
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+              <CheckCircle2 className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-[11px] font-semibold text-slate-500">Approval Chains</div>
+              <div className="text-xl font-black text-emerald-600 mt-0.5">Multi-tier</div>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-[11px] font-semibold text-slate-500">Draft Auto-save</div>
+              <div className="text-xl font-black text-purple-700 mt-0.5">Enabled</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Step 1: Request Categories Carousel / Grid */}
+        <div className="space-y-3">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            Step 1: Select Request Category
+          </h2>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {categoryCards.map((card) => {
+              const active = categoryIdParam === card.key;
+              const count = typeCounts[card.key] ?? 0;
+
+              return (
+                <button
+                  key={card.key}
+                  type="button"
+                  onClick={() => handleCategoryClick(card.key)}
+                  className={`p-5 rounded-2xl border text-left transition-all duration-200 flex flex-col justify-between group ${
+                    active
+                      ? "bg-[#0a1128] text-white border-[#0a1128] shadow-lg shadow-navy-900/20 scale-[1.01]"
+                      : "bg-white text-slate-900 border-slate-200/80 hover:border-[#ff6900]/50 hover:shadow-md"
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-3">
+                      <div
+                        className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                          active
+                            ? "bg-[#ff6900] text-white"
+                            : "bg-orange-50 text-[#ff6900] group-hover:bg-[#ff6900] group-hover:text-white"
+                        }`}
+                      >
+                        <FolderPlus className="h-5 w-5" />
+                      </div>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          active
+                            ? "bg-white/10 text-orange-400 border border-white/10"
+                            : "bg-slate-100 text-slate-600"
+                        }`}
+                      >
+                        {count} {count === 1 ? "workflow" : "workflows"}
+                      </span>
+                    </div>
+
+                    <h3 className="font-extrabold text-sm mb-1">{card.name}</h3>
+                    <p
+                      className={`text-xs line-clamp-2 ${
+                        active ? "text-slate-300" : "text-slate-500"
+                      }`}
+                    >
+                      {card.description}
+                    </p>
+                  </div>
+
+                  <div className="pt-4 mt-3 border-t border-slate-100/10 flex items-center justify-between text-xs font-bold">
+                    <span className={active ? "text-orange-400" : "text-[#ff6900]"}>
+                      {active ? "Selected Category" : "Choose Category"}
+                    </span>
+                    <ArrowRight
+                      className={`h-3.5 w-3.5 transition-transform group-hover:translate-x-1 ${
+                        active ? "text-orange-400" : "text-[#ff6900]"
+                      }`}
+                    />
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Step 2: Request Subtypes List & Guidance Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <div className="lg:col-span-8 space-y-4">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              Step 2: Choose Workflow Subtype
+            </h2>
+
+            {!categoryIdParam ? (
+              <div className="p-12 text-center bg-white rounded-2xl border border-slate-200/80 shadow-sm">
+                <Layers className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+                <p className="text-xs font-bold text-slate-700">Choose a Category First</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Click on one of the category cards above to display its corresponding workflow forms.
+                </p>
+              </div>
+            ) : loading ? (
+              <div className="p-12 text-center bg-white rounded-2xl border border-slate-200/80 text-xs font-medium text-slate-400">
+                Loading request forms...
+              </div>
+            ) : selectedTypes.length === 0 ? (
+              <div className="p-12 text-center bg-white rounded-2xl border border-slate-200/80 shadow-sm">
+                <FileText className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+                <p className="text-xs font-bold text-slate-700">No Request Types Available</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  This category currently has no active form templates configured.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {selectedTypes.map((type) => (
+                  <Link
+                    key={type.id}
+                    to={formLink(type.id)}
+                    className="p-5 rounded-2xl bg-white border border-slate-200/80 hover:border-[#ff6900]/50 hover:shadow-md transition-all duration-200 flex flex-col justify-between group cursor-pointer"
+                  >
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="w-2 h-2 rounded-full bg-[#ff6900]" />
+                        <h3 className="font-extrabold text-slate-900 group-hover:text-[#ff6900] transition-colors text-sm">
+                          {type.name}
+                        </h3>
+                      </div>
+                      <p className="text-xs text-slate-500 line-clamp-3 leading-relaxed">
+                        {type.description ||
+                          "Launch this workflow with verified fields and automated stage routing."}
+                      </p>
+                    </div>
+
+                    <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between text-xs">
+                      <span className="text-[11px] font-medium text-slate-400">
+                        Code: {type.code || "STD"}
+                      </span>
+                      <span className="font-bold text-[#ff6900] flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                        <span>Open Form</span>
+                        <ArrowRight className="h-3 w-3" />
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Right 4 Columns: Process SLA & Protocol Card */}
+          <div className="lg:col-span-4 space-y-4">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              Submission Guidelines
+            </h2>
+
+            <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-4">
+              <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
+                <HelpCircle className="h-4 w-4 text-[#ff6900]" />
+                <h3 className="text-xs font-bold text-slate-900">Standard Request Protocol</h3>
+              </div>
+
+              <div className="space-y-3 text-xs text-slate-600">
+                <div className="flex items-start gap-2.5">
+                  <div className="w-5 h-5 rounded-full bg-slate-100 text-slate-700 font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">
+                    1
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-800">Select Category & Subtype</p>
+                    <p className="text-[11px] text-slate-400">
+                      Match the budget line item or leave category.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5">
+                  <div className="w-5 h-5 rounded-full bg-slate-100 text-slate-700 font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">
+                    2
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-800">Attach Quotes & Justifications</p>
+                    <p className="text-[11px] text-slate-400">
+                      Required for financial or procurement requests.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5">
+                  <div className="w-5 h-5 rounded-full bg-slate-100 text-slate-700 font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">
+                    3
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-800">Manager & Audit Sign-off</p>
+                    <p className="text-[11px] text-slate-400">
+                      Automated routing with notifications and timeline tracking.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-    </AppShell>
+    </PortalLayout>
   );
 }
-
-export default RequestTypePage;
