@@ -1,6 +1,13 @@
 import { httpRequest } from "@/shared/lib/core";
+import type {
+  AttendanceMode,
+  AttendanceSource,
+  ClockAttendance,
+  CreateAttendanceCorrection,
+  UpsertOfficeLocation,
+} from "@stanforte/contract";
 
-export type AttendanceMode = "onsite" | "remote" | "field";
+export type { AttendanceMode, AttendanceSource, ClockAttendance, CreateAttendanceCorrection, UpsertOfficeLocation };
 
 export type AttendanceEntry = {
   id: string;
@@ -8,7 +15,7 @@ export type AttendanceEntry = {
   entry_type: "clock_in" | "clock_out" | string;
   entry_at: string;
   work_date: string;
-  attendance_mode?: string | null;
+  attendance_mode?: AttendanceMode | string | null;
   office_location_id?: string | null;
   latitude?: number | null;
   longitude?: number | null;
@@ -23,7 +30,7 @@ export type AttendanceDaily = {
   user_id: string;
   work_date: string;
   status: string;
-  attendance_mode?: string | null;
+  attendance_mode?: AttendanceMode | string | null;
   expected_mode?: string | null;
   reconciliation_status?: string | null;
   office_location_id?: string | null;
@@ -134,16 +141,9 @@ export async function getAttendanceStatus() {
   return (res?.data ?? res) as AttendanceStatusResponse;
 }
 
-export async function clockIn(payload?: {
-  source?: "web" | "mobile" | "admin" | "import" | string;
-  at?: string;
-  attendance_mode?: string;
-  office_location_id?: string;
-  latitude?: number;
-  longitude?: number;
-}) {
-  const safeSource = ["web", "mobile", "admin", "import"].includes(payload?.source || "")
-    ? payload!.source
+export async function clockIn(payload?: ClockAttendance) {
+  const safeSource: AttendanceSource = ["web", "mobile", "admin", "import"].includes(payload?.source as any)
+    ? (payload!.source as AttendanceSource)
     : "web";
   return httpRequest<{ success: boolean; daily: AttendanceDaily }>("/hr/attendance/clock-in", {
     method: "POST",
@@ -154,16 +154,9 @@ export async function clockIn(payload?: {
   });
 }
 
-export async function clockOut(payload?: {
-  source?: "web" | "mobile" | "admin" | "import" | string;
-  at?: string;
-  attendance_mode?: string;
-  office_location_id?: string;
-  latitude?: number;
-  longitude?: number;
-}) {
-  const safeSource = ["web", "mobile", "admin", "import"].includes(payload?.source || "")
-    ? payload!.source
+export async function clockOut(payload?: ClockAttendance) {
+  const safeSource: AttendanceSource = ["web", "mobile", "admin", "import"].includes(payload?.source as any)
+    ? (payload!.source as AttendanceSource)
     : "web";
   return httpRequest<{ success: boolean; daily: AttendanceDaily }>("/hr/attendance/clock-out", {
     method: "POST",
@@ -174,16 +167,7 @@ export async function clockOut(payload?: {
   });
 }
 
-export async function createAttendanceCorrection(payload: {
-  work_date: string;
-  request_type: string;
-  reason: string;
-  proposed_at?: string;
-  proposed_mode?: string;
-  proposed_office_location_id?: string;
-  proposed_latitude?: number;
-  proposed_longitude?: number;
-}) {
+export async function createAttendanceCorrection(payload: CreateAttendanceCorrection) {
   return httpRequest<{ success: boolean; data: AttendanceCorrection }>("/hr/attendance/corrections", {
     method: "POST",
     body: payload,

@@ -223,10 +223,10 @@ export function AttendancePage() {
 
       await createAttendanceCorrection({
         work_date: correctionForm.work_date,
-        request_type: correctionForm.request_type,
+        request_type: correctionForm.request_type as any,
         reason: correctionForm.reason.trim(),
         proposed_at: proposedAt,
-        proposed_mode: correctionForm.proposed_mode,
+        proposed_mode: (correctionForm.proposed_mode || undefined) as any,
         proposed_office_location_id:
           correctionForm.proposed_mode === "onsite" ? correctionForm.proposed_office_location_id || undefined : undefined,
       });

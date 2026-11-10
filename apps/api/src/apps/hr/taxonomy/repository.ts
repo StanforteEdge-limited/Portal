@@ -150,7 +150,7 @@ export class TaxonomyService {
   }
 
   async syncTerms(taxonomyId: string, dto: SyncTaxonomyTerms) {
-    const existing = await this.findTaxonomyById(taxonomyId);
+    const existing = (await this.findTaxonomyById(taxonomyId)) ?? (await this.findTaxonomyByKey(taxonomyId));
     if (!existing) throw new NotFoundException('Taxonomy not found');
 
     const terms = dto.terms
@@ -158,12 +158,12 @@ export class TaxonomyService {
       .filter((term, index, all) => term.length > 0 && all.indexOf(term) === index);
 
     await this.db.client.transaction(async (tx) => {
-      await tx.delete(taxonomyTerm).where(and(eq(taxonomyTerm.taxonomyId, taxonomyId), ...this.taxonomyTermWriteConditions()));
+      await tx.delete(taxonomyTerm).where(and(eq(taxonomyTerm.taxonomyId, existing.id), ...this.taxonomyTermWriteConditions()));
       if (terms.length > 0) {
         await tx.insert(taxonomyTerm).values(
           terms.map((term, index) => ({
             tenantId: this.tenantContext.currentTenantId(),
-            taxonomyId,
+            taxonomyId: existing.id,
             value: term.toLowerCase().replace(/\s+/g, '_'),
             label: term,
             sortOrder: index,
