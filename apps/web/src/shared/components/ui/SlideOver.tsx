@@ -17,24 +17,28 @@ export function SlideOver({
   if (!open) return null;
 
   const sizeClasses = {
-    sm: "sm:max-w-sm",
-    md: "md:max-w-md",
-    lg: "md:max-w-lg",
-    xl: "lg:max-w-2xl",
-    xxl: "lg:max-w-4xl",  
+    sm: "max-w-sm",
+    md: "max-w-md",
+    lg: "max-w-xl",
+    xl: "max-w-2xl",
+    xxl: "max-w-4xl",
   }[size];
 
   const content = (
-    <div className="fixed inset-0 z-[100] flex justify-end">
-      {/* Backdrop */}
-      <div className="absolute inset-0 top-0 bg-black/50" onClick={onClose} />
+    <div className="fixed inset-0 z-[100] flex justify-end overflow-hidden">
+      {/* Backdrop with smooth blur */}
+      <div
+        className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity duration-300"
+        onClick={onClose}
+        aria-hidden="true"
+      />
 
-      {/* Panel - full width mobile, fixed max-width desktop */}
+      {/* Panel - full height top-to-bottom grounded to screen edges */}
       <div
         className={`
-          relative z-[101] w-full flex flex-col bg-white shadow-xl
+          relative z-[101] w-full h-full h-[100dvh] max-h-screen flex flex-col bg-white shadow-2xl border-l border-slate-200
           ${sizeClasses}
-          max-h-[100dvh] lg:max-h-[calc(100vh-4rem)]
+          animate-in slide-in-from-right duration-200
         `}
       >
         {/* Inner container with overflow handling */}
@@ -69,20 +73,23 @@ export function SlideOverHeader({
   onClose,
 }: SlideOverHeaderProps) {
   return (
-    <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b shrink-0 bg-white">
-      <div className="min-w-0">
-        <h2 className="text-base sm:text-lg font-semibold text-slate-900 truncate">{title}</h2>
+    <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200/80 bg-slate-50/80 shrink-0">
+      <div className="min-w-0 pr-4">
+        <h2 className="text-base sm:text-lg font-bold text-slate-900 font-headline truncate tracking-tight">
+          {title}
+        </h2>
         {subtitle && (
-          <p className="text-sm text-slate-500 mt-0.5 truncate">{subtitle}</p>
+          <p className="text-xs text-slate-500 mt-0.5 truncate">{subtitle}</p>
         )}
       </div>
       <button
         type="button"
         onClick={onClose}
-        className="p-2 shrink-0 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+        className="p-1.5 shrink-0 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-xl transition"
+        aria-label="Close panel"
       >
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
         </svg>
       </button>
     </div>
@@ -99,7 +106,7 @@ export function SlideOverContent({
   className = "",
 }: SlideOverContentProps) {
   return (
-    <div className={`flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 sm:px-6 py-4 ${className}`}>
+    <div className={`flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-6 space-y-4 ${className}`}>
       {children}
     </div>
   );
@@ -111,7 +118,7 @@ type SlideOverFooterProps = {
 
 export function SlideOverFooter({ children }: SlideOverFooterProps) {
   return (
-    <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t bg-slate-50 shrink-0">
+    <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50 shrink-0">
       {children}
     </div>
   );
