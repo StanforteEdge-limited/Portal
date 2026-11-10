@@ -361,10 +361,10 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-[#f4f7fc] flex font-sans text-slate-900 selection:bg-[#ff6900] selection:text-white antialiased">
-      {/* 1. Left Sidebar (Fixed on Desktop, Off-canvas on Mobile) */}
+    <div className="h-screen w-screen overflow-hidden bg-[#f4f7fc] flex font-sans text-slate-900 selection:bg-[#ff6900] selection:text-white antialiased">
+      {/* 1. Left Sidebar (Fixed on Desktop & Mobile Viewport) */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-64 bg-[#0a1128] text-white flex flex-col justify-between shrink-0 p-4 transition-transform duration-200 ease-in-out lg:static lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 w-64 h-full bg-[#0a1128] text-white flex flex-col justify-between shrink-0 p-4 transition-transform duration-200 ease-in-out lg:static lg:translate-x-0 ${
           mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -384,7 +384,7 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
         </div>
 
         {/* Scrollable Navigation Groups */}
-        <div className="flex-1 overflow-y-auto my-3 pr-1 space-y-5 scrollbar-thin scrollbar-thumb-white/10 hover:scrollbar-thumb-white/20">
+        <div className="flex-1 overflow-y-auto min-h-0 my-3 pr-1 space-y-5 scrollbar-thin scrollbar-thumb-white/10 hover:scrollbar-thumb-white/20">
           {PORTAL_NAV_GROUPS.map((group) => {
             const isGroupActive = group.items.some(isItemActive);
             const isCollapsed = !isGroupActive && !!collapsedGroups[group.title];
@@ -521,9 +521,9 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
       )}
 
       {/* 2. Main Content Column */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-        {/* Top Header Bar */}
-        <header className="h-16 bg-white border-b border-slate-200/80 px-4 sm:px-8 flex items-center justify-between sticky top-0 z-20">
+      <div className="flex-1 h-full flex flex-col min-w-0 overflow-hidden">
+        {/* Top Header Bar (Pinned) */}
+        <header className="h-16 shrink-0 bg-white border-b border-slate-200/80 px-4 sm:px-8 flex items-center justify-between z-20">
           {/* Mobile Menu Button & Global Interactive Search */}
           <div className="flex items-center gap-3 relative" ref={searchContainerRef}>
             <button
@@ -633,9 +633,11 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
           </div>
         </header>
 
-        {/* Page Content */}
-        <main className="p-4 sm:p-8 space-y-6 max-w-7xl mx-auto w-full flex-1">
-          {children}
+        {/* Page Content (Scrolls independently while Sidebar & Header stay pinned) */}
+        <main className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-8">
+          <div className="max-w-7xl mx-auto w-full space-y-6 pb-12">
+            {children}
+          </div>
         </main>
       </div>
     </div>
