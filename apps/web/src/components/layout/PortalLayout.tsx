@@ -361,11 +361,11 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
   }
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-[#f4f7fc] flex font-sans text-slate-900 selection:bg-[#ff6900] selection:text-white antialiased">
-      {/* 1. Left Sidebar (Fixed on Desktop & Mobile Viewport) */}
+    <div className="min-h-screen bg-[#f4f7fc] flex flex-col font-sans text-slate-900 selection:bg-[#ff6900] selection:text-white antialiased">
+      {/* 1. Left Sidebar (Fixed to viewport at all times) */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-64 h-full bg-[#0a1128] text-white flex flex-col justify-between shrink-0 p-4 transition-transform duration-200 ease-in-out lg:static lg:translate-x-0 ${
-          mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+        className={`fixed inset-y-0 left-0 z-40 w-64 bg-[#0a1128] text-white flex flex-col justify-between p-4 transition-transform duration-200 ease-in-out ${
+          mobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
         {/* Top Logo Header */}
@@ -520,10 +520,10 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
         />
       )}
 
-      {/* 2. Main Content Column */}
-      <div className="flex-1 h-full flex flex-col min-w-0 overflow-hidden">
-        {/* Top Header Bar (Pinned) */}
-        <header className="h-16 shrink-0 bg-white border-b border-slate-200/80 px-4 sm:px-8 flex items-center justify-between z-20">
+      {/* 2. Main Content Column with offset for fixed sidebar */}
+      <div className="lg:pl-64 flex-1 flex flex-col min-w-0">
+        {/* Top Header Bar (Sticky) */}
+        <header className="h-16 shrink-0 bg-white/95 backdrop-blur-sm border-b border-slate-200/80 px-4 sm:px-8 flex items-center justify-between sticky top-0 z-20">
           {/* Mobile Menu Button & Global Interactive Search */}
           <div className="flex items-center gap-3 relative" ref={searchContainerRef}>
             <button
@@ -633,11 +633,9 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
           </div>
         </header>
 
-        {/* Page Content (Scrolls independently while Sidebar & Header stay pinned) */}
-        <main className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-8">
-          <div className="max-w-7xl mx-auto w-full space-y-6 pb-12">
-            {children}
-          </div>
+        {/* Page Content */}
+        <main className="p-4 sm:p-8 space-y-6 max-w-7xl mx-auto w-full flex-1 pb-16">
+          {children}
         </main>
       </div>
     </div>

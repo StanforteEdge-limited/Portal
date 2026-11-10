@@ -137,13 +137,6 @@ const rootRoute = createRootRoute({
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
-  loader: async () => {
-    const [publicStats, session] = await Promise.all([
-      fetchPublicStatsServerFn(),
-      fetchSessionServerFn(),
-    ]);
-    return { publicStats, session };
-  },
   component: () => {
     const { status, initialized } = useAuth();
     if (!initialized || status === "checking") {
@@ -227,17 +220,10 @@ const onboardingRoute = createRoute({
   component: EmployeeOnboardingPage,
 });
 
-// 5. Protected Dashboard Route: Preloads data via Server Function
+// 5. Protected Dashboard Route
 const dashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/dashboard",
-  loader: async () => {
-    const [metrics, health] = await Promise.all([
-      fetchDashboardMetricsServerFn(),
-      fetchHealthServerFn(),
-    ]);
-    return { metrics, health };
-  },
   component: DashboardPage,
 });
 
@@ -806,7 +792,7 @@ const routeTree = rootRoute.addChildren([
 export function createRouter() {
   return createTanStackRouter({
     routeTree,
-    defaultPreload: "intent",
+    defaultPreload: false,
   });
 }
 
