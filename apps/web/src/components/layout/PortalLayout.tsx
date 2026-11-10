@@ -248,10 +248,25 @@ export const ADMIN_NAV_GROUPS: NavGroupDef[] = [
   },
 ];
 
+export interface AppLauncherItem {
+  name: string;
+  description: string;
+  icon: any;
+  path: string;
+  color: string;
+  badge?: string;
+}
+
+export interface AppLauncherCategory {
+  category: string;
+  adminOnly?: boolean;
+  apps: AppLauncherItem[];
+}
+
 /**
  * All Application Catalog for the 9-dots App Launcher
  */
-export const APP_LAUNCHER_CATALOG = [
+export const APP_LAUNCHER_CATALOG: AppLauncherCategory[] = [
   {
     category: "HR & WORKFORCE",
     apps: [
