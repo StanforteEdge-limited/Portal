@@ -17,15 +17,42 @@ export const NotificationsRoutes: FastifyPluginAsync = async (fastify) => {
   const self = composeGuards(requireAuth);
   const userId = (request: { user?: { id?: string } }) => request.user?.id as string;
 
+  fastify.get('/', { preHandler: self }, async (request) => {
+    const status = (request.query as { status?: 'read' | 'unread' })?.status;
+    const items = await notifications().listForUser(userId(request), status);
+    return {
+      items,
+      data: { items },
+      meta: { total: items.length },
+    };
+  });
+
   fastify.get('/unread-count', { preHandler: self }, async (request) => notifications().unreadCount(userId(request)));
 
   fastify.get('/:id', { preHandler: self, schema: { params: NotificationsIdParamsSchema } }, async (request) =>
     notifications().getOneForUser(userId(request), requestParams<NotificationsIdParams>(request).id),
   );
 
-  fastify.post('/:id/read', { preHandler: self, schema: { params: NotificationsIdParamsSchema } }, async (request) =>
-    notifications().markRead(userId(request), requestParams<NotificationsIdParams>(request).id),
-  );
+  fastify.route({
+    method: ['POST', 'PUT'],
+    url: '/:id/read',
+    preHandler: self,
+    schema: { params: NotificationsIdParamsSchema },
+    handler: async (request) =>
+      notifications().markRead(userId(request), requestParams<NotificationsIdParams>(request).id),
+  });
 
-  fastify.post('/read-all', { preHandler: self }, async (request) => notifications().markAllRead(userId(request)));
+  fastify.route({
+    method: ['POST', 'PUT'],
+    url: '/read-all',
+    preHandler: self,
+    handler: async (request) => notifications().markAllRead(userId(request)),
+  });
+
+  fastify.route({
+    method: ['POST', 'PUT'],
+    url: '/mark-all-read',
+    preHandler: self,
+    handler: async (request) => notifications().markAllRead(userId(request)),
+  });
 };
