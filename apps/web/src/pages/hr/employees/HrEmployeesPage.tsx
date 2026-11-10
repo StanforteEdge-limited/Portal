@@ -13,7 +13,8 @@ import {
 } from "@/shared";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { AppShell } from "@/shared/components/layout/AppShell";
+import { PortalLayout } from "@/components/layout/PortalLayout";
+import { ChevronRight, Plus, Users, UserCheck, Briefcase, GraduationCap } from "lucide-react";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { hrApi, resourceApi, useCachedQuery } from "@/shared/lib/core";
 import { type EmployeeSummary, type HrSummary } from "@stanforte/shared";
@@ -174,44 +175,90 @@ export default function HrEmployeesPage() {
   ], [orgMap]);
 
   return (
-    <AppShell
-      navigation={buildAppNavigation()}
-      activeLabel="hr-employees"
-      user={{
-        name: userName,
-        role: profile?.employee_profile?.job_title || "HR Staff",
-      }}
-      mobileNav={buildAppMobileNav("Employees")}
-    >
-      <PageHeader
-        breadcrumbs={[{ label: "Dashboard", path: "/" }, { label: "HR" }, { label: "Employees" }]}
-        title="Employee Directory"
-        description="Browse, search, and manage all employees."
-        actions={
-          canManage ? (
-            <Link to="/hr/employees/new" className="inline-flex">
-              <button type="button" className="inline-flex items-center gap-2 rounded-full bg-brand-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-brand-800">
-                <Icon name="add" className="text-[18px]" />
-                Add Employee
-              </button>
-            </Link>
-          ) : null
-        }
-      />
+    <PortalLayout activeNav="Employees">
+      <div className="space-y-6">
+        {/* Breadcrumb & Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1">
+              <span>HR & Workforce</span>
+              <ChevronRight className="h-3 w-3 text-slate-400" />
+              <span className="text-[#ff6900]">Employees</span>
+            </div>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight font-headline">
+              Workforce Directory
+            </h1>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Browse staff profiles, departmental assignments, employment contracts, and contact directories.
+            </p>
+          </div>
 
-      {/* Headcount stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 mb-2">
-        <StatCard label="Total Employees" value={String(summary?.total ?? 0)} tone="neutral" icon="group" />
-        {(['full_time', 'contract', 'intern', 'consultant'] as const).map((type) => (
-          <StatCard
-            key={type}
-            label={humanize(type)}
-            value={String(summary?.by_employment_type?.[type] ?? 0)}
-            tone="neutral"
-            icon="badge"
-          />
-        ))}
-      </div>
+          {canManage && (
+            <div className="flex items-center gap-2">
+              <Link
+                to="/hr/employees/new"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-bold shadow-md shadow-orange-500/20 transition transform hover:-translate-y-0.5"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>Add Employee</span>
+              </Link>
+            </div>
+          )}
+        </div>
+
+        {/* 4 KPI Metric Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                <Users className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="text-[11px] font-semibold text-slate-500">Total Headcount</div>
+                <div className="text-xl font-black text-slate-900 mt-0.5">{summary?.total ?? totalEmployees}</div>
+              </div>
+            </div>
+            <div className="text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+              Enrolled
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+              <UserCheck className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-[11px] font-semibold text-slate-500">Full-Time Personnel</div>
+              <div className="text-xl font-black text-emerald-600 mt-0.5">
+                {summary?.by_employment_type?.full_time ?? 0}
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+              <Briefcase className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-[11px] font-semibold text-slate-500">Contract Staff</div>
+              <div className="text-xl font-black text-purple-700 mt-0.5">
+                {summary?.by_employment_type?.contract ?? 0}
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+              <GraduationCap className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-[11px] font-semibold text-slate-500">Interns & Trainees</div>
+              <div className="text-xl font-black text-amber-600 mt-0.5">
+                {(summary?.by_employment_type?.intern ?? 0) + (summary?.by_employment_type?.consultant ?? 0)}
+              </div>
+            </div>
+          </div>
+        </div>
 
       {/* Filter bar */}
       <section className="section-card p-4 sm:p-5 mb-6" aria-label="Employee filters">
@@ -316,6 +363,6 @@ export default function HrEmployeesPage() {
           }}
         />
       </SectionCard>
-    </AppShell>
+    </PortalLayout>
   );
 }

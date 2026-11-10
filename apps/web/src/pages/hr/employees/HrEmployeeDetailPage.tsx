@@ -1,7 +1,9 @@
 import { Button, Chip, EmptyState, Icon, PageHeader, SectionCard, usePermission } from "@/shared";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { AppShell } from "@/shared/components/layout/AppShell";
+import { PortalLayout } from "@/components/layout/PortalLayout";
+import { Link } from "@/shared/router-adapter";
+import { ChevronRight, Edit3, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { hrApi, useCachedQuery } from "@/shared/lib/core";
 import { type EmployeeDetail } from "@stanforte/shared";
@@ -95,30 +97,32 @@ export default function HrEmployeeDetailPage() {
 
   if (loading) {
     return (
-      <AppShell
-        navigation={buildAppNavigation()}
-        activeLabel="hr-employees"
-        user={{ name: userName, role: profile?.employee_profile?.job_title || "HR Staff" }}
-        mobileNav={buildAppMobileNav("Employees")}
-      >
-        <div className="rounded-2xl bg-slate-50 px-4 py-6 text-sm text-slate-500">Loading employee...</div>
-      </AppShell>
+      <PortalLayout activeNav="Employees">
+        <div className="flex flex-col items-center justify-center h-64 gap-3">
+          <div className="w-8 h-8 rounded-full border-2 border-[#ff6900] border-t-transparent animate-spin" />
+          <p className="text-xs font-semibold text-slate-500">Loading employee details...</p>
+        </div>
+      </PortalLayout>
     );
   }
 
   if (error || !employee) {
     return (
-      <AppShell
-        navigation={buildAppNavigation()}
-        activeLabel="hr-employees"
-        user={{ name: userName, role: profile?.employee_profile?.job_title || "HR Staff" }}
-        mobileNav={buildAppMobileNav("Employees")}
-      >
-        <EmptyState
-          title="Employee not found"
-          description="The employee you're looking for doesn't exist or has been removed."
-        />
-      </AppShell>
+      <PortalLayout activeNav="Employees">
+        <div className="p-12 text-center max-w-md mx-auto bg-white rounded-2xl border border-slate-200/80 shadow-sm mt-8">
+          <EmptyState
+            title="Employee not found"
+            description="The employee you're looking for doesn't exist or has been removed."
+          />
+          <Link
+            to="/hr/employees"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0a1128] text-white text-xs font-bold hover:bg-slate-800 transition mt-4"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            <span>Back to Directory</span>
+          </Link>
+        </div>
+      </PortalLayout>
     );
   }
 
@@ -138,38 +142,55 @@ export default function HrEmployeeDetailPage() {
                 'neutral';
 
   return (
-    <AppShell
-      navigation={buildAppNavigation()}
-      activeLabel="hr-employees"
-      user={{
-        name: userName,
-        role: profile?.employee_profile?.job_title || "HR Staff",
-      }}
-      mobileNav={buildAppMobileNav("Employees")}
-    >
-      <PageHeader
-        breadcrumbs={[
-          { label: "Employees", path: "/hr/employees" },
-          { label: `${employee.first_name} ${employee.last_name}` },
-        ]}
-        title={`${employee.first_name} ${employee.last_name}`}
-        description={employee.email}
-        actions={
-          <div className="flex items-center gap-3">
-            <Button
-              variant="secondary"
-              onClick={() => navigate(`/hr/employees/${id}/edit`)}
-              className="gap-2"
-            >
-              <Icon name="edit" className="text-[18px]" />
-              Edit Profile
-            </Button>
-            <Chip variant={statusTone}>
-              {humanize(employee.employment_status || "draft")}
-            </Chip>
+    <PortalLayout activeNav="Employees">
+      <div className="space-y-6">
+        {/* Breadcrumb & Navigation */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1">
+              <Link to="/hr/employees" className="hover:text-slate-800 transition">
+                Employees
+              </Link>
+              <ChevronRight className="h-3 w-3 text-slate-400" />
+              <span className="text-[#ff6900] truncate max-w-xs">{employeeFullName(employee)}</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight font-headline">
+                {employeeFullName(employee)}
+              </h1>
+              <span
+                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold capitalize ${
+                  employee.employment_status === "active"
+                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                    : "bg-slate-100 text-slate-700 border border-slate-200"
+                }`}
+              >
+                {humanize(employee.employment_status || "draft")}
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {employee.email} • Code: {employee.employee_code || "N/A"}
+            </p>
           </div>
-        }
-      />
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => navigate(`/hr/employees/${id}/edit`)}
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-bold shadow-md shadow-orange-500/20 transition transform hover:-translate-y-0.5"
+            >
+              <Edit3 className="h-3.5 w-3.5" />
+              <span>Edit Profile</span>
+            </button>
+            <Link
+              to="/hr/employees"
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:bg-slate-50 transition shadow-sm"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              <span>Directory</span>
+            </Link>
+          </div>
+        </div>
 
       <section className="mb-6 rounded-[26px] border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -233,6 +254,6 @@ export default function HrEmployeeDetailPage() {
         )}
         {canManage && activeTab === 'actions' && <EmployeeActionsTab employee={employee} onSaved={handleSaved} />}
       </SectionCard>
-    </AppShell>
+    </PortalLayout>
   );
 }

@@ -14,7 +14,9 @@ import {
   DataTable,
   ColumnDef,
 } from "@/shared";
-import { AppShell } from "@/shared/components/layout/AppShell";
+import { PortalLayout } from "@/components/layout/PortalLayout";
+import { Link } from "@/shared/router-adapter";
+import { ChevronRight, Calendar, Clock, CheckCircle2, AlertCircle, Plus, Users } from "lucide-react";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { useCachedQuery } from "@/shared/lib/core";
 import { buildAppNavigation, buildAppMobileNav } from "@/shared/navigation";
@@ -348,43 +350,92 @@ export default function HrLeavePage() {
   ], [navigate]);
 
   return (
-    <AppShell
-      navigation={buildAppNavigation()}
-      activeLabel="hr-leave"
-      user={{
-        name: userName,
-        role: profile?.employee_profile?.job_title || "HR Staff",
-      }}
-      mobileNav={buildAppMobileNav("HR")}
-    >
-      <PageHeader
-        breadcrumbs={[{ label: "HR", path: "/hr" }, { label: "Leave" }]}
-        title="Leave"
-        description="Open pending leave requests in HR details to review and approve, then track finalized leave outcomes."
-      />
+    <PortalLayout activeNav="Leave & Absence">
+      <div className="space-y-6">
+        {/* Breadcrumb & Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1">
+              <span>HR & Workforce</span>
+              <ChevronRight className="h-3 w-3 text-slate-400" />
+              <span className="text-[#ff6900]">Leave & Absence</span>
+            </div>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight font-headline">
+              Leave & Absence Management
+            </h1>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Review and approve pending leave requests, track active absences, and inspect historical leave records.
+            </p>
+          </div>
 
-      <div className="grid gap-6">
-        {/* Summary stat cards */}
-        <div className="grid gap-4 md:grid-cols-3">
-          <StatCard
-            label="Pending Approval"
-            value={String(pendingApprovals.length)}
-            tone="warning"
-            icon="pending_actions"
-          />
-          <StatCard
-            label="Currently on Leave"
-            value={String(currentlyOnLeave.length)}
-            tone="neutral"
-            icon="beach_access"
-          />
-          <StatCard
-            label="Total Leave Requests"
-            value={String(allLeaveRequests.length)}
-            tone="neutral"
-            icon="event_available"
-          />
+          <div className="flex items-center gap-2">
+            <Link
+              to="/requests/new?categoryId=LEAVE"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-bold shadow-md shadow-orange-500/20 transition transform hover:-translate-y-0.5"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>Apply for Leave</span>
+            </Link>
+          </div>
         </div>
+
+        {/* 4 KPI Metric Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                <AlertCircle className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="text-[11px] font-semibold text-slate-500">Pending Review</div>
+                <div className="text-xl font-black text-amber-600 mt-0.5">
+                  {pendingApprovals.length}
+                </div>
+              </div>
+            </div>
+            <div className="text-[11px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+              Action
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+              <Users className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-[11px] font-semibold text-slate-500">Currently on Leave</div>
+              <div className="text-xl font-black text-slate-900 mt-0.5">
+                {currentlyOnLeave.length}
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+              <Calendar className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-[11px] font-semibold text-slate-500">Total Requests</div>
+              <div className="text-xl font-black text-slate-900 mt-0.5">
+                {allLeaveRequests.length}
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+              <CheckCircle2 className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-[11px] font-semibold text-slate-500">Historical Records</div>
+              <div className="text-xl font-black text-emerald-600 mt-0.5">
+                {historyTotalCount}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-6">
 
         {/* Currently on leave */}
         {currentlyOnLeave.length > 0 ? (
@@ -478,6 +529,6 @@ export default function HrLeavePage() {
         </SectionCard>
       </div>
 
-    </AppShell>
+    </PortalLayout>
   );
 }
