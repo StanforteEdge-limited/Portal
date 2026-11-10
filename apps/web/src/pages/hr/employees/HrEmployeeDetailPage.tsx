@@ -254,6 +254,7 @@ export default function HrEmployeeDetailPage() {
         )}
         {canManage && activeTab === 'actions' && <EmployeeActionsTab employee={employee} onSaved={handleSaved} />}
       </SectionCard>
+      </div>
     </PortalLayout>
   );
 }

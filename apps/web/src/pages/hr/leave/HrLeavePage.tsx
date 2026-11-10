@@ -527,6 +527,7 @@ export default function HrLeavePage() {
             }}
           />
         </SectionCard>
+        </div>
       </div>
 
     </PortalLayout>
