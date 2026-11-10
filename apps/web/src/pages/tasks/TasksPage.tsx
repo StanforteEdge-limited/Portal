@@ -1,12 +1,17 @@
 import { useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { PageHeader } from "@/shared";
-import { AppShell } from "@/shared/components/layout/AppShell";
+import { Link, useSearchParams } from "react-router-dom";
+import { PortalLayout } from "@/components/layout/PortalLayout";
 import { useAuth } from "@/shared/context/AuthProvider";
-import { buildAppNavigation, buildAppMobileNav } from "@/shared/navigation";
 import type { WorkItem } from "@stanforte/shared";
 import DailyLogTab from "./DailyLogTab";
 import MyTasksTab from "./MyTasksTab";
+import {
+  CheckSquare,
+  BookOpen,
+  ChevronRight,
+  Clock,
+  ListTodo,
+} from "lucide-react";
 
 type Tab = "tasks" | "log";
 
@@ -24,49 +29,65 @@ export default function TasksPage() {
     setTab("log");
   };
 
-  const userName =
-    `${user?.first_name || ""} ${user?.last_name || ""}`.trim() ||
-    user?.email ||
-    "Staff";
-
   return (
-    <AppShell
-      navigation={buildAppNavigation()}
-      activeLabel="my-tasks"
-      user={{
-        name: userName,
-        role: "Staff",
-      }}
-      mobileNav={buildAppMobileNav("Tasks")}
-    >
-      <PageHeader title="My Tasks" />
+    <PortalLayout activeNav="Dashboard">
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-xs font-medium text-slate-500 mb-1">
+              <Link to="/dashboard" className="hover:text-slate-800 transition">Dashboard</Link>
+              <ChevronRight className="h-3 w-3" />
+              <span className="text-slate-800 font-semibold">Tasks & Logs</span>
+            </div>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight font-headline">
+              Work Items & Daily Standup
+            </h1>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Organize daily deliverables, log working hours against active sprints, and track personal work items.
+            </p>
+          </div>
+        </div>
 
-      <div className="flex gap-2 border-b border-gray-200 mb-6">
-        {(["tasks", "log"] as Tab[]).map((tabKey) => (
+        {/* Tab Toggle */}
+        <div className="flex items-center gap-1.5 p-1.5 bg-slate-100 rounded-2xl w-fit">
           <button
-            key={tabKey}
             type="button"
-            className={[
-              "px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors",
-              tab === tabKey
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700",
-            ].join(" ")}
-            onClick={() => setTab(tabKey)}
+            onClick={() => setTab("tasks")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
+              tab === "tasks"
+                ? "bg-white text-slate-900 shadow-sm"
+                : "text-slate-500 hover:text-slate-900"
+            }`}
           >
-            {tabKey === "tasks" ? "My Tasks" : "Daily Log"}
+            <CheckSquare className={`h-4 w-4 ${tab === "tasks" ? "text-[#ff6900]" : "text-slate-400"}`} />
+            <span>My Tasks</span>
           </button>
-        ))}
+          <button
+            type="button"
+            onClick={() => setTab("log")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
+              tab === "log"
+                ? "bg-white text-slate-900 shadow-sm"
+                : "text-slate-500 hover:text-slate-900"
+            }`}
+          >
+            <Clock className={`h-4 w-4 ${tab === "log" ? "text-[#ff6900]" : "text-slate-400"}`} />
+            <span>Daily Log & Standup</span>
+          </button>
+        </div>
+
+        {/* Tab Content */}
+        <div className="min-w-0">
+          {tab === "tasks" && <MyTasksTab onLogToday={handleLogToday} />}
+          {tab === "log" && (
+            <DailyLogTab
+              preselectedTaskId={logTaskId}
+              onPreselectedConsumed={() => setLogTaskId(undefined)}
+            />
+          )}
+        </div>
       </div>
-
-      {tab === "tasks" && <MyTasksTab onLogToday={handleLogToday} />}
-
-      {tab === "log" && (
-        <DailyLogTab
-          preselectedTaskId={logTaskId}
-          onPreselectedConsumed={() => setLogTaskId(undefined)}
-        />
-      )}
-    </AppShell>
+    </PortalLayout>
   );
 }

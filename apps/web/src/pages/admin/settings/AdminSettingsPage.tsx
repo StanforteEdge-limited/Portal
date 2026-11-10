@@ -1,40 +1,52 @@
 import { useState, useEffect, useMemo } from "react";
-import {
-  AppShell,
-  PageHeader,
-  Button,
-  Chip,
-  Icon,
-  SectionCard,
-  StatCard,
-  TextField,
-  SelectField,
-  TextAreaField,
-  useToast,
-} from "@/shared";
-import { DataTable } from "@/shared/components/ui/DataTable";
-import { buildAppNavigation, buildAppMobileNav } from "@/shared/navigation";
+import { Link } from "react-router-dom";
+import { PortalLayout } from "@/components/layout/PortalLayout";
 import { useAuth } from "@/shared/context/AuthProvider";
-import { cacheStore, requestApi, httpRequest } from "@/shared/lib/core";
-import { getWorkspaceProfile } from "@/shared/api/workspace-api";
+import { requestApi, httpRequest } from "@/shared/lib/core";
 import { type RequestType } from "@stanforte/shared";
 import RequestTypeSlideOver from "@/pages/admin/request-types/RequestTypeSlideOver";
-import { listCategories as apiListCategories, createCategory, updateCategory, deleteCategory, type RequestCategoryOption } from "@/pages/requests/requests-api";
-import type { RequestGroupOption } from "@/pages/requests/requests-api";
-import { listManagedTaxonomies, deleteTaxonomy, type ManagedTaxonomy } from "@/pages/requests/taxonomy-api";
+import {
+  listCategories as apiListCategories,
+  createCategory,
+  updateCategory,
+  deleteCategory,
+  type RequestCategoryOption,
+} from "@/pages/requests/requests-api";
+import {
+  listManagedTaxonomies,
+  deleteTaxonomy,
+  type ManagedTaxonomy,
+} from "@/pages/requests/taxonomy-api";
 import TaxonomySlideOver from "@/pages/admin/taxonomies/TaxonomySlideOver";
+import {
+  Settings,
+  Sliders,
+  FolderTree,
+  Building,
+  ShieldCheck,
+  Tags,
+  Plus,
+  Pencil,
+  Trash2,
+  ChevronRight,
+  CheckCircle2,
+  AlertCircle,
+  ExternalLink,
+  Layers,
+  Save,
+  RefreshCw,
+} from "lucide-react";
 
-type ActiveTab = "requests" | "general" | "security" | "taxonomy";
-type RequestsSubTab = "types" | "categories";
+type ActiveTab = "types" | "categories" | "general" | "security" | "taxonomy";
 
 export default function AdminSettingsPage() {
   const { user } = useAuth();
-  const { showToast } = useToast();
+  const [activeTab, setActiveTab] = useState<ActiveTab>("types");
   const [types, setTypes] = useState<RequestType[]>([]);
   const [groups, setGroups] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<ActiveTab>("requests");
-  const [requestsSubTab, setRequestsSubTab] = useState<RequestsSubTab>("types");
+
+  // Modals & SlideOvers
   const [editingType, setEditingType] = useState<RequestType | null | boolean>(false);
   const [categories, setCategories] = useState<RequestCategoryOption[]>([]);
   const [editingCategory, setEditingCategory] = useState<RequestCategoryOption | null | boolean>(false);
@@ -47,8 +59,12 @@ export default function AdminSettingsPage() {
   const [tenantForm, setTenantForm] = useState({ name: "", plan: "trial" });
   const [tenantSaving, setTenantSaving] = useState(false);
   const [securityOverview, setSecurityOverview] = useState<any>(null);
+  const [toastMsg, setToastMsg] = useState<{ text: string; tone: "success" | "error" } | null>(null);
 
-
+  function notify(text: string, tone: "success" | "error" = "success") {
+    setToastMsg({ text, tone });
+    setTimeout(() => setToastMsg(null), 4000);
+  }
 
   const groupMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -67,8 +83,8 @@ export default function AdminSettingsPage() {
       ]);
       setTypes(res);
       setGroups(groupsRes as { id: string; name: string }[]);
-    } catch (err) {
-      showToast({ tone: "danger", title: "Error", message: "Failed to load request types." });
+    } catch {
+      notify("Failed to load request types.", "error");
     } finally {
       setLoading(false);
     }
@@ -76,10 +92,43 @@ export default function AdminSettingsPage() {
 
   const loadCategories = async () => {
     try {
-      const res = await apiListCategories(filterByGroup(categoryFilter) || undefined);
+      const res = await apiListCategories(categoryFilter || undefined);
       setCategories(res as RequestCategoryOption[]);
-    } catch (err) {
-      showToast({ tone: "danger", title: "Error", message: "Failed to load categories." });
+    } catch {
+      notify("Failed to load categories.", "error");
+    }
+  };
+
+  const loadTaxonomies = async () => {
+    try {
+      const res = await listManagedTaxonomies();
+      setTaxonomies(res);
+    } catch {
+      notify("Failed to load taxonomies.", "error");
+    }
+  };
+
+  const loadTenant = async () => {
+    try {
+      const res = await httpRequest<any>("/v1/tenants/current");
+      if (res?.data) {
+        setTenant(res.data);
+        setTenantForm({
+          name: res.data.name || "",
+          plan: res.data.plan || "trial",
+        });
+      }
+    } catch {
+      // tenant fallback
+    }
+  };
+
+  const loadSecurity = async () => {
+    try {
+      const res = await httpRequest<any>("/v1/auth/roles/overview");
+      if (res?.data) setSecurityOverview(res.data);
+    } catch {
+      // fallback
     }
   };
 
@@ -88,500 +137,636 @@ export default function AdminSettingsPage() {
   }, []);
 
   useEffect(() => {
-    void loadCategories();
-  }, [categoryFilter]);
+    if (activeTab === "categories") void loadCategories();
+    if (activeTab === "taxonomy") void loadTaxonomies();
+    if (activeTab === "general") void loadTenant();
+    if (activeTab === "security") void loadSecurity();
+  }, [activeTab, categoryFilter]);
 
-  useEffect(() => {
-    if (activeTab === "requests" && requestsSubTab === "categories") {
-      void loadCategories();
-    }
-  }, [activeTab, requestsSubTab]);
-
-  useEffect(() => {
-    if (activeTab === "general") {
-      void httpRequest<any>("/tenancy").then((response) => {
-        const value = response?.data ?? response;
-        setTenant(value);
-        setTenantForm({ name: value?.name ?? "", plan: value?.plan ?? "trial" });
-      }).catch(() => showToast({ tone: "danger", title: "Error", message: "Failed to load workspace settings." }));
-    }
-    if (activeTab === "security") {
-      void httpRequest<any>("/admin/rbac").then((response) => setSecurityOverview(response?.data ?? response))
-        .catch(() => showToast({ tone: "danger", title: "Error", message: "Failed to load access settings." }));
-    }
-  }, [activeTab]);
-
-  const filterByGroup = (id: string) => id && groups.some((g) => g.id === id) ? id : "";
-
-  const handleDeleteType = async (type: RequestType) => {
-    if (!window.confirm(`Delete request type "${type.name}"? This cannot be undone.`)) {
-      return;
-    }
+  async function handleDeleteType(type: RequestType) {
+    if (!window.confirm(`Delete "${type.name}"? This action cannot be undone.`)) return;
     try {
-      await requestApi.deleteType(type.id);
-      cacheStore.invalidateCache("requests:types");
-      cacheStore.invalidateCache("hr:leave_types");
-      showToast({ tone: "success", title: "Deleted", message: `${type.name} has been removed.` });
+      await httpRequest(`/v1/requests/types/${type.id}`, { method: "DELETE" });
+      notify(`Request type "${type.name}" removed.`);
       void load();
-    } catch (err) {
-      showToast({
-        tone: "danger",
-        title: "Delete failed",
-        message: err instanceof Error ? err.message : "Unable to delete type.",
-      });
+    } catch {
+      notify("Failed to delete request type.", "error");
     }
-  };
+  }
 
-  const handleSaveTenant = async () => {
-    if (!tenantForm.name.trim()) {
-      showToast({ tone: "warning", title: "Name required", message: "Enter a workspace name." });
-      return;
-    }
-    try {
-      setTenantSaving(true);
-      const response = await httpRequest<any>("/tenancy", { method: "PATCH", body: { name: tenantForm.name.trim(), plan: tenantForm.plan } });
-      setTenant(response?.data ?? response);
-      showToast({ tone: "success", title: "Saved", message: "Workspace settings updated." });
-    } catch (err) {
-      showToast({ tone: "danger", title: "Save failed", message: err instanceof Error ? err.message : "Unable to update workspace settings." });
-    } finally {
-      setTenantSaving(false);
-    }
-  };
-
-  const handleTenantStatus = async (status: "active" | "suspended") => {
-    try {
-      const response = await httpRequest<any>("/tenancy/status", { method: "POST", body: { status } });
-      setTenant((current: any) => ({ ...current, status: response?.data?.status ?? response?.status ?? status }));
-      showToast({ tone: "success", title: "Status updated", message: `Workspace is now ${status}.` });
-    } catch (err) {
-      showToast({ tone: "danger", title: "Status update failed", message: err instanceof Error ? err.message : "Unable to update workspace status." });
-    }
-  };
-
-  const handleDeleteCategory = async (cat: RequestCategoryOption) => {
-    if (!window.confirm(`Delete category "${cat.name}"? This cannot be undone.`)) {
-      return;
-    }
-    try {
-      await deleteCategory(cat.id);
-      cacheStore.invalidateCache("requests:categories");
-      showToast({ tone: "success", title: "Deleted", message: `${cat.name} has been removed.` });
-      void loadCategories();
-    } catch (err) {
-      showToast({
-        tone: "danger",
-        title: "Delete failed",
-        message: err instanceof Error ? err.message : "Unable to delete category.",
-      });
-    }
-  };
-
-  const handleSaveCategory = async () => {
+  async function handleSaveCategory() {
     if (!categoryForm.name.trim() || !categoryForm.code.trim()) {
-      showToast({ tone: "warning", title: "Required", message: "Name and code are required." });
+      notify("Name and code are required.", "error");
       return;
     }
-    if (!editingCategory && !categoryForm.group_id) {
-      showToast({ tone: "warning", title: "Required", message: "Select a group/module." });
-      return;
-    }
+    setCategorySaving(true);
     try {
-      setCategorySaving(true);
-      if (typeof editingCategory === "object" && editingCategory !== null) {
+      if (typeof editingCategory === "object" && editingCategory?.id) {
         await updateCategory(editingCategory.id, {
-          name: categoryForm.name.trim(),
-          code: categoryForm.code.trim(),
-          description: categoryForm.description.trim() || undefined,
+          name: categoryForm.name,
+          description: categoryForm.description,
         });
+        notify("Category updated.");
       } else {
-        await createCategory({
-          group_id: categoryForm.group_id,
-          name: categoryForm.name.trim(),
-          code: categoryForm.code.trim(),
-          description: categoryForm.description.trim() || undefined,
-        });
+        await createCategory(categoryForm);
+        notify("Category created.");
       }
-      showToast({
-        tone: "success",
-        title: typeof editingCategory === "object" ? "Updated" : "Created",
-        message: `${categoryForm.name} has been saved.`,
-      });
       setEditingCategory(false);
       setCategoryForm({ group_id: "", name: "", code: "", description: "" });
       void loadCategories();
-    } catch (err) {
-      showToast({
-        tone: "danger",
-        title: "Save failed",
-        message: err instanceof Error ? err.message : "Unable to save category.",
-      });
+    } catch {
+      notify("Failed to save category.", "error");
     } finally {
       setCategorySaving(false);
     }
-  };
+  }
 
-  const openNewCategory = () => {
-    setCategoryForm({ group_id: "", name: "", code: "", description: "" });
-    setEditingCategory(true);
-  };
-
-  const openEditCategory = (cat: RequestCategoryOption) => {
-    setCategoryForm({
-      group_id: cat.groupId,
-      name: cat.name,
-      code: cat.code,
-      description: cat.description || "",
-    });
-    setEditingCategory(cat);
-  };
-
-  const loadTaxonomies = async () => {
+  async function handleDeleteCategory(cat: RequestCategoryOption) {
+    if (!window.confirm(`Delete category "${cat.name}"?`)) return;
     try {
-      const res = await listManagedTaxonomies({ include_inactive: true });
-      setTaxonomies(res);
-    } catch (err) {
-      showToast({ tone: "danger", title: "Error", message: "Failed to load taxonomies." });
+      await deleteCategory(cat.id);
+      notify("Category deleted.");
+      void loadCategories();
+    } catch {
+      notify("Failed to delete category.", "error");
     }
-  };
+  }
 
-  useEffect(() => {
-    if (activeTab === "taxonomy") {
-      void loadTaxonomies();
-    }
-  }, [activeTab]);
-
-  const handleDeleteTaxonomy = async (tax: ManagedTaxonomy) => {
-    if (!window.confirm(`Delete taxonomy "${tax.name}"? This cannot be undone.`)) {
-      return;
-    }
+  async function handleDeleteTaxonomy(tax: ManagedTaxonomy) {
+    if (!window.confirm(`Delete taxonomy "${tax.name}"?`)) return;
     try {
       await deleteTaxonomy(tax.id);
-      showToast({ tone: "success", title: "Deleted", message: `${tax.name} has been removed.` });
+      notify("Taxonomy deleted.");
       void loadTaxonomies();
-    } catch (err) {
-      showToast({
-        tone: "danger",
-        title: "Delete failed",
-        message: err instanceof Error ? err.message : "Unable to delete taxonomy.",
-      });
+    } catch {
+      notify("Failed to delete taxonomy.", "error");
     }
-  };
+  }
 
-  const navItems = [
-    { id: "requests" as ActiveTab, label: "Requests", icon: "assignment" },
-    { id: "taxonomy" as ActiveTab, label: "Taxonomy", icon: "category" },
-    { id: "general" as ActiveTab, label: "General Settings", icon: "tune" },
-    { id: "security" as ActiveTab, label: "Security & Access", icon: "security" },
+  async function handleSaveTenant() {
+    setTenantSaving(true);
+    try {
+      await httpRequest("/v1/tenants/current", {
+        method: "PATCH",
+        body: tenantForm,
+      });
+      notify("Workspace updated.");
+      void loadTenant();
+    } catch {
+      notify("Failed to save workspace details.", "error");
+    } finally {
+      setTenantSaving(false);
+    }
+  }
+
+  const tabs = [
+    { id: "types" as const, label: "Request Types", icon: Sliders },
+    { id: "categories" as const, label: "Categories", icon: FolderTree },
+    { id: "taxonomy" as const, label: "Taxonomies", icon: Tags },
+    { id: "general" as const, label: "Workspace Profile", icon: Building },
+    { id: "security" as const, label: "Security & Access", icon: ShieldCheck },
   ];
-
-  const requestsSubTabs: { id: RequestsSubTab; label: string }[] = [
-    { id: "types", label: "Types" },
-    { id: "categories", label: "Categories" },
-  ];
-
-  const userName = `${user?.first_name || ""} ${user?.last_name || ""}`.trim() || user?.email || "Admin";
 
   return (
-    <AppShell
-      navigation={buildAppNavigation()}
-      activeLabel="admin-settings"
-      user={{
-        name: userName,
-        role: "System Administrator",
-      }}
-      mobileNav={buildAppMobileNav()}
-    >
-      <PageHeader
-        breadcrumbs={[{ label: "Administration", path: "/admin/users" }, { label: "System Settings" }]}
-        title="System Settings"
-        description="Manage global system configurations and business rules."
-      />
+    <PortalLayout activeNav="Settings">
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-xs font-medium text-slate-500 mb-1">
+              <Link to="/dashboard" className="hover:text-slate-800 transition">Dashboard</Link>
+              <ChevronRight className="h-3 w-3" />
+              <span className="text-slate-800 font-semibold">Settings</span>
+            </div>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight font-headline">
+              Workspace & System Settings
+            </h1>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Configure tenant parameters, request approval workflows, taxonomy dictionaries, and security.
+            </p>
+          </div>
 
-      <div className="mt-6 space-y-6">
-        {/* Top Tabs */}
-        <div className="flex items-center gap-1 border-b border-slate-200">
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold transition-colors border-b-2 -mb-px ${
-                activeTab === item.id
-                  ? "border-brand-900 text-brand-900"
-                  : "border-transparent text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              <span className="material-symbols-outlined text-[18px]">{item.icon}</span>
-              {item.label}
-            </button>
-          ))}
+          <div className="flex items-center gap-3">
+            {activeTab === "types" && (
+              <button
+                type="button"
+                onClick={() => setEditingType(true)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#e05d00] text-white text-xs font-bold shadow-sm shadow-orange-500/20 transition active:scale-95"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Add Request Type</span>
+              </button>
+            )}
+            {activeTab === "categories" && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingCategory(true);
+                  setCategoryForm({ group_id: groups[0]?.id || "", name: "", code: "", description: "" });
+                }}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#e05d00] text-white text-xs font-bold shadow-sm shadow-orange-500/20 transition active:scale-95"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Add Category</span>
+              </button>
+            )}
+            {activeTab === "taxonomy" && (
+              <button
+                type="button"
+                onClick={() => setEditingTaxonomy(true)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#e05d00] text-white text-xs font-bold shadow-sm shadow-orange-500/20 transition active:scale-95"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Add Taxonomy</span>
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Content Area */}
-        <div className="min-w-0">
-          <SectionCard>
-            <div className="flex items-center justify-between mb-4">
+        {/* Toast feedback */}
+        {toastMsg && (
+          <div
+            className={`p-3 rounded-xl text-xs font-semibold flex items-center gap-2 ${
+              toastMsg.tone === "success"
+                ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                : "bg-rose-50 text-rose-800 border border-rose-200"
+            }`}
+          >
+            {toastMsg.tone === "success" ? (
+              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+            ) : (
+              <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
+            )}
+            <span>{toastMsg.text}</span>
+          </div>
+        )}
+
+        {/* Tab Selector */}
+        <div className="flex items-center gap-1.5 p-1.5 bg-slate-100 rounded-2xl overflow-x-auto">
+          {tabs.map((tab) => {
+            const IconComp = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
+                  isActive
+                    ? "bg-white text-slate-900 shadow-sm"
+                    : "text-slate-500 hover:text-slate-900 hover:bg-slate-200/50"
+                }`}
+              >
+                <IconComp className={`h-4 w-4 ${isActive ? "text-[#ff6900]" : "text-slate-400"}`} />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Tab 1: Request Types */}
+        {activeTab === "types" && (
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-bold text-slate-900">
-                  {activeTab === "requests"
-                    ? requestsSubTab === "types" ? "Request Types" : "Request Categories"
-                    : navItems.find((i) => i.id === activeTab)?.label || "Settings"}
-                </h3>
-                <p className="text-sm text-slate-500 mt-1">
-                  {activeTab === "requests" && requestsSubTab === "types" && "Global list of all request types and their workflows."}
-                  {activeTab === "requests" && requestsSubTab === "categories" && "Manage request categories organized by module."}
-                  {activeTab === "taxonomy" && "Manage global taxonomies and their terms."}
-                  {activeTab === "general" && "General system configurations."}
-                  {activeTab === "security" && "Security and access control settings."}
+                <h2 className="text-base font-bold text-slate-900">Configured Request Types</h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Define custom schemas, approval stages, and notification rules per request type.
                 </p>
               </div>
-              {activeTab === "requests" && requestsSubTab === "types" && (
-                <Button onClick={() => setEditingType(true)}>
-                  <Icon name="add" className="mr-1" />
-                  Add Type
-                </Button>
-              )}
-              {activeTab === "requests" && requestsSubTab === "categories" && (
-                <Button onClick={openNewCategory}>
-                  <Icon name="add" className="mr-1" />
-                  Add Category
-                </Button>
-              )}
-              {activeTab === "taxonomy" && (
-                <Button onClick={() => setEditingTaxonomy(true)}>
-                  <Icon name="add" className="mr-1" />
-                  Add Taxonomy
-                </Button>
-              )}
+              <span className="text-xs font-semibold text-slate-500">
+                {types.length} total types
+              </span>
             </div>
 
-            {activeTab === "requests" && (
-              <>
-                {/* Sub-tab navigation */}
-                <div className="flex items-center gap-1 mb-6">
-                  {requestsSubTabs.map((sub) => (
-                    <button
-                      key={sub.id}
-                      onClick={() => setRequestsSubTab(sub.id)}
-                      className={`px-3 py-1.5 text-sm font-semibold rounded-lg transition-colors ${
-                        requestsSubTab === sub.id
-                          ? "bg-brand-900 text-white"
-                          : "text-slate-500 hover:text-slate-700 hover:bg-slate-100"
-                      }`}
-                    >
-                      {sub.label}
-                    </button>
-                  ))}
-                </div>
-
-                {requestsSubTab === "types" && (
-                  <div className="space-y-4">
-                    {loading ? (
-                      <div className="text-sm text-slate-500">Loading request types...</div>
-                    ) : types.length > 0 ? (
-                      <DataTable
-                        columns={[
-                          { header: "Name", className: "font-bold text-slate-900", cell: (t) => t.name },
-                          { header: "Slug/Prefix", className: "font-mono text-xs", cell: (t) => t.slug },
-                          { header: "Module", className: "text-xs text-slate-500", cell: () => "-" },
-                          { header: "Category", className: "capitalize", cell: (t) => t.category || "General" },
-                          { header: "Status", cell: (t) => (
-                            <Chip variant={t.is_active ? "success" : "neutral"}>
-                              {t.is_active ? "Active" : "Disabled"}
-                            </Chip>
-                          )},
-                          { header: "Actions", className: "text-right", cell: (t) => (
-                            <div className="flex items-center justify-end gap-2">
-                              <Button variant="ghost" size="sm" onClick={() => setEditingType(t)}>
-                                <Icon name="edit" />
-                              </Button>
-                              <Button variant="ghost" size="sm" className="text-danger hover:bg-danger/5" onClick={() => void handleDeleteType(t)}>
-                                <Icon name="delete" />
-                              </Button>
-                            </div>
-                          )}
-                        ]}
-                        data={types}
-                      />
-                    ) : (
-                      <div className="py-10 text-center text-slate-400">
-                        No request types found.
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {requestsSubTab === "categories" && (
-                  <div className="space-y-4">
-                    {editingCategory !== false ? (
-                      <div className="rounded-[22px] border border-slate-200 bg-white p-6 space-y-4">
-                        <h4 className="text-base font-bold text-slate-900">
-                          {typeof editingCategory === "object" ? "Edit Category" : "New Category"}
-                        </h4>
-                        <div className="grid gap-4 md:grid-cols-2">
-                          {typeof editingCategory !== "object" && (
-                            <SelectField
-                              label="Module"
-                              value={categoryForm.group_id}
-                              onChange={(e) => setCategoryForm((p) => ({ ...p, group_id: e.target.value }))}
-                            >
-                              <option value="">Select module</option>
-                              {groups.map((g) => (
-                                <option key={g.id} value={g.id}>{g.name}</option>
-                              ))}
-                            </SelectField>
-                          )}
-                          <TextField
-                            label="Name"
-                            value={categoryForm.name}
-                            onChange={(e) => setCategoryForm((p) => ({ ...p, name: e.target.value }))}
-                            placeholder="e.g., Office Supplies"
-                          />
-                          <TextField
-                            label="Code"
-                            value={categoryForm.code}
-                            onChange={(e) => setCategoryForm((p) => ({ ...p, code: e.target.value }))}
-                            placeholder="e.g., OFFICE"
-                            disabled={typeof editingCategory === "object"}
-                          />
-                          <div className="md:col-span-2">
-                            <TextField
-                              label="Description"
-                              value={categoryForm.description}
-                              onChange={(e) => setCategoryForm((p) => ({ ...p, description: e.target.value }))}
-                              placeholder="Optional description"
-                            />
-                          </div>
-                        </div>
-                        <div className="flex gap-3">
-                          <Button onClick={() => void handleSaveCategory()} disabled={categorySaving}>
-                            {categorySaving ? "Saving..." : typeof editingCategory === "object" ? "Update" : "Create"}
-                          </Button>
-                          <Button variant="ghost" onClick={() => { setEditingCategory(false); setCategoryForm({ group_id: "", name: "", code: "", description: "" }); }}>
-                            Cancel
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="flex items-center gap-3">
-                          <SelectField
-                            label="Filter by Module"
-                            value={categoryFilter}
-                            onChange={(e) => setCategoryFilter(e.target.value)}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50/75 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-100">
+                  <tr>
+                    <th className="py-3.5 px-5">Type Name</th>
+                    <th className="py-3.5 px-4">Prefix / Slug</th>
+                    <th className="py-3.5 px-4">Category</th>
+                    <th className="py-3.5 px-4">Status</th>
+                    <th className="py-3.5 px-5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-700">
+                  {loading ? (
+                    <tr>
+                      <td colSpan={5} className="py-8 text-center text-slate-400">
+                        Loading request types...
+                      </td>
+                    </tr>
+                  ) : types.length > 0 ? (
+                    types.map((t) => (
+                      <tr key={t.id} className="hover:bg-slate-50/60 transition">
+                        <td className="py-3.5 px-5 font-bold text-slate-900">
+                          {t.name}
+                        </td>
+                        <td className="py-3.5 px-4 font-mono text-slate-500">
+                          {t.slug}
+                        </td>
+                        <td className="py-3.5 px-4 capitalize font-semibold text-slate-700">
+                          {t.category || "General"}
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-semibold text-[11px] ${
+                              t.is_active
+                                ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                                : "bg-slate-100 text-slate-600"
+                            }`}
                           >
-                            <option value="">All modules</option>
-                            {groups.map((g) => (
-                              <option key={g.id} value={g.id}>{g.name}</option>
-                            ))}
-                          </SelectField>
-                        </div>
-                        {categories.length > 0 ? (
-                          <DataTable
-                            columns={[
-                              { header: "Name", className: "font-bold text-slate-900", cell: (cat) => cat.name },
-                              { header: "Code", className: "font-mono text-xs", cell: (cat) => cat.code },
-                              { header: "Module", className: "text-xs text-slate-500", cell: (cat) => groupMap[cat.groupId] || "-" },
-                              { header: "Status", cell: (cat) => (
-                                <Chip variant={cat.isActive !== false ? "success" : "neutral"}>
-                                  {cat.isActive !== false ? "Active" : "Disabled"}
-                                </Chip>
-                              )},
-                              { header: "Actions", className: "text-right", cell: (cat) => (
-                                <div className="flex items-center justify-end gap-2">
-                                  <Button variant="ghost" size="sm" onClick={() => openEditCategory(cat)}>
-                                    <Icon name="edit" />
-                                  </Button>
-                                  <Button variant="ghost" size="sm" className="text-danger hover:bg-danger/5" onClick={() => void handleDeleteCategory(cat)}>
-                                    <Icon name="delete" />
-                                  </Button>
-                                </div>
-                              )}
-                            ]}
-                            data={categories}
-                          />
-                        ) : (
-                          <div className="py-10 text-center text-slate-400">
-                            No categories found.
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                t.is_active ? "bg-emerald-500" : "bg-slate-400"
+                              }`}
+                            />
+                            {t.is_active ? "Active" : "Disabled"}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-5 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setEditingType(t)}
+                              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition"
+                              title="Edit Type"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void handleDeleteType(t)}
+                              className="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition"
+                              title="Delete Type"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
                           </div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                )}
-              </>
-            )}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="py-10 text-center">
+                        <p className="font-semibold text-slate-700 text-sm">No request types configured</p>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          Click &quot;Add Request Type&quot; above to create the first one.
+                        </p>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
-            {activeTab === "taxonomy" && (
-              <div className="space-y-4">
-                {taxonomies.length > 0 ? (
-                  <DataTable
-                    columns={[
-                      { header: "Name", className: "font-bold text-slate-900", cell: (tax) => tax.name },
-                      { header: "Key", className: "font-mono text-xs", cell: (tax) => tax.key },
-                      { header: "Module", className: "text-xs text-slate-500", cell: (tax) => tax.module || "-" },
-                      { header: "Terms", className: "text-xs text-slate-500", cell: (tax) => tax.terms.length },
-                      { header: "Status", cell: (tax) => (
-                        <Chip variant={tax.is_active ? "success" : "neutral"}>
-                          {tax.is_active ? "Active" : "Disabled"}
-                        </Chip>
-                      )},
-                      { header: "Actions", className: "text-right", cell: (tax) => (
-                        <div className="flex items-center justify-end gap-2">
-                          <Button variant="ghost" size="sm" onClick={() => setEditingTaxonomy(tax)}>
-                            <Icon name="edit" />
-                          </Button>
-                          <Button variant="ghost" size="sm" className="text-danger hover:bg-danger/5" onClick={() => void handleDeleteTaxonomy(tax)}>
-                            <Icon name="delete" />
-                          </Button>
-                        </div>
-                      )}
-                    ]}
-                    data={taxonomies}
-                  />
-                ) : (
-                  <div className="py-10 text-center text-slate-400">
-                    No taxonomies found.
-                  </div>
-                )}
-              </div>
-            )}
-
-            {activeTab === "general" && (
-              <div className="space-y-6">
+        {/* Tab 2: Categories */}
+        {activeTab === "categories" && (
+          <div className="space-y-4">
+            {editingCategory !== false ? (
+              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 space-y-4">
+                <h3 className="text-base font-bold text-slate-900">
+                  {typeof editingCategory === "object" ? "Edit Category" : "New Category"}
+                </h3>
                 <div className="grid gap-4 md:grid-cols-2">
-                  <TextField label="Workspace name" value={tenantForm.name} onChange={(e) => setTenantForm((current) => ({ ...current, name: e.target.value }))} />
-                  <SelectField label="Plan" value={tenantForm.plan} onChange={(e) => setTenantForm((current) => ({ ...current, plan: e.target.value }))}>
-                    <option value="trial">Trial</option>
-                    <option value="standard">Standard</option>
-                    <option value="enterprise">Enterprise</option>
-                  </SelectField>
+                  {typeof editingCategory !== "object" && (
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Module / Group</label>
+                      <select
+                        value={categoryForm.group_id}
+                        onChange={(e) => setCategoryForm((p) => ({ ...p, group_id: e.target.value }))}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20"
+                      >
+                        <option value="">Select module</option>
+                        {groups.map((g) => (
+                          <option key={g.id} value={g.id}>{g.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Category Name</label>
+                    <input
+                      type="text"
+                      value={categoryForm.name}
+                      onChange={(e) => setCategoryForm((p) => ({ ...p, name: e.target.value }))}
+                      placeholder="e.g., Office Supplies"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Code</label>
+                    <input
+                      type="text"
+                      value={categoryForm.code}
+                      onChange={(e) => setCategoryForm((p) => ({ ...p, code: e.target.value }))}
+                      placeholder="e.g., OFFICE"
+                      disabled={typeof editingCategory === "object"}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 focus:outline-none disabled:opacity-50"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Description</label>
+                    <input
+                      type="text"
+                      value={categoryForm.description}
+                      onChange={(e) => setCategoryForm((p) => ({ ...p, description: e.target.value }))}
+                      placeholder="Optional description"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 focus:outline-none"
+                    />
+                  </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-3">
-                  <Button onClick={() => void handleSaveTenant()} disabled={tenantSaving}>{tenantSaving ? "Saving..." : "Save workspace"}</Button>
-                  <Chip variant={tenant?.status === "active" ? "success" : "warning"}>{tenant?.status ?? "unknown"}</Chip>
-                  {tenant?.status === "active" ? <Button variant="ghost" onClick={() => void handleTenantStatus("suspended")}>Suspend workspace</Button> : <Button variant="ghost" onClick={() => void handleTenantStatus("active")}>Activate workspace</Button>}
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => void handleSaveCategory()}
+                    disabled={categorySaving}
+                    className="px-4 py-2 rounded-xl bg-[#ff6900] hover:bg-[#e05d00] text-white text-xs font-bold shadow-sm transition disabled:opacity-50"
+                  >
+                    {categorySaving ? "Saving..." : typeof editingCategory === "object" ? "Update Category" : "Create Category"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingCategory(false);
+                      setCategoryForm({ group_id: "", name: "", code: "", description: "" });
+                    }}
+                    className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition"
+                  >
+                    Cancel
+                  </button>
                 </div>
-                <p className="text-xs text-slate-500">Workspace slug: <span className="font-mono">{tenant?.slug ?? "-"}</span></p>
               </div>
-            )}
+            ) : (
+              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+                <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-base font-bold text-slate-900">Request Categories</h2>
+                    <p className="text-xs text-slate-500 mt-0.5">Organize request classifications by domain.</p>
+                  </div>
+                  <select
+                    value={categoryFilter}
+                    onChange={(e) => setCategoryFilter(e.target.value)}
+                    className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700"
+                  >
+                    <option value="">All modules</option>
+                    {groups.map((g) => (
+                      <option key={g.id} value={g.id}>{g.name}</option>
+                    ))}
+                  </select>
+                </div>
 
-            {activeTab === "security" && (
-              <div className="space-y-6">
-                <div className="grid gap-4 md:grid-cols-3">
-                  <StatCard label="Roles" value={String(securityOverview?.roles ?? 0)} tone="neutral" />
-                  <StatCard label="Permissions" value={String(securityOverview?.permissions ?? 0)} tone="neutral" />
-                  <StatCard label="Assigned users" value={String(securityOverview?.assigned_users ?? 0)} tone="neutral" />
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                  <h4 className="font-semibold text-slate-900">Role and permission management</h4>
-                  <p className="mt-1 text-sm text-slate-500">Review roles, assign permissions, and control access for this workspace.</p>
-                  <a href="/admin/roles" className="mt-4 inline-flex rounded-full bg-brand-900 px-4 py-2 text-sm font-semibold text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/20">Manage roles</a>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50/75 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-100">
+                      <tr>
+                        <th className="py-3.5 px-5">Name</th>
+                        <th className="py-3.5 px-4">Code</th>
+                        <th className="py-3.5 px-4">Module</th>
+                        <th className="py-3.5 px-4">Status</th>
+                        <th className="py-3.5 px-5 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-slate-700">
+                      {categories.length > 0 ? (
+                        categories.map((cat) => (
+                          <tr key={cat.id} className="hover:bg-slate-50/60 transition">
+                            <td className="py-3.5 px-5 font-bold text-slate-900">{cat.name}</td>
+                            <td className="py-3.5 px-4 font-mono text-slate-500">{cat.code}</td>
+                            <td className="py-3.5 px-4 font-semibold text-slate-700">{groupMap[cat.groupId] || "-"}</td>
+                            <td className="py-3.5 px-4">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-semibold text-[11px] bg-emerald-50 text-emerald-700">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                Active
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-5 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingCategory(cat);
+                                    setCategoryForm({
+                                      group_id: cat.groupId || "",
+                                      name: cat.name,
+                                      code: cat.code,
+                                      description: "",
+                                    });
+                                  }}
+                                  className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 transition"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => void handleDeleteCategory(cat)}
+                                  className="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={5} className="py-10 text-center text-slate-400">
+                            No categories found for this module.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}
-          </SectionCard>
-        </div>
+          </div>
+        )}
+
+        {/* Tab 3: Taxonomies */}
+        {activeTab === "taxonomy" && (
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-bold text-slate-900">Taxonomies & Term Catalogs</h2>
+                <p className="text-xs text-slate-500 mt-0.5">Custom controlled vocabularies and dropdown term sets.</p>
+              </div>
+              <span className="text-xs font-semibold text-slate-500">{taxonomies.length} sets</span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50/75 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-100">
+                  <tr>
+                    <th className="py-3.5 px-5">Taxonomy Name</th>
+                    <th className="py-3.5 px-4">Key Identifier</th>
+                    <th className="py-3.5 px-4">Module</th>
+                    <th className="py-3.5 px-4">Terms Count</th>
+                    <th className="py-3.5 px-5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-700">
+                  {taxonomies.length > 0 ? (
+                    taxonomies.map((tax) => (
+                      <tr key={tax.id} className="hover:bg-slate-50/60 transition">
+                        <td className="py-3.5 px-5 font-bold text-slate-900">{tax.name}</td>
+                        <td className="py-3.5 px-4 font-mono text-slate-500">{tax.key}</td>
+                        <td className="py-3.5 px-4 font-semibold text-slate-700">{tax.module || "-"}</td>
+                        <td className="py-3.5 px-4">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 font-semibold text-slate-700">
+                            {tax.terms.length} terms
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-5 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setEditingTaxonomy(tax)}
+                              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 transition"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void handleDeleteTaxonomy(tax)}
+                              className="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="py-10 text-center text-slate-400">
+                        No taxonomies created yet.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Tab 4: Workspace Profile */}
+        {activeTab === "general" && (
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 space-y-6">
+            <div>
+              <h2 className="text-base font-bold text-slate-900">Workspace Profile</h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Manage your organization’s identity, multi-tenant subdomain slug, and subscription plan.
+              </p>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Organization Name</label>
+                <input
+                  type="text"
+                  value={tenantForm.name}
+                  onChange={(e) => setTenantForm((p) => ({ ...p, name: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Subscription Plan</label>
+                <select
+                  value={tenantForm.plan}
+                  onChange={(e) => setTenantForm((p) => ({ ...p, plan: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 focus:outline-none"
+                >
+                  <option value="trial">Trial Plan (14 Days Free)</option>
+                  <option value="standard">Standard Growth Plan</option>
+                  <option value="enterprise">Enterprise OS Dedicated</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between">
+              <div>
+                <div className="text-xs font-bold text-slate-800">Workspace Subdomain URL</div>
+                <div className="text-xs text-slate-500 mt-0.5">
+                  Your team logs in at <span className="font-mono text-[#ff6900] font-semibold">{tenant?.slug || "acme"}.stanforteedge.com</span>
+                </div>
+              </div>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-semibold text-xs bg-emerald-50 text-emerald-700 border border-emerald-100">
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                Active
+              </span>
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => void handleSaveTenant()}
+                disabled={tenantSaving}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#e05d00] text-white text-xs font-bold shadow-sm shadow-orange-500/20 transition active:scale-95 disabled:opacity-50"
+              >
+                <Save className="h-4 w-4" />
+                <span>{tenantSaving ? "Saving..." : "Save Workspace Changes"}</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Tab 5: Security & Access */}
+        {activeTab === "security" && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <ShieldCheck className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="text-[11px] font-semibold text-slate-500">Configured Roles</div>
+                  <div className="text-xl font-black text-slate-900 mt-0.5">{securityOverview?.roles ?? 6}</div>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                  <Layers className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="text-[11px] font-semibold text-slate-500">Active Permissions</div>
+                  <div className="text-xl font-black text-slate-900 mt-0.5">{securityOverview?.permissions ?? 48}</div>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <CheckCircle2 className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="text-[11px] font-semibold text-slate-500">Assigned Users</div>
+                  <div className="text-xl font-black text-slate-900 mt-0.5">{securityOverview?.assigned_users ?? 12}</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Role-Based Access Control (RBAC)</h3>
+                <p className="text-xs text-slate-500 mt-0.5 max-w-xl">
+                  Granular control over who can create requests, approve payment vouchers, disburse funds, or administer users.
+                </p>
+              </div>
+              <Link
+                to="/admin/roles"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0a1128] hover:bg-[#162044] text-white text-xs font-bold transition shadow-sm"
+              >
+                <span>Manage Roles & Permissions</span>
+                <ExternalLink className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+          </div>
+        )}
       </div>
 
       {editingType !== false && (
@@ -604,6 +789,6 @@ export default function AdminSettingsPage() {
           }}
         />
       )}
-    </AppShell>
+    </PortalLayout>
   );
 }

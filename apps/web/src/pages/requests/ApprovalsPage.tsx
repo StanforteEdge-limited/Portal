@@ -1,19 +1,6 @@
-import {
-  Button,
-  Chip,
-  Icon,
-  PaginationControls,
-  SelectField,
-  PageHeader,
-  SectionCard,
-  StatCard,
-  DataTable,
-  ColumnDef,
-} from "@/shared";
-import { formatCurrency } from "@stanforte/shared";
 import { useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams, useNavigate } from "react-router-dom";
-import { AppShell } from "@/shared/components/layout/AppShell";
+import { Link, useNavigate } from "react-router-dom";
+import { PortalLayout } from "@/components/layout/PortalLayout";
 import { useCachedQuery } from "@/shared/lib/core";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { getWorkspaceProfile } from "@/shared/api/workspace-api";
@@ -22,10 +9,23 @@ import {
   listRequestTypes,
   type RequestRecord,
 } from "@/pages/requests/requests-api";
+import { formatCurrency } from "@stanforte/shared";
 import {
-  buildRequestsNavigation,
-  requestsMobileNav,
-} from "@/pages/requests/requests-data";
+  Clock,
+  CheckCircle2,
+  XCircle,
+  CreditCard,
+  Search,
+  Filter,
+  ArrowRight,
+  ChevronRight,
+  RefreshCw,
+  FileCheck,
+  Calendar,
+  Building,
+  User,
+  AlertCircle,
+} from "lucide-react";
 
 type SortBy = "created_at" | "request_number" | "total_amount" | "status";
 
@@ -135,7 +135,7 @@ export function ApprovalsPage() {
     () => getWorkspaceProfile(),
     { ttlMs: 1000 * 60, storage: "memory" },
   );
-  const [searchParams] = useSearchParams();
+
   const [status, setStatus] = useState("");
   const [selectedRequestTypeId, setSelectedRequestTypeId] = useState("all");
   const [filterDate, setFilterDate] = useState("");
@@ -143,7 +143,7 @@ export function ApprovalsPage() {
   const [sortBy, setSortBy] = useState<SortBy>("created_at");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [currentPage, setCurrentPage] = useState(1);
-  const [perPage, setPerPage] = useState(10);
+  const perPage = 10;
 
   const {
     data: approvalsData,
@@ -197,7 +197,7 @@ export function ApprovalsPage() {
         if (!key || key !== filterDate) return false;
       }
       if (search.trim()) {
-        const haystack = [row.requestNo, row.type, row.staff, row.pendingStep].join(" ").toLowerCase();
+        const haystack = [row.requestNo, row.type, row.staff, row.pendingStep, row.teamName].join(" ").toLowerCase();
         if (!haystack.includes(search.trim().toLowerCase())) return false;
       }
       return true;
@@ -223,299 +223,322 @@ export function ApprovalsPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [status, selectedRequestTypeId, filterDate, search, sortBy, sortOrder, perPage]);
+  }, [status, selectedRequestTypeId, filterDate, search, sortBy, sortOrder]);
 
-  useEffect(() => {
-    if (currentPage > totalPages) setCurrentPage(totalPages);
-  }, [currentPage, totalPages]);
-
-  const awaiting = filteredRows.filter((r) => isPendingLike(r)).length;
-  const approved = filteredRows.filter((r) => r.tone === "success").length;
-  const rejected = filteredRows.filter((r) => r.tone === "danger").length;
-
-  const userName =
-    `${user?.first_name || ""} ${user?.last_name || ""}`.trim() ||
-    user?.email ||
-    "Staff";
-
-  const columns: ColumnDef<any>[] = useMemo(() => [
-    {
-      header: "Request No",
-      cell: (row: any) => (
-        <div>
-          <Link
-            to={`/requests/approvals/${row.requestId}`}
-            className="text-sm font-semibold text-brand-900 transition hover:underline"
-          >
-            {row.requestNo}
-          </Link>
-          {row.pendingStep ? (
-            <p className="mt-0.5 text-xs text-slate-400">{row.pendingStep}</p>
-          ) : null}
-        </div>
-      )
-    },
-    {
-      header: "Staff",
-      cell: (row: any) => row.staff,
-      className: "capitalize text-sm text-slate-700"
-    },
-    {
-      header: "Module",
-      cell: (row: any) => row.categoryLabel,
-      className: "text-sm text-slate-600"
-    },
-    {
-      header: "Team",
-      cell: (row: any) => (
-        <div>
-          <p className="text-sm font-medium text-slate-800 capitalize">
-            {row.teamName || "-"}
-          </p>
-          {row.organizationName ? (
-            <p className="mt-0.5 text-xs text-slate-400">{row.organizationName}</p>
-          ) : null}
-        </div>
-      )
-    },
-    {
-      header: "Amount",
-      cell: (row: any) => formatCurrency(row.totalAmount, row.currency),
-      className: "text-sm text-slate-600"
-    },
-    {
-      header: "Due Date",
-      cell: (row: any) => row.dueDate,
-      className: "text-sm text-slate-600"
-    },
-    {
-      header: "Status",
-      cell: (row: any) => <Chip variant={row.tone}>{row.status.toUpperCase()}</Chip>
-    },
-    {
-      header: "Actions",
-      cell: (row: any) => (
-        <Link
-          to={`/requests/approvals/${row.requestId}`}
-          className="inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold text-brand-900 transition hover:bg-brand-900/5"
-          onClick={(e) => e.stopPropagation()}
-        >
-          Review
-          <Icon name="arrow_forward" className="text-[18px]" />
-        </Link>
-      ),
-      className: "text-right"
-    }
-  ], []);
+  const awaiting = allRows.filter((r) => isPendingLike(r)).length;
+  const approved = allRows.filter((r) => r.tone === "success").length;
+  const rejected = allRows.filter((r) => r.tone === "danger").length;
+  const totalPendingAmount = allRows
+    .filter((r) => isPendingLike(r))
+    .reduce((sum, r) => sum + (r.totalAmount || 0), 0);
 
   return (
-    <AppShell
-      navigation={buildRequestsNavigation()}
-      activeLabel="Approvals"
-      user={{
-        name: userName,
-        role: profile?.employee_profile?.job_title || "Staff",
-      }}
-      mobileNav={requestsMobileNav}
-    >
-      <div className="hidden lg:block">
-        <PageHeader
-          breadcrumbs={[{ label: "Requests" }, { label: "Approvals" }]}
-          title="Approvals"
-          description="Review and act on requests awaiting your decision."
-        />
-
-        <div className="space-y-6">
-          {/* Stats */}
-          <div className="grid gap-4 md:grid-cols-3">
-            <StatCard label="Awaiting Review" value={String(awaiting)} tone="pending" />
-            <StatCard label="Approved" value={String(approved)} tone="success" />
-            <StatCard label="Rejected" value={String(rejected)} tone="danger" />
-          </div>
-
-          {/* Filters */}
-          <section className="section-card p-4 sm:p-5" aria-label="Approval filters">
-            <div className="flex flex-wrap items-end gap-3">
-              <SelectField
-                label="Sort By"
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as SortBy)}
-                className="min-w-[130px] flex-1 lg:flex-none"
-              >
-                <option value="created_at">Submitted date</option>
-                <option value="request_number">Request number</option>
-                <option value="total_amount">Total amount</option>
-                <option value="status">Status</option>
-              </SelectField>
-              <SelectField
-                label="Order"
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value as "asc" | "desc")}
-                className="min-w-[110px] flex-1 lg:flex-none"
-              >
-                <option value="desc">Newest</option>
-                <option value="asc">Oldest</option>
-              </SelectField>
-              <SelectField
-                label="Status"
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                className="min-w-[120px] flex-1 lg:flex-none"
-              >
-                {statusOptions.map((item) => (
-                  <option key={item.value} value={item.value}>{item.label}</option>
-                ))}
-              </SelectField>
-              <SelectField
-                label="Request Type"
-                value={selectedRequestTypeId}
-                onChange={(e) => setSelectedRequestTypeId(e.target.value)}
-                className="min-w-[180px] flex-1 lg:flex-none"
-              >
-                {requestTypeOptions.map((item) => (
-                  <option key={item.value} value={item.value}>{item.label}</option>
-                ))}
-              </SelectField>
-              <label className="grid gap-1.5 text-sm">
-                <span className="font-semibold text-slate-700">Date</span>
-                <input
-                  type="date"
-                  value={filterDate}
-                  onChange={(e) => setFilterDate(e.target.value)}
-                  className="rounded-2xl border border-slate-200 bg-white px-4 py-[0.6rem] text-sm font-semibold text-slate-700 focus:outline-none focus:ring-4 focus:ring-brand-900/10"
-                />
-              </label>
-              <label className="grid gap-1.5 text-sm">
-                <span className="font-semibold text-slate-700">Search</span>
-                <input
-                  type="search"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Request no, staff, type..."
-                  className="rounded-2xl border border-slate-200 px-4 py-[0.6rem] text-sm font-semibold text-slate-700 focus:outline-none focus:ring-4 focus:ring-brand-900/10"
-                />
-              </label>
+    <PortalLayout activeNav="Approvals">
+      <div className="space-y-6">
+        {/* Header Row */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-xs font-medium text-slate-500 mb-1">
+              <Link to="/dashboard" className="hover:text-slate-800 transition">Dashboard</Link>
+              <ChevronRight className="h-3 w-3" />
+              <span className="text-slate-800 font-semibold">Approvals</span>
             </div>
-          </section>
-
-          {/* Table */}
-          <SectionCard
-            title="Pending Approvals"
-            description="Requests in your approval queue."
-            action={
-              filteredRows.length > 0 ? (
-                <Chip variant="neutral">
-                  Showing{" "}
-                  {Math.min(filteredRows.length, (safePage - 1) * perPage + 1)}-
-                  {Math.min(filteredRows.length, safePage * perPage)} of{" "}
-                  {filteredRows.length} request
-                  {filteredRows.length === 1 ? "" : "s"}
-                </Chip>
-              ) : undefined
-            }
-          >
-            <DataTable
-              columns={columns}
-              data={pagedRows}
-              loading={loading}
-              error={error}
-              caption="Pending Approvals"
-              emptyTitle="No approvals pending"
-              emptyDescription="There are no requests in your approval queue."
-              onRowClick={(row) => navigate(`/requests/approvals/${row.requestId}`)}
-              pagination={{
-                page: safePage,
-                totalPages: totalPages,
-                totalCount: filteredRows.length,
-                perPage,
-                onPageChange: setCurrentPage,
-                onPerPageChange: (value) => {
-                  setPerPage(value);
-                  setCurrentPage(1);
-                },
-              }}
-            />
-          </SectionCard>
-        </div>
-      </div>
-
-      {/* Mobile */}
-      <div className="space-y-4 lg:hidden">
-        <div className="pt-1">
-          <p className="text-[0.72rem] font-bold uppercase tracking-[0.18em] text-slate-500">
-            Staff Portal
-          </p>
-          <h1 className="page-title mt-2 text-[clamp(1.7rem,7vw,2.2rem)]">Approvals</h1>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <StatCard label="Awaiting Review" value={String(awaiting)} tone="pending" />
-          <StatCard label="Approved" value={String(approved)} tone="success" />
-        </div>
-
-        {loading ? (
-          <div className="rounded-[22px] bg-slate-50 px-4 py-5 text-sm text-slate-500">
-            Loading approvals...
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight font-headline">
+              Approval Queue
+            </h1>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Review, verify, and decide on requests awaiting your authorization.
+            </p>
           </div>
-        ) : (
-          <div className="space-y-3">
-            {pagedRows.map((row) => (
-              <Link
-                key={row.id}
-                to={`/requests/approvals/${row.requestId}`}
-                className="flex w-full items-start justify-between gap-3 rounded-[22px] border border-slate-100 bg-white px-4 py-4 shadow-sm transition hover:bg-slate-50"
-              >
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-semibold text-brand-900">{row.requestNo}</p>
-                    <Chip variant={row.tone}>{row.status.toUpperCase()}</Chip>
-                  </div>
-                  <p className="mt-1 text-sm capitalize text-slate-600">{row.staff}</p>
-                  <p className="mt-1 text-sm text-slate-500">{row.type}</p>
-                  <p className="mt-2 text-sm font-semibold text-slate-700">
-                    {formatCurrency(row.totalAmount, row.currency)}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-400">{row.submitted}</p>
+
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => refetch()}
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-sm transition"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin text-[#ff6900]" : ""}`} />
+              <span>Refresh</span>
+            </button>
+            <Link
+              to="/requests/new"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#ff6900] hover:bg-[#e05d00] text-white text-xs font-bold shadow-sm shadow-orange-500/20 transition active:scale-95"
+            >
+              <FileCheck className="h-4 w-4" />
+              <span>New Request</span>
+            </Link>
+          </div>
+        </div>
+
+        {/* 4 Metric Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                <Clock className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="text-[11px] font-semibold text-slate-500">Awaiting Decision</div>
+                <div className="text-xl font-black text-amber-600 mt-0.5">{awaiting}</div>
+              </div>
+            </div>
+            {awaiting > 0 && <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />}
+          </div>
+
+          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <CheckCircle2 className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="text-[11px] font-semibold text-slate-500">Approved</div>
+                <div className="text-xl font-black text-slate-900 mt-0.5">{approved}</div>
+              </div>
+            </div>
+            <div className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full">
+              Completed
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+                <XCircle className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="text-[11px] font-semibold text-slate-500">Rejected / Returned</div>
+                <div className="text-xl font-black text-slate-900 mt-0.5">{rejected}</div>
+              </div>
+            </div>
+            <div className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+              Actioned
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                <CreditCard className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="text-[11px] font-semibold text-slate-500">Value Under Review</div>
+                <div className="text-lg font-black text-slate-900 mt-0.5">
+                  {formatCurrency(totalPendingAmount, "NGN")}
                 </div>
-                <Icon name="chevron_right" className="mt-1 shrink-0 text-[18px] text-slate-400" />
-              </Link>
-            ))}
+              </div>
+            </div>
+            <div className="text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+              Exposure
+            </div>
           </div>
-        )}
+        </div>
 
-        <section className="section-card grid gap-3 p-3">
-          <SelectField
-            label="Per Page"
-            value={String(perPage)}
-            onChange={(e) => setPerPage(Number(e.target.value))}
-            className="w-full"
-          >
-            <option value={10}>10 / page</option>
-            <option value={25}>25 / page</option>
-            <option value={50}>50 / page</option>
-          </SelectField>
-          <div className="flex items-center justify-between gap-3 text-sm">
-            <button
-              type="button"
-              className="rounded-full border border-slate-200 bg-white px-3 py-1.5 disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={safePage <= 1}
-              onClick={() => setCurrentPage((v) => Math.max(1, v - 1))}
-            >
-              Previous
-            </button>
-            <span className="text-slate-600">Page {safePage} of {totalPages}</span>
-            <button
-              type="button"
-              className="rounded-full border border-slate-200 bg-white px-3 py-1.5 disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={safePage >= totalPages}
-              onClick={() => setCurrentPage((v) => Math.min(totalPages, v + 1))}
-            >
-              Next
-            </button>
+        {/* Filter and Search Bar */}
+        <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by request #, submitter name, department..."
+              className="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+            />
           </div>
-        </section>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20"
+            >
+              {statusOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+
+            <select
+              value={selectedRequestTypeId}
+              onChange={(e) => setSelectedRequestTypeId(e.target.value)}
+              className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20"
+            >
+              {requestTypeOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+
+            <input
+              type="date"
+              value={filterDate}
+              onChange={(e) => setFilterDate(e.target.value)}
+              className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 focus:outline-none"
+            />
+          </div>
+        </div>
+
+        {/* Requests Table */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+          <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-bold text-slate-900">Requests In Queue</h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Showing {sortedRows.length} requests matching active filters.
+              </p>
+            </div>
+            {filteredRows.length > 0 && (
+              <span className="text-xs font-semibold text-slate-500">
+                Page {safePage} of {totalPages}
+              </span>
+            )}
+          </div>
+
+          {error && (
+            <div className="p-4 mx-5 my-3 rounded-xl bg-rose-50 text-rose-700 text-xs flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>Could not load approval queue: {String(error)}</span>
+            </div>
+          )}
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50/75 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-100">
+                <tr>
+                  <th className="py-3.5 px-5">Request No</th>
+                  <th className="py-3.5 px-4">Submitter</th>
+                  <th className="py-3.5 px-4">Category</th>
+                  <th className="py-3.5 px-4">Team / Dept</th>
+                  <th className="py-3.5 px-4">Amount</th>
+                  <th className="py-3.5 px-4">Current Step</th>
+                  <th className="py-3.5 px-4">Status</th>
+                  <th className="py-3.5 px-5 text-right">Decision</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-700">
+                {loading ? (
+                  <tr>
+                    <td colSpan={8} className="py-8 text-center text-slate-400">
+                      Loading approvals...
+                    </td>
+                  </tr>
+                ) : pagedRows.length > 0 ? (
+                  pagedRows.map((row) => (
+                    <tr key={row.requestId} className="hover:bg-slate-50/60 transition">
+                      <td className="py-3.5 px-5 font-bold text-slate-900">
+                        <Link
+                          to={`/requests/approvals/${row.requestId}`}
+                          className="hover:text-[#ff6900] transition"
+                        >
+                          {row.requestNo}
+                        </Link>
+                        <div className="text-[11px] font-normal text-slate-400 mt-0.5">
+                          {row.submitted}
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <div className="font-semibold text-slate-800">{row.staff}</div>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className="font-semibold text-slate-700">{row.type}</span>
+                        {row.categoryLabel && (
+                          <span className="text-[10px] text-slate-400 block">{row.categoryLabel}</span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-600">
+                        <span className="font-medium">{row.teamName || "-"}</span>
+                      </td>
+                      <td className="py-3.5 px-4 font-bold text-slate-900">
+                        {row.totalAmount > 0 ? formatCurrency(row.totalAmount, row.currency) : "—"}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        {row.pendingStep ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 font-semibold text-[11px] border border-amber-200/60">
+                            {row.pendingStep}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-semibold text-[11px] ${
+                            row.tone === "success"
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                              : row.tone === "danger"
+                              ? "bg-rose-50 text-rose-700 border border-rose-100"
+                              : row.tone === "warning" || row.tone === "pending"
+                              ? "bg-amber-50 text-amber-700 border border-amber-100"
+                              : "bg-slate-50 text-slate-700 border border-slate-200"
+                          }`}
+                        >
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              row.tone === "success"
+                                ? "bg-emerald-500"
+                                : row.tone === "danger"
+                                ? "bg-rose-500"
+                                : row.tone === "warning" || row.tone === "pending"
+                                ? "bg-amber-500"
+                                : "bg-slate-400"
+                            }`}
+                          />
+                          {row.status.toUpperCase()}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-5 text-right">
+                        <Link
+                          to={`/requests/approvals/${row.requestId}`}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0a1128] hover:bg-[#162044] text-white text-[11px] font-bold transition shadow-sm"
+                        >
+                          <span>Review</span>
+                          <ArrowRight className="h-3 w-3" />
+                        </Link>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={8} className="py-10 text-center">
+                      <div className="w-12 h-12 rounded-2xl bg-slate-50 text-slate-400 flex items-center justify-center mx-auto mb-2">
+                        <FileCheck className="h-6 w-6" />
+                      </div>
+                      <p className="font-semibold text-slate-700 text-sm">No approvals found</p>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        Your queue is completely clear. No requests currently require your action.
+                      </p>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="p-4 border-t border-slate-100 flex items-center justify-between">
+              <button
+                type="button"
+                disabled={safePage <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition"
+              >
+                Previous
+              </button>
+              <span className="text-xs font-semibold text-slate-600">
+                Page {safePage} of {totalPages}
+              </span>
+              <button
+                type="button"
+                disabled={safePage >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition"
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </div>
       </div>
-    </AppShell>
+    </PortalLayout>
   );
 }
 
