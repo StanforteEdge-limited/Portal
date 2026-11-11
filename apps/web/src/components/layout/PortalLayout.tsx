@@ -214,6 +214,13 @@ export const ADMIN_NAV_GROUPS: NavGroupDef[] = [
         description: "Operating bank accounts and ledger entries",
       },
       {
+        label: "Payment Vouchers",
+        icon: Receipt,
+        path: "/finance/payment-vouchers",
+        aliases: ["Vouchers", "PVs", "Disbursements"],
+        description: "Disbursement payment vouchers and retirement tracking",
+      },
+      {
         label: "Budgets & Plans",
         icon: PieChart,
         path: "/finance/budgets",
@@ -346,6 +353,13 @@ export const APP_LAUNCHER_CATALOG: AppLauncherCategory[] = [
         icon: Wallet,
         path: "/finance/accounts",
         color: "bg-emerald-50 text-emerald-600",
+      },
+      {
+        name: "Payment Vouchers",
+        description: "Disbursement register & retirement audit",
+        icon: Receipt,
+        path: "/finance/payment-vouchers",
+        color: "bg-blue-50 text-blue-600",
       },
       {
         name: "Budgets & Plans",
