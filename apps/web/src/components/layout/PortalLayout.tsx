@@ -972,16 +972,18 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
             </Link>
 
             {/* --------------------------------------------------------- */}
-            {/* 9-DOTS APP LAUNCHER BUTTON (Matching Image 3)             */}
+            {/* 9-DOTS APP LAUNCHER BUTTON (Admin Console only)           */}
             {/* --------------------------------------------------------- */}
-            <button
-              type="button"
-              onClick={() => setAppLauncherOpen(true)}
-              className="p-2 rounded-xl hover:bg-slate-100 text-slate-700 hover:text-slate-900 transition-colors"
-              title="App Launcher & Applications Directory"
-            >
-              <LayoutGrid className="h-5 w-5 text-slate-700" />
-            </button>
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => setAppLauncherOpen(true)}
+                className="p-2 rounded-xl hover:bg-slate-100 text-slate-700 hover:text-slate-900 transition-colors"
+                title="App Launcher & Applications Directory"
+              >
+                <LayoutGrid className="h-5 w-5 text-slate-700" />
+              </button>
+            )}
 
             {/* --------------------------------------------------------- */}
             {/* USER PROFILE DROPDOWN (Right Corner)                       */}
@@ -1167,9 +1169,9 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
       </div>
 
       {/* ------------------------------------------------------------- */}
-      {/* 3. 9-DOTS APP LAUNCHER SLIDE-OVER DRAWER (Image 3)            */}
+      {/* 3. 9-DOTS APP LAUNCHER SLIDE-OVER DRAWER (Admin only)         */}
       {/* ------------------------------------------------------------- */}
-      {appLauncherOpen && (
+      {appLauncherOpen && isAdmin && (
         <div className="fixed inset-0 z-50 overflow-hidden">
           {/* Backdrop */}
           <div
