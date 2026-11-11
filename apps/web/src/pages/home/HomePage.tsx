@@ -17,7 +17,6 @@ import {
   Plus,
   DollarSign,
   ChevronRight,
-  Sparkles,
   Layers,
   FileSpreadsheet,
   Lock,
@@ -179,14 +178,15 @@ export default function HomePage() {
     <PublicLayout activePath="/">
       {/* 1. Hero Section (Clean, authoritative, high-impact) */}
       <section className="relative overflow-hidden pt-12 pb-16 lg:pt-16 lg:pb-24 px-6 max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
           {/* Left Column: Copy & Actions */}
-          <div className="lg:col-span-7 space-y-8">
+          <div className="lg:col-span-6 space-y-7">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-orange-50 border border-orange-200 text-[#ff6900] text-xs font-bold uppercase tracking-wider">
-              <Sparkles className="h-3.5 w-3.5" /> Multi-Tenant Workforce Operating System
+              <span className="w-2 h-2 rounded-full bg-[#ff6900] animate-pulse shrink-0" />
+              <span>Multi-Tenant Workforce Operating System</span>
             </div>
 
-            <h1 className="text-4xl sm:text-5xl lg:text-[3.75rem] font-black tracking-tight text-slate-900 leading-[1.12] font-headline">
+            <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-black tracking-tight text-slate-900 leading-[1.12] font-headline">
               Run Your Organization <br />
               Smarter with <br />
               <span className="text-[#ff6900]">Stanforte Edge</span>
@@ -197,13 +197,13 @@ export default function HomePage() {
             </p>
 
             {/* CTA Buttons */}
-            <div className="flex flex-wrap items-center gap-4 pt-2">
+            <div className="flex flex-wrap items-center gap-4 pt-1">
               <Link
                 to="/register"
                 className="px-8 py-3.5 rounded-full font-bold text-sm bg-[#ff6900] hover:bg-[#ea580c] text-white shadow-lg shadow-orange-500/25 transition-all transform hover:-translate-y-0.5 flex items-center gap-2"
               >
-                Start Free Trial
-                <ArrowRight className="h-4 w-4" />
+                <span>Start Free Trial</span>
+                <ArrowRight className="h-4 w-4 shrink-0" />
               </Link>
               <button
                 type="button"
@@ -213,12 +213,12 @@ export default function HomePage() {
                 <div className="w-6 h-6 rounded-full bg-[#ff6900] text-white flex items-center justify-center shadow-xs">
                   <Play className="h-2.5 w-2.5 fill-white ml-0.5" />
                 </div>
-                Watch Video Walkthrough
+                <span>Watch Video Walkthrough</span>
               </button>
             </div>
 
             {/* 5 Feature Module Pills Row (Interactive feature trigger) */}
-            <div className="pt-6">
+            <div className="pt-4">
               <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5">
                 Explore Core Workspaces:
               </div>
@@ -288,12 +288,12 @@ export default function HomePage() {
           </div>
 
           {/* Right Column: Default Image Design, dynamically changes to Dashboard Preview when user clicks any feature */}
-          <div className="lg:col-span-5 relative flex justify-center lg:justify-end">
+          <div className="lg:col-span-6 relative flex justify-center lg:justify-end items-center">
             {/* When NO feature is clicked: DEFAULT IMAGE DESIGN */}
             {selectedFeature === null && (
               <div className="relative flex justify-center lg:justify-end w-full animate-in fade-in duration-200">
                 {/* Orange Curved Graphic Backdrop */}
-                <div className="absolute top-1/2 -translate-y-1/2 right-4 w-[340px] sm:w-[420px] h-[340px] sm:h-[420px] bg-gradient-to-tr from-[#ff6900] via-[#ff8800] to-[#ffa500] rounded-full -z-0 opacity-90 blur-0" />
+                <div className="absolute top-1/2 -translate-y-1/2 right-2 sm:right-6 w-[340px] sm:w-[420px] h-[340px] sm:h-[420px] bg-gradient-to-tr from-[#ff6900] via-[#ff8800] to-[#ffa500] rounded-full -z-0 opacity-90 blur-0" />
 
                 {/* Hero Photo Container */}
                 <div className="relative z-10 w-[310px] sm:w-[380px] h-[400px] sm:h-[480px] rounded-3xl overflow-hidden shadow-2xl border-4 border-white bg-slate-100">
@@ -338,8 +338,9 @@ export default function HomePage() {
                   </div>
                   <div>
                     <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Payroll Status</div>
-                    <div className="text-xs font-bold text-emerald-600 mt-0.5 flex items-center gap-1">
-                      <Check className="h-3 w-3 stroke-[3]" /> Tax & Pension Audited
+                    <div className="text-xs font-bold text-emerald-600 mt-0.5 flex items-center gap-1.5">
+                      <Check className="h-3.5 w-3.5 stroke-[3]" />
+                      <span>Tax & Pension Audited</span>
                     </div>
                   </div>
                 </div>
@@ -348,366 +349,390 @@ export default function HomePage() {
 
             {/* When a feature IS clicked: DYNAMIC DASHBOARD PREVIEW */}
             {selectedFeature !== null && (
-              <div className="relative z-10 w-full max-w-[440px] rounded-3xl overflow-hidden shadow-2xl border border-slate-200/90 bg-white transition-all animate-in fade-in zoom-in-95 duration-200">
-                {/* Browser / App Window Top Chrome Bar */}
-                <div className="bg-slate-900 text-white px-4 py-2.5 flex items-center justify-between text-xs border-b border-slate-800">
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
-                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                    <span className="ml-2 font-mono text-[10px] text-slate-400">
-                      app.stanforteedge.com/
-                      {selectedFeature === "roster"
-                        ? "hr/directory"
-                        : selectedFeature === "attendance"
-                        ? "attendance/geofence"
-                        : selectedFeature === "payroll"
-                        ? "payroll/nov-2026"
-                        : selectedFeature === "procurement"
-                        ? "finance/budgets"
-                        : "requests/matrix"}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedFeature(null)}
-                    className="text-[10px] text-slate-400 hover:text-white flex items-center gap-1 bg-slate-800 hover:bg-slate-700 px-2 py-0.5 rounded-md transition-colors"
-                    title="Return to default photo"
-                  >
-                    <X className="h-3 w-3" /> Default view
-                  </button>
-                </div>
+              <div className="relative z-10 w-full max-w-[520px] animate-in fade-in zoom-in-95 duration-200">
+                {/* Layered Under-Card Sheen */}
+                <div className="absolute -inset-1.5 rounded-[2rem] bg-gradient-to-tr from-[#ff6900]/20 via-slate-100 to-amber-100/40 blur-xs -z-10" />
 
-                {/* Dashboard Screen Content */}
-                <div className="p-5 bg-slate-50/50 min-h-[380px] flex flex-col justify-between">
-                  {/* TAB 1: HR & Workforce Directory */}
-                  {selectedFeature === "roster" && (
-                    <div className="space-y-3.5 animate-in fade-in duration-200">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                            <Users className="h-3.5 w-3.5 text-blue-600" /> Workforce Directory
-                          </div>
-                          <div className="text-[10px] text-slate-500">1,240 Personnel &bull; 6 Departments</div>
-                        </div>
-                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                          All Records Synced
+                {/* Main Window */}
+                <div className="w-full rounded-2xl overflow-hidden shadow-2xl border border-slate-200/90 bg-white">
+                  {/* Browser / App Window Top Chrome Bar */}
+                  <div className="bg-slate-900 text-white px-4 py-2.5 flex items-center justify-between text-xs border-b border-slate-800">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#ff5f56]" />
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#ffbd2e]" />
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#27c93f]" />
+                      <div className="ml-2 bg-slate-800/90 rounded-md px-2.5 py-0.5 flex items-center gap-1.5 text-[10px] font-mono text-slate-300 border border-slate-700/60">
+                        <Lock className="h-2.5 w-2.5 text-emerald-400 shrink-0" />
+                        <span>
+                          app.stanforteedge.com/
+                          {selectedFeature === "roster"
+                            ? "hr/directory"
+                            : selectedFeature === "attendance"
+                            ? "attendance/geofence"
+                            : selectedFeature === "payroll"
+                            ? "payroll/nov-2026"
+                            : selectedFeature === "procurement"
+                            ? "finance/budgets"
+                            : "requests/matrix"}
                         </span>
-                      </div>
-
-                      {/* Staff Cards Mini-List */}
-                      <div className="space-y-2">
-                        <div className="p-2.5 bg-white rounded-xl border border-slate-200/80 shadow-xs flex items-center justify-between">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-[11px]">
-                              OA
-                            </div>
-                            <div>
-                              <div className="text-xs font-bold text-slate-900 leading-tight">Oluwaseun Adeleke</div>
-                              <div className="text-[10px] text-slate-400">Chief Financial Officer &bull; Finance</div>
-                            </div>
-                          </div>
-                          <span className="text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">
-                            Active
-                          </span>
-                        </div>
-
-                        <div className="p-2.5 bg-white rounded-xl border border-slate-200/80 shadow-xs flex items-center justify-between">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 rounded-full bg-orange-100 text-[#ff6900] font-bold flex items-center justify-center text-[11px]">
-                              FO
-                            </div>
-                            <div>
-                              <div className="text-xs font-bold text-slate-900 leading-tight">Fatima Olarinwaju</div>
-                              <div className="text-[10px] text-slate-400">Head of People &bull; HR & Culture</div>
-                            </div>
-                          </div>
-                          <span className="text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">
-                            Active
-                          </span>
-                        </div>
-
-                        <div className="p-2.5 bg-white rounded-xl border border-slate-200/80 shadow-xs flex items-center justify-between">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 rounded-full bg-purple-100 text-purple-700 font-bold flex items-center justify-center text-[11px]">
-                              CI
-                            </div>
-                            <div>
-                              <div className="text-xs font-bold text-slate-900 leading-tight">Chinedu Ibeawuchi</div>
-                              <div className="text-[10px] text-slate-400">Logistics Manager &bull; Supply Chain</div>
-                            </div>
-                          </div>
-                          <span className="text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full">
-                            On Leave
-                          </span>
-                        </div>
-
-                        <div className="p-2.5 bg-white rounded-xl border border-slate-200/80 shadow-xs flex items-center justify-between">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 rounded-full bg-teal-100 text-teal-700 font-bold flex items-center justify-center text-[11px]">
-                              AY
-                            </div>
-                            <div>
-                              <div className="text-xs font-bold text-slate-900 leading-tight">Amina Yusuf</div>
-                              <div className="text-[10px] text-slate-400">Senior Systems Engineer &bull; Tech</div>
-                            </div>
-                          </div>
-                          <span className="text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">
-                            Active
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Mini Metric footer */}
-                      <div className="p-2.5 bg-blue-50/70 border border-blue-200/70 rounded-xl flex items-center justify-between text-[11px]">
-                        <span className="text-blue-900 font-semibold flex items-center gap-1.5">
-                          <CheckCircle2 className="h-3.5 w-3.5 text-blue-600" /> Automated Onboarding & KYC
-                        </span>
-                        <span className="font-bold text-blue-700">100% Complete</span>
                       </div>
                     </div>
-                  )}
-
-                  {/* TAB 2: Time & Attendance */}
-                  {selectedFeature === "attendance" && (
-                    <div className="space-y-3.5 animate-in fade-in duration-200">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                            <Clock className="h-3.5 w-3.5 text-amber-600" /> Geofence & Campus Clock-In
-                          </div>
-                          <div className="text-[10px] text-slate-500">Victoria Island Campus &bull; 200m Polygon</div>
-                        </div>
-                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> GPS Verified
-                        </span>
-                      </div>
-
-                      {/* Attendance Stats Cards */}
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="p-3 bg-white rounded-xl border border-slate-200">
-                          <div className="text-[9px] font-bold text-slate-400 uppercase">On-Time Rate</div>
-                          <div className="text-lg font-black text-emerald-600">96.4%</div>
-                          <div className="text-[9px] text-slate-500">45 / 48 verified present</div>
-                        </div>
-                        <div className="p-3 bg-white rounded-xl border border-slate-200">
-                          <div className="text-[9px] font-bold text-slate-400 uppercase">Avg Clock-In</div>
-                          <div className="text-lg font-black text-slate-900">08:14 AM</div>
-                          <div className="text-[9px] text-slate-500">Zero proxy check-ins</div>
-                        </div>
-                      </div>
-
-                      {/* Live Feed */}
-                      <div className="space-y-1.5 text-xs">
-                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Live Check-In Stream</div>
-                        <div className="p-2 bg-white rounded-xl border border-slate-200 flex items-center justify-between text-[11px]">
-                          <span className="font-semibold text-slate-800">Oluwaseun Adeleke</span>
-                          <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-md">08:04 AM &bull; Geofence</span>
-                        </div>
-                        <div className="p-2 bg-white rounded-xl border border-slate-200 flex items-center justify-between text-[11px]">
-                          <span className="font-semibold text-slate-800">Fatima Olarinwaju</span>
-                          <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-md">08:12 AM &bull; Biometric #1</span>
-                        </div>
-                        <div className="p-2 bg-white rounded-xl border border-slate-200 flex items-center justify-between text-[11px]">
-                          <span className="font-semibold text-slate-800">Amina Yusuf</span>
-                          <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-md">08:21 AM &bull; Biometric #2</span>
-                        </div>
-                      </div>
-
-                      <div className="p-2 bg-amber-50 border border-amber-200 rounded-xl text-[10px] text-amber-800 flex items-center justify-between font-medium">
-                        <span>Biometric Hardware Synced</span>
-                        <span className="font-bold">2 Online Terminals</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* TAB 3: Payroll & Tax */}
-                  {selectedFeature === "payroll" && (
-                    <div className="space-y-3.5 animate-in fade-in duration-200">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                            <CreditCard className="h-3.5 w-3.5 text-[#ff6900]" /> November 2026 Salary Run
-                          </div>
-                          <div className="text-[10px] text-slate-500">Automated PAYE Tax & PenCom Compliance</div>
-                        </div>
-                        <span className="text-[10px] font-bold text-white bg-emerald-600 px-2 py-0.5 rounded-full shadow-xs">
-                          Ready for Payment
-                        </span>
-                      </div>
-
-                      {/* Payroll Financial Breakdown */}
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="p-3 bg-white rounded-xl border border-slate-200">
-                          <div className="text-[9px] font-bold text-slate-400 uppercase">Gross Payroll</div>
-                          <div className="text-base font-black text-slate-900">&#8358;18,450,000</div>
-                          <div className="text-[9px] text-slate-500">48 staff members</div>
-                        </div>
-                        <div className="p-3 bg-white rounded-xl border border-slate-200">
-                          <div className="text-[9px] font-bold text-slate-400 uppercase">PAYE Tax Deductions</div>
-                          <div className="text-base font-black text-slate-900">&#8358;2,860,000</div>
-                          <div className="text-[9px] text-slate-500">State IRS schedule ready</div>
-                        </div>
-                        <div className="p-3 bg-white rounded-xl border border-slate-200">
-                          <div className="text-[9px] font-bold text-slate-400 uppercase">Pension Remittances</div>
-                          <div className="text-base font-black text-slate-900">&#8358;1,476,000</div>
-                          <div className="text-[9px] text-slate-500">PFA distribution set</div>
-                        </div>
-                        <div className="p-3 bg-orange-50 rounded-xl border border-orange-200">
-                          <div className="text-[9px] font-bold text-[#ff6900] uppercase">Net Salary Disbursal</div>
-                          <div className="text-base font-black text-[#ff6900]">&#8358;14,114,000</div>
-                          <div className="text-[9px] text-orange-700/80">Bank batch file ready</div>
-                        </div>
-                      </div>
-
-                      <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between text-[11px]">
-                        <span className="text-emerald-900 font-semibold flex items-center gap-1.5">
-                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> Commercial Bank Batch (CSV)
-                        </span>
-                        <span className="font-bold text-emerald-700">Generated</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* TAB 4: Budgets & Procurement */}
-                  {selectedFeature === "procurement" && (
-                    <div className="space-y-3.5 animate-in fade-in duration-200">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                            <Building2 className="h-3.5 w-3.5 text-blue-600" /> Departmental Budgets & POs
-                          </div>
-                          <div className="text-[10px] text-slate-500">Q4 Allocation: &#8358;22.6M Total</div>
-                        </div>
-                        <span className="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
-                          64% Utilized
-                        </span>
-                      </div>
-
-                      {/* Budget bars */}
-                      <div className="space-y-2.5 bg-white p-3.5 rounded-2xl border border-slate-200">
-                        <div className="space-y-1">
-                          <div className="flex justify-between text-[11px] font-semibold">
-                            <span className="text-slate-700">Operations & Logistics</span>
-                            <span className="text-slate-900 font-bold">&#8358;8.2M / &#8358;11.4M (72%)</span>
-                          </div>
-                          <div className="w-full bg-slate-100 rounded-full h-2">
-                            <div className="bg-[#ff6900] h-2 rounded-full w-[72%]" />
-                          </div>
-                        </div>
-
-                        <div className="space-y-1">
-                          <div className="flex justify-between text-[11px] font-semibold">
-                            <span className="text-slate-700">Information Technology</span>
-                            <span className="text-slate-900 font-bold">&#8358;3.45M / &#8358;7.2M (48%)</span>
-                          </div>
-                          <div className="w-full bg-slate-100 rounded-full h-2">
-                            <div className="bg-blue-600 h-2 rounded-full w-[48%]" />
-                          </div>
-                        </div>
-
-                        <div className="space-y-1">
-                          <div className="flex justify-between text-[11px] font-semibold">
-                            <span className="text-slate-700">People & Culture</span>
-                            <span className="text-slate-900 font-bold">&#8358;1.2M / &#8358;4.0M (30%)</span>
-                          </div>
-                          <div className="w-full bg-slate-100 rounded-full h-2">
-                            <div className="bg-emerald-600 h-2 rounded-full w-[30%]" />
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="p-2.5 bg-slate-100 border border-slate-200 rounded-xl flex items-center justify-between text-[11px]">
-                        <span className="text-slate-700">Recent PO #2026-042: Hardware Upgrade</span>
-                        <span className="font-bold text-emerald-600">&#8358;420,000 &bull; Approved</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* TAB 5: Approval Chains */}
-                  {selectedFeature === "approvals" && (
-                    <div className="space-y-3.5 animate-in fade-in duration-200">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                            <FileCheck className="h-3.5 w-3.5 text-purple-600" /> Sequential Approval Matrix
-                          </div>
-                          <div className="text-[10px] text-slate-500">Tiered Authority & Expenditure Caps</div>
-                        </div>
-                        <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
-                          Pending CFO Review
-                        </span>
-                      </div>
-
-                      {/* Approval Stepper Card */}
-                      <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-2.5">
-                        <div className="text-xs font-bold text-slate-900">Voucher: IT Server Rack Upgrade</div>
-                        <div className="flex items-center gap-2 text-[10px]">
-                          <span className="font-bold text-slate-900">&#8358;420,000</span>
-                          <span className="text-slate-400">&bull;</span>
-                          <span className="text-slate-500">Requested by Zainab Bello</span>
-                        </div>
-
-                        {/* Visual Workflow Steps */}
-                        <div className="grid grid-cols-3 gap-1 pt-1 text-[10px] font-semibold text-center">
-                          <div className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            1. Requisition &check;
-                          </div>
-                          <div className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            2. Dept Head &check;
-                          </div>
-                          <div className="p-1.5 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 font-bold">
-                            3. CFO Sign-off
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Interactive Action simulation */}
-                      <div className="p-2.5 bg-slate-100 rounded-xl flex items-center justify-between">
-                        <span className="text-[11px] font-medium text-slate-600">Simulate Decision:</span>
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setVoucherStatus("rejected")}
-                            className="px-2.5 py-1 text-[11px] font-semibold bg-white border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50"
-                          >
-                            Reject
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setVoucherStatus("approved")}
-                            className="px-3 py-1 text-[11px] font-bold bg-[#ff6900] text-white rounded-lg hover:bg-[#ea580c]"
-                          >
-                            Approve Voucher
-                          </button>
-                        </div>
-                      </div>
-
-                      {voucherStatus === "approved" && (
-                        <div className="p-2 bg-emerald-50 border border-emerald-200 rounded-xl text-[10px] text-emerald-800 font-bold flex items-center justify-between animate-in fade-in duration-150">
-                          <span>&check; Authorized by CFO &bull; Indelibly Logged</span>
-                          <button
-                            type="button"
-                            onClick={() => setVoucherStatus("pending")}
-                            className="text-slate-500 hover:underline font-normal"
-                          >
-                            Reset
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Bottom Interactive Footnote */}
-                  <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between text-[11px]">
-                    <span className="text-slate-500 font-medium">Click another feature to explore</span>
                     <button
                       type="button"
                       onClick={() => setSelectedFeature(null)}
-                      className="font-bold text-[#ff6900] hover:underline flex items-center gap-1"
+                      className="text-[10px] text-slate-300 hover:text-white flex items-center gap-1 bg-slate-800 hover:bg-slate-700 px-2 py-0.5 rounded-md transition-colors"
+                      title="Return to default photo"
                     >
-                      Close preview &times;
+                      <X className="h-3 w-3" />
+                      <span>Default view</span>
                     </button>
+                  </div>
+
+                  {/* Dashboard Screen Content */}
+                  <div className="p-5 sm:p-6 bg-slate-50/50 min-h-[400px] flex flex-col justify-between">
+                    {/* TAB 1: HR & Workforce Directory */}
+                    {selectedFeature === "roster" && (
+                      <div className="space-y-3.5 animate-in fade-in duration-200">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                              <Users className="h-3.5 w-3.5 text-blue-600" />
+                              <span>Workforce Directory</span>
+                            </div>
+                            <div className="text-[10px] text-slate-500">1,240 Personnel • 6 Departments</div>
+                          </div>
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                            All Records Synced
+                          </span>
+                        </div>
+
+                        {/* Staff Cards Mini-List */}
+                        <div className="space-y-2">
+                          <div className="p-2.5 bg-white rounded-xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-xs">
+                                OA
+                              </div>
+                              <div>
+                                <div className="text-xs font-bold text-slate-900 leading-tight">Oluwaseun Adeleke</div>
+                                <div className="text-[10px] text-slate-400">Chief Financial Officer • Finance</div>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">
+                              Active
+                            </span>
+                          </div>
+
+                          <div className="p-2.5 bg-white rounded-xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-full bg-orange-100 text-[#ff6900] font-bold flex items-center justify-center text-xs">
+                                FO
+                              </div>
+                              <div>
+                                <div className="text-xs font-bold text-slate-900 leading-tight">Fatima Olarinwaju</div>
+                                <div className="text-[10px] text-slate-400">Head of People • HR & Culture</div>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">
+                              Active
+                            </span>
+                          </div>
+
+                          <div className="p-2.5 bg-white rounded-xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-full bg-purple-100 text-purple-700 font-bold flex items-center justify-center text-xs">
+                                CI
+                              </div>
+                              <div>
+                                <div className="text-xs font-bold text-slate-900 leading-tight">Chinedu Ibeawuchi</div>
+                                <div className="text-[10px] text-slate-400">Logistics Manager • Supply Chain</div>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full">
+                              On Leave
+                            </span>
+                          </div>
+
+                          <div className="p-2.5 bg-white rounded-xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-full bg-teal-100 text-teal-700 font-bold flex items-center justify-center text-xs">
+                                AY
+                              </div>
+                              <div>
+                                <div className="text-xs font-bold text-slate-900 leading-tight">Amina Yusuf</div>
+                                <div className="text-[10px] text-slate-400">Senior Systems Engineer • Tech</div>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">
+                              Active
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Mini Metric footer */}
+                        <div className="p-2.5 bg-blue-50/70 border border-blue-200/70 rounded-xl flex items-center justify-between text-[11px]">
+                          <span className="text-blue-900 font-semibold flex items-center gap-1.5">
+                            <CheckCircle2 className="h-3.5 w-3.5 text-blue-600" />
+                            <span>Automated Onboarding & KYC</span>
+                          </span>
+                          <span className="font-bold text-blue-700">100% Complete</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* TAB 2: Time & Attendance */}
+                    {selectedFeature === "attendance" && (
+                      <div className="space-y-3.5 animate-in fade-in duration-200">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                              <Clock className="h-3.5 w-3.5 text-amber-600" />
+                              <span>Geofence & Campus Clock-In</span>
+                            </div>
+                            <div className="text-[10px] text-slate-500">Victoria Island Campus • 200m Polygon</div>
+                          </div>
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            <span>GPS Verified</span>
+                          </span>
+                        </div>
+
+                        {/* Attendance Stats Cards */}
+                        <div className="grid grid-cols-2 gap-2.5">
+                          <div className="p-3 bg-white rounded-xl border border-slate-200">
+                            <div className="text-[10px] font-bold text-slate-400 uppercase">On-Time Rate</div>
+                            <div className="text-xl font-black text-emerald-600 mt-0.5">96.4%</div>
+                            <div className="text-[10px] text-slate-500 mt-0.5">45 / 48 verified present</div>
+                          </div>
+                          <div className="p-3 bg-white rounded-xl border border-slate-200">
+                            <div className="text-[10px] font-bold text-slate-400 uppercase">Avg Clock-In</div>
+                            <div className="text-xl font-black text-slate-900 mt-0.5">08:14 AM</div>
+                            <div className="text-[10px] text-slate-500 mt-0.5">Zero proxy check-ins</div>
+                          </div>
+                        </div>
+
+                        {/* Live Feed */}
+                        <div className="space-y-1.5 text-xs">
+                          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Live Check-In Stream</div>
+                          <div className="p-2.5 bg-white rounded-xl border border-slate-200 flex items-center justify-between text-[11px]">
+                            <span className="font-semibold text-slate-800">Oluwaseun Adeleke</span>
+                            <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-md">08:04 AM • Geofence</span>
+                          </div>
+                          <div className="p-2.5 bg-white rounded-xl border border-slate-200 flex items-center justify-between text-[11px]">
+                            <span className="font-semibold text-slate-800">Fatima Olarinwaju</span>
+                            <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-md">08:12 AM • Biometric #1</span>
+                          </div>
+                          <div className="p-2.5 bg-white rounded-xl border border-slate-200 flex items-center justify-between text-[11px]">
+                            <span className="font-semibold text-slate-800">Amina Yusuf</span>
+                            <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-md">08:21 AM • Biometric #2</span>
+                          </div>
+                        </div>
+
+                        <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-[10px] text-amber-800 flex items-center justify-between font-medium">
+                          <span>Biometric Hardware Synced</span>
+                          <span className="font-bold">2 Online Terminals</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* TAB 3: Payroll & Tax */}
+                    {selectedFeature === "payroll" && (
+                      <div className="space-y-3.5 animate-in fade-in duration-200">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                              <CreditCard className="h-3.5 w-3.5 text-[#ff6900]" />
+                              <span>November 2026 Salary Run</span>
+                            </div>
+                            <div className="text-[10px] text-slate-500">Automated PAYE Tax & PenCom Compliance</div>
+                          </div>
+                          <span className="text-[10px] font-bold text-white bg-emerald-600 px-2.5 py-0.5 rounded-full shadow-xs">
+                            Ready for Payment
+                          </span>
+                        </div>
+
+                        {/* Payroll Financial Breakdown */}
+                        <div className="grid grid-cols-2 gap-2.5">
+                          <div className="p-3 bg-white rounded-xl border border-slate-200">
+                            <div className="text-[10px] font-bold text-slate-400 uppercase">Gross Payroll</div>
+                            <div className="text-base font-black text-slate-900 mt-0.5">₦18,450,000</div>
+                            <div className="text-[10px] text-slate-500">48 staff members</div>
+                          </div>
+                          <div className="p-3 bg-white rounded-xl border border-slate-200">
+                            <div className="text-[10px] font-bold text-slate-400 uppercase">PAYE Tax Deductions</div>
+                            <div className="text-base font-black text-slate-900 mt-0.5">₦2,860,000</div>
+                            <div className="text-[10px] text-slate-500">State IRS schedule ready</div>
+                          </div>
+                          <div className="p-3 bg-white rounded-xl border border-slate-200">
+                            <div className="text-[10px] font-bold text-slate-400 uppercase">Pension Remittances</div>
+                            <div className="text-base font-black text-slate-900 mt-0.5">₦1,476,000</div>
+                            <div className="text-[10px] text-slate-500">PFA distribution set</div>
+                          </div>
+                          <div className="p-3 bg-orange-50 rounded-xl border border-orange-200">
+                            <div className="text-[10px] font-bold text-[#ff6900] uppercase">Net Salary Disbursal</div>
+                            <div className="text-base font-black text-[#ff6900] mt-0.5">₦14,114,000</div>
+                            <div className="text-[10px] text-orange-700/80">Bank batch file ready</div>
+                          </div>
+                        </div>
+
+                        <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between text-[11px]">
+                          <span className="text-emerald-900 font-semibold flex items-center gap-1.5">
+                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                            <span>Commercial Bank Batch (CSV)</span>
+                          </span>
+                          <span className="font-bold text-emerald-700">Generated</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* TAB 4: Budgets & Procurement */}
+                    {selectedFeature === "procurement" && (
+                      <div className="space-y-3.5 animate-in fade-in duration-200">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                              <Building2 className="h-3.5 w-3.5 text-blue-600" />
+                              <span>Departmental Budgets & POs</span>
+                            </div>
+                            <div className="text-[10px] text-slate-500">Q4 Allocation: ₦22.6M Total</div>
+                          </div>
+                          <span className="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded-full">
+                            64% Utilized
+                          </span>
+                        </div>
+
+                        {/* Budget bars */}
+                        <div className="space-y-2.5 bg-white p-3.5 rounded-2xl border border-slate-200">
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-[11px] font-semibold">
+                              <span className="text-slate-700">Operations & Logistics</span>
+                              <span className="text-slate-900 font-bold">₦8.2M / ₦11.4M (72%)</span>
+                            </div>
+                            <div className="w-full bg-slate-100 rounded-full h-2">
+                              <div className="bg-[#ff6900] h-2 rounded-full w-[72%]" />
+                            </div>
+                          </div>
+
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-[11px] font-semibold">
+                              <span className="text-slate-700">Information Technology</span>
+                              <span className="text-slate-900 font-bold">₦3.45M / ₦7.2M (48%)</span>
+                            </div>
+                            <div className="w-full bg-slate-100 rounded-full h-2">
+                              <div className="bg-blue-600 h-2 rounded-full w-[48%]" />
+                            </div>
+                          </div>
+
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-[11px] font-semibold">
+                              <span className="text-slate-700">People & Culture</span>
+                              <span className="text-slate-900 font-bold">₦1.2M / ₦4.0M (30%)</span>
+                            </div>
+                            <div className="w-full bg-slate-100 rounded-full h-2">
+                              <div className="bg-emerald-600 h-2 rounded-full w-[30%]" />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="p-2.5 bg-slate-100 border border-slate-200 rounded-xl flex items-center justify-between text-[11px]">
+                          <span className="text-slate-700">Recent PO #2026-042: Hardware Upgrade</span>
+                          <span className="font-bold text-emerald-600">₦420,000 • Approved</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* TAB 5: Approval Chains */}
+                    {selectedFeature === "approvals" && (
+                      <div className="space-y-3.5 animate-in fade-in duration-200">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                              <FileCheck className="h-3.5 w-3.5 text-purple-600" />
+                              <span>Sequential Approval Matrix</span>
+                            </div>
+                            <div className="text-[10px] text-slate-500">Tiered Authority & Expenditure Caps</div>
+                          </div>
+                          <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full">
+                            Pending CFO Review
+                          </span>
+                        </div>
+
+                        {/* Approval Stepper Card */}
+                        <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-2.5">
+                          <div className="text-xs font-bold text-slate-900">Voucher: IT Server Rack Upgrade</div>
+                          <div className="flex items-center gap-2 text-[10px]">
+                            <span className="font-bold text-slate-900">₦420,000</span>
+                            <span className="text-slate-400">•</span>
+                            <span className="text-slate-500">Requested by Zainab Bello (IT)</span>
+                          </div>
+
+                          {/* Visual Workflow Steps with real Lucide check icons */}
+                          <div className="grid grid-cols-3 gap-1.5 pt-1 text-[10px] font-semibold text-center">
+                            <div className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center gap-1">
+                              <Check className="h-3 w-3 stroke-[3]" />
+                              <span>1. Requisition</span>
+                            </div>
+                            <div className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center gap-1">
+                              <Check className="h-3 w-3 stroke-[3]" />
+                              <span>2. Dept Head</span>
+                            </div>
+                            <div className="p-1.5 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 font-bold">
+                              <span>3. CFO Sign-off</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Interactive Action simulation */}
+                        <div className="p-2.5 bg-slate-100 rounded-xl flex items-center justify-between">
+                          <span className="text-[11px] font-medium text-slate-600">Simulate Decision:</span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setVoucherStatus("rejected")}
+                              className="px-2.5 py-1 text-[11px] font-semibold bg-white border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50"
+                            >
+                              Reject
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setVoucherStatus("approved")}
+                              className="px-3 py-1 text-[11px] font-bold bg-[#ff6900] text-white rounded-lg hover:bg-[#ea580c] shadow-xs"
+                            >
+                              Approve Voucher
+                            </button>
+                          </div>
+                        </div>
+
+                        {voucherStatus === "approved" && (
+                          <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-[11px] text-emerald-800 font-bold flex items-center justify-between animate-in fade-in duration-150">
+                            <span className="flex items-center gap-1.5">
+                              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                              <span>Authorized by CFO • Indelibly Logged</span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setVoucherStatus("pending")}
+                              className="text-slate-500 hover:underline font-normal text-[10px]"
+                            >
+                              Reset
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Bottom Interactive Footnote */}
+                    <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between text-[11px]">
+                      <span className="text-slate-500 font-medium">Click another feature to explore</span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedFeature(null)}
+                        className="font-bold text-[#ff6900] hover:underline flex items-center gap-1"
+                      >
+                        <span>Close preview</span>
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1337,14 +1362,16 @@ export default function HomePage() {
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
-              <span className="text-xs text-slate-500">
-                &check; No setup fee &bull; 15-day full feature trial &bull; Cancel anytime
+              <span className="text-xs text-slate-500 flex items-center gap-1.5">
+                <Check className="h-3.5 w-3.5 text-emerald-600 stroke-[3]" />
+                <span>No setup fee • 15-day full feature trial • Cancel anytime</span>
               </span>
               <Link
                 to="/register"
                 className="px-6 py-2.5 rounded-full text-xs font-bold bg-[#ff6900] hover:bg-[#ea580c] text-white shadow-md shadow-orange-500/25 transition-all flex items-center gap-1.5"
               >
-                Provision Workspace for {headcount} Staff <ArrowRight className="h-3.5 w-3.5" />
+                <span>Provision Workspace for {headcount} Staff</span>
+                <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </div>
           </div>
@@ -1510,16 +1537,18 @@ export default function HomePage() {
                   setVideoModalOpen(false);
                   setActiveTab("payroll");
                 }}
-                className="text-xs font-semibold text-slate-700 hover:text-slate-900"
+                className="text-xs font-semibold text-slate-700 hover:text-slate-900 flex items-center gap-1.5"
               >
-                &larr; Switch to Live Interactive Sandbox
+                <ChevronRight className="h-3.5 w-3.5 rotate-180" />
+                <span>Switch to Live Interactive Sandbox</span>
               </button>
               <Link
                 to="/register"
                 onClick={() => setVideoModalOpen(false)}
-                className="px-6 py-2.5 rounded-full text-xs font-bold bg-[#ff6900] hover:bg-[#ea580c] text-white shadow-md transition-all"
+                className="px-6 py-2.5 rounded-full text-xs font-bold bg-[#ff6900] hover:bg-[#ea580c] text-white shadow-md transition-all flex items-center gap-1.5"
               >
-                Start Free Trial &rarr;
+                <span>Start Free Trial</span>
+                <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </div>
           </div>

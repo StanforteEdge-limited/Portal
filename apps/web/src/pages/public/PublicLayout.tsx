@@ -15,7 +15,6 @@ import {
   ArrowRight,
   Menu,
   X,
-  Sparkles,
   Building,
   Briefcase,
   Layers,
@@ -369,7 +368,8 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                 <div className="col-span-4 pl-6 border-l border-slate-100 flex flex-col justify-between">
                   <div className="p-6 rounded-3xl bg-gradient-to-br from-orange-50/80 via-amber-50/40 to-slate-50 border border-orange-200/60 space-y-4">
                     <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-100 text-[#ff6900] text-[10px] font-bold uppercase tracking-wider">
-                      <Sparkles className="h-3 w-3" /> Interactive Demo
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#ff6900]" />
+                      <span>Interactive Demo</span>
                     </div>
                     <div className="space-y-1">
                       <h4 className="text-base font-bold text-slate-900 font-headline">
@@ -390,8 +390,9 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
 
                   <div className="pt-4 flex items-center justify-between text-xs text-slate-500">
                     <span>15-day free organizational trial</span>
-                    <Link to="/register" onClick={closeAll} className="font-bold text-[#ff6900] hover:underline">
-                      Create Workspace &rarr;
+                    <Link to="/register" onClick={closeAll} className="font-bold text-[#ff6900] hover:underline flex items-center gap-1">
+                      <span>Create Workspace</span>
+                      <ArrowRight className="h-3.5 w-3.5" />
                     </Link>
                   </div>
                 </div>
@@ -530,8 +531,9 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
 
                   <div className="pt-4 flex items-center justify-between text-xs text-slate-500">
                     <span>99.9% Platform Availability</span>
-                    <Link to="/features" onClick={closeAll} className="font-bold text-[#ff6900] hover:underline">
-                      Explore Full Stack &rarr;
+                    <Link to="/features" onClick={closeAll} className="font-bold text-[#ff6900] hover:underline flex items-center gap-1">
+                      <span>Explore Full Stack</span>
+                      <ArrowRight className="h-3.5 w-3.5" />
                     </Link>
                   </div>
                 </div>
