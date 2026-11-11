@@ -25,6 +25,8 @@ import { PayrollRoutes } from '$apps/hr/payroll/routes';
 import { RequestsRoutes } from '$apps/hr/requests/routes';
 import { FinanceRoutes } from '$apps/finance/accounting/routes';
 import { GroupsRoutes } from '$apps/communication/groups/routes';
+import { ChatRoutes } from '$apps/communication/chat/routes';
+import { StorageRoutes } from '$apps/storage/routes';
 import { TenancyRoutes } from '$apps/tenancy/routes';
 
 export interface AppRoute {
@@ -59,6 +61,13 @@ export const appRoutes: AppRoute[] = [
   { prefix: '/departments', plugin: DepartmentsRoutes },
   { prefix: '/payroll', plugin: PayrollRoutes },
   { prefix: '/requests', plugin: RequestsRoutes },
+  // Files / Storage
+  { prefix: '/files', plugin: StorageRoutes },
+  { prefix: '/storage', plugin: StorageRoutes },
+  // Communication
+  { prefix: '/chat', plugin: ChatRoutes },
+  { prefix: '/communication/chat', plugin: ChatRoutes },
+  { prefix: '/groups', plugin: GroupsRoutes },
   // HR-prefixed aliases used by the web and desktop clients. Keep the
   // existing root routes above for backwards compatibility.
   { prefix: '/hr', plugin: EmployeesRoutes },
@@ -81,7 +90,6 @@ export const appRoutes: AppRoute[] = [
   { prefix: '/hr/departments', plugin: DepartmentsRoutes },
   { prefix: '/hr/payroll', plugin: PayrollRoutes },
   { prefix: '/hr/requests', plugin: RequestsRoutes },
-  { prefix: '/groups', plugin: GroupsRoutes },
   { prefix: '/tenancy', plugin: TenancyRoutes },
   { prefix: '/finance', plugin: FinanceRoutes },
 ];

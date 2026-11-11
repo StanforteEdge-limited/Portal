@@ -120,7 +120,7 @@ export default function AdminUserDetailPage() {
   async function handleSaveRole() {
     try {
       setRoleSaving(true);
-      await adminUsersApi.updateUserRoles(id!, { roles: selectedRoles });
+      await adminUsersApi.setUserRoles(id!, selectedRoles);
       await refetchRoles();
       showToast({ tone: "success", title: "Roles updated", message: "User roles have been saved." });
     } catch (err) {
@@ -151,7 +151,7 @@ export default function AdminUserDetailPage() {
   async function handleSendInvite() {
     try {
       setInviteSending(true);
-      await adminUsersApi.sendInvite(id!);
+      await adminUsersApi.sendUserInvite(id!);
       showToast({ tone: "success", title: "Invitation sent", message: "An invitation email has been dispatched." });
     } catch (err) {
       showToast({ tone: "danger", title: "Invite failed", message: err instanceof Error ? err.message : "Unable to send invitation." });

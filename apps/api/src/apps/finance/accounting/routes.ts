@@ -27,7 +27,7 @@ export const FinanceRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.get('/requests/:id/payment-vouchers', { preHandler: authenticated }, async (request) => {
     const { id } = requestParams<{ id: string }>(request);
-    return finance().loadPaymentVoucherWithRequest(id);
+    return finance().listPaymentVouchers(id);
   });
 
   fastify.post('/requests/:id/payment-vouchers/:voucherId', { preHandler: authenticated }, async (request) => {
@@ -37,12 +37,13 @@ export const FinanceRoutes: FastifyPluginAsync = async (fastify) => {
 
   // Payment Vouchers
   fastify.get('/payment-vouchers', { preHandler: authenticated }, async (request) => {
-    return finance().listPaymentVouchers(requestQuery(request));
+    return finance().listAllPaymentVouchers(requestQuery(request));
   });
 
   fastify.get('/payment-vouchers/:id', { preHandler: authenticated }, async (request) => {
     const { id } = requestParams<{ id: string }>(request);
-    return finance().loadPaymentVoucherWithRequest(id);
+    const result = await finance().listAllPaymentVouchers({ voucher_number: id });
+    return result?.data?.[0] ?? null;
   });
 
   // Settings

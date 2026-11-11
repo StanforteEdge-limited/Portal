@@ -90,18 +90,83 @@ export async function deleteFileAsset(id: string): Promise<void> {
   await httpRequest<unknown>(`/files/${id}`, { method: "DELETE" });
 }
 
-export async function uploadFileAsset(
-  file: File,
-  payload?: { organization_id?: string; metadata?: Record<string, unknown> }
-) {
-  const form = new FormData();
-  form.append("file", file);
-  if (payload?.organization_id) form.append("organization_id", payload.organization_id);
-  if (payload?.metadata) form.append("metadata_json", JSON.stringify(payload.metadata));
+export type UploadFileInput =
+  | File
+  | {
+      file: File;
+      name?: string;
+      category?: string;
+      access_level?: string;
+      organization_id?: string;
+      metadata?: Record<string, unknown>;
+    };
 
-  const res = await httpRequest<any>("/files/upload", {
+/**
+ * Uploads any file directly to object storage (S3/Contabo) using a presigned URL.
+ * No file bytes are uploaded to or handled by the Fastify backend server.
+ * Supports all file formats: images, documents, spreadsheets, videos, archives, etc.
+ */
+export async function uploadFileAsset(
+  input: UploadFileInput,
+  legacyPayload?: { organization_id?: string; metadata?: Record<string, unknown> }
+): Promise<FileAssetRecord> {
+  const file: File = input instanceof File ? input : input.file;
+  const payload = input instanceof File ? legacyPayload : input;
+
+  // 1. Obtain presigned upload URL from backend API (fast metadata-only call)
+  const presignRes = await httpRequest<{
+    key: string;
+    url: string;
+    fields?: Record<string, string>;
+    public_url?: string;
+  }>("/files/presign-upload", {
     method: "POST",
-    body: form,
+    body: {
+      file_name: file.name,
+      mime_type: file.type || "application/octet-stream",
+      file_size: file.size,
+      expires_in_seconds: 600,
+    },
   });
-  return (res?.data ?? res) as FileAssetRecord;
+
+  const presignData = (presignRes as any)?.data ?? presignRes;
+  const { key, url, public_url } = presignData;
+  if (!url) {
+    throw new Error("Unable to obtain presigned upload URL from storage service");
+  }
+
+  // 2. Upload file directly from browser to S3 / Object Storage using HTTP PUT
+  const uploadResponse = await fetch(url, {
+    method: "PUT",
+    body: file,
+    headers: file.type ? { "Content-Type": file.type } : { "Content-Type": "application/octet-stream" },
+  });
+
+  if (!uploadResponse.ok) {
+    throw new Error(`Direct upload failed (${uploadResponse.status} ${uploadResponse.statusText})`);
+  }
+
+  // 3. Register file asset record in backend PostgreSQL database
+  const attachRes = await httpRequest<any>("/files/attach", {
+    method: "POST",
+    body: {
+      storage_path: key,
+      file_url: public_url || url.split("?")[0],
+      file_name: file.name,
+      mime_type: file.type || "application/octet-stream",
+      file_size: file.size,
+      organization_id: (payload as any)?.organization_id,
+      metadata: (payload as any)?.metadata,
+    },
+  });
+
+  const row = (attachRes as any)?.data ?? attachRes;
+  return {
+    id: String(row.id),
+    file_name: String(row.file_name ?? row.fileName ?? file.name),
+    mime_type: (row.mime_type ?? row.mimeType ?? file.type) as string | null,
+    file_size: Number(row.file_size ?? row.fileSize ?? file.size),
+    storage_path: String(row.storage_path ?? row.storagePath ?? key),
+    public_url: (row.public_url ?? row.publicUrl ?? public_url ?? null) as string | null,
+  };
 }

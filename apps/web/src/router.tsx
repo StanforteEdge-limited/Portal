@@ -128,6 +128,7 @@ const DocumentDetailPage = lazy(() => import("@/pages/documents/DocumentDetailPa
 const PoliciesListPage = lazy(() => import("@/pages/documents/PoliciesListPage"));
 const FilesPage = lazy(() => import("@/pages/files/FilesPage"));
 const MailPage = lazy(() => import("@/pages/mail"));
+const ChatPage = lazy(() => import("@/pages/chat/ChatPage"));
 
 // Administration
 const AdminRolesPage = lazy(() => import("@/pages/admin/roles/AdminRolesPage"));
@@ -646,6 +647,12 @@ const mailRoute = createRoute({
   component: MailPage,
 });
 
+const chatRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/chat",
+  component: ChatPage,
+});
+
 // 12. Administration Routes
 const adminRolesRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -782,6 +789,7 @@ const routeTree = rootRoute.addChildren([
   policiesRoute,
   filesRoute,
   mailRoute,
+  chatRoute,
 
   // Administration
   adminRolesRoute,

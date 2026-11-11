@@ -16,10 +16,13 @@ export class ObjectStorageService {
       );
     }
     const endpoint = String(process.env.S3_ENDPOINT || '').trim();
+    const forcePathStyle =
+      String(process.env.S3_FORCE_PATH_STYLE || '').toLowerCase() === 'true' ||
+      Boolean(endpoint && (endpoint.includes('contabo') || endpoint.includes('localhost') || endpoint.includes('127.0.0.1') || endpoint.includes('minio')));
     this.client = new S3Client({
       region: String(process.env.S3_REGION || 'us-east-1').trim(),
       endpoint: endpoint || undefined,
-      forcePathStyle: String(process.env.S3_FORCE_PATH_STYLE || 'false').toLowerCase() === 'true',
+      forcePathStyle,
       credentials: {
         accessKeyId: String(process.env.S3_ACCESS_KEY_ID || ''),
         secretAccessKey: String(process.env.S3_SECRET_ACCESS_KEY || ''),

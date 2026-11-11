@@ -188,6 +188,8 @@ export function formatDisplayDateLocalized(
   }
 }
 
+export const formatDisplayDate = formatDisplayDateLocalized;
+
 /**
  * React hook for consuming and updating localization settings with live reactivity.
  */
