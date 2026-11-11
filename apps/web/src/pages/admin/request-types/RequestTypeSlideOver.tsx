@@ -1,23 +1,26 @@
-import { useEffect, useMemo, useState } from "react";
+import { useState, useEffect } from "react";
+import { useToast } from "@/shared";
 import {
-  Button,
-  SectionCard,
-  TextField,
-  SelectField,
-  ApprovalFlowBuilder,
+  SlideOver,
+  SlideOverHeader,
+  SlideOverContent,
+  SlideOverFooter,
+} from "@/shared/components/ui/SlideOver";
+import { requestApi, adminUsersApi } from "@/shared/lib/core";
+import {
+  listCategories,
+  type RequestCategoryOption,
+} from "@/pages/requests/requests-api";
+import {
+  listManagedTaxonomies,
+  type ManagedTaxonomy,
+} from "@/pages/requests/taxonomy-api";
+import type { RequestType, RoleOption } from "@stanforte/shared";
+import ApprovalFlowBuilder, {
   createApprovalFlowStep,
-  parseApprovalFlowSteps,
-  serializeApprovalFlowSteps,
-  type ApprovalFlowEditorStep,
-  useToast,
-} from "@/shared";
-import { SlideOver, SlideOverHeader, SlideOverContent, SlideOverFooter } from "@/shared/components/ui/SlideOver";
-import { cacheStore, requestApi } from "@/shared/lib/core";
-import type { RequestType } from "@stanforte/shared";
-import { listCategories } from "@/pages/requests/requests-api";
-import type { RequestCategoryOption } from "@/pages/requests/requests-api";
-import { listManagedTaxonomies, type ManagedTaxonomy } from "@/pages/requests/taxonomy-api";
-import { listRoles, type Role } from "@/pages/admin/roles/admin-roles-api";
+  type ApprovalFlowStep,
+} from "@/pages/requests/components/ApprovalFlowBuilder";
+import { FileText, GitBranch, Shield, Check, Layers } from "lucide-react";
 
 type Props = {
   requestType?: RequestType | null;
@@ -25,39 +28,71 @@ type Props = {
   onSaved: () => void;
 };
 
-export default function RequestTypeSlideOver({ requestType, onClose, onSaved }: Props) {
+export default function RequestTypeSlideOver({
+  requestType,
+  onClose,
+  onSaved,
+}: Props) {
   const { showToast } = useToast();
   const [saving, setSaving] = useState(false);
   const [categories, setCategories] = useState<RequestCategoryOption[]>([]);
   const [taxonomies, setTaxonomies] = useState<ManagedTaxonomy[]>([]);
-  const [roles, setRoles] = useState<Role[]>([]);
+  const [roles, setRoles] = useState<RoleOption[]>([]);
 
   const [name, setName] = useState(requestType?.name || "");
   const [slug, setSlug] = useState(requestType?.slug || "");
-  const [categoryId, setCategoryId] = useState(requestType?.category_id || requestType?.categoryId || "");
+  const [categoryId, setCategoryId] = useState(requestType?.categoryId || "");
   const [taxonomyKeys, setTaxonomyKeys] = useState<string[]>(
-    requestType?.taxonomy_keys || requestType?.taxonomyKeys || []
+    requestType?.taxonomyKeys || [],
   );
   const [isActive, setIsActive] = useState(requestType?.is_active ?? true);
-  const [visibleToRoles, setVisibleToRoles] = useState<string[]>(requestType?.visible_to_roles ?? []);
-  const [workflowType, setWorkflowType] = useState(requestType?.workflow_type || "");
-  const [handlerRoleLabel, setHandlerRoleLabel] = useState(requestType?.handler_role_label || "");
+  const [workflowType, setWorkflowType] = useState(
+    requestType?.workflow_type || "",
+  );
+  const [handlerRoleLabel, setHandlerRoleLabel] = useState(
+    requestType?.handler_role_label || "",
+  );
+  const [visibleToRoles, setVisibleToRoles] = useState<string[]>(() => {
+    const raw = requestType?.formSchema?.["visible_to_roles"];
+    return Array.isArray(raw) ? raw : [];
+  });
 
-
+  const [approvalSteps, setApprovalSteps] = useState<ApprovalFlowStep[]>(() => {
+    const flow = requestType?.approvalFlowJson?.flow;
+    if (Array.isArray(flow) && flow.length > 0) {
+      return flow;
+    }
+    return [
+      createApprovalFlowStep("relation", "requester_team_lead"),
+      createApprovalFlowStep("permission", "finance.approve"),
+    ];
+  });
 
   useEffect(() => {
-    void listCategories().then(setCategories);
-    void listManagedTaxonomies({ include_inactive: false }).then(setTaxonomies);
-    void listRoles().then((roles) => setRoles(roles.filter((r) => r.is_active)));
+    async function loadData() {
+      try {
+        const [cats, taxs, roleList] = await Promise.all([
+          listCategories(),
+          listManagedTaxonomies().catch(() => []),
+          adminUsersApi.listRoleOptions().catch(() => []),
+        ]);
+        setCategories(cats);
+        setTaxonomies(taxs);
+        setRoles(roleList as RoleOption[]);
+      } catch {
+        setCategories([]);
+        setTaxonomies([]);
+        setRoles([]);
+      }
+    }
+    void loadData();
   }, []);
 
-  const selectedCategory = useMemo(
-    () => categories.find((c) => c.id === categoryId) ?? null,
-    [categories, categoryId],
-  );
-
   const slugFromName = (n: string) =>
-    n.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
+    n
+      .toLowerCase()
+      .replace(/\s+/g, "_")
+      .replace(/[^a-z0-9_]/g, "");
 
   function handleNameChange(value: string) {
     setName(value);
@@ -66,264 +101,275 @@ export default function RequestTypeSlideOver({ requestType, onClose, onSaved }: 
     }
   }
 
-  async function handleSubmit() {
+  async function handleSubmit(e?: React.FormEvent) {
+    if (e) e.preventDefault();
     if (!name.trim()) {
-      showToast({ tone: "warning", title: "Name required", message: "Please enter a type name." });
+      showToast("Please enter a request type name.", "error");
       return;
     }
-    if (!slug.trim() && !requestType) {
-      showToast({ tone: "warning", title: "Slug required", message: "Please enter a type slug." });
+    if (!categoryId) {
+      showToast("Please select a module category.", "error");
       return;
     }
-    if (!requestType && !categoryId) {
-      showToast({ tone: "warning", title: "Category required", message: "Select a request category." });
-      return;
-    }
-    if (approvalSteps.length === 0) {
-      showToast({
-        tone: "warning",
-        title: "Approval flow required",
-        message: "Add at least one approval step.",
-      });
-      return;
-    }
-    const missingValue = approvalSteps.find((step) => !step.value.trim());
-    if (missingValue) {
-      showToast({
-        tone: "warning",
-        title: "Missing step value",
-        message: "Each approval step needs a value.",
-      });
-      return;
-    }
-    const approvalFlowJson = serializeApprovalFlowSteps(approvalSteps) as Record<string, unknown>;
 
     try {
       setSaving(true);
-      const payload: Partial<RequestType> = {
+      const payload: any = {
         name: name.trim(),
-        is_active: isActive,
-        approval_flow_json: approvalFlowJson,
-        visible_to_roles: visibleToRoles.length > 0 ? visibleToRoles : [],
+        slug: slug.trim() || slugFromName(name.trim()),
+        category_id: categoryId,
+        taxonomy_keys: taxonomyKeys,
+        workflow_type: workflowType || undefined,
+        handler_role_label: handlerRoleLabel.trim() || undefined,
+        approval_flow_json: { flow: approvalSteps },
+        form_schema: {
+          visible_to_roles: visibleToRoles.length > 0 ? visibleToRoles : undefined,
+        },
       };
-      if (!requestType) {
-        payload.slug = slug.trim();
+
+      if (requestType?.id) {
+        await requestApi.updateType(requestType.id, payload);
+        showToast(`Request type "${name}" updated.`, "success");
+      } else {
+        await requestApi.createType(payload);
+        showToast(`Request type "${name}" created.`, "success");
       }
-      if (categoryId) {
-        payload.category_id = categoryId;
-      }
-      if (taxonomyKeys.length > 0) {
-        payload.taxonomy_keys = taxonomyKeys;
-      }
-      if (workflowType) {
-        payload.workflow_type = workflowType;
-      }
-      if (handlerRoleLabel.trim()) {
-        payload.handler_role_label = handlerRoleLabel.trim();
-      }
-      await requestApi.saveType(
-        payload,
-        requestType?.id,
-        categoryId || undefined,
-      );
-      showToast({
-        tone: "success",
-        title: requestType ? "Updated" : "Created",
-        message: `${name} has been ${requestType ? "updated" : "created"}.`,
-      });
-      cacheStore.invalidateCache("requests:types");
-      cacheStore.invalidateCache("hr:leave_types");
       onSaved();
-    } catch (err) {
-      showToast({
-        tone: "danger",
-        title: "Save failed",
-        message: err instanceof Error ? err.message : "Unable to save request type.",
-      });
+    } catch (err: any) {
+      showToast(err?.message || "Failed to save request type.", "error");
     } finally {
       setSaving(false);
     }
   }
 
-  const [approvalSteps, setApprovalSteps] = useState<ApprovalFlowEditorStep[]>(() =>
-    parseApprovalFlowSteps(requestType?.approval_flow_json || requestType?.approvalFlowJson, [
-      createApprovalFlowStep("relation", "requester_team_lead"),
-      createApprovalFlowStep("permission", "finance.approve"),
-    ]),
-  );
+  const selectedCategory = categories.find((c) => c.id === categoryId);
 
   return (
-    <SlideOver open={true} onClose={onClose} size="xl">
+    <SlideOver isOpen onClose={onClose} size="xl">
       <SlideOverHeader
-        title={requestType ? "Edit Request Type" : "Add Request Type"}
-        subtitle={requestType ? "Edit Type" : "New Type"}
+        title={requestType ? "Edit Request Type" : "Create Request Type"}
+        subtitle="Configure requisition schemas, dynamic form controls, and multi-tier approval flows."
         onClose={onClose}
       />
-      <SlideOverContent>
-        <SectionCard title="Basic Info">
-          <div className="grid gap-4">
-            <TextField
-              label="Type Name"
-              value={name}
-              onChange={(e) => handleNameChange(e.target.value)}
-              placeholder="e.g., Equipment Request"
-            />
-            <div>
-              <TextField
-                label="Slug"
-                value={slug}
-                onChange={(e) => setSlug(e.target.value)}
-                placeholder="e.g., equipment_request"
-                disabled={!!requestType}
-              />
-              {!requestType && (
-                <p className="text-xs text-slate-400 mt-1">Auto-generated from name if left empty</p>
-              )}
-            </div>
-            <SelectField
-              label="Category"
-              value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-            >
-              <option value="">Select category...</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}{c.groupName ? ` (${c.groupName})` : ""}
-                </option>
-              ))}
-            </SelectField>
-            {selectedCategory?.groupName && (
-              <p className="text-xs text-slate-500 -mt-2">
-                Module: <span className="font-medium">{selectedCategory.groupName}</span>
-              </p>
-            )}
-            <div className="space-y-2">
-              <span className="field-label">Taxonomies</span>
-              <p className="text-xs text-slate-400">
-                Select one or more taxonomies for this request type.
-              </p>
-              <div className="max-h-48 overflow-y-auto space-y-1.5 rounded-lg border border-slate-200 p-3">
-                {taxonomies.length === 0 && (
-                  <p className="text-sm text-slate-400">No taxonomies available</p>
-                )}
-                {taxonomies.map((t) => (
-                  <label
-                    key={t.id}
-                    className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-slate-50 cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={taxonomyKeys.includes(t.key)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setTaxonomyKeys([...taxonomyKeys, t.key]);
-                        } else {
-                          setTaxonomyKeys(taxonomyKeys.filter((k) => k !== t.key));
-                        }
-                      }}
-                      className="h-4 w-4 rounded border-slate-300"
-                    />
-                    <span className="font-medium text-slate-700">{t.name}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-            <div className="flex items-center gap-3 pt-2">
-              <input
-                type="checkbox"
-                id="is_active"
-                checked={isActive}
-                onChange={(e) => setIsActive(e.target.checked)}
-                className="h-4 w-4 rounded border-slate-300"
-              />
-              <label htmlFor="is_active" className="text-sm text-slate-700">
-                Active
-              </label>
-            </div>
-            <div className="space-y-2">
-              <span className="field-label">Visible to Roles</span>
-              <p className="text-xs text-slate-400">
-                Leave empty to make visible to everyone. Select roles to restrict access.
-              </p>
-              <div className="max-h-48 overflow-y-auto space-y-1.5 rounded-lg border border-slate-200 p-3">
-                {roles.length === 0 && (
-                  <p className="text-sm text-slate-400">No roles available</p>
-                )}
-                {roles.map((role) => (
-                  <label
-                    key={role.id}
-                    className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-slate-50 cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={visibleToRoles.includes(role.slug)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setVisibleToRoles([...visibleToRoles, role.slug]);
-                        } else {
-                          setVisibleToRoles(visibleToRoles.filter((s) => s !== role.slug));
-                        }
-                      }}
-                      className="h-4 w-4 rounded border-slate-300"
-                    />
-                    <span className="font-medium text-slate-700">{role.name}</span>
-                    {role.description && (
-                      <span className="text-xs text-slate-400 ml-1">— {role.description}</span>
-                    )}
-                  </label>
-                ))}
-              </div>
-            </div>
-          </div>
-        </SectionCard>
 
-        <SectionCard title="Workflow">
+      <form onSubmit={handleSubmit} className="flex-1 flex flex-col justify-between overflow-y-auto">
+        <SlideOverContent className="space-y-6 p-6">
+          {/* Basic Info */}
           <div className="space-y-4">
-            <SelectField
-              label="Workflow Type"
-              value={workflowType}
-              onChange={(e) => setWorkflowType(e.target.value)}
-            >
-              <option value="">— Auto-detect —</option>
-              <option value="payment">Payment</option>
-              <option value="leave">Leave</option>
-              <option value="loan">Loan</option>
-              <option value="other">Other</option>
-            </SelectField>
-            <div>
-              <TextField
-                label="Handler Role Label"
-                value={handlerRoleLabel}
-                onChange={(e) => setHandlerRoleLabel(e.target.value)}
-                placeholder="e.g. Accountant, HR Officer"
-                list="roles-list"
-              />
-              <datalist id="roles-list">
-                {roles.map((r) => (
-                  <option key={r.id} value={r.name} />
-                ))}
-              </datalist>
+            <div className="flex items-center gap-2 pb-2 border-b border-slate-100 text-xs font-bold text-slate-900 uppercase tracking-wider">
+              <FileText className="h-4 w-4 text-[#ff6900]" />
+              Basic Identification
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Type Name <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => handleNameChange(e.target.value)}
+                  placeholder="e.g., Equipment Requisition"
+                  required
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Slug Identifier
+                </label>
+                <input
+                  type="text"
+                  value={slug}
+                  onChange={(e) => setSlug(e.target.value)}
+                  placeholder="e.g., equipment_requisition"
+                  disabled={!!requestType}
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-mono text-slate-800 placeholder-slate-400 disabled:bg-slate-50 disabled:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Requisition Category <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  value={categoryId}
+                  onChange={(e) => setCategoryId(e.target.value)}
+                  required
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                >
+                  <option value="">Select category...</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} {c.groupName ? `(${c.groupName})` : ""}
+                    </option>
+                  ))}
+                </select>
+                {selectedCategory?.groupName && (
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    Group: <strong className="text-slate-700">{selectedCategory.groupName}</strong>
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Workflow Class
+                </label>
+                <select
+                  value={workflowType}
+                  onChange={(e) => setWorkflowType(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                >
+                  <option value="">Auto-detect from schema</option>
+                  <option value="payment">Payment & Cash Advance</option>
+                  <option value="leave">Leave & Time Off</option>
+                  <option value="loan">Staff Loan</option>
+                  <option value="other">General Operations</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Handler Role Label
+                </label>
+                <input
+                  type="text"
+                  value={handlerRoleLabel}
+                  onChange={(e) => setHandlerRoleLabel(e.target.value)}
+                  placeholder="e.g., Senior Accountant, HR Business Partner"
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                />
+              </div>
+
+              <div className="flex items-center pt-5">
+                <label className="flex items-center gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isActive}
+                    onChange={(e) => setIsActive(e.target.checked)}
+                    className="w-4 h-4 rounded text-[#ff6900] border-slate-300 focus:ring-[#ff6900]"
+                  />
+                  <span className="text-xs font-bold text-slate-700">
+                    Active & Available in Requisitions Menu
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            {/* Taxonomies & Visibility */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Attached Taxonomies
+                </label>
+                <div className="max-h-40 overflow-y-auto space-y-1.5 rounded-xl border border-slate-200 p-2.5 bg-slate-50/50">
+                  {taxonomies.length === 0 ? (
+                    <p className="text-xs text-slate-400 italic">No taxonomies configured.</p>
+                  ) : (
+                    taxonomies.map((t) => (
+                      <label key={t.id} className="flex items-center gap-2 text-xs font-medium text-slate-700 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={taxonomyKeys.includes(t.key)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setTaxonomyKeys([...taxonomyKeys, t.key]);
+                            } else {
+                              setTaxonomyKeys(taxonomyKeys.filter((k) => k !== t.key));
+                            }
+                          }}
+                          className="w-3.5 h-3.5 rounded text-[#ff6900] border-slate-300 focus:ring-[#ff6900]"
+                        />
+                        <span>{t.name}</span>
+                      </label>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Restricted to Roles (empty = visible to all)
+                </label>
+                <div className="max-h-40 overflow-y-auto space-y-1.5 rounded-xl border border-slate-200 p-2.5 bg-slate-50/50">
+                  {roles.length === 0 ? (
+                    <p className="text-xs text-slate-400 italic">No roles configured.</p>
+                  ) : (
+                    roles.map((r) => (
+                      <label key={r.id} className="flex items-center gap-2 text-xs font-medium text-slate-700 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={visibleToRoles.includes(r.slug)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setVisibleToRoles([...visibleToRoles, r.slug]);
+                            } else {
+                              setVisibleToRoles(visibleToRoles.filter((s) => s !== r.slug));
+                            }
+                          }}
+                          className="w-3.5 h-3.5 rounded text-[#ff6900] border-slate-300 focus:ring-[#ff6900]"
+                        />
+                        <span>{r.name}</span>
+                      </label>
+                    ))
+                  )}
+                </div>
+              </div>
             </div>
           </div>
-        </SectionCard>
 
-        <SectionCard title="Approval Flow">
-          <ApprovalFlowBuilder
-            steps={approvalSteps}
-            onChange={setApprovalSteps}
-            roleOptions={roles.length > 0 ? roles.map((r) => r.slug) : ["team_lead", "accountant", "hr", "coo", "ed", "ceo"]}
-            workflowType={workflowType}
-          />
-        </SectionCard>
-      </SlideOverContent>
-      <SlideOverFooter>
-        <Button onClick={() => void handleSubmit()} disabled={saving}>
-          {saving ? "Saving..." : requestType ? "Update Type" : "Create Type"}
-        </Button>
-        <Button variant="ghost" onClick={onClose}>
-          Cancel
-        </Button>
-      </SlideOverFooter>
+          {/* Approval Flow Section */}
+          <div className="space-y-4 pt-2">
+            <div className="flex items-center gap-2 pb-2 border-b border-slate-100 text-xs font-bold text-slate-900 uppercase tracking-wider">
+              <GitBranch className="h-4 w-4 text-purple-600" />
+              Multi-Step Approval Chain
+            </div>
+
+            <div className="bg-slate-50/60 border border-slate-200/80 rounded-2xl p-4">
+              <ApprovalFlowBuilder
+                steps={approvalSteps}
+                onChange={setApprovalSteps}
+                roleOptions={
+                  roles.length > 0
+                    ? roles.map((r) => r.slug)
+                    : ["team_lead", "accountant", "hr", "coo", "ed", "ceo"]
+                }
+                workflowType={workflowType}
+              />
+            </div>
+          </div>
+        </SlideOverContent>
+
+        <SlideOverFooter className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 font-semibold text-xs hover:bg-white transition"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={saving}
+            className="px-5 py-2 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white font-bold text-xs shadow-sm shadow-orange-500/20 transition flex items-center gap-2"
+          >
+            {saving ? (
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Check className="h-4 w-4" />
+            )}
+            <span>{requestType ? "Update Request Type" : "Create Request Type"}</span>
+          </button>
+        </SlideOverFooter>
+      </form>
     </SlideOver>
   );
 }

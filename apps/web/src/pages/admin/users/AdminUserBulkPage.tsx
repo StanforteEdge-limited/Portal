@@ -1,21 +1,15 @@
 import { useNavigate } from "react-router-dom";
+import { Link } from "@/shared/router-adapter";
 import type { CreateAdminUser } from "@stanforte/contract";
+import { PortalLayout } from "@/components/layout/PortalLayout";
 import { useAuth } from "@/shared/context/AuthProvider";
-import { AppShell } from "@/shared/components/layout/AppShell";
 import { useCachedQuery, resourceApi, adminUsersApi } from "@/shared/lib/core";
-import { buildAppNavigation, buildAppMobileNav } from "@/shared/navigation";
-import { getWorkspaceProfile } from "@/shared/api/workspace-api";
 import { BulkImportDashboard, type BulkColumnSchema } from "@/shared/components/feedback/BulkImportDashboard";
+import { Users, ChevronRight, ArrowLeft } from "lucide-react";
 
 export default function AdminUserBulkPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-
-  const { data: profile } = useCachedQuery(
-    "admin:profile",
-    () => getWorkspaceProfile(),
-    { ttlMs: 1000 * 60, storage: "memory" },
-  );
 
   const { data: organizations } = useCachedQuery(
     "admin:users:organizations",
@@ -33,10 +27,6 @@ export default function AdminUserBulkPage() {
     ? organizations.map((o: any) => ({ value: String(o.id), label: o.name }))
     : [];
 
-  const roleSlugs = Array.isArray(roleOptions)
-    ? roleOptions.map((r: any) => r.slug).join(", ")
-    : "employee, administrator, hr, finance";
-
   const columns: BulkColumnSchema[] = [
     { key: "first_name", label: "First Name", placeholder: "e.g., John", required: true, minWidth: "150px" },
     { key: "last_name", label: "Last Name", placeholder: "e.g., Doe", required: true, minWidth: "150px" },
@@ -50,10 +40,10 @@ export default function AdminUserBulkPage() {
         { value: "staff", label: "Staff" },
         { value: "vendor", label: "Vendor" },
         { value: "client", label: "Client" },
-        { value: "board_member", label: "Board Member" }
+        { value: "board_member", label: "Board Member" },
       ],
       required: true,
-      minWidth: "140px"
+      minWidth: "140px",
     },
     {
       key: "primary_organization_id",
@@ -61,7 +51,7 @@ export default function AdminUserBulkPage() {
       type: "select",
       options: orgOptions,
       required: true,
-      minWidth: "180px"
+      minWidth: "180px",
     },
     {
       key: "status",
@@ -70,10 +60,10 @@ export default function AdminUserBulkPage() {
       options: [
         { value: "active", label: "Active" },
         { value: "pending", label: "Pending" },
-        { value: "suspended", label: "Suspended" }
+        { value: "suspended", label: "Suspended" },
       ],
       required: true,
-      minWidth: "130px"
+      minWidth: "130px",
     },
     {
       key: "roles",
@@ -82,14 +72,14 @@ export default function AdminUserBulkPage() {
       options: Array.isArray(roleOptions)
         ? roleOptions.map((r: any) => ({ value: r.slug, label: r.name }))
         : [],
-      minWidth: "220px"
+      minWidth: "220px",
     },
     {
       key: "send_invite",
       label: "Send Invite",
       type: "checkbox",
-      minWidth: "100px"
-    }
+      minWidth: "100px",
+    },
   ];
 
   const sampleUsers: CreateAdminUser[] = [
@@ -102,37 +92,60 @@ export default function AdminUserBulkPage() {
       primary_organization_id: orgOptions[0]?.value || "",
       status: "active",
       roles: ["employee"],
-      send_invite: true
-    }
+      send_invite: true,
+    },
   ];
 
   const handleSubmitBulk = async (dataList: CreateAdminUser[]) => {
     return await adminUsersApi.createBulkUsers({ users: dataList });
   };
 
-  const userName =
-    `${user?.first_name || ""} ${user?.last_name || ""}`.trim() ||
-    user?.email ||
-    "Admin";
-
   return (
-    <AppShell
-      navigation={buildAppNavigation()}
-      activeLabel="admin-users"
-      user={{
-        name: userName,
-        role: profile?.employee_profile?.job_title || "Admin",
-      }}
-      mobileNav={buildAppMobileNav("Dashboard")}
-    >
-      <BulkImportDashboard
-        title="Bulk Import Users"
-        description="Download the template, upload a CSV file, or add rows manually to stage user accounts for registration."
-        columns={columns}
-        sampleData={sampleUsers}
-        onSubmit={handleSubmitBulk}
-        onCancel={() => navigate("/admin/users")}
-      />
-    </AppShell>
+    <PortalLayout activeNav="Employees Directory">
+      <div className="space-y-6 max-w-[1600px] mx-auto pb-12">
+        {/* Header Breadcrumb */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-xs font-medium text-slate-500 mb-1">
+              <Link to="/dashboard" className="hover:text-slate-800 transition">
+                Dashboard
+              </Link>
+              <ChevronRight className="h-3 w-3" />
+              <Link to="/admin/users" className="hover:text-slate-800 transition">
+                Staff Directory
+              </Link>
+              <ChevronRight className="h-3 w-3" />
+              <span className="text-slate-800 font-semibold">Bulk Onboarding</span>
+            </div>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight font-headline">
+              Bulk Employee Onboarding
+            </h1>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Stage, validate, and mass-register employee accounts across corporate organizations.
+            </p>
+          </div>
+
+          <Link
+            to="/admin/users"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition self-start sm:self-auto"
+          >
+            <ArrowLeft className="h-4 w-4 text-slate-400" />
+            <span>Back to Staff Directory</span>
+          </Link>
+        </div>
+
+        {/* Bulk Dashboard */}
+        <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden p-6">
+          <BulkImportDashboard
+            title="CSV / Spreadsheet Importer"
+            description="Download the template, paste rows or upload a CSV file to register staff members."
+            columns={columns}
+            sampleData={sampleUsers}
+            onSubmit={handleSubmitBulk}
+            onCancel={() => navigate("/admin/users")}
+          />
+        </div>
+      </div>
+    </PortalLayout>
   );
 }
