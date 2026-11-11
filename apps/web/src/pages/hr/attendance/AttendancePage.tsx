@@ -17,6 +17,7 @@ import {
   type AttendanceMode,
   type OfficeLocation,
 } from "./attendance-api";
+import { WeeklyAttendanceRhythmChart } from "./WeeklyAttendanceRhythmChart";
 import {
   Clock,
   Calendar,
@@ -590,89 +591,12 @@ export function AttendancePage() {
         </div>
       </div>
 
-      {/* 4. Weekly Attendance Overview Chart (Matching the Design Screenshot Wave Style) */}
-      <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h3 className="text-base font-bold text-slate-900 font-headline">
-              Attendance Overview & Weekly Rhythm
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Visual log of on-time check-ins vs late arrivals over the last 7 calendar days.
-            </p>
-          </div>
-
-          {/* Chart Legend */}
-          <div className="flex items-center gap-4 text-xs font-semibold">
-            <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
-              <span className="text-slate-600">Present (On-Time)</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#ff6900]" />
-              <span className="text-slate-600">Late / Absent</span>
-            </div>
-          </div>
-        </div>
-
-        {/* SVG Chart Wave matching screenshot */}
-        <div className="h-44 w-full pt-2">
-          <svg viewBox="0 0 500 160" className="w-full h-full overflow-visible">
-            <defs>
-              <linearGradient id="presentGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#2563eb" stopOpacity="0.18" />
-                <stop offset="100%" stopColor="#2563eb" stopOpacity="0" />
-              </linearGradient>
-              <linearGradient id="absentGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#ff6900" stopOpacity="0.15" />
-                <stop offset="100%" stopColor="#ff6900" stopOpacity="0" />
-              </linearGradient>
-            </defs>
-
-            {/* Subtle horizontal grid lines */}
-            <line x1="0" y1="20" x2="500" y2="20" stroke="#f1f5f9" strokeDasharray="3 3" />
-            <line x1="0" y1="70" x2="500" y2="70" stroke="#f1f5f9" strokeDasharray="3 3" />
-            <line x1="0" y1="120" x2="500" y2="120" stroke="#f1f5f9" strokeDasharray="3 3" />
-
-            {/* Present Wave */}
-            <path
-              d="M 0 65 Q 80 45, 160 55 T 330 38 T 500 48 L 500 140 L 0 140 Z"
-              fill="url(#presentGradient)"
-            />
-            <path
-              d="M 0 65 Q 80 45, 160 55 T 330 38 T 500 48"
-              fill="none"
-              stroke="#2563eb"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-            />
-
-            {/* Absent / Late Wave */}
-            <path
-              d="M 0 115 Q 80 102, 170 112 T 340 98 T 500 106 L 500 140 L 0 140 Z"
-              fill="url(#absentGradient)"
-            />
-            <path
-              d="M 0 115 Q 80 102, 170 112 T 340 98 T 500 106"
-              fill="none"
-              stroke="#ff6900"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-            />
-          </svg>
-        </div>
-
-        {/* Days of week footer */}
-        <div className="flex justify-between text-xs font-bold text-slate-400 px-2 pt-1 border-t border-slate-100">
-          <span>Mon</span>
-          <span>Tue</span>
-          <span>Wed</span>
-          <span>Thu</span>
-          <span>Fri</span>
-          <span className="text-[#ff6900] font-black">Sat (Today)</span>
-          <span>Sun</span>
-        </div>
-      </div>
+      {/* 4. Weekly Attendance Overview & Rhythm Chart */}
+      <WeeklyAttendanceRhythmChart
+        daily={daily}
+        title="Attendance Overview & Weekly Rhythm"
+        subtitle="Visual log of on-time check-ins vs late arrivals over the last 7 calendar days."
+      />
 
       {/* 5. Detailed Attendance History & Corrections */}
       <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden">
