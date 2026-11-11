@@ -24,6 +24,7 @@ export interface TaskDetailSlideOverProps {
   item?: any;
   isOpen?: boolean;
   open?: boolean;
+  isAdmin?: boolean;
   onClose: () => void;
   onSaveTask?: (updatedTask: TaskItem) => void;
   onUpdated?: () => void;
@@ -36,6 +37,7 @@ export function TaskDetailSlideOver({
   item,
   isOpen = true,
   open = true,
+  isAdmin = false,
   onClose,
   onSaveTask,
   onUpdated,
@@ -246,28 +248,30 @@ export function TaskDetailSlideOver({
                 </h4>
               </div>
 
-              {/* Tag Colleague Selector */}
-              <div className="flex items-center gap-2">
-                <select
-                  value={selectedColleagueId}
-                  onChange={(e) => handleTagColleague(e.target.value)}
-                  className="text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-slate-700 outline-none hover:bg-slate-100"
-                >
-                  <option value="">+ Tag a Colleague...</option>
-                  {SAMPLE_TEAM_MEMBERS.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name} ({m.role})
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {/* Tag Colleague Selector (Admins / Managers only) */}
+              {isAdmin && (
+                <div className="flex items-center gap-2">
+                  <select
+                    value={selectedColleagueId}
+                    onChange={(e) => handleTagColleague(e.target.value)}
+                    className="text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-slate-700 outline-none hover:bg-slate-100"
+                  >
+                    <option value="">+ Reassign / Tag Colleague...</option>
+                    {SAMPLE_TEAM_MEMBERS.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name} ({m.role})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
             {/* List of currently tagged people */}
             <div className="flex flex-wrap gap-2">
               {currentTask.assignees.length === 0 ? (
                 <p className="text-[11px] text-slate-400 italic">
-                  No colleagues tagged yet. Select a team member above to collaborate.
+                  Unassigned task.
                 </p>
               ) : (
                 currentTask.assignees.map((a) => (
@@ -279,14 +283,16 @@ export function TaskDetailSlideOver({
                       {a.avatar || a.name.slice(0, 2).toUpperCase()}
                     </span>
                     <span>{a.name}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveAssignee(a.id)}
-                      className="text-slate-400 hover:text-rose-600 transition p-0.5"
-                      title={`Remove ${a.name}`}
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveAssignee(a.id)}
+                        className="text-slate-400 hover:text-rose-600 transition p-0.5"
+                        title={`Remove ${a.name}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
                   </span>
                 ))
               )}

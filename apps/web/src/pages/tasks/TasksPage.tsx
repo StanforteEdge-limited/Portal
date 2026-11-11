@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { PortalLayout } from "@/components/layout/PortalLayout";
+import { PortalLayout, useWorkspace } from "@/components/layout/PortalLayout";
 import { useAuth } from "@/shared/context/AuthProvider";
 import {
   CheckSquare,
@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   Users,
   Sparkles,
+  User,
 } from "lucide-react";
 import type { TaskItem, TaskStatus, TaskPriority } from "./types";
 import { INITIAL_TASKS } from "./types";
@@ -26,10 +27,16 @@ import { NewTaskSlideOver } from "./NewTaskSlideOver";
 import DailyLogTab from "./DailyLogTab";
 
 type ViewMode = "kanban" | "table" | "log";
+type ScopeFilter = "all" | "assigned" | "personal";
 
 export default function TasksPage() {
   const { user } = useAuth();
+  const { isAdmin } = useWorkspace();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  const currentUserName = user?.first_name
+    ? `${user.first_name} ${user.last_name || ""}`.trim()
+    : user?.username || "Colleague";
 
   // Load from local storage or fallback to INITIAL_TASKS
   const [tasks, setTasks] = useState<TaskItem[]>(() => {
@@ -62,6 +69,7 @@ export default function TasksPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [assigneeFilter, setAssigneeFilter] = useState<string>("all");
+  const [scopeFilter, setScopeFilter] = useState<ScopeFilter>("all");
 
   // Slide-over states
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
@@ -69,15 +77,37 @@ export default function TasksPage() {
   const [newTaskDefaultStatus, setNewTaskDefaultStatus] = useState<TaskStatus>("planned");
   const [logTaskId, setLogTaskId] = useState<string | undefined>();
 
-  // Metrics
-  const inProgressCount = tasks.filter((t) => t.status === "in_progress").length;
-  const blockedCount = tasks.filter((t) => t.status === "blocked").length;
-  const completedCount = tasks.filter((t) => t.status === "completed").length;
-  const completionRate = tasks.length > 0 ? Math.round((completedCount / tasks.length) * 100) : 0;
+  // Filter tasks based on role (Normal staff only see their assigned tasks and personal tasks)
+  const scopedTasks = useMemo(() => {
+    if (isAdmin) return tasks;
+
+    return tasks.filter((t) => {
+      const isPersonal = Boolean(t.is_personal) || t.owner_name?.toLowerCase() === currentUserName.toLowerCase();
+      const isAssigned =
+        t.assignees?.some(
+          (a) =>
+            a.name.toLowerCase() === currentUserName.toLowerCase() ||
+            a.id === user?.id ||
+            (user?.email && a.email === user.email)
+        ) ||
+        // Demo initial tasks assigned to technical staff
+        t.assignees?.some((a) => a.name === "Chinedu Eze" || a.name === "Folake Adeleke" || a.name === "Amina Yusuf");
+
+      if (scopeFilter === "personal") return isPersonal;
+      if (scopeFilter === "assigned") return isAssigned && !isPersonal;
+      return isPersonal || isAssigned;
+    });
+  }, [tasks, isAdmin, currentUserName, user, scopeFilter]);
+
+  // Metrics based on scoped tasks
+  const inProgressCount = scopedTasks.filter((t) => t.status === "in_progress").length;
+  const blockedCount = scopedTasks.filter((t) => t.status === "blocked").length;
+  const completedCount = scopedTasks.filter((t) => t.status === "completed").length;
+  const completionRate = scopedTasks.length > 0 ? Math.round((completedCount / scopedTasks.length) * 100) : 0;
 
   // Filtered Tasks
   const filteredTasks = useMemo(() => {
-    return tasks.filter((task) => {
+    return scopedTasks.filter((task) => {
       // Search
       const q = searchQuery.toLowerCase().trim();
       const matchesSearch =
@@ -94,14 +124,14 @@ export default function TasksPage() {
       // Priority
       const matchesPriority = priorityFilter === "all" || task.priority === priorityFilter;
 
-      // Assignee
+      // Assignee (for admin)
       const matchesAssignee =
         assigneeFilter === "all" ||
         task.assignees.some((a) => a.id === assigneeFilter || a.name === assigneeFilter);
 
       return matchesSearch && matchesStatus && matchesPriority && matchesAssignee;
     });
-  }, [tasks, searchQuery, statusFilter, priorityFilter, assigneeFilter]);
+  }, [scopedTasks, searchQuery, statusFilter, priorityFilter, assigneeFilter]);
 
   // Task Actions
   const handleUpdateStatus = (taskId: string, newStatus: TaskStatus) => {
@@ -147,13 +177,17 @@ export default function TasksPage() {
                 Workspace
               </Link>
               <ChevronRight className="h-3 w-3 text-slate-400" />
-              <span className="text-[#ff6900]">Task Management &amp; Kanban</span>
+              <span className="text-[#ff6900]">
+                {isAdmin ? "Enterprise Task Board & Sprints" : "My Work Items & Deliverables"}
+              </span>
             </div>
             <h1 className="text-2xl font-black text-slate-900 tracking-tight font-headline">
-              Work Items &amp; Deliverables
+              {isAdmin ? "Work Items & Sprint Board" : "My Deliverables & Tasks"}
             </h1>
             <p className="text-xs text-slate-500 mt-0.5">
-              Choose your preferred view (Kanban Board or Table), tag colleagues, post progress updates, and organize team sprints.
+              {isAdmin
+                ? "Assign deliverables across staff, monitor team lanes, review blockers, and organize sprints."
+                : "Manage your assigned deliverables and personal to-dos. Update your progress and log daily standups."}
             </p>
           </div>
 
@@ -164,7 +198,7 @@ export default function TasksPage() {
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-bold transition shadow-sm"
             >
               <Plus className="h-4 w-4" />
-              <span>Create Task</span>
+              <span>{isAdmin ? "Create & Assign Task" : "+ New Personal Task"}</span>
             </button>
           </div>
         </div>
@@ -178,12 +212,14 @@ export default function TasksPage() {
                 <CheckSquare className="h-5 w-5" />
               </div>
               <div>
-                <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Tasks</div>
-                <div className="text-2xl font-black text-slate-900 mt-0.5 font-headline">{tasks.length}</div>
+                <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  {isAdmin ? "Total Work Items" : "My Tasks"}
+                </div>
+                <div className="text-2xl font-black text-slate-900 mt-0.5 font-headline">{scopedTasks.length}</div>
               </div>
             </div>
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-              Sprint 44
+              Active Scope
             </span>
           </div>
 
@@ -236,48 +272,83 @@ export default function TasksPage() {
           </div>
         </div>
 
-        {/* 3. View Mode Switcher + Search & Filter Toolbar */}
+        {/* 3. View Mode Switcher + Scope Filter & Search Toolbar */}
         <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
           {/* Left: View Mode Pills (Kanban Board vs Table vs Daily Log) */}
-          <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl shrink-0 self-start">
-            <button
-              type="button"
-              onClick={() => handleSetViewMode("kanban")}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
-                viewMode === "kanban"
-                  ? "bg-white text-slate-900 shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <LayoutGrid className={`h-4 w-4 ${viewMode === "kanban" ? "text-[#ff6900]" : "text-slate-400"}`} />
-              <span>Kanban Board</span>
-            </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl shrink-0">
+              <button
+                type="button"
+                onClick={() => handleSetViewMode("kanban")}
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                  viewMode === "kanban"
+                    ? "bg-white text-slate-900 shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <LayoutGrid className={`h-4 w-4 ${viewMode === "kanban" ? "text-[#ff6900]" : "text-slate-400"}`} />
+                <span>Kanban Board</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => handleSetViewMode("table")}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
-                viewMode === "table"
-                  ? "bg-white text-slate-900 shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <TableIcon className={`h-4 w-4 ${viewMode === "table" ? "text-[#ff6900]" : "text-slate-400"}`} />
-              <span>Table View</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => handleSetViewMode("table")}
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                  viewMode === "table"
+                    ? "bg-white text-slate-900 shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <TableIcon className={`h-4 w-4 ${viewMode === "table" ? "text-[#ff6900]" : "text-slate-400"}`} />
+                <span>Table View</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => handleSetViewMode("log")}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
-                viewMode === "log"
-                  ? "bg-white text-slate-900 shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <Clock className={`h-4 w-4 ${viewMode === "log" ? "text-[#ff6900]" : "text-slate-400"}`} />
-              <span>Daily Log &amp; Standup</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => handleSetViewMode("log")}
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                  viewMode === "log"
+                    ? "bg-white text-slate-900 shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <Clock className={`h-4 w-4 ${viewMode === "log" ? "text-[#ff6900]" : "text-slate-400"}`} />
+                <span>Daily Log &amp; Standup</span>
+              </button>
+            </div>
+
+            {/* Scope Filter for Staff: All My Tasks / Assigned to Me / Personal Tasks */}
+            {!isAdmin && viewMode !== "log" && (
+              <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl text-xs font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setScopeFilter("all")}
+                  className={`px-2.5 py-1 rounded-lg transition ${
+                    scopeFilter === "all" ? "bg-white text-slate-900 font-bold shadow-xs" : "text-slate-500 hover:text-slate-800"
+                  }`}
+                >
+                  All ({scopedTasks.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setScopeFilter("assigned")}
+                  className={`px-2.5 py-1 rounded-lg transition ${
+                    scopeFilter === "assigned" ? "bg-white text-slate-900 font-bold shadow-xs" : "text-slate-500 hover:text-slate-800"
+                  }`}
+                >
+                  Assigned
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setScopeFilter("personal")}
+                  className={`px-2.5 py-1 rounded-lg transition ${
+                    scopeFilter === "personal" ? "bg-white text-slate-900 font-bold shadow-xs" : "text-slate-500 hover:text-slate-800"
+                  }`}
+                >
+                  Personal
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Right: Search & Filters (Shown for Kanban & Table) */}
@@ -290,7 +361,7 @@ export default function TasksPage() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search tasks, tags, or assignees..."
+                  placeholder="Search tasks, tags, or deliverables..."
                   className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
                 />
               </div>
@@ -340,7 +411,7 @@ export default function TasksPage() {
               tasks={filteredTasks}
               onSelectTask={(task) => setSelectedTask(task)}
               onUpdateStatus={handleUpdateStatus}
-              onDeleteTask={handleDeleteTask}
+              onDeleteTask={isAdmin ? handleDeleteTask : undefined}
             />
           )}
 
@@ -357,9 +428,10 @@ export default function TasksPage() {
           <TaskDetailSlideOver
             task={selectedTask}
             isOpen={Boolean(selectedTask)}
+            isAdmin={isAdmin}
             onClose={() => setSelectedTask(null)}
             onSaveTask={handleSaveTask}
-            onDeleteTask={handleDeleteTask}
+            onDeleteTask={isAdmin ? handleDeleteTask : undefined}
           />
         )}
 
@@ -367,6 +439,7 @@ export default function TasksPage() {
           <NewTaskSlideOver
             isOpen={isNewTaskOpen}
             defaultStatus={newTaskDefaultStatus}
+            isAdmin={isAdmin}
             onClose={() => setIsNewTaskOpen(false)}
             onCreateTask={handleCreateTask}
           />

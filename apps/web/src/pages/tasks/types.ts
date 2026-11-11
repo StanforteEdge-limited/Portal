@@ -30,6 +30,7 @@ export interface TaskItem {
   assignees: TaskAssignee[];
   tags: string[];
   project_name?: string;
+  is_personal?: boolean;
   updates: TaskUpdate[];
 }
 
@@ -184,3 +185,4 @@ export const INITIAL_TASKS: TaskItem[] = [
     updates: [],
   },
 ];
+
