@@ -128,13 +128,15 @@ export default function RequestTypeSlideOver({
         },
       };
 
-      if (requestType?.id) {
-        await requestApi.updateType(requestType.id, payload);
-        showToast(`Request type "${name}" updated.`, "success");
-      } else {
-        await requestApi.createType(payload);
-        showToast(`Request type "${name}" created.`, "success");
-      }
+      await requestApi.saveType(
+        payload,
+        requestType?.id,
+        categoryId || undefined,
+      );
+      showToast(
+        `Request type "${name}" ${requestType?.id ? "updated" : "created"}.`,
+        "success",
+      );
       onSaved();
     } catch (err: any) {
       showToast(err?.message || "Failed to save request type.", "error");
