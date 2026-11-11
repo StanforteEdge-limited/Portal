@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { Link, useNavigate } from "@/shared/router-adapter";
-import { PortalLayout } from "@/components/layout/PortalLayout";
+import { PortalLayout, useWorkspace } from "@/components/layout/PortalLayout";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { useCachedQuery } from "@/shared/lib/core";
 import { getWorkspaceProfile } from "@/shared/api/workspace-api";
@@ -21,6 +21,7 @@ import {
 export default function TeamsPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { isAdmin } = useWorkspace();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState("all");
 
@@ -82,15 +83,17 @@ export default function TeamsPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Link
-              to="/admin/groups"
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition shadow-sm"
-            >
-              <Building2 className="h-3.5 w-3.5" />
-              <span>Manage Groups</span>
-            </Link>
-          </div>
+          {isAdmin && (
+            <div className="flex items-center gap-2">
+              <Link
+                to="/admin/groups"
+                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition shadow-sm"
+              >
+                <Building2 className="h-3.5 w-3.5" />
+                <span>Manage Groups</span>
+              </Link>
+            </div>
+          )}
         </div>
 
         {/* 4 KPI Metric Cards */}
