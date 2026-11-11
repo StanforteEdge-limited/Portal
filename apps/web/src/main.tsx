@@ -99,7 +99,11 @@ if (faviconLink) {
   faviconLink.href = faviconUrl;
 }
 
-ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
+const container = document.getElementById("root") as HTMLElement;
+const root = (window as any).__reactRoot || ReactDOM.createRoot(container);
+(window as any).__reactRoot = root;
+
+root.render(
   <React.StrictMode>
     <AppErrorBoundary>
       <ToastProvider>

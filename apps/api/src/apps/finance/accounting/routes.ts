@@ -73,6 +73,49 @@ export const FinanceRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/ledger/export', { preHandler: authenticated }, async (request) => {
     return finance().exportLedger(requestQuery(request));
   });
+
+  // Budgets
+  fastify.get('/budgets', { preHandler: authenticated }, async (request) => {
+    return finance().listBudgets(requestQuery(request));
+  });
+
+  fastify.get('/budgets/approved-lines', { preHandler: authenticated }, async (request) => {
+    return finance().listApprovedBudgetLines(requestQuery(request));
+  });
+
+  fastify.get('/budgets/:id', { preHandler: authenticated }, async (request) => {
+    const { id } = requestParams<{ id: string }>(request);
+    return finance().getBudget(id);
+  });
+
+  fastify.post('/budgets', { preHandler: authenticated }, async (request) => {
+    return finance().createBudget(requestBody(request), (request.user as any)?.id);
+  });
+
+  fastify.put('/budgets/:id', { preHandler: authenticated }, async (request) => {
+    const { id } = requestParams<{ id: string }>(request);
+    return finance().updateBudget(id, requestBody(request), (request.user as any)?.id);
+  });
+
+  fastify.post('/budgets/:id/approve', { preHandler: authenticated }, async (request) => {
+    const { id } = requestParams<{ id: string }>(request);
+    return finance().approveBudget(id, (request.user as any)?.id);
+  });
+
+  fastify.post('/budgets/:id/reopen', { preHandler: authenticated }, async (request) => {
+    const { id } = requestParams<{ id: string }>(request);
+    return finance().reopenBudget(id, (request.user as any)?.id);
+  });
+
+  fastify.post('/budgets/:id/recalculate', { preHandler: authenticated }, async (request) => {
+    const { id } = requestParams<{ id: string }>(request);
+    return finance().recalculateBudget(id);
+  });
+
+  fastify.post('/budgets/:id/copy', { preHandler: authenticated }, async (request) => {
+    const { id } = requestParams<{ id: string }>(request);
+    return finance().copyBudget(id, requestBody(request), (request.user as any)?.id);
+  });
 };
 
 export const AccountingRoutes = FinanceRoutes;

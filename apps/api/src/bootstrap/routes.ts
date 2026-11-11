@@ -24,6 +24,7 @@ import { AttendanceRoutes } from '$apps/hr/attendance/routes';
 import { PayrollRoutes } from '$apps/hr/payroll/routes';
 import { RequestsRoutes } from '$apps/hr/requests/routes';
 import { FinanceRoutes } from '$apps/finance/accounting/routes';
+import { ProcurementRoutes } from '$apps/finance/procurement/routes';
 import { GroupsRoutes } from '$apps/communication/groups/routes';
 import { ChatRoutes } from '$apps/communication/chat/routes';
 import { StorageRoutes } from '$apps/storage/routes';
@@ -93,4 +94,6 @@ export const appRoutes: AppRoute[] = [
   { prefix: '/tenancy', plugin: TenancyRoutes },
   { prefix: '/tenants', plugin: TenancyRoutes },
   { prefix: '/finance', plugin: FinanceRoutes },
+  { prefix: '/procurement', plugin: ProcurementRoutes },
+  { prefix: '/auth/roles', plugin: RbacRoutes },
 ];

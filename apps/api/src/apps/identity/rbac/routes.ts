@@ -23,6 +23,10 @@ export const RbacRoutes: FastifyPluginAsync = async (fastify) => {
     rbac().getOverview(requestQuery<{ include_inactive?: string }>(request).include_inactive === 'true', currentTenant(request)),
   );
 
+  fastify.get('/overview', { preHandler: guard }, async (request) =>
+    rbac().getOverview(requestQuery<{ include_inactive?: string }>(request).include_inactive === 'true', currentTenant(request)),
+  );
+
   fastify.get('/roles', { preHandler: guard }, async (request) =>
     rbac().listRoles(requestQuery<{ include_inactive?: string }>(request).include_inactive === 'true', currentTenant(request)),
   );

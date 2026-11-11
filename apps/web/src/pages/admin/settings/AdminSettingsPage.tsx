@@ -142,7 +142,7 @@ export default function AdminSettingsPage() {
 
   const loadSecurity = async () => {
     try {
-      const res = await httpRequest<any>("/auth/roles/overview");
+      const res = await httpRequest<any>("/admin/rbac");
       if (res?.data) setSecurityOverview(res.data);
     } catch {
       // fallback
