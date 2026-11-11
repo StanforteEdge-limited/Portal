@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Button } from "./Button";
 import { SelectField } from "./fields";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 
 type PaginationControlsProps = {
   page: number;
@@ -69,42 +70,47 @@ export function PaginationControls({
       )}
 
       {showStatus ? (
-        <p className="text-sm text-slate-500">
-          Page {safePage} of {safeTotalPages} • Showing {rangeStart}-{rangeEnd} of {totalCount} {itemLabel}
+        <p className="text-xs text-slate-500 font-medium">
+          Page {safePage} of {safeTotalPages} • Showing {rangeStart}–{rangeEnd} of {totalCount} {itemLabel}
           {totalCount === 1 ? "" : "s"}
         </p>
       ) : (
         <div />
       )}
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-1.5">
         <Button
           variant="secondary"
           size="sm"
           onClick={() => onPageChange(1)}
           disabled={safePage <= 1}
+          aria-label="First page"
+          className="px-2"
         >
-          {'<<'}
+          <ChevronsLeft className="h-4 w-4" />
         </Button>
         <Button
           variant="secondary"
           size="sm"
           onClick={() => onPageChange(Math.max(1, safePage - 1))}
           disabled={safePage <= 1}
+          aria-label="Previous page"
+          className="px-2"
         >
-          {'<'}
+          <ChevronLeft className="h-4 w-4" />
         </Button>
         {visiblePages.map((pageNumber, index) => {
           const previous = visiblePages[index - 1];
           const showGap = typeof previous === "number" && pageNumber - previous > 1;
           return (
-            <span key={`page-chip-${pageNumber}`} className="inline-flex items-center gap-2">
-              {showGap ? <span className="px-1 text-sm text-slate-400">...</span> : null}
+            <span key={`page-chip-${pageNumber}`} className="inline-flex items-center gap-1.5">
+              {showGap ? <span className="px-1 text-xs text-slate-400">...</span> : null}
               <Button
                 variant={pageNumber === safePage ? "primary" : "secondary"}
                 size="sm"
                 onClick={() => onPageChange(pageNumber)}
                 disabled={pageNumber === safePage}
+                className="min-w-[32px] px-2.5"
               >
                 {pageNumber}
               </Button>
@@ -116,16 +122,20 @@ export function PaginationControls({
           size="sm"
           onClick={() => onPageChange(Math.min(safeTotalPages, safePage + 1))}
           disabled={safePage >= safeTotalPages}
+          aria-label="Next page"
+          className="px-2"
         >
-          {'>'}
+          <ChevronRight className="h-4 w-4" />
         </Button>
         <Button
           variant="secondary"
           size="sm"
           onClick={() => onPageChange(safeTotalPages)}
           disabled={safePage >= safeTotalPages}
+          aria-label="Last page"
+          className="px-2"
         >
-          {'>>'}
+          <ChevronsRight className="h-4 w-4" />
         </Button>
       </div>
     </div>

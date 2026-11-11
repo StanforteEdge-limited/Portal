@@ -26,7 +26,7 @@ export function SectionCard({
   return (
     <section
       className={[
-        "bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 sm:p-6 mt-6",
+        "bg-white rounded-2xl border border-slate-100 shadow-2xs hover:border-slate-200/80 transition-all p-5 sm:p-6 mt-6",
         className,
       ]
         .filter(Boolean)

@@ -52,6 +52,8 @@ module.exports = {
         danger: "#FC2621",
       },
       boxShadow: {
+        "2xs": "0 1px 2px 0 rgba(0, 0, 0, 0.03)",
+        xs: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
         soft: "0 18px 50px rgba(15, 23, 42, 0.08)",
         card: "0 22px 60px rgba(15, 23, 42, 0.08)",
       },
