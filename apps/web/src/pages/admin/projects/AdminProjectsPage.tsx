@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { Link } from "@/shared/router-adapter";
 import { PortalLayout } from "@/components/layout/PortalLayout";
 import { useAuth } from "@/shared/context/AuthProvider";
-import { useCachedQuery, resourceApi } from "@/shared/lib/core";
+import { useCachedQuery, resourceApi, httpRequest } from "@/shared/lib/core";
 import { useToast } from "@/shared";
 import AdminProjectSlideOver from "./AdminProjectSlideOver";
 import {
@@ -111,8 +111,8 @@ export default function AdminProjectsPage() {
   const handleDeleteProject = async (p: ProjectRow) => {
     if (!window.confirm(`Are you sure you want to delete "${p.name}"?`)) return;
     try {
-      await resourceApi.deleteProject(p.id);
-      showToast(`Project "${p.name}" deleted.`, "success");
+      await httpRequest(`/projects/${p.id}/archive`, { method: "POST" });
+      showToast(`Project "${p.name}" archived.`, "success");
       setListKey((k) => k + 1);
     } catch (err: any) {
       showToast(err?.message || "Failed to delete project.", "error");

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "@/shared/router-adapter";
 import { PortalLayout } from "@/components/layout/PortalLayout";
 import { useAuth } from "@/shared/context/AuthProvider";
-import { useCachedQuery, resourceApi } from "@/shared/lib/core";
+import { useCachedQuery, resourceApi, httpRequest } from "@/shared/lib/core";
 import { useToast } from "@/shared";
 import type { TeamOption } from "@stanforte/shared";
 import AdminGroupSlideOver from "./AdminGroupSlideOver";
@@ -95,7 +95,7 @@ export default function AdminGroupsPage() {
   const handleDeleteGroup = async (group: TeamOption) => {
     if (!window.confirm(`Are you sure you want to remove "${group.name}"?`)) return;
     try {
-      await resourceApi.deleteGroup(group.id);
+      await httpRequest(`/requests/groups/${group.id}`, { method: "DELETE" });
       showToast(`Group "${group.name}" removed successfully.`, "success");
       setListKey((k) => k + 1);
     } catch (err: any) {

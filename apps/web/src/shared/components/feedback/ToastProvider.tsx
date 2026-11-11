@@ -8,35 +8,38 @@ import {
   type PropsWithChildren,
 } from "react";
 
-type ToastTone = "success" | "warning" | "danger" | "info";
+export type ToastTone = "success" | "warning" | "danger" | "info" | "error";
 
-type ToastInput = {
+export type ToastInput = {
   title?: string;
   message: string;
   tone?: ToastTone;
   durationMs?: number;
 };
 
-type ToastRecord = ToastInput & {
+type ToastRecord = {
   id: number;
-  tone: ToastTone;
+  title?: string;
+  message: string;
+  tone: "success" | "warning" | "danger" | "info";
+  durationMs?: number;
 };
 
-type ToastContextValue = {
-  showToast: (toast: ToastInput) => number;
+export type ToastContextValue = {
+  showToast: (toast: ToastInput | string, tone?: ToastTone | string) => number;
   dismissToast: (id: number) => void;
 };
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
-const toneClasses: Record<ToastTone, string> = {
+const toneClasses: Record<"success" | "warning" | "danger" | "info", string> = {
   success: "border-success/20 bg-white text-slate-900",
   warning: "border-warning/20 bg-white text-slate-900",
   danger: "border-danger/20 bg-white text-slate-900",
   info: "border-brand-900/10 bg-white text-slate-900",
 };
 
-const toneAccentClasses: Record<ToastTone, string> = {
+const toneAccentClasses: Record<"success" | "warning" | "danger" | "info", string> = {
   success: "bg-success",
   warning: "bg-warning",
   danger: "bg-danger",
@@ -52,12 +55,33 @@ export function ToastProvider({ children }: PropsWithChildren) {
   }, []);
 
   const showToast = useCallback(
-    ({ tone = "info", durationMs, ...toast }: ToastInput) => {
+    (input: ToastInput | string, secondaryTone?: ToastTone | string) => {
+      let resolvedTone: "success" | "warning" | "danger" | "info" = "info";
+      let message = "";
+      let title: string | undefined;
+      let durationMs: number | undefined;
+
+      if (typeof input === "string") {
+        message = input;
+        const rawTone = secondaryTone || "info";
+        resolvedTone = rawTone === "error" ? "danger" : (rawTone as any) || "info";
+      } else {
+        message = input.message;
+        title = input.title;
+        durationMs = input.durationMs;
+        const rawTone = input.tone || "info";
+        resolvedTone = rawTone === "error" ? "danger" : (rawTone as any) || "info";
+      }
+
+      if (!toneClasses[resolvedTone]) {
+        resolvedTone = "info";
+      }
+
       const id = ++idRef.current;
-      const nextToast: ToastRecord = { id, tone, ...toast };
+      const nextToast: ToastRecord = { id, tone: resolvedTone, message, title, durationMs };
       setToasts((current) => [...current, nextToast]);
 
-      const timeout = durationMs ?? (tone === "danger" ? 7000 : 4200);
+      const timeout = durationMs ?? (resolvedTone === "danger" ? 7000 : 4200);
       if (timeout > 0) {
         window.setTimeout(() => {
           dismissToast(id);

@@ -100,11 +100,11 @@ export default function AdminPayrollRunAuthorizePage() {
     setActing("export");
     try {
       const res = await downloadMonthlyBreakdown(id);
-      if (res?.base64) {
+      if (res?.content_base64) {
         triggerDownload(
-          res.fileName || `payroll-breakdown-${id}.xlsx`,
-          res.mimeType || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-          res.base64,
+          res.file_name || `payroll-breakdown-${id}.xlsx`,
+          res.mime_type || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          res.content_base64,
         );
         showToast("Breakdown downloaded.", "success");
       }
