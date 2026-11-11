@@ -11,7 +11,7 @@ import { ObjectStorageService } from '$core/storage';
 import { fileAsset, storageFolder } from './model';
 import { profile } from '$apps/identity/users/model';
 import { organization } from '$apps/hr/organizations/model';
-import { tenantOrganization } from '$apps/tenancy/model';
+import { tenant, tenantMembership, tenantOrganization } from '$apps/tenancy/model';
 import { requestItem } from '$apps/hr/requests/model';
 import { financePaymentVoucher } from '$apps/finance/accounting/model';
 import { subscriptionPlan, tenantSubscription } from '$apps/platform/billing/model';
@@ -198,10 +198,46 @@ export class StorageService {
     if (!org) throw new NotFoundException('Organization not found');
   }
 
-  private async currentRequiredTenantId() {
-    const tenantId = this.tenantContext.currentTenantId();
-    if (!tenantId) throw new BadRequestException('Tenant context is required to upload files');
-    return tenantId;
+  private async currentRequiredTenantId(userId?: string): Promise<bigint> {
+    let tenantId = this.tenantContext.currentTenantId();
+    if (tenantId) return tenantId;
+
+    if (userId) {
+      try {
+        const uid = toBigInt(userId);
+        const [membership] = await this.db.client
+          .select({ tenantId: tenantMembership.tenantId })
+          .from(tenantMembership)
+          .where(and(eq(tenantMembership.profileId, uid), eq(tenantMembership.status, 'active')))
+          .limit(1);
+        if (membership?.tenantId) return membership.tenantId;
+
+        const [userProfile] = await this.db.client
+          .select({ orgId: profile.primaryOrganizationId })
+          .from(profile)
+          .where(eq(profile.id, uid))
+          .limit(1);
+        if (userProfile?.orgId) {
+          const [org] = await this.db.client
+            .select({ tenantId: organization.tenantId })
+            .from(organization)
+            .where(eq(organization.id, userProfile.orgId))
+            .limit(1);
+          if (org?.tenantId) return org.tenantId;
+        }
+      } catch (err) {
+        this.logger.warn(`Failed fallback tenant lookup for user ${userId}: ${(err as Error)?.message}`);
+      }
+    }
+
+    const [firstTenant] = await this.db.client
+      .select({ id: tenant.id })
+      .from(tenant)
+      .where(eq(tenant.status, 'active'))
+      .limit(1);
+    if (firstTenant?.id) return firstTenant.id;
+
+    throw new BadRequestException('Tenant context is required to upload files');
   }
 
   async attach(userId: string, dto: AttachFile) {
@@ -218,7 +254,7 @@ export class StorageService {
     }
 
     const folderId = await this.resolveFolderId(dto.folder_id);
-    const tenantId = await this.currentRequiredTenantId();
+    const tenantId = await this.currentRequiredTenantId(userId);
 
     const [created] = await this.db.client
       .insert(fileAsset)
