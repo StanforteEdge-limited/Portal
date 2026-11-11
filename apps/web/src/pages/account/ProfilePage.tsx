@@ -96,8 +96,6 @@ export default function ProfilePage() {
           description="Manage your personal staff identity, contact information, assignments, and credentials."
           icon={User}
           iconColor="bg-blue-50 text-blue-600"
-          badge="● Staff Account"
-          badgeColor="bg-blue-50 text-blue-700 border-blue-200/60"
           actions={
             <div className="flex items-center gap-2.5">
               <button

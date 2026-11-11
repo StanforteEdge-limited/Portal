@@ -258,8 +258,6 @@ export function AttendancePage() {
         description="Real-time check-in terminal, geofence verification, shift tracking, and monthly reconciliation."
         icon={Clock}
         iconColor="bg-orange-50 text-[#ff6900]"
-        badge="● Live Terminal"
-        badgeColor="bg-emerald-50 text-emerald-700 border-emerald-200/60"
         actions={
           <>
             <button

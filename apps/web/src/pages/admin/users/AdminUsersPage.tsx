@@ -89,8 +89,6 @@ export default function AdminUsersPage() {
         description="Manage organization members, employee directories, roles, and access permissions."
         icon={Users}
         iconColor="bg-blue-50 text-blue-600"
-        badge="● Admin Directory"
-        badgeColor="bg-blue-50 text-blue-700 border-blue-200/60"
         actions={
           <div className="flex items-center gap-3">
             <button

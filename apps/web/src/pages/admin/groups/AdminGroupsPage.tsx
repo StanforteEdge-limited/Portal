@@ -112,8 +112,6 @@ export default function AdminGroupsPage() {
           description="Configure operating units, departments, and cross-subsidiary workforce coverage."
           icon={Building2}
           iconColor="bg-indigo-50 text-indigo-600"
-          badge="● Admin Governance"
-          badgeColor="bg-indigo-50 text-indigo-700 border-indigo-200/60"
           actions={
             activeTab === "groups" ? (
               <button

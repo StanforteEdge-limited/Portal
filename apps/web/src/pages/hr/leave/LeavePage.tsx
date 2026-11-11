@@ -169,8 +169,6 @@ export default function LeavePage() {
           description="Manage personal leave balances, monitor annual entitlements, and track request approvals."
           icon={Calendar}
           iconColor="bg-emerald-50 text-emerald-600"
-          badge="● Annual Cycle 2026"
-          badgeColor="bg-blue-50 text-blue-700 border-blue-200/60"
           actions={
             <Link
               to="/requests/new"

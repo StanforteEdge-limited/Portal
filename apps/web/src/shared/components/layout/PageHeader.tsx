@@ -19,8 +19,6 @@ export function PageHeader({
   description,
   icon: Icon,
   iconColor = "bg-orange-50 text-[#ff6900]",
-  badge,
-  badgeColor = "bg-emerald-50 text-emerald-700 border-emerald-200/60",
   actions,
   className = "",
 }: PageHeaderProps) {
@@ -37,18 +35,9 @@ export function PageHeader({
           </div>
         )}
         <div className="min-w-0">
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight font-headline">
-              {title}
-            </h1>
-            {badge && (
-              <span
-                className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${badgeColor}`}
-              >
-                {badge}
-              </span>
-            )}
-          </div>
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight font-headline">
+            {title}
+          </h1>
           {description && (
             <p className="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
               {description}

@@ -74,8 +74,6 @@ export default function TeamsPage() {
           description="Browse organizational departments, cross-functional squads, project committees, and your team rosters."
           icon={Users}
           iconColor="bg-blue-50 text-blue-600"
-          badge="● Active Directory"
-          badgeColor="bg-slate-100 text-slate-700 border-slate-200"
           actions={
             isAdmin ? (
               <Link

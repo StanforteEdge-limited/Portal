@@ -103,8 +103,6 @@ export default function TimesheetsPage() {
           description="Log billable hours against grant allocations, projects, and donor funds to feed monthly payroll."
           icon={CalendarCheck}
           iconColor="bg-cyan-50 text-cyan-600"
-          badge="● Monthly Cycle"
-          badgeColor="bg-cyan-50 text-cyan-700 border-cyan-200/60"
           actions={
             <div className="flex items-center gap-3">
               <button

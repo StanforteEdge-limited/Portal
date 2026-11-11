@@ -122,8 +122,6 @@ export default function PayslipsPage() {
           description="Access your itemized monthly earnings, statutory deductions, tax withholdings, and verifiable slips."
           icon={Receipt}
           iconColor="bg-emerald-50 text-emerald-600"
-          badge="● Payroll Active"
-          badgeColor="bg-emerald-50 text-emerald-700 border-emerald-200/60"
           actions={
             summary.latest ? (
               <button

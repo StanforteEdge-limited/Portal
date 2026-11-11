@@ -199,8 +199,6 @@ export function RequestsListPage() {
           description="Track the progress, audit trails, and status of your submitted operational requisitions."
           icon={FileText}
           iconColor="bg-amber-50 text-amber-600"
-          badge="● Workflow Central"
-          badgeColor="bg-amber-50 text-amber-700 border-amber-200/60"
           actions={
             <div className="flex items-center gap-3">
               <button
