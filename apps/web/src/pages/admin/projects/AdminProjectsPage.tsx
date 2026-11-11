@@ -310,7 +310,7 @@ export default function AdminProjectsPage() {
                         <td className="py-3.5 px-4 text-slate-600">
                           {p.governance?.start_date || p.governance?.end_date ? (
                             <span className="text-[11px]">
-                              {p.governance.start_date || "-"} &rarr; {p.governance.end_date || "Ongoing"}
+                              {p.governance.start_date || "-"} – {p.governance.end_date || "Ongoing"}
                             </span>
                           ) : (
                             <span className="text-slate-400 text-[11px]">-</span>

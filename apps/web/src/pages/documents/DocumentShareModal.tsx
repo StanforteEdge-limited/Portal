@@ -9,7 +9,7 @@ import {
   CheckCircle2,
   Send,
   User,
-  Sparkles,
+  ArrowLeft,
 } from "lucide-react";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { useToast } from "@/shared";
@@ -258,9 +258,16 @@ export default function DocumentShareModal({
               <button
                 type="button"
                 onClick={() => setUseCustomEmail(!useCustomEmail)}
-                className="text-[11px] font-bold text-[#ff6900] hover:underline"
+                className="text-[11px] font-bold text-[#ff6900] hover:underline inline-flex items-center gap-1"
               >
-                {useCustomEmail ? "← Select from Team" : "Enter other email"}
+                {useCustomEmail ? (
+                  <>
+                    <ArrowLeft className="h-3 w-3" />
+                    <span>Select from Team</span>
+                  </>
+                ) : (
+                  <span>Enter other email</span>
+                )}
               </button>
             </div>
 

@@ -24,6 +24,7 @@ import {
   ShieldCheck,
   Eye,
   ArrowRight,
+  ArrowLeft,
   Calendar,
   Wallet,
   Download,
@@ -135,9 +136,10 @@ export default function AdminPayrollRunAuthorizePage() {
           <p className="text-xs text-slate-500 mt-1 mb-4">This payroll run does not exist or has been archived.</p>
           <Link
             to="/admin/payroll/authorization"
-            className="inline-flex px-4 py-2 rounded-xl bg-[#ff6900] text-white font-bold text-xs"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#ff6900] text-white font-bold text-xs"
           >
-            &larr; Back to Authorization Queue
+            <ArrowLeft className="h-4 w-4" />
+            <span>Back to Authorization Queue</span>
           </Link>
         </div>
       </PortalLayout>

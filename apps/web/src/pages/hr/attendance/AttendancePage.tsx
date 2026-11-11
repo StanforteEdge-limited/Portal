@@ -34,7 +34,6 @@ import {
   UserCheck,
   ChevronRight,
   X,
-  Sparkles,
   TrendingUp,
   History,
   FileEdit,
@@ -506,9 +505,10 @@ export function AttendancePage() {
           <div className="pt-4 relative z-10">
             <Link
               to="/leave"
-              className="w-full block py-2.5 px-4 rounded-xl font-bold text-xs bg-white/10 hover:bg-white/15 text-white text-center border border-white/10 transition"
+              className="w-full py-2.5 px-4 rounded-xl font-bold text-xs bg-white/10 hover:bg-white/15 text-white text-center border border-white/10 transition inline-flex items-center justify-center gap-2"
             >
-              Apply for Leave / Time Off &rarr;
+              <span>Apply for Leave / Time Off</span>
+              <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
         </div>

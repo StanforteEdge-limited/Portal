@@ -16,7 +16,6 @@ import {
   AlertCircle,
   CheckCircle2,
   Users,
-  Sparkles,
   User,
 } from "lucide-react";
 import type { TaskItem, TaskStatus, TaskPriority } from "./types";

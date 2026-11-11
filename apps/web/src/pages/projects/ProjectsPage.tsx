@@ -248,7 +248,7 @@ export default function ProjectsPage() {
                           <div className="flex items-center gap-1.5">
                             <Calendar className="h-3 w-3 text-slate-400 shrink-0" />
                             <span>
-                              {formatDate(project.governance?.start_date) || "TBD"} &rarr;{" "}
+                              {formatDate(project.governance?.start_date) || "TBD"} –{" "}
                               {formatDate(project.governance?.end_date) || "Ongoing"}
                             </span>
                           </div>

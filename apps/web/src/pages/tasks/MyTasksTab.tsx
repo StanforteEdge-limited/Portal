@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { ArrowRight } from "lucide-react";
 import { Button, Chip, EmptyState } from "@/shared";
 import { useCachedQuery, workApi } from "@/shared/lib/core";
 import type { WorkItem, WorkItemStatus } from "@stanforte/shared";
@@ -47,7 +48,7 @@ function TaskCard({ item, onClick }: { item: WorkItem; onClick: () => void }) {
           <Chip variant={item.priority === "high" || item.priority === "critical" ? "danger" : "neutral"}>
             {String(item.priority)}
           </Chip>
-          <span className="text-gray-300">→</span>
+          <ArrowRight className="h-4 w-4 text-slate-400" />
         </div>
       </div>
     </button>

@@ -36,7 +36,6 @@ import {
   X,
   User as UserIcon,
   LayoutGrid,
-  Sparkles,
   Sun,
   Moon,
   Laptop,

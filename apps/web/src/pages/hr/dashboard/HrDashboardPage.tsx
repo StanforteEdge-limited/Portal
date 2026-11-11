@@ -6,6 +6,7 @@ import {
   usePermission,
 } from "@/shared";
 import { Link } from "react-router-dom";
+import { ArrowRight } from "lucide-react";
 import { AppShell } from "@/shared/components/layout/AppShell";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { hrApi, attendanceApi, useCachedQuery } from "@/shared/lib/core";
@@ -116,8 +117,9 @@ export default function HrDashboardPage() {
             title="Employees"
             description="Headcount and workforce status."
             action={
-              <Link to="/hr/employees" className="text-sm font-semibold text-brand-900 transition hover:underline">
-                Manage →
+              <Link to="/hr/employees" className="inline-flex items-center gap-1 text-sm font-semibold text-brand-900 transition hover:underline">
+                <span>Manage</span>
+                <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             }
           >
@@ -158,8 +160,9 @@ export default function HrDashboardPage() {
             title="Attendance Today"
             description="Clock-in activity across all staff for today."
             action={
-              <Link to="/hr/attendance" className="text-sm font-semibold text-brand-900 transition hover:underline">
-                View →
+              <Link to="/hr/attendance" className="inline-flex items-center gap-1 text-sm font-semibold text-brand-900 transition hover:underline">
+                <span>View</span>
+                <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             }
           >
@@ -177,8 +180,9 @@ export default function HrDashboardPage() {
             title="Leave"
             description="Pending approvals and staff currently on leave."
             action={
-              <Link to="/hr/leave" className="text-sm font-semibold text-brand-900 transition hover:underline">
-                Review →
+              <Link to="/hr/leave" className="inline-flex items-center gap-1 text-sm font-semibold text-brand-900 transition hover:underline">
+                <span>Review</span>
+                <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             }
           >

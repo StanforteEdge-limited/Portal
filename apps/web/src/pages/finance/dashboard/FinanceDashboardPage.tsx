@@ -338,9 +338,10 @@ export default function FinanceDashboardPage() {
             <div className="pt-4 relative z-10">
               <Link
                 to="/finance/payment-vouchers"
-                className="w-full block py-2.5 px-4 rounded-xl font-bold text-xs bg-[#ff6900] hover:bg-[#ea580c] text-white text-center shadow-md shadow-orange-500/25 transition"
+                className="w-full py-2.5 px-4 rounded-xl font-bold text-xs bg-[#ff6900] hover:bg-[#ea580c] text-white text-center shadow-md shadow-orange-500/25 transition inline-flex items-center justify-center gap-2"
               >
-                Open Voucher Ledger &rarr;
+                <span>Open Voucher Ledger</span>
+                <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </div>
           </div>

@@ -188,9 +188,10 @@ export default function PricingPage() {
             <div className="mt-8">
               <Link
                 to="/register"
-                className="w-full block text-center py-3.5 px-4 rounded-full font-bold text-xs bg-[#ff6900] hover:bg-[#ea580c] text-white shadow-md shadow-orange-500/25 transition-all transform hover:-translate-y-0.5"
+                className="w-full py-3.5 px-4 rounded-full font-bold text-xs bg-[#ff6900] hover:bg-[#ea580c] text-white shadow-md shadow-orange-500/25 transition-all transform hover:-translate-y-0.5 inline-flex items-center justify-center gap-2"
               >
-                Start Growth Plan &rarr;
+                <span>Start Growth Plan</span>
+                <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </div>
           </div>

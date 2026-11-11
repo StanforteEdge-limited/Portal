@@ -40,7 +40,7 @@ export default function StaffAttendanceSlideOver({
     <SlideOver open={true} onClose={onClose} size="xl">
       <SlideOverHeader
         title="Attendance Detail"
-        subtitle={`${from} → ${to}`}
+        subtitle={`${from} – ${to}`}
         onClose={onClose}
       />
       <SlideOverContent>
