@@ -40,7 +40,15 @@ export const TenancyRoutes: FastifyPluginAsync = async (fastify) => {
     inTenant(request, () => tenancy().getTenant(currentTenant(request))),
   );
 
+  fastify.get('/current', { preHandler: [requireAuth] }, async (request) =>
+    inTenant(request, () => tenancy().getTenant(currentTenant(request))),
+  );
+
   fastify.patch('/', { preHandler: [requireAuth, requirePermissions(tenancyPermissions.write)], schema: { body: UpdateTenantSchema } }, async (request) =>
+    inTenant(request, () => tenancy().updateTenant(currentTenant(request), requestBody<UpdateTenant>(request))),
+  );
+
+  fastify.patch('/current', { preHandler: [requireAuth, requirePermissions(tenancyPermissions.write)], schema: { body: UpdateTenantSchema } }, async (request) =>
     inTenant(request, () => tenancy().updateTenant(currentTenant(request), requestBody<UpdateTenant>(request))),
   );
 

@@ -91,5 +91,6 @@ export const appRoutes: AppRoute[] = [
   { prefix: '/hr/payroll', plugin: PayrollRoutes },
   { prefix: '/hr/requests', plugin: RequestsRoutes },
   { prefix: '/tenancy', plugin: TenancyRoutes },
+  { prefix: '/tenants', plugin: TenancyRoutes },
   { prefix: '/finance', plugin: FinanceRoutes },
 ];

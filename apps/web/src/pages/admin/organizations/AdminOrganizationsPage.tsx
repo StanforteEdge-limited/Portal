@@ -33,7 +33,7 @@ export default function AdminOrganizationsPage() {
   const fetchOrgs = async () => {
     setLoading(true);
     try {
-      const res = await httpRequest<any>("/v1/organizations");
+      const res = await httpRequest<any>("/organizations");
       const list = res?.data?.items ?? [];
       setOrgs(list);
     } catch {
@@ -50,7 +50,7 @@ export default function AdminOrganizationsPage() {
   const handleDelete = async (id: string, name: string) => {
     if (!window.confirm(`Are you sure you want to delete "${name}"?`)) return;
     try {
-      await httpRequest(`/v1/organizations/${id}`, { method: "DELETE" });
+      await httpRequest(`/organizations/${id}`, { method: "DELETE" });
       notify("Organization deleted successfully.");
       void fetchOrgs();
     } catch {

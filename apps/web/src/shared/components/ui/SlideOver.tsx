@@ -2,7 +2,8 @@ import { ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 type SlideOverProps = {
-  open: boolean;
+  open?: boolean;
+  isOpen?: boolean;
   onClose: () => void;
   children: ReactNode;
   size?: "sm" | "md" | "lg" | "xl" | "xxl";
@@ -10,11 +11,13 @@ type SlideOverProps = {
 
 export function SlideOver({
   open,
+  isOpen,
   onClose,
   children,
   size = "lg",
 }: SlideOverProps) {
-  if (!open) return null;
+  const isVisible = open !== undefined ? open : isOpen !== undefined ? isOpen : true;
+  if (!isVisible) return null;
 
   const sizeClasses = {
     sm: "max-w-sm",

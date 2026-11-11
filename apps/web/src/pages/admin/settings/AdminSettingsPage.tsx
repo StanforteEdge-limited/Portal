@@ -127,7 +127,7 @@ export default function AdminSettingsPage() {
 
   const loadTenant = async () => {
     try {
-      const res = await httpRequest<any>("/v1/tenants/current");
+      const res = await httpRequest<any>("/tenants/current");
       if (res?.data) {
         setTenant(res.data);
         setTenantForm({
@@ -142,7 +142,7 @@ export default function AdminSettingsPage() {
 
   const loadSecurity = async () => {
     try {
-      const res = await httpRequest<any>("/v1/auth/roles/overview");
+      const res = await httpRequest<any>("/auth/roles/overview");
       if (res?.data) setSecurityOverview(res.data);
     } catch {
       // fallback
@@ -163,7 +163,7 @@ export default function AdminSettingsPage() {
   async function handleDeleteType(type: RequestType) {
     if (!window.confirm(`Delete "${type.name}"? This action cannot be undone.`)) return;
     try {
-      await httpRequest(`/v1/requests/types/${type.id}`, { method: "DELETE" });
+      await httpRequest(`/requests/types/${type.id}`, { method: "DELETE" });
       notify(`Request type "${type.name}" removed.`);
       void load();
     } catch {
@@ -223,7 +223,7 @@ export default function AdminSettingsPage() {
   async function handleSaveTenant() {
     setTenantSaving(true);
     try {
-      await httpRequest("/v1/tenants/current", {
+      await httpRequest("/tenants/current", {
         method: "PATCH",
         body: tenantForm,
       });
