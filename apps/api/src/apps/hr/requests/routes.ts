@@ -151,6 +151,10 @@ export const RequestsRoutes: FastifyPluginAsync = async (fastify) => {
     requests().getMyLeaveBalance(actor(request), requestQuery<RequestListQuery>(request)),
   );
 
+  fastify.get('/leave/balance', { preHandler: authenticated }, async (request) =>
+    requests().getMyLeaveBalance(actor(request), requestQuery<any>(request)),
+  );
+
   fastify.post('/', { preHandler: authenticated, schema: { body: CreateRequestSchema } }, async (request) =>
     requests().createRequest(actor(request), requestBody<CreateRequest>(request)),
   );
