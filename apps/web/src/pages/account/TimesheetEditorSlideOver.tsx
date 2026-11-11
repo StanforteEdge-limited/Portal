@@ -1,15 +1,26 @@
 import { useEffect, useState } from "react";
 import {
-  Button,
-  Select,
+  Calendar,
+  Clock,
+  Briefcase,
+  Building2,
+  Users,
+  Wallet,
+  PiggyBank,
+  FileText,
+  X,
+  Save,
+  Hourglass,
+  Layers,
+} from "lucide-react";
+import {
   SlideOver,
   SlideOverPanel,
   SlideOverHeader,
   SlideOverContent,
   SlideOverFooter,
-  TextInput,
-  useToast,
-} from "@/shared";
+} from "@/shared/components/ui/SlideOver";
+import { useToast } from "@/shared";
 import { httpRequest, timesheetApi, useDirectory } from "@/shared/lib/core";
 
 interface SlideOverProps {
@@ -17,6 +28,16 @@ interface SlideOverProps {
   onClose: () => void;
   timesheetId: string | null;
   onSaved: () => void;
+}
+
+function toArray<T = any>(val: any): T[] {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  if (Array.isArray(val.items)) return val.items;
+  if (Array.isArray(val.data?.items)) return val.data.items;
+  if (Array.isArray(val.data)) return val.data;
+  if (Array.isArray(val.result)) return val.result;
+  return [];
 }
 
 export default function TimesheetEditorSlideOver({
@@ -27,7 +48,7 @@ export default function TimesheetEditorSlideOver({
 }: SlideOverProps) {
   const { showToast } = useToast();
   const directory = useDirectory();
-  
+
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -54,11 +75,14 @@ export default function TimesheetEditorSlideOver({
           httpRequest<any>("/finance/settings/funds").catch(() => []),
           httpRequest<any>("/finance/settings/grants").catch(() => []),
         ]);
-        setProjects(Array.isArray(projRes) ? projRes : (projRes?.data || []));
-        setFunds(Array.isArray(fundRes) ? fundRes : (fundRes?.data || []));
-        setGrants(Array.isArray(grantRes) ? grantRes : (grantRes?.data || []));
+        setProjects(toArray(projRes));
+        setFunds(toArray(fundRes));
+        setGrants(toArray(grantRes));
       } catch (e) {
-        // Safe fail
+        // Safe fallback to empty arrays
+        setProjects([]);
+        setFunds([]);
+        setGrants([]);
       }
     }
     void loadOptions();
@@ -84,9 +108,9 @@ export default function TimesheetEditorSlideOver({
   async function loadTimesheet() {
     try {
       setLoading(true);
-      // There is no get-by-id route, so pull the caller's entries and find it.
-      const list = await timesheetApi.listMyEntries({ page: 1, per_page: 500 });
-      const item = list.find((t) => t.id === timesheetId);
+      const res = await timesheetApi.listMyEntries({ page: 1, per_page: 500 });
+      const list = toArray(res);
+      const item = list.find((t: any) => String(t.id) === String(timesheetId));
       if (item) {
         setForm({
           work_date: item.work_date ? String(item.work_date).slice(0, 10) : "",
@@ -109,7 +133,7 @@ export default function TimesheetEditorSlideOver({
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.work_date || !form.hours) {
-      showToast({ tone: "danger", title: "Error", message: "Date and hours are required." });
+      showToast({ tone: "danger", title: "Required", message: "Work date and hours are required." });
       return;
     }
 
@@ -130,8 +154,8 @@ export default function TimesheetEditorSlideOver({
       } else {
         await timesheetApi.createMyEntry(payload);
       }
-      
-      showToast({ tone: "success", title: "Success", message: "Timesheet saved successfully." });
+
+      showToast({ tone: "success", title: "Saved", message: "Timesheet entry recorded." });
       onSaved();
     } catch (err: any) {
       showToast({ tone: "danger", title: "Cannot save", message: err.message || "An error occurred." });
@@ -140,100 +164,243 @@ export default function TimesheetEditorSlideOver({
     }
   };
 
-  const projectOptions = projects.map(p => ({ label: p.name, value: p.id }));
-  const fundOptions = funds.map(f => ({ label: f.name, value: f.id }));
-  const grantOptions = grants.map(g => ({ label: g.name, value: g.id }));
+  const projectOptions = toArray(projects).map((p: any) => ({
+    label: p.name || p.title || "Project",
+    value: String(p.id),
+  }));
+  const fundOptions = toArray(funds).map((f: any) => ({
+    label: f.name || f.code || "Fund",
+    value: String(f.id),
+  }));
+  const grantOptions = toArray(grants).map((g: any) => ({
+    label: g.name || g.code || "Grant",
+    value: String(g.id),
+  }));
+  const orgOptions = toArray(directory?.organizations).map((o: any) => ({
+    label: o.name || "Organization",
+    value: String(o.id),
+  }));
+  const teamOptions = toArray(directory?.teams).map((t: any) => ({
+    label: t.name || "Team",
+    value: String(t.id),
+  }));
 
   return (
-    <SlideOver open={open} onClose={onClose}>
+    <SlideOver open={open} onClose={onClose} size="lg">
       <SlideOverPanel>
-        <SlideOverHeader
-          title={timesheetId ? "Edit Timesheet Entry" : "New Timesheet Entry"}
-          subtitle="Log your project time"
-          onClose={onClose}
-        />
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-200/80 bg-slate-50/50 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 flex items-center justify-center font-bold shadow-xs">
+              <Clock className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-slate-900">
+                {timesheetId ? "Edit Timesheet Entry" : "Log New Timesheet"}
+              </h2>
+              <p className="text-xs text-slate-500">
+                Record hours worked against assigned projects, funds, or grants
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 transition"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
 
-        <SlideOverContent className="p-6">
+        {/* Content */}
+        <SlideOverContent className="p-6 overflow-y-auto flex-1">
           {loading ? (
-            <div className="text-sm text-slate-500 py-10 text-center">Loading entry...</div>
+            <div className="flex flex-col items-center justify-center py-16 text-slate-400 space-y-2">
+              <Hourglass className="w-8 h-8 animate-pulse text-orange-500" />
+              <p className="text-xs font-semibold">Loading timesheet record...</p>
+            </div>
           ) : (
-            <form id="timesheet-form" onSubmit={handleSave} className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <TextInput
-                  label="Work Date"
-                  type="date"
-                  value={form.work_date}
-                  onChange={(e) => setForm({ ...form, work_date: e.target.value })}
-                  required
-                />
-                <TextInput
-                  label="Hours"
-                  type="number"
-                  step="0.5"
-                  value={form.hours}
-                  onChange={(e) => setForm({ ...form, hours: e.target.value })}
-                  required
-                />
+            <form id="timesheet-form" onSubmit={handleSave} className="space-y-5">
+              {/* Date & Hours Row */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl bg-slate-50/70 border border-slate-200/70">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-orange-600" />
+                    Work Date <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={form.work_date}
+                    onChange={(e) => setForm({ ...form, work_date: e.target.value })}
+                    required
+                    className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-orange-600" />
+                    Hours Logged <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.25"
+                    min="0.25"
+                    max="24"
+                    value={form.hours}
+                    onChange={(e) => setForm({ ...form, hours: e.target.value })}
+                    placeholder="e.g. 8.0"
+                    required
+                    className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 font-medium"
+                  />
+                </div>
               </div>
 
-              <div className="space-y-4">
-                {directory.organizations.length > 1 && (
-                  <Select
-                    label="Organization"
-                    options={[{ label: "None", value: "" }, ...directory.organizations.map(o => ({ label: o.name, value: o.id }))]}
-                    value={form.organization_id}
-                    onChange={(val) => setForm({ ...form, organization_id: val })}
-                  />
-                )}
-                
-                {directory.teams.length > 1 && (
-                  <Select
-                    label="Team"
-                    options={[{ label: "None", value: "" }, ...directory.teams.map(t => ({ label: t.name, value: t.id }))]}
-                    value={form.team_id}
-                    onChange={(val) => setForm({ ...form, team_id: val })}
-                  />
-                )}
-
-                <Select
-                  label="Project"
-                  options={[{ label: "None", value: "" }, ...projectOptions]}
+              {/* Project Allocation */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                  <Briefcase className="w-3.5 h-3.5 text-slate-500" />
+                  Assigned Project
+                </label>
+                <select
                   value={form.project_id}
-                  onChange={(val) => setForm({ ...form, project_id: val })}
-                />
+                  onChange={(e) => setForm({ ...form, project_id: e.target.value })}
+                  className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+                >
+                  <option value="">— Select Project (Optional) —</option>
+                  {projectOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-                <Select
-                  label="Fund"
-                  options={[{ label: "None", value: "" }, ...fundOptions]}
-                  value={form.fund_id}
-                  onChange={(val) => setForm({ ...form, fund_id: val })}
-                />
+              {/* Fund & Grant Allocations */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                    <PiggyBank className="w-3.5 h-3.5 text-slate-500" />
+                    Funding Stream
+                  </label>
+                  <select
+                    value={form.fund_id}
+                    onChange={(e) => setForm({ ...form, fund_id: e.target.value })}
+                    className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+                  >
+                    <option value="">— Select Fund —</option>
+                    {fundOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-                <Select
-                  label="Grant"
-                  options={[{ label: "None", value: "" }, ...grantOptions]}
-                  value={form.grant_id}
-                  onChange={(val) => setForm({ ...form, grant_id: val })}
-                />
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                    <Wallet className="w-3.5 h-3.5 text-slate-500" />
+                    Grant Allocation
+                  </label>
+                  <select
+                    value={form.grant_id}
+                    onChange={(e) => setForm({ ...form, grant_id: e.target.value })}
+                    className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+                  >
+                    <option value="">— Select Grant —</option>
+                    {grantOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
 
-                <TextInput
-                  label="Description"
-                  placeholder="What did you work on?"
+              {/* Organization & Team (if multiple exist) */}
+              {(orgOptions.length > 1 || teamOptions.length > 1) && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {orgOptions.length > 1 && (
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                        <Building2 className="w-3.5 h-3.5 text-slate-500" />
+                        Organization
+                      </label>
+                      <select
+                        value={form.organization_id}
+                        onChange={(e) => setForm({ ...form, organization_id: e.target.value })}
+                        className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+                      >
+                        <option value="">— Default Organization —</option>
+                        {orgOptions.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {teamOptions.length > 1 && (
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5 text-slate-500" />
+                        Team / Workgroup
+                      </label>
+                      <select
+                        value={form.team_id}
+                        onChange={(e) => setForm({ ...form, team_id: e.target.value })}
+                        className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+                      >
+                        <option value="">— Select Team —</option>
+                        {teamOptions.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Description & Work Notes */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-slate-500" />
+                  Description of Deliverables / Tasks Completed
+                </label>
+                <textarea
+                  rows={3}
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  placeholder="Summarize key tasks, milestones reached, or donor deliverables worked on during this session..."
+                  className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 resize-none"
                 />
               </div>
             </form>
           )}
         </SlideOverContent>
 
-        <SlideOverFooter>
-          <Button variant="ghost" onClick={onClose} disabled={saving}>
+        {/* Footer */}
+        <SlideOverFooter className="flex items-center justify-end gap-2.5 px-6 py-4 border-t border-slate-200 bg-slate-50/80 shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="px-4 py-2.5 text-xs font-bold rounded-xl border border-slate-300 hover:bg-slate-100 text-slate-700 transition"
+          >
             Cancel
-          </Button>
-          <Button type="submit" form="timesheet-form" disabled={saving || loading}>
-            {saving ? "Saving..." : "Save Entry"}
-          </Button>
+          </button>
+          <button
+            type="submit"
+            form="timesheet-form"
+            disabled={saving || loading}
+            className="px-5 py-2.5 text-xs font-bold rounded-xl bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white shadow-sm transition flex items-center gap-2"
+          >
+            <Save className="w-4 h-4" />
+            {saving ? "Saving..." : timesheetId ? "Update Entry" : "Save Timesheet"}
+          </button>
         </SlideOverFooter>
       </SlideOverPanel>
     </SlideOver>

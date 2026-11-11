@@ -114,11 +114,12 @@ export function SlideOverContent({
 
 type SlideOverFooterProps = {
   children: ReactNode;
+  className?: string;
 };
 
-export function SlideOverFooter({ children }: SlideOverFooterProps) {
+export function SlideOverFooter({ children, className = "" }: SlideOverFooterProps) {
   return (
-    <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50 shrink-0">
+    <div className={`flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50 shrink-0 ${className}`}>
       {children}
     </div>
   );

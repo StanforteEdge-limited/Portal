@@ -308,3 +308,4 @@ export function NewConversationModal({ isOpen, onClose, onCreated }: Props) {
     </div>
   );
 }
+
