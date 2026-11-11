@@ -105,6 +105,9 @@ import {
 import { UpdateBanner } from "@/shared/components/ui/UpdateBanner";
 import { useAuth } from "@/shared/context/AuthProvider";
 import HomePage from "@/pages/home/HomePage";
+import PricingPage from "@/pages/public/PricingPage";
+import FeaturesPage from "@/pages/public/FeaturesPage";
+import SecurityPage from "@/pages/public/SecurityPage";
 import AcceptInvitePage from "@/pages/auth/AcceptInvitePage";
 import ForgotPasswordPage from "@/pages/auth/ForgotPasswordPage";
 import LoginPage from "@/pages/auth/LoginPage";
@@ -158,6 +161,9 @@ export default function App() {
       <Routes>
       <Route path="/" element={<RootRoute />} />
       <Route path="/home" element={<HomePage />} />
+      <Route path="/pricing" element={<PricingPage />} />
+      <Route path="/features" element={<FeaturesPage />} />
+      <Route path="/security" element={<SecurityPage />} />
       <Route element={<PublicOnlyRoute />}>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />

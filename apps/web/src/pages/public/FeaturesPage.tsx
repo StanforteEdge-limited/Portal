@@ -7,11 +7,13 @@ import {
   FileCheck,
   ArrowRight,
   CheckCircle2,
+  Smartphone,
 } from "lucide-react";
 
 export default function FeaturesPage() {
   const suites = [
     {
+      id: "workforce",
       category: "Workforce & People Operations",
       icon: Users,
       iconColor: "text-blue-600 bg-blue-50",
@@ -36,6 +38,7 @@ export default function FeaturesPage() {
       ],
     },
     {
+      id: "payroll",
       category: "Automated Payroll & Statutory Compliance",
       icon: CreditCard,
       iconColor: "text-[#ff6900] bg-orange-50",
@@ -60,6 +63,7 @@ export default function FeaturesPage() {
       ],
     },
     {
+      id: "attendance",
       category: "Time, Shifts & Absence Management",
       icon: Clock,
       iconColor: "text-amber-600 bg-amber-50",
@@ -84,6 +88,7 @@ export default function FeaturesPage() {
       ],
     },
     {
+      id: "approvals",
       category: "Approvals, Procurement & Financial Controls",
       icon: FileCheck,
       iconColor: "text-purple-600 bg-purple-50",
@@ -104,6 +109,31 @@ export default function FeaturesPage() {
         {
           title: "Immutable Operational Audit Trail",
           description: "Every approval, voucher creation, and payroll sign-off is indelibly timestamped with user identification for regulatory review.",
+        },
+      ],
+    },
+    {
+      id: "selfservice",
+      category: "Employee Self-Service & Team Collaboration",
+      icon: Smartphone,
+      iconColor: "text-emerald-600 bg-emerald-50",
+      description: "Empower staff with self-service tools, daily logs, and peer document sharing.",
+      items: [
+        {
+          title: "Instant Digital Payslips",
+          description: "Employees can securely view and download monthly payslips, year-to-date earnings, and statutory tax deductions anytime.",
+        },
+        {
+          title: "Self-Service Leave & Requests",
+          description: "Submit leave applications, track balance accruals, and view approval status updates without back-and-forth emails.",
+        },
+        {
+          title: "Task Boards & Daily Logs",
+          description: "Switch seamlessly between Kanban and Table views, manage personal tasks, tag collaborators, and log daily milestones.",
+        },
+        {
+          title: "Instant Document & Policy Sharing",
+          description: "Access official handbooks and share confidential files with instant in-app chat notifications and direct delivery.",
         },
       ],
     },
@@ -130,7 +160,7 @@ export default function FeaturesPage() {
         {suites.map((suite, idx) => {
           const Icon = suite.icon;
           return (
-            <div key={idx} className="border-t border-slate-100 pt-10">
+            <div key={idx} id={suite.id} className="border-t border-slate-100 pt-10 scroll-mt-24">
               <div className="max-w-2xl mb-8 space-y-2">
                 <div className="flex items-center gap-3">
                   <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${suite.iconColor}`}>
