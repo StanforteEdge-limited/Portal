@@ -214,53 +214,66 @@ export default function DashboardPage() {
     <PortalLayout activeNav="Dashboard">
       <div className="space-y-6 max-w-[1600px] mx-auto pb-12">
         {/* ------------------------------------------------------------- */}
-        {/* 1. Greeting & Time Header                                     */}
+        {/* 1. Greeting & Enterprise Institutional Header                 */}
         {/* ------------------------------------------------------------- */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white rounded-3xl shadow-md relative overflow-hidden">
-          {/* Subtle decorative glow */}
-          <div className="absolute top-0 right-0 w-80 h-80 bg-orange-500/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-10 left-1/3 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
-
-          <div className="relative z-10 space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#ff6900] text-white tracking-wide shadow-sm">
-                {isEmployeeMode ? "STAFF WORKSPACE" : "STANFORTE EDGE"}
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="font-bold uppercase tracking-widest text-[#ff6900]">
+                {isEmployeeMode ? "Operational Staff Portal" : "Enterprise Executive Console"}
               </span>
-              <span className="flex items-center gap-1.5 text-xs text-emerald-400 font-semibold bg-emerald-950/60 border border-emerald-500/20 px-2.5 py-0.5 rounded-full">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                {isEmployeeMode ? "Staff Active • Lagos HQ" : "Executive Live • Lagos HQ"}
+              <span className="text-slate-300">•</span>
+              <span className="font-semibold text-slate-500 flex items-center gap-1">
+                <Building2 className="h-3.5 w-3.5 text-slate-400" />
+                <span>Lagos HQ • Victoria Island</span>
+              </span>
+              <span className="text-slate-300">•</span>
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/70">
+                <Check className="h-3 w-3 stroke-[3]" />
+                <span>{isEmployeeMode ? "Staff Verified" : "Executive Live"}</span>
               </span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight font-headline pt-1">
-              Welcome back, {firstName} 👋
+
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight font-headline pt-1">
+              Welcome back, {firstName}
             </h1>
-            <p className="text-xs sm:text-sm text-slate-300">
+
+            <p className="text-xs sm:text-sm text-slate-500 max-w-2xl leading-relaxed">
               {isEmployeeMode
-                ? "Here is your personal schedule, daily shift status, and requests tracker for today."
-                : "Here is what is happening across your enterprise workforce, attendance, and operations today."}
+                ? "Your daily schedule, biometric check-in terminal, and operational requests tracker."
+                : "Consolidated enterprise workforce roster, biometric attendance feed, and sequential approval queue."}
             </p>
           </div>
 
-          {/* Time & Shift Indicator */}
-          <div className="relative z-10 flex flex-wrap items-center gap-3 self-start md:self-auto">
-            <div className="bg-white/10 backdrop-blur-md border border-white/15 px-4 py-2.5 rounded-2xl flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-orange-500/20 text-[#ff6900] flex items-center justify-center font-bold">
-                <Clock className="h-5 w-5" />
+          {/* Time, Date & Quick Action */}
+          <div className="flex flex-wrap items-center gap-3 shrink-0 self-start lg:self-auto">
+            <div className="px-3.5 py-2.5 rounded-xl border border-slate-200/80 bg-slate-50/70 flex items-center gap-3 shadow-2xs">
+              <div className="w-8 h-8 rounded-lg bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
+                <Clock className="h-4 w-4" />
               </div>
               <div>
-                <div className="text-[11px] font-medium text-slate-300">West Africa Time (WAT)</div>
-                <div className="text-sm font-black text-white tracking-tight">
-                  {formattedTime}
-                </div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">West Africa Time</div>
+                <div className="text-sm font-black text-slate-900 font-mono tracking-tight">{formattedTime}</div>
               </div>
             </div>
 
-            <div className="bg-white/10 backdrop-blur-md border border-white/15 px-4 py-2.5 rounded-2xl hidden lg:block">
-              <div className="text-[11px] font-medium text-slate-300">Current Date</div>
-              <div className="text-xs font-bold text-white tracking-tight">
-                {formattedDate}
+            <div className="px-3.5 py-2.5 rounded-xl border border-slate-200/80 bg-slate-50/70 hidden sm:flex items-center gap-3 shadow-2xs">
+              <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                <Calendar className="h-4 w-4" />
+              </div>
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Current Date</div>
+                <div className="text-xs font-bold text-slate-800">{formattedDate}</div>
               </div>
             </div>
+
+            <Link
+              to="/requests/new"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-bold shadow-sm shadow-orange-500/20 transition transform hover:-translate-y-0.5 active:scale-95"
+            >
+              <Plus className="h-4 w-4" />
+              <span>New Request</span>
+            </Link>
           </div>
         </div>
 
