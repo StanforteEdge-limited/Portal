@@ -70,16 +70,22 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
   };
 
   const handleMouseLeave = () => {
+    if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
     closeTimeoutRef.current = setTimeout(() => {
       setActiveDropdown(null);
-    }, 200);
+    }, 250);
   };
 
   const toggleDropdown = (key: "product" | "solutions" | "resources") => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
     setActiveDropdown((prev) => (prev === key ? null : key));
   };
 
   const closeAll = () => {
+    if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
     setActiveDropdown(null);
     setMobileMenuOpen(false);
   };
@@ -90,7 +96,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
       <header
         ref={navRef}
         onMouseLeave={handleMouseLeave}
-        className="border-b border-slate-100 bg-white/95 backdrop-blur-md sticky top-0 z-50 transition-all"
+        className="relative border-b border-slate-100 bg-white/95 backdrop-blur-md sticky top-0 z-50 transition-all"
       >
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           {/* Brand Logo */}

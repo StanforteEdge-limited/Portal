@@ -4,6 +4,7 @@ import { useAuth } from "@/shared/context/AuthProvider";
 import { StanforteLogo } from "@/components/brand/StanforteLogo";
 import {
   LayoutDashboard,
+  Home,
   Users,
   Clock,
   Calendar,
@@ -20,6 +21,7 @@ import {
   Briefcase,
   CheckSquare,
   FolderOpen,
+  Folder,
   BookOpen,
   HardDrive,
   Mail,
@@ -29,6 +31,7 @@ import {
   Settings,
   Search,
   Bell,
+  HelpCircle,
   ChevronDown,
   ChevronRight,
   LogOut,
@@ -87,7 +90,7 @@ export interface NavGroupDef {
 export const EMPLOYEE_NAV_ITEMS: NavItemDef[] = [
   {
     label: "Dashboard",
-    icon: LayoutDashboard,
+    icon: Home,
     path: "/dashboard",
     aliases: ["Home", "Overview"],
     description: "Daily KPIs, tasks, and quick actions",
@@ -100,10 +103,10 @@ export const EMPLOYEE_NAV_ITEMS: NavItemDef[] = [
     description: "Clock in/out, shift times, and attendance history",
   },
   {
-    label: "Leave & Absence",
+    label: "Leave",
     icon: Calendar,
     path: "/leave",
-    aliases: ["Leave", "Time Off", "Vacation"],
+    aliases: ["Leave & Absence", "Time Off", "Vacation"],
     description: "Submit leave requests and view balances",
   },
   {
@@ -114,31 +117,17 @@ export const EMPLOYEE_NAV_ITEMS: NavItemDef[] = [
     description: "Track personal requisitions and approvals",
   },
   {
-    label: "Tasks & Board",
-    icon: CheckSquare,
-    path: "/tasks",
-    aliases: ["Tasks", "Kanban", "Todo", "Work Items"],
-    description: "Personal deliverables, team tasks, and Kanban board",
-  },
-  {
-    label: "My Payslips",
-    icon: Receipt,
+    label: "Payslips",
+    icon: CreditCard,
     path: "/account/payslips",
-    aliases: ["Payslips", "Salary"],
+    aliases: ["My Payslips", "Salary"],
     description: "Monthly salary statements and tax deductions",
   },
   {
-    label: "Timesheets",
-    icon: CalendarCheck,
-    path: "/account/timesheets",
-    aliases: ["Timesheet", "Work Logs"],
-    description: "Weekly project time logs",
-  },
-  {
-    label: "Teams & Groups",
-    icon: UserCheck,
+    label: "Teams",
+    icon: Users,
     path: "/teams",
-    aliases: ["Teams", "Departments"],
+    aliases: ["Teams & Groups", "Departments"],
     description: "Team rosters and work groups",
   },
   {
@@ -149,10 +138,10 @@ export const EMPLOYEE_NAV_ITEMS: NavItemDef[] = [
     description: "Company policies and handbook",
   },
   {
-    label: "Team Chat",
+    label: "Chat",
     icon: MessageSquare,
     path: "/chat",
-    aliases: ["Chat", "Messages", "Messenger", "Direct Messages"],
+    aliases: ["Team Chat", "Messages", "Messenger", "Direct Messages"],
     description: "Real-time communication and file sharing with colleagues",
   },
 ];
@@ -674,17 +663,17 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
 
   return (
     <WorkspaceContext.Provider value={{ mode: workspaceMode, isAdmin, switchMode: switchWorkspaceMode }}>
-      <div className="min-h-screen bg-[#f4f7fc] flex flex-col font-sans text-slate-900 selection:bg-[#ff6900] selection:text-white antialiased">
+      <div className="min-h-screen bg-[#f8fafc] flex flex-col font-sans text-slate-900 selection:bg-[#ff6900] selection:text-white antialiased">
       {/* ------------------------------------------------------------- */}
       {/* 1. LEFT SIDEBAR (Streamlined & Uncluttered, with Compact Rail)  */}
       {/* ------------------------------------------------------------- */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 bg-[#0a1128] text-white flex flex-col justify-between transition-all duration-200 ease-in-out ${
+        className={`fixed inset-y-0 left-0 z-40 bg-white border-r border-slate-100 text-slate-800 flex flex-col justify-between transition-all duration-200 ease-in-out ${
           isCompactRail ? "w-16 p-2" : "w-64 p-4"
         } ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
       >
         {/* Top: Brand Logo & Mode Badge */}
-        <div className="shrink-0 border-b border-white/10 pb-3">
+        <div className="shrink-0 border-b border-slate-100 pb-3">
           <div className="flex items-center justify-between">
             <Link to="/dashboard" className="inline-block overflow-hidden">
               {isCompactRail ? (
@@ -692,7 +681,7 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
                   S
                 </div>
               ) : (
-                <StanforteLogo variant="dark" className="h-8" />
+                <StanforteLogo variant="light" className="h-8" />
               )}
             </Link>
 
@@ -700,7 +689,7 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen(false)}
-                className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10"
+                className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
                 aria-label="Close menu"
               >
                 <X className="h-5 w-5" />
@@ -710,15 +699,10 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
         </div>
 
         {/* Middle: Clean Navigation Items */}
-        <div className="flex-1 overflow-y-auto min-h-0 my-3 space-y-4 scrollbar-thin scrollbar-thumb-white/10 pr-0.5">
+        <div className="flex-1 overflow-y-auto min-h-0 my-3 space-y-4 scrollbar-thin scrollbar-thumb-slate-200 pr-0.5">
           {/* Mode 1: Clean Employee Workspace Navigation */}
           {workspaceMode === "employee" ? (
             <nav className="space-y-1">
-              {!isCompactRail && (
-                <div className="px-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Daily Workspace
-                </div>
-              )}
               {EMPLOYEE_NAV_ITEMS.map((item) => {
                 const Icon = item.icon;
                 const isActive = isItemActive(item);
@@ -732,11 +716,11 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
                     className={`w-full flex items-center rounded-xl transition-all group ${
                       isCompactRail
                         ? "justify-center p-2.5 my-1"
-                        : "justify-between px-3 py-2 text-xs font-semibold"
+                        : "justify-between px-3 py-2.5 text-xs font-semibold"
                     } ${
                       isActive
-                        ? "bg-[#ff6900] text-white shadow-md shadow-orange-500/25"
-                        : "text-slate-300 hover:text-white hover:bg-white/5"
+                        ? "bg-orange-50 text-[#ff6900] font-bold"
+                        : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
@@ -744,14 +728,14 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
                         className={`shrink-0 transition-colors ${
                           isCompactRail ? "h-5 w-5" : "h-4 w-4"
                         } ${
-                          isActive ? "text-white" : "text-slate-400 group-hover:text-white"
+                          isActive ? "text-[#ff6900]" : "text-slate-400 group-hover:text-slate-600"
                         }`}
                       />
                       {!isCompactRail && <span className="truncate">{item.label}</span>}
                     </div>
 
                     {!isCompactRail && item.badge && (
-                      <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-white/20 text-white">
+                      <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-orange-100 text-[#ff6900]">
                         {item.badge}
                       </span>
                     )}
@@ -787,7 +771,7 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
                           } ${
                             isActive
                               ? "bg-blue-600 text-white shadow-md shadow-blue-500/25"
-                              : "text-slate-300 hover:text-white hover:bg-white/5"
+                              : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                           }`}
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
@@ -795,7 +779,7 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
                               className={`shrink-0 transition-colors ${
                                 isCompactRail ? "h-5 w-5" : "h-4 w-4"
                               } ${
-                                isActive ? "text-white" : "text-slate-400 group-hover:text-white"
+                                isActive ? "text-white" : "text-slate-400 group-hover:text-slate-600"
                               }`}
                             />
                             {!isCompactRail && <span className="truncate">{item.label}</span>}
@@ -816,45 +800,37 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
           )}
         </div>
 
-        {/* Bottom: Rail Mode Toggle & Quick Profile Pill */}
-        <div className="shrink-0 pt-2 border-t border-white/10 space-y-2">
-          {/* Rail Collapse Toggle Button */}
-          <button
-            type="button"
-            onClick={() => toggleRail(!isCompactRail)}
-            title={isCompactRail ? "Expand Sidebar" : "Collapse to Rail"}
-            className={`w-full flex items-center gap-2.5 rounded-xl py-2 px-2 text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-xs font-semibold ${
-              isCompactRail ? "justify-center" : "justify-between"
+        {/* Bottom: Settings & Quick Profile */}
+        <div className="shrink-0 pt-2 border-t border-slate-100 space-y-1">
+          <Link
+            to="/admin/settings"
+            className={`w-full flex items-center gap-2.5 py-2 px-3 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition-colors text-xs font-semibold ${
+              isCompactRail ? "justify-center" : "justify-start"
             }`}
           >
-            <div className="flex items-center gap-2.5">
-              {isCompactRail ? (
-                <PanelLeft className="h-4 w-4 text-slate-300" />
-              ) : (
-                <>
-                  <PanelLeftClose className="h-4 w-4 text-slate-400" />
-                  <span>Collapse Rail</span>
-                </>
-              )}
-            </div>
-          </button>
+            <Settings className="h-4 w-4 text-slate-400" />
+            {!isCompactRail && <span>Settings</span>}
+          </Link>
 
           {/* User Profile Mini Trigger */}
           <button
             type="button"
             onClick={() => setUserDrawerOpen(true)}
-            className={`w-full flex items-center gap-2.5 p-1 rounded-xl hover:bg-white/5 transition-colors text-left ${
+            className={`w-full flex items-center gap-2.5 p-2 rounded-xl hover:bg-slate-50 transition-colors text-left ${
               isCompactRail ? "justify-center" : "justify-between"
             }`}
           >
-            <div className="w-8 h-8 rounded-full bg-[#ff6900] text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-sm">
-              {initials || "AD"}
+            <div className="w-9 h-9 rounded-full bg-[#ff6900] text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-xs">
+              {initials || "DO"}
             </div>
             {!isCompactRail && (
               <div className="min-w-0 flex-1 leading-tight">
-                <div className="text-xs font-bold text-white truncate">{userName}</div>
+                <div className="text-xs font-bold text-slate-900 truncate">{userName}</div>
                 <div className="text-[10px] text-slate-400 capitalize truncate">{userRole}</div>
               </div>
+            )}
+            {!isCompactRail && (
+              <ChevronRight className="h-4 w-4 text-slate-400 shrink-0" />
             )}
           </button>
         </div>
@@ -890,15 +866,15 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
             </button>
 
             {/* Quick module search bar */}
-            <div className="relative w-56 sm:w-80">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+            <div className="relative w-64 sm:w-[380px]">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setSearchFocused(true)}
-                placeholder="Search modules, tasks, features..."
-                className="w-full pl-9 pr-4 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none transition focus:bg-white focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/10"
+                placeholder="Search employees, requests, documents... (Ctrl + K)"
+                className="w-full pl-10 pr-4 py-2 text-xs bg-slate-50/80 border border-slate-200/80 rounded-2xl outline-none transition focus:bg-white focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/10"
               />
               {searchQuery && (
                 <button
@@ -963,26 +939,32 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
             )}
           </div>
 
-          {/* Right Action Items: Notifications, App Launcher, User Avatar (Matching Image 1 & 2) */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          {/* Right Action Items: Help, Notifications, Branch Dropdown */}
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            {/* Help Center */}
+            <Link
+              to="/help"
+              className="p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+              title="Help & Documentation"
+            >
+              <HelpCircle className="h-4 w-4" />
+            </Link>
+
             {/* Notification Bell */}
             <Link
               to="/account/notifications"
-              className="relative p-2 rounded-xl hover:bg-slate-100 text-slate-600 transition-colors"
+              className="relative p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
               title="Notifications"
             >
               <Bell className="h-4 w-4" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#ff6900] ring-2 ring-white" />
+              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[#ff6900]" />
             </Link>
 
-            {/* Settings Gear */}
-            <Link
-              to="/admin/settings"
-              className="p-2 rounded-xl hover:bg-slate-100 text-slate-600 transition-colors hidden sm:inline-flex"
-              title="Settings"
-            >
-              <Settings className="h-4 w-4" />
-            </Link>
+            {/* Branch / Entity Dropdown */}
+            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 hover:text-slate-900 px-3 py-1.5 rounded-xl hover:bg-slate-100/80 transition cursor-pointer">
+              <span>Lagos HQ</span>
+              <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+            </div>
 
             {/* --------------------------------------------------------- */}
             {/* 9-DOTS APP LAUNCHER BUTTON (Admin Console only)           */}
