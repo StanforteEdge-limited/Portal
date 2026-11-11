@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { Link, useNavigate } from "@/shared/router-adapter";
 import { PortalLayout } from "@/components/layout/PortalLayout";
+import { PageHeader } from "@/shared";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { useCachedQuery } from "@/shared/lib/core";
 import { getWorkspaceProfile } from "@/shared/api/workspace-api";
@@ -55,29 +56,13 @@ export default function AdminPayrollAuthorizationPage() {
   return (
     <PortalLayout activeNav="Payroll Runs">
       <div className="space-y-6">
-        {/* Breadcrumb & Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-medium text-slate-500 mb-1">
-              <Link to="/dashboard" className="hover:text-slate-800 transition">
-                Dashboard
-              </Link>
-              <ChevronRight className="h-3 w-3" />
-              <Link to="/finance" className="hover:text-slate-800 transition">
-                Finance & Payroll
-              </Link>
-              <ChevronRight className="h-3 w-3" />
-              <span className="text-slate-800 font-semibold">Payroll Authorization</span>
-            </div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight font-headline">
-              Executive Payroll Authorization
-            </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Review finance-approved payroll runs, verify statutory deductions, and authorize payment disbursements.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
+        {/* Modern Unified Page Header (No Breadcrumbs) */}
+        <PageHeader
+          title="Executive Payroll Authorization"
+          description="Review finance-approved payroll runs, verify statutory deductions, and authorize payment disbursements."
+          icon={CreditCard}
+          iconColor="bg-orange-50 text-[#ff6900]"
+          actions={
             <Link
               to="/finance/payroll"
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs transition"
@@ -85,8 +70,8 @@ export default function AdminPayrollAuthorizationPage() {
               <CreditCard className="h-4 w-4 text-slate-400" />
               <span>Payroll Components</span>
             </Link>
-          </div>
-        </div>
+          }
+        />
 
         {/* 4 KPI Stat Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

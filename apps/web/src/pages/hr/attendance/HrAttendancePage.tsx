@@ -330,34 +330,24 @@ export default function HrAttendancePage() {
   return (
     <PortalLayout activeNav="Attendance">
       <div className="space-y-6">
-        {/* Breadcrumb & Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1">
-              <span>HR & Workforce</span>
-              <ChevronRight className="h-3 w-3 text-slate-400" />
-              <span className="text-[#ff6900]">Attendance</span>
-            </div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight font-headline">
-              Time & Attendance Management
-            </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Monitor real-time clock-in records, shift coverage, worked hours, and review correction requests.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
+        {/* Modern Unified Page Header (No Breadcrumbs) */}
+        <PageHeader
+          title="Time & Attendance Management"
+          description="Monitor real-time clock-in records, shift coverage, worked hours, and review correction requests."
+          icon={Clock}
+          iconColor="bg-orange-50 text-[#ff6900]"
+          actions={
             <button
               type="button"
               onClick={handleExportCsv}
               disabled={exportingCsv}
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:bg-slate-50 transition shadow-sm"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:bg-slate-50 transition shadow-xs"
             >
-              <Download className="h-3.5 w-3.5 text-slate-400" />
+              <Download className="h-4 w-4 text-slate-400" />
               <span>{exportingCsv ? "Exporting..." : "Export CSV"}</span>
             </button>
-          </div>
-        </div>
+          }
+        />
 
         {/* 4 KPI Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

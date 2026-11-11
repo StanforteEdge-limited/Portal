@@ -22,6 +22,7 @@ import {
   FileText,
   BadgePercent,
   Play,
+  CheckCircle2,
 } from "lucide-react";
 
 interface PublicLayoutProps {
@@ -367,9 +368,8 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                 {/* Right Promo / Demo Card (4 cols) */}
                 <div className="col-span-4 pl-6 border-l border-slate-100 flex flex-col justify-between">
                   <div className="p-6 rounded-3xl bg-gradient-to-br from-orange-50/80 via-amber-50/40 to-slate-50 border border-orange-200/60 space-y-4">
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-100 text-[#ff6900] text-[10px] font-bold uppercase tracking-wider">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#ff6900]" />
-                      <span>Interactive Demo</span>
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-[#ff6900]">
+                      Interactive Demo
                     </div>
                     <div className="space-y-1">
                       <h4 className="text-base font-bold text-slate-900 font-headline">
@@ -509,8 +509,9 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                 {/* Column 3: Enterprise Security Highlight (4 cols) */}
                 <div className="col-span-4 pl-6 border-l border-slate-100 flex flex-col justify-between">
                   <div className="p-6 rounded-3xl bg-slate-900 text-white space-y-4 shadow-xl">
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-emerald-400 text-[10px] font-bold uppercase tracking-wider">
-                      <ShieldCheck className="h-3 w-3" /> Enterprise Security
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-400 flex items-center gap-1.5">
+                      <ShieldCheck className="h-3.5 w-3.5" />
+                      <span>Enterprise Security</span>
                     </div>
                     <div className="space-y-1">
                       <h4 className="text-base font-bold text-white font-headline">
@@ -892,7 +893,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                 Stanforte Edge is the integrated multi-tenant enterprise operating system for modern African institutions. Unify workforce dossiers, geofenced attendance, automated statutory payroll, and multi-tier purchase approvals in one workspace.
               </p>
               <div className="flex items-center gap-2 text-xs text-slate-500 pt-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                 <span>All systems operational &bull; ISO-compliant infrastructure</span>
               </div>
             </div>

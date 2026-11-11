@@ -246,35 +246,23 @@ export default function FinanceAccountsPage() {
   return (
     <PortalLayout activeNav="Accounts & Ledger">
       <div className="space-y-6">
-        {/* Breadcrumb & Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1">
-              <Link to="/finance" className="hover:text-slate-800 transition">
-                Finance
-              </Link>
-              <ChevronRight className="h-3 w-3 text-slate-400" />
-              <span className="text-[#ff6900]">Accounts & Ledger</span>
-            </div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight font-headline">
-              Bank & Ledger Accounts
-            </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Manage operating bank accounts, petty cash vaults, digital wallets, and general ledger balances.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
+        {/* Modern Unified Page Header (No Breadcrumbs) */}
+        <PageHeader
+          title="Bank & Ledger Accounts"
+          description="Manage operating bank accounts, petty cash vaults, digital wallets, and general ledger balances."
+          icon={Wallet}
+          iconColor="bg-orange-50 text-[#ff6900]"
+          actions={
             <button
               type="button"
               onClick={openCreate}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-bold shadow-md shadow-orange-500/20 transition transform hover:-translate-y-0.5"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-bold shadow-md shadow-orange-500/20 transition transform hover:-translate-y-0.5"
             >
-              <Plus className="h-3.5 w-3.5" />
+              <Plus className="h-4 w-4" />
               <span>Add Account</span>
             </button>
-          </div>
-        </div>
+          }
+        />
 
         {/* 4 KPI Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

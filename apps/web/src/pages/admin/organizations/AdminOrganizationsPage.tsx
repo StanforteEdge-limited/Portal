@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { PortalLayout } from "@/components/layout/PortalLayout";
+import { PageHeader } from "@/shared";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { httpRequest } from "@/shared/lib/core";
 import { AdminOrganizationSlideOver } from "./AdminOrganizationSlideOver";
@@ -63,25 +64,13 @@ export default function AdminOrganizationsPage() {
   return (
     <PortalLayout activeNav="Settings">
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-medium text-slate-500 mb-1">
-              <Link to="/dashboard" className="hover:text-slate-800 transition">Dashboard</Link>
-              <ChevronRight className="h-3 w-3" />
-              <Link to="/admin/settings" className="hover:text-slate-800 transition">Settings</Link>
-              <ChevronRight className="h-3 w-3" />
-              <span className="text-slate-800 font-semibold">Organizations</span>
-            </div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight font-headline">
-              Legal Entities & Subsidiaries
-            </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Manage parent organizations, joint ventures, and operating branches across your enterprise.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
+        {/* Modern Unified Page Header (No Breadcrumbs) */}
+        <PageHeader
+          title="Legal Entities & Subsidiaries"
+          description="Manage parent organizations, joint ventures, and operating branches across your enterprise."
+          icon={Building2}
+          iconColor="bg-orange-50 text-[#ff6900]"
+          actions={
             <button
               type="button"
               onClick={() => setShowCreate(true)}
@@ -90,8 +79,8 @@ export default function AdminOrganizationsPage() {
               <Plus className="h-4 w-4" />
               <span>Register Entity</span>
             </button>
-          </div>
-        </div>
+          }
+        />
 
         {/* Toast */}
         {toastMsg && (

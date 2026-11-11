@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { PortalLayout } from "@/components/layout/PortalLayout";
+import { PageHeader } from "@/shared";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { useCachedQuery } from "@/shared/lib/core";
 import {
@@ -100,26 +101,14 @@ export default function AdminRolesPage() {
   return (
     <PortalLayout activeNav="Settings">
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-medium text-slate-500 mb-1">
-              <Link to="/dashboard" className="hover:text-slate-800 transition">Dashboard</Link>
-              <ChevronRight className="h-3 w-3" />
-              <Link to="/admin/settings" className="hover:text-slate-800 transition">Settings</Link>
-              <ChevronRight className="h-3 w-3" />
-              <span className="text-slate-800 font-semibold">Roles & Permissions</span>
-            </div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight font-headline">
-              Workforce Access & Roles
-            </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Define operational permissions, assign approval authority, and audit organizational privilege levels.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {activeTab === "roles" && (
+        {/* Modern Unified Page Header (No Breadcrumbs) */}
+        <PageHeader
+          title="Workforce Access & Roles"
+          description="Define operational permissions, assign approval authority, and audit organizational privilege levels."
+          icon={ShieldCheck}
+          iconColor="bg-orange-50 text-[#ff6900]"
+          actions={
+            activeTab === "roles" ? (
               <button
                 type="button"
                 onClick={() => setShowCreateRole(true)}
@@ -128,9 +117,9 @@ export default function AdminRolesPage() {
                 <Plus className="h-4 w-4" />
                 <span>Create New Role</span>
               </button>
-            )}
-          </div>
-        </div>
+            ) : undefined
+          }
+        />
 
         {/* Toast */}
         {toastMsg && (

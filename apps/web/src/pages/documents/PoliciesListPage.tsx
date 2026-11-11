@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { Link, useNavigate } from "@/shared/router-adapter";
 import { PortalLayout } from "@/components/layout/PortalLayout";
+import { PageHeader } from "@/shared";
 import { useCachedQuery, documentApi } from "@/shared/lib/core";
 import {
   FileCheck,
@@ -60,22 +61,13 @@ export default function PoliciesListPage() {
   return (
     <PortalLayout activeNav="Policies">
       <div className="space-y-6">
-        {/* Breadcrumb & Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1">
-              <span>Compliance & Governance</span>
-              <ChevronRight className="h-3 w-3 text-slate-400" />
-              <span className="text-[#ff6900]">Policies</span>
-            </div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight font-headline">
-              Policies & Handbooks
-            </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Review and acknowledge organizational regulations, compliance policies, and staff code of conduct.
-            </p>
-          </div>
-        </div>
+        {/* Modern Unified Page Header (No Breadcrumbs) */}
+        <PageHeader
+          title="Policies & Handbooks"
+          description="Review and acknowledge organizational regulations, compliance policies, and staff code of conduct."
+          icon={FileCheck}
+          iconColor="bg-orange-50 text-[#ff6900]"
+        />
 
         {/* 4 KPI Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

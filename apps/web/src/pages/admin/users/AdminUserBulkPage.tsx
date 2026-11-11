@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { Link } from "@/shared/router-adapter";
 import type { CreateAdminUser } from "@stanforte/contract";
 import { PortalLayout } from "@/components/layout/PortalLayout";
+import { PageHeader } from "@/shared";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { useCachedQuery, resourceApi, adminUsersApi } from "@/shared/lib/core";
 import { BulkImportDashboard, type BulkColumnSchema } from "@/shared/components/feedback/BulkImportDashboard";
@@ -103,36 +104,22 @@ export default function AdminUserBulkPage() {
   return (
     <PortalLayout activeNav="Employees Directory">
       <div className="space-y-6 max-w-[1600px] mx-auto pb-12">
-        {/* Header Breadcrumb */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-medium text-slate-500 mb-1">
-              <Link to="/dashboard" className="hover:text-slate-800 transition">
-                Dashboard
-              </Link>
-              <ChevronRight className="h-3 w-3" />
-              <Link to="/admin/users" className="hover:text-slate-800 transition">
-                Staff Directory
-              </Link>
-              <ChevronRight className="h-3 w-3" />
-              <span className="text-slate-800 font-semibold">Bulk Onboarding</span>
-            </div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight font-headline">
-              Bulk Employee Onboarding
-            </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Stage, validate, and mass-register employee accounts across corporate organizations.
-            </p>
-          </div>
-
-          <Link
-            to="/admin/users"
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition self-start sm:self-auto"
-          >
-            <ArrowLeft className="h-4 w-4 text-slate-400" />
-            <span>Back to Staff Directory</span>
-          </Link>
-        </div>
+        {/* Modern Unified Page Header (No Breadcrumbs) */}
+        <PageHeader
+          title="Bulk Employee Onboarding"
+          description="Stage, validate, and mass-register employee accounts across corporate organizations."
+          icon={Users}
+          iconColor="bg-orange-50 text-[#ff6900]"
+          actions={
+            <Link
+              to="/admin/users"
+              className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition shadow-xs self-start sm:self-auto"
+            >
+              <ArrowLeft className="h-4 w-4 text-slate-400" />
+              <span>Back to Staff Directory</span>
+            </Link>
+          }
+        />
 
         {/* Bulk Dashboard */}
         <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden p-6">

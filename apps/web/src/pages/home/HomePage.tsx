@@ -181,9 +181,8 @@ export default function HomePage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
           {/* Left Column: Copy & Actions */}
           <div className="lg:col-span-6 space-y-7">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-orange-50 border border-orange-200 text-[#ff6900] text-xs font-bold uppercase tracking-wider">
-              <span className="w-2 h-2 rounded-full bg-[#ff6900] animate-pulse shrink-0" />
-              <span>Multi-Tenant Workforce Operating System</span>
+            <div className="text-xs font-bold uppercase tracking-widest text-[#ff6900]">
+              Enterprise Workforce Infrastructure
             </div>
 
             <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-black tracking-tight text-slate-900 leading-[1.12] font-headline">
@@ -491,8 +490,8 @@ export default function HomePage() {
                             </div>
                             <div className="text-[10px] text-slate-500">Victoria Island Campus • 200m Polygon</div>
                           </div>
-                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md flex items-center gap-1">
+                            <Check className="h-3 w-3 stroke-[3]" />
                             <span>GPS Verified</span>
                           </span>
                         </div>
@@ -763,8 +762,8 @@ export default function HomePage() {
       <section id="interactive-demo" className="py-20 px-6 bg-slate-50 border-t border-slate-200/80">
         <div className="max-w-7xl mx-auto space-y-12">
           <div className="text-center max-w-3xl mx-auto space-y-3">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-50 border border-orange-200/80 text-[#ff6900] text-xs font-bold uppercase tracking-wider">
-              Live Product Experience
+            <div className="text-xs font-bold uppercase tracking-widest text-[#ff6900]">
+              Live Platform Experience
             </div>
             <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight font-headline">
               A Single Workspace for Your Whole Organization
@@ -1157,8 +1156,8 @@ export default function HomePage() {
       <section className="py-20 px-6 bg-white">
         <div className="max-w-7xl mx-auto space-y-14">
           <div className="max-w-3xl space-y-3">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-orange-50 border border-orange-200/80 text-[#ff6900] text-xs font-bold uppercase tracking-wider">
-              Comprehensive Capabilities
+            <div className="text-xs font-bold uppercase tracking-widest text-[#ff6900]">
+              Enterprise Architecture & Capabilities
             </div>
             <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight font-headline">
               Engineered for Real-World Organizational Complexity
@@ -1290,8 +1289,8 @@ export default function HomePage() {
       <section className="py-20 px-6 bg-slate-50 border-t border-slate-100">
         <div className="max-w-5xl mx-auto space-y-12">
           <div className="text-center space-y-3">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-50 border border-orange-200/80 text-[#ff6900] text-xs font-bold uppercase tracking-wider">
-              <Sliders className="h-3.5 w-3.5" /> Organizational ROI Calculator
+            <div className="text-xs font-bold uppercase tracking-widest text-[#ff6900]">
+              Organizational Efficiency Calculator
             </div>
             <h2 className="text-3xl sm:text-4xl font-black text-slate-900 font-headline">
               Calculate Your Operational Efficiency
@@ -1464,8 +1463,8 @@ export default function HomePage() {
         <div className="max-w-5xl mx-auto rounded-3xl bg-gradient-to-br from-[#070e20] to-[#0a1128] text-white p-10 sm:p-14 text-center space-y-6 relative overflow-hidden shadow-2xl">
           <div className="absolute top-0 right-0 w-64 h-64 bg-orange-500/10 rounded-full blur-3xl pointer-events-none" />
 
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-orange-400 text-xs font-bold uppercase tracking-wider">
-            Ready to Get Started?
+          <div className="text-xs font-bold uppercase tracking-widest text-orange-400">
+            Enterprise Deployment
           </div>
 
           <h2 className="text-3xl sm:text-5xl font-black tracking-tight font-headline max-w-2xl mx-auto leading-tight">

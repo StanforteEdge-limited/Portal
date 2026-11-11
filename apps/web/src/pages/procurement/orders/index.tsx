@@ -3,6 +3,7 @@ import { Link } from "@/shared/router-adapter";
 import { procurementApi } from "@/shared/lib/core";
 import { formatCurrency } from "@stanforte/shared";
 import { PortalLayout } from "@/components/layout/PortalLayout";
+import { PageHeader } from "@/shared";
 import {
   ShoppingCart,
   CheckCircle2,
@@ -51,34 +52,22 @@ export default function PoIndex() {
   return (
     <PortalLayout activeNav="Procurement">
       <div className="space-y-6">
-        {/* Breadcrumb & Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1">
-              <Link to="/procurement" className="hover:text-slate-800 transition">
-                Procurement
-              </Link>
-              <ChevronRight className="h-3 w-3 text-slate-400" />
-              <span className="text-[#ff6900]">Purchase Orders</span>
-            </div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight font-headline">
-              Purchase Orders
-            </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Generate, track, and manage official purchase orders issued to certified suppliers and vendors.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
+        {/* Modern Unified Page Header (No Breadcrumbs) */}
+        <PageHeader
+          title="Purchase Orders"
+          description="Generate, track, and manage official purchase orders issued to certified suppliers and vendors."
+          icon={ShoppingCart}
+          iconColor="bg-orange-50 text-[#ff6900]"
+          actions={
             <Link
               to="/procurement/orders/create"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-bold shadow-md shadow-orange-500/20 transition transform hover:-translate-y-0.5"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-bold shadow-md shadow-orange-500/20 transition transform hover:-translate-y-0.5"
             >
-              <Plus className="h-3.5 w-3.5" />
+              <Plus className="h-4 w-4" />
               <span>Create Purchase Order</span>
             </Link>
-          </div>
-        </div>
+          }
+        />
 
         {/* 4 KPI Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

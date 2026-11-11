@@ -177,34 +177,24 @@ export default function HrEmployeesPage() {
   return (
     <PortalLayout activeNav="Employees">
       <div className="space-y-6">
-        {/* Breadcrumb & Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1">
-              <span>HR & Workforce</span>
-              <ChevronRight className="h-3 w-3 text-slate-400" />
-              <span className="text-[#ff6900]">Employees</span>
-            </div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight font-headline">
-              Workforce Directory
-            </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Browse staff profiles, departmental assignments, employment contracts, and contact directories.
-            </p>
-          </div>
-
-          {canManage && (
-            <div className="flex items-center gap-2">
+        {/* Modern Unified Page Header (No Breadcrumbs) */}
+        <PageHeader
+          title="Workforce Directory"
+          description="Browse staff profiles, departmental assignments, employment contracts, and contact directories."
+          icon={Users}
+          iconColor="bg-orange-50 text-[#ff6900]"
+          actions={
+            canManage ? (
               <Link
                 to="/hr/employees/new"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-bold shadow-md shadow-orange-500/20 transition transform hover:-translate-y-0.5"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-bold shadow-md shadow-orange-500/20 transition transform hover:-translate-y-0.5"
               >
-                <Plus className="h-3.5 w-3.5" />
+                <Plus className="h-4 w-4" />
                 <span>Add Employee</span>
               </Link>
-            </div>
-          )}
-        </div>
+            ) : undefined
+          }
+        />
 
         {/* 4 KPI Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

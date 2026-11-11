@@ -143,7 +143,7 @@ export default function FeaturesPage() {
     <PublicLayout activePath="/features">
       {/* Header */}
       <section className="pt-16 pb-12 px-6 text-center max-w-4xl mx-auto space-y-4">
-        <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-orange-50 border border-orange-200/80 text-[#ff6900] text-xs font-bold uppercase tracking-wider">
+        <div className="text-xs font-bold uppercase tracking-widest text-[#ff6900]">
           Platform Capabilities
         </div>
         <h1 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight font-headline">

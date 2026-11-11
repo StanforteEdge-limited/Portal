@@ -61,8 +61,8 @@ export default function SecurityPage() {
     <PublicLayout activePath="/security">
       {/* Header */}
       <section className="pt-16 pb-12 px-6 text-center max-w-4xl mx-auto space-y-4">
-        <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-orange-50 border border-orange-200/80 text-[#ff6900] text-xs font-bold uppercase tracking-wider">
-          Institutional Security
+        <div className="text-xs font-bold uppercase tracking-widest text-[#ff6900]">
+          Institutional Security & Data Isolation
         </div>
         <h1 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight font-headline">
           Security and Compliance <br className="hidden sm:inline" />
@@ -104,9 +104,9 @@ export default function SecurityPage() {
       <section className="border-t border-slate-100 bg-slate-50/60 py-16 px-6">
         <div className="max-w-4xl mx-auto space-y-8">
           <div className="p-8 rounded-3xl border border-slate-200/80 bg-white shadow-sm space-y-4">
-            <span className="inline-block text-[10px] font-bold text-[#ff6900] bg-orange-50 px-2.5 py-0.5 rounded-full border border-orange-200">
+            <div className="text-xs font-bold uppercase tracking-widest text-[#ff6900]">
               Regulatory Alignment
-            </span>
+            </div>
             <h2 className="text-xl font-bold text-slate-900 font-headline">
               Data Privacy & Statutory Governance
             </h2>

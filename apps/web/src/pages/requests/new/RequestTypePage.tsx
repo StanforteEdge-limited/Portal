@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState, useCallback, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { PortalLayout } from "@/components/layout/PortalLayout";
+import { PageHeader } from "@/shared";
 import { useCachedQuery } from "@/shared/lib/core";
 import {
   listRequestTypes,
@@ -21,7 +22,7 @@ import {
   FolderPlus,
   Send,
   Layers,
-  Sparkles,
+  ShieldCheck,
 } from "lucide-react";
 
 export default function RequestTypePage() {
@@ -117,32 +118,22 @@ export default function RequestTypePage() {
   return (
     <PortalLayout activeNav="My Requests">
       <div className="space-y-6">
-        {/* Breadcrumb & Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1">
-              <Link to="/requests" className="hover:text-slate-800 transition">
-                Requests
-              </Link>
-              <ChevronRight className="h-3 w-3 text-slate-400" />
-              <span className="text-[#ff6900]">New Request</span>
-            </div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight font-headline">
-              Create New Request
-            </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Select the designated request category and workflow subtype to initiate formal sign-off.
-            </p>
-          </div>
-
-          <Link
-            to="/requests"
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:bg-slate-50 transition shadow-sm self-start sm:self-auto"
-          >
-            <Clock className="h-3.5 w-3.5 text-slate-400" />
-            <span>My Submitted Requests</span>
-          </Link>
-        </div>
+        {/* Modern Unified Page Header (No Breadcrumbs) */}
+        <PageHeader
+          title="Create New Request"
+          description="Select the designated request category and workflow subtype to initiate formal sign-off."
+          icon={FolderPlus}
+          iconColor="bg-orange-50 text-[#ff6900]"
+          actions={
+            <Link
+              to="/requests"
+              className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:bg-slate-50 transition shadow-xs self-start sm:self-auto"
+            >
+              <Clock className="h-4 w-4 text-slate-400" />
+              <span>My Submitted Requests</span>
+            </Link>
+          }
+        />
 
         {/* 4 KPI Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -187,7 +178,7 @@ export default function RequestTypePage() {
 
           <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
-              <Sparkles className="h-5 w-5" />
+              <ShieldCheck className="h-5 w-5" />
             </div>
             <div>
               <div className="text-[11px] font-semibold text-slate-500">Draft Auto-save</div>

@@ -3,7 +3,7 @@ import { Link } from "@/shared/router-adapter";
 import { PortalLayout } from "@/components/layout/PortalLayout";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { useCachedQuery, resourceApi } from "@/shared/lib/core";
-import { useToast } from "@/shared";
+import { useToast, PageHeader } from "@/shared";
 import { formatFileSize } from "@stanforte/shared";
 import {
   FolderOpen,
@@ -111,51 +111,37 @@ export default function AdminFilesPage() {
   return (
     <PortalLayout activeNav="Documents">
       <div className="space-y-6 max-w-[1600px] mx-auto pb-12">
-        {/* Header Breadcrumb & Actions */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-medium text-slate-500 mb-1">
-              <Link to="/dashboard" className="hover:text-slate-800 transition">
-                Dashboard
-              </Link>
-              <ChevronRight className="h-3 w-3" />
-              <Link to="/documents" className="hover:text-slate-800 transition">
-                Knowledge & Storage
-              </Link>
-              <ChevronRight className="h-3 w-3" />
-              <span className="text-slate-800 font-semibold">Media Library</span>
+        {/* Modern Unified Page Header (No Breadcrumbs) */}
+        <PageHeader
+          title="Enterprise Media & File Assets"
+          description="Manage uploaded corporate assets, evidence attachments, and storage quota."
+          icon={FolderOpen}
+          iconColor="bg-orange-50 text-[#ff6900]"
+          actions={
+            <div className="flex items-center gap-3">
+              <input
+                ref={fileInputRef}
+                type="file"
+                onChange={handleUpload}
+                disabled={uploading}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-bold shadow-sm shadow-orange-500/20 transition active:scale-95 disabled:opacity-50"
+              >
+                {uploading ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Upload className="h-4 w-4" />
+                )}
+                <span>{uploading ? "Uploading..." : "Upload File Asset"}</span>
+              </button>
             </div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight font-headline">
-              Enterprise Media & File Assets
-            </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Manage uploaded corporate assets, evidence attachments, and storage quota.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <input
-              ref={fileInputRef}
-              type="file"
-              onChange={handleUpload}
-              disabled={uploading}
-              className="hidden"
-            />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-bold shadow-sm shadow-orange-500/20 transition active:scale-95 disabled:opacity-50"
-            >
-              {uploading ? (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <Upload className="h-4 w-4" />
-              )}
-              <span>{uploading ? "Uploading..." : "Upload File Asset"}</span>
-            </button>
-          </div>
-        </div>
+          }
+        />
 
         {/* 4 Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

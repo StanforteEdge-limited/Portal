@@ -7,7 +7,7 @@ import {
   AccordionTrigger,
   AccordionContent,
 } from "@/components/ui/accordion";
-import { Check, Minus, Sparkles, ArrowRight } from "lucide-react";
+import { Check, Minus, ArrowRight } from "lucide-react";
 
 export default function PricingPage() {
   const [annualBilling, setAnnualBilling] = useState(true);
@@ -16,8 +16,8 @@ export default function PricingPage() {
     <PublicLayout activePath="/pricing">
       {/* Header Section */}
       <section className="pt-16 pb-12 px-6 text-center max-w-4xl mx-auto space-y-5">
-        <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-orange-50 border border-orange-200/80 text-[#ff6900] text-xs font-bold uppercase tracking-wider">
-          Transparent SaaS Plans
+        <div className="text-xs font-bold uppercase tracking-widest text-[#ff6900]">
+          Predictable Headcount Pricing
         </div>
 
         <h1 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight font-headline">
@@ -126,8 +126,8 @@ export default function PricingPage() {
           {/* 2. Growth Tier (Most Popular) */}
           <div className="p-8 rounded-3xl border-2 border-[#ff6900] bg-white flex flex-col justify-between relative shadow-xl">
             <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-              <span className="bg-[#ff6900] text-white text-[10px] uppercase font-bold tracking-wider px-3.5 py-1 rounded-full shadow-sm flex items-center gap-1">
-                <Sparkles className="h-3 w-3" /> Most Popular
+              <span className="bg-[#ff6900] text-white text-[10px] uppercase font-bold tracking-wider px-3.5 py-1 rounded-md shadow-sm">
+                Most Popular
               </span>
             </div>
 

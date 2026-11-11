@@ -4,7 +4,7 @@ import { Link } from "@/shared/router-adapter";
 import { PortalLayout } from "@/components/layout/PortalLayout";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { useCachedQuery, resourceApi, httpRequest } from "@/shared/lib/core";
-import { useToast } from "@/shared";
+import { useToast, PageHeader } from "@/shared";
 import AdminProjectSlideOver from "./AdminProjectSlideOver";
 import {
   Briefcase,
@@ -138,29 +138,13 @@ export default function AdminProjectsPage() {
   return (
     <PortalLayout activeNav="Teams & Departments">
       <div className="space-y-6 max-w-[1600px] mx-auto pb-12">
-        {/* Header Row */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-medium text-slate-500 mb-1">
-              <Link to="/dashboard" className="hover:text-slate-800 transition">
-                Dashboard
-              </Link>
-              <ChevronRight className="h-3 w-3" />
-              <Link to="/teams" className="hover:text-slate-800 transition">
-                Governance
-              </Link>
-              <ChevronRight className="h-3 w-3" />
-              <span className="text-slate-800 font-semibold">Projects</span>
-            </div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight font-headline">
-              Enterprise Projects & Initiatives
-            </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Manage project governance codes, client delivery timelines, and executive ownership.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
+        {/* Modern Unified Page Header (No Breadcrumbs) */}
+        <PageHeader
+          title="Enterprise Projects & Initiatives"
+          description="Manage project governance codes, client delivery timelines, and executive ownership."
+          icon={Briefcase}
+          iconColor="bg-orange-50 text-[#ff6900]"
+          actions={
             <button
               type="button"
               onClick={() => setShowCreate(true)}
@@ -169,8 +153,8 @@ export default function AdminProjectsPage() {
               <Plus className="h-4 w-4" />
               <span>Create New Project</span>
             </button>
-          </div>
-        </div>
+          }
+        />
 
         {/* 4 Metric KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
