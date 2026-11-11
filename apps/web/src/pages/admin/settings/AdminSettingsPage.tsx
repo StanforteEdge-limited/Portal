@@ -91,11 +91,13 @@ export default function AdminSettingsPage() {
     try {
       setLoading(true);
       const [res, groupsRes] = await Promise.all([
-        requestApi.listTypes(),
-        requestApi.listGroups(),
+        requestApi.listTypes().catch(() => []),
+        requestApi.listGroups().catch(() => []),
       ]);
-      setTypes(res);
-      setGroups(groupsRes as { id: string; name: string }[]);
+      const safeTypes = Array.isArray(res) ? res : ((res as any)?.items ?? (res as any)?.data?.items ?? []);
+      const safeGroups = Array.isArray(groupsRes) ? groupsRes : ((groupsRes as any)?.items ?? (groupsRes as any)?.data?.items ?? []);
+      setTypes(safeTypes);
+      setGroups(safeGroups as { id: string; name: string }[]);
     } catch {
       notify("Failed to load request types.", "error");
     } finally {
@@ -106,7 +108,8 @@ export default function AdminSettingsPage() {
   const loadCategories = async () => {
     try {
       const res = await apiListCategories(categoryFilter || undefined);
-      setCategories(res as RequestCategoryOption[]);
+      const safeCats = Array.isArray(res) ? res : ((res as any)?.items ?? (res as any)?.data?.items ?? []);
+      setCategories(safeCats as RequestCategoryOption[]);
     } catch {
       notify("Failed to load categories.", "error");
     }
@@ -115,7 +118,8 @@ export default function AdminSettingsPage() {
   const loadTaxonomies = async () => {
     try {
       const res = await listManagedTaxonomies();
-      setTaxonomies(res);
+      const safeTax = Array.isArray(res) ? res : ((res as any)?.items ?? (res as any)?.data?.items ?? []);
+      setTaxonomies(safeTax);
     } catch {
       notify("Failed to load taxonomies.", "error");
     }

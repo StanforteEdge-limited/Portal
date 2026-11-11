@@ -16,10 +16,11 @@ import {
   type ManagedTaxonomy,
 } from "@/pages/requests/taxonomy-api";
 import type { RequestType, RoleOption } from "@stanforte/shared";
-import ApprovalFlowBuilder, {
+import {
+  ApprovalFlowBuilder,
   createApprovalFlowStep,
-  type ApprovalFlowStep,
-} from "@/pages/requests/components/ApprovalFlowBuilder";
+  type ApprovalFlowEditorStep,
+} from "@/shared/components/ui/ApprovalFlowBuilder";
 import { FileText, GitBranch, Shield, Check, Layers } from "lucide-react";
 
 type Props = {
@@ -57,7 +58,7 @@ export default function RequestTypeSlideOver({
     return Array.isArray(raw) ? raw : [];
   });
 
-  const [approvalSteps, setApprovalSteps] = useState<ApprovalFlowStep[]>(() => {
+  const [approvalSteps, setApprovalSteps] = useState<ApprovalFlowEditorStep[]>(() => {
     const flow = requestType?.approvalFlowJson?.flow;
     if (Array.isArray(flow) && flow.length > 0) {
       return flow;
