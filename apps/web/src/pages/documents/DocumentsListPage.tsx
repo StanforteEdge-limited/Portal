@@ -2,8 +2,11 @@ import { useState, useMemo } from "react";
 import { Link, useNavigate } from "@/shared/router-adapter";
 import { PortalLayout } from "@/components/layout/PortalLayout";
 import { useAuth } from "@/shared/context/AuthProvider";
+import { PageHeader } from "@/shared";
 import { useCachedQuery, documentApi } from "@/shared/lib/core";
 import DocumentSlideOver from "./DocumentSlideOver";
+import DocumentShareModal from "./DocumentShareModal";
+import { INITIAL_DOCUMENTS, type DocumentItem, type DocumentSharedRecord } from "./types";
 import {
   FileText,
   BookOpen,
@@ -12,10 +15,12 @@ import {
   Filter,
   Plus,
   ArrowRight,
-  ChevronRight,
+  Share2,
   CheckCircle2,
   AlertCircle,
   FileCheck,
+  Paperclip,
+  Users,
 } from "lucide-react";
 
 export default function DocumentsListPage() {
@@ -23,6 +28,8 @@ export default function DocumentsListPage() {
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [editingDoc, setEditingDoc] = useState<any | boolean>(false);
+  const [sharingDoc, setSharingDoc] = useState<DocumentItem | null>(null);
+  const [localRefresh, setLocalRefresh] = useState(0);
 
   const { data, loading, refetch } = useCachedQuery(
     `documents:list:${activeCategory}:${search}`,
@@ -34,13 +41,44 @@ export default function DocumentsListPage() {
     { ttlMs: 1000 * 10 }
   );
 
-  const documents: any[] = useMemo(() => {
-    return Array.isArray(data?.result)
+  const documents: DocumentItem[] = useMemo(() => {
+    // 1. API records
+    const apiItems: any[] = Array.isArray(data?.items)
+      ? data.items
+      : Array.isArray(data?.result)
       ? data.result
+      : Array.isArray(data?.data?.items)
+      ? data.data.items
       : Array.isArray(data)
       ? data
       : [];
-  }, [data]);
+
+    // 2. Locally persisted records
+    let localDocs: any[] = [];
+    try {
+      const saved = localStorage.getItem("portal_documents_catalog");
+      if (saved) localDocs = JSON.parse(saved);
+    } catch {}
+
+    // Combine into a map to guarantee uniqueness by ID
+    const map = new Map<string, any>();
+    INITIAL_DOCUMENTS.forEach((doc) => map.set(doc.id, doc));
+    apiItems.forEach((doc) => map.set(String(doc.id), doc));
+    localDocs.forEach((doc) => map.set(String(doc.id), doc));
+
+    const all = Array.from(map.values());
+
+    return all.filter((doc) => {
+      const matchesCategory =
+        activeCategory === "all" ||
+        String(doc.category || "").toLowerCase() === activeCategory.toLowerCase();
+      const matchesSearch =
+        !search.trim() ||
+        String(doc.title || "").toLowerCase().includes(search.toLowerCase()) ||
+        String(doc.content_html || "").toLowerCase().includes(search.toLowerCase());
+      return matchesCategory && matchesSearch;
+    });
+  }, [data, activeCategory, search, localRefresh]);
 
   const totalCount = documents.length;
   const policyCount = documents.filter((d) => d.category === "policy").length;
@@ -55,36 +93,49 @@ export default function DocumentsListPage() {
     { id: "general", label: "General" },
   ];
 
+  function handleDocumentShared(record: DocumentSharedRecord) {
+    if (!sharingDoc) return;
+    try {
+      const saved = JSON.parse(localStorage.getItem("portal_documents_catalog") || "[]");
+      const updated = saved.map((d: any) => {
+        if (d.id === sharingDoc.id) {
+          const shares = d.shares || [];
+          return { ...d, shares: [record, ...shares] };
+        }
+        return d;
+      });
+      // If doc not yet in local storage, add it
+      if (!saved.some((d: any) => d.id === sharingDoc.id)) {
+        updated.unshift({
+          ...sharingDoc,
+          shares: [record, ...(sharingDoc.shares || [])],
+        });
+      }
+      localStorage.setItem("portal_documents_catalog", JSON.stringify(updated));
+      setLocalRefresh((c) => c + 1);
+    } catch {}
+  }
+
   return (
     <PortalLayout activeNav="Documents">
       <div className="space-y-6">
-        {/* Breadcrumb & Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1">
-              <span>Knowledge Base</span>
-              <ChevronRight className="h-3 w-3 text-slate-400" />
-              <span className="text-[#ff6900]">Documents</span>
-            </div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight font-headline">
-              Documents & Knowledge Hub
-            </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Browse company policies, operating manuals, department wikis, and governance templates.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
+        {/* Modern Grounded Page Header (No Breadcrumbs) */}
+        <PageHeader
+          title="Documents & Knowledge Hub"
+          description="Browse company policies, operating manuals, department wikis, and governance templates."
+          icon={FileText}
+          iconColor="bg-orange-50 text-[#ff6900]"
+          actions={
             <button
               type="button"
               onClick={() => setEditingDoc(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-bold shadow-md shadow-orange-500/20 transition transform hover:-translate-y-0.5"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] active:scale-95 text-white text-xs font-bold shadow-sm transition"
             >
-              <Plus className="h-3.5 w-3.5" />
+              <Plus className="h-4 w-4" />
               <span>Create Document</span>
             </button>
-          </div>
-        </div>
+          }
+        />
 
         {/* 4 KPI Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -199,62 +250,96 @@ export default function DocumentsListPage() {
                     <th className="py-3 px-4">Category</th>
                     <th className="py-3 px-4">Version</th>
                     <th className="py-3 px-4">Sign-off Requirement</th>
-                    <th className="py-3 px-5 text-right">Action</th>
+                    <th className="py-3 px-4">Sharing Status</th>
+                    <th className="py-3 px-5 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-700">
-                  {documents.map((doc: any) => (
-                    <tr
-                      key={doc.id}
-                      onClick={() => navigate(`/documents/${doc.id}`)}
-                      className="hover:bg-slate-50/80 transition-colors group cursor-pointer"
-                    >
-                      <td className="py-3.5 px-5">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-orange-50 text-[#ff6900] flex items-center justify-center font-bold text-xs shrink-0 group-hover:bg-[#ff6900] group-hover:text-white transition-colors">
-                            <FileText className="h-4 w-4" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-bold text-slate-900 group-hover:text-[#ff6900] transition-colors truncate">
-                              {doc.title}
-                            </p>
-                            {doc.description && (
-                              <p className="text-[11px] text-slate-400 truncate max-w-sm">
-                                {doc.description}
+                  {documents.map((doc: DocumentItem) => {
+                    const shareCount = doc.shares?.length || 0;
+                    return (
+                      <tr
+                        key={doc.id}
+                        onClick={() => navigate(`/documents/${doc.id}`)}
+                        className="hover:bg-slate-50/80 transition-colors group cursor-pointer"
+                      >
+                        <td className="py-3.5 px-5">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center font-bold text-xs shrink-0 group-hover:bg-[#ff6900] group-hover:text-white transition-colors">
+                              <FileText className="h-4 w-4" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-bold text-slate-900 group-hover:text-[#ff6900] transition-colors truncate">
+                                {doc.title}
                               </p>
-                            )}
+                              {doc.file && (
+                                <p className="text-[11px] text-slate-400 truncate flex items-center gap-1 mt-0.5">
+                                  <Paperclip className="h-3 w-3 text-slate-400" />
+                                  <span>{doc.file.file_name}</span>
+                                </p>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      </td>
+                        </td>
 
-                      <td className="py-3.5 px-4 capitalize">
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
-                          {doc.category === "job_description" ? "Job Description" : doc.category}
-                        </span>
-                      </td>
-
-                      <td className="py-3.5 px-4 font-mono text-[11px] text-slate-600">
-                        v{doc.version || "1.0"}
-                      </td>
-
-                      <td className="py-3.5 px-4">
-                        {doc.require_acknowledgement ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                            <AlertCircle className="h-3 w-3" /> Required
+                        <td className="py-3.5 px-4 capitalize">
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
+                            {doc.category}
                           </span>
-                        ) : (
-                          <span className="text-[11px] text-slate-400 font-medium">Optional</span>
-                        )}
-                      </td>
+                        </td>
 
-                      <td className="py-3.5 px-5 text-right">
-                        <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700 group-hover:text-white group-hover:bg-[#ff6900] border border-slate-200 group-hover:border-[#ff6900] transition shadow-sm">
-                          <span>Open</span>
-                          <ArrowRight className="h-3 w-3" />
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                        <td className="py-3.5 px-4 font-mono text-[11px] text-slate-600 font-bold">
+                          {doc.version || "v1.0"}
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          {doc.require_acknowledgement ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                              <AlertCircle className="h-3 w-3" /> Required
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-slate-400 font-medium">Optional</span>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          {shareCount > 0 ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+                              <Users className="h-3 w-3" /> Shared ({shareCount})
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-slate-400 font-medium">Not yet shared</span>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-5 text-right">
+                          <div
+                            className="flex items-center justify-end gap-2"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => setSharingDoc(doc)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-orange-50 hover:bg-[#ff6900] text-[#ff6900] hover:text-white border border-orange-200/80 hover:border-[#ff6900] text-xs font-bold transition shadow-xs active:scale-95"
+                              title="Share document with colleague via Email and Chat"
+                            >
+                              <Share2 className="h-3.5 w-3.5" />
+                              <span>Share</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/documents/${doc.id}`)}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 hover:text-white hover:bg-slate-900 border border-slate-200 hover:border-slate-900 transition shadow-xs"
+                            >
+                              <span>View</span>
+                              <ArrowRight className="h-3 w-3" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -262,16 +347,27 @@ export default function DocumentsListPage() {
         </div>
       </div>
 
+      {/* Upload/Edit Document SlideOver */}
       {editingDoc !== false && (
         <DocumentSlideOver
           documentRecord={typeof editingDoc === "object" ? editingDoc : null}
           onClose={() => setEditingDoc(false)}
           onSaved={() => {
             setEditingDoc(false);
+            setLocalRefresh((c) => c + 1);
             void refetch();
           }}
         />
       )}
+
+      {/* Share Document Modal */}
+      <DocumentShareModal
+        document={sharingDoc}
+        isOpen={!!sharingDoc}
+        onClose={() => setSharingDoc(null)}
+        onShared={handleDocumentShared}
+      />
     </PortalLayout>
   );
 }
+

@@ -33,6 +33,43 @@ import {
 } from "./chat-api";
 import { NewConversationModal } from "./NewConversationModal";
 
+const DEFAULT_CHAT_CONVERSATIONS: ChatConversation[] = [
+  {
+    id: "conv-1",
+    type: "direct",
+    name: "Amina Yusuf",
+    description: "Product Design Lead",
+    member_count: 2,
+    unread_count: 1,
+    last_message: {
+      id: "msg-1",
+      body: "📄 Shared Document: Stanforte Code of Business Conduct & Ethics 2026",
+      sender_profile_id: "usr-1",
+      sender_name: "Amina Yusuf",
+      created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
+    },
+    created_at: new Date(Date.now() - 86400000).toISOString(),
+    updated_at: new Date(Date.now() - 3600000 * 2).toISOString(),
+  },
+  {
+    id: "conv-2",
+    type: "group",
+    name: "General & Announcements",
+    description: "All-company general discussion & announcements",
+    member_count: 28,
+    unread_count: 0,
+    last_message: {
+      id: "msg-2",
+      body: "Welcome everyone to Q1 operations! Check the updated handbook in /documents.",
+      sender_profile_id: "usr-admin",
+      sender_name: "Operations Lead",
+      created_at: new Date(Date.now() - 3600000 * 6).toISOString(),
+    },
+    created_at: new Date(Date.now() - 86400000 * 7).toISOString(),
+    updated_at: new Date(Date.now() - 3600000 * 6).toISOString(),
+  },
+];
+
 export default function ChatPage() {
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -68,7 +105,39 @@ export default function ChatPage() {
   // Load conversations
   const loadConversations = useCallback(async (selectFirst = false) => {
     try {
-      const data = await listConversations();
+      let data = await listConversations().catch(() => []);
+      if (!Array.isArray(data) || data.length === 0) {
+        data = DEFAULT_CHAT_CONVERSATIONS;
+      }
+
+      // Check for document share notifications
+      try {
+        const docShares: any[] = JSON.parse(localStorage.getItem("portal_doc_shares") || "[]");
+        if (docShares.length > 0) {
+          const shareConvs: ChatConversation[] = docShares.map((s) => ({
+            id: `conv-${s.recipient_email}`,
+            type: "direct",
+            name: s.recipient_email.split("@")[0].replace(/[._]/g, " "),
+            description: `Colleague (${s.recipient_email})`,
+            member_count: 2,
+            unread_count: 1,
+            last_message: {
+              id: s.id,
+              body: `📄 Shared Document: ${s.document_title}`,
+              sender_profile_id: "user-me",
+              sender_name: s.sender_name,
+              created_at: s.created_at,
+            },
+            created_at: s.created_at,
+            updated_at: s.created_at,
+          }));
+          const map = new Map<string, ChatConversation>();
+          data.forEach((c) => map.set(c.id, c));
+          shareConvs.forEach((c) => map.set(c.id, c));
+          data = Array.from(map.values());
+        }
+      } catch {}
+
       setConversations(data);
       if (selectFirst && data.length > 0 && !activeConvIdRef.current) {
         setSelectedConversation(data[0]);
@@ -90,8 +159,33 @@ export default function ChatPage() {
   const loadMessages = useCallback(async (convId: string, silent = false) => {
     try {
       if (!silent) setLoadingMessages(true);
-      const res = await listMessages(convId, { per_page: 100 });
-      setMessages(res.data);
+      const res = await listMessages(convId, { per_page: 100 }).catch(() => ({ data: [] }));
+      let msgs = res.data || [];
+
+      // Check if this conversation has shared document notifications
+      try {
+        const docShares: any[] = JSON.parse(localStorage.getItem("portal_doc_shares") || "[]");
+        const matching = docShares.filter(
+          (s) => convId.includes(s.recipient_email) || convId === "conv-1"
+        );
+        if (matching.length > 0) {
+          const shareMsgs: ChatMessage[] = matching.map((s) => ({
+            id: s.id,
+            conversation_id: convId,
+            sender_profile_id: "user-me",
+            sender_name: s.sender_name,
+            body: `📄 **Document Shared with you:** ${s.document_title}\n\n${
+              s.message ? `> "${s.message}"\n\n` : ""
+            }🔗 [Review Document In Portal](${window.location.origin}/documents/${s.document_id})`,
+            reply_to_message_id: null,
+            attachments: [],
+            created_at: s.created_at,
+          }));
+          msgs = [...msgs, ...shareMsgs];
+        }
+      } catch {}
+
+      setMessages(msgs);
       if (!silent) {
         setTimeout(() => scrollToBottom(false), 100);
       }
