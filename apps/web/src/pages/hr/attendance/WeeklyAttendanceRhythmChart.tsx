@@ -5,6 +5,8 @@ interface WeeklyAttendanceRhythmChartProps {
   daily?: AttendanceDaily[];
   title?: string;
   subtitle?: string;
+  legendPresent?: string;
+  legendLate?: string;
   className?: string;
 }
 
@@ -12,6 +14,8 @@ export function WeeklyAttendanceRhythmChart({
   daily = [],
   title = "Attendance Overview & Weekly Rhythm",
   subtitle = "Visual log of on-time check-ins vs late arrivals over the last 7 calendar days.",
+  legendPresent = "Present (On-Time)",
+  legendLate = "Late / Absent",
   className = "",
 }: WeeklyAttendanceRhythmChartProps) {
   const [hoveredDay, setHoveredDay] = useState<number | null>(null);
@@ -108,17 +112,17 @@ export function WeeklyAttendanceRhythmChart({
         <div className="flex items-center gap-4 text-xs font-semibold">
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-blue-600 shadow-sm" />
-            <span className="text-slate-600">Present (On-Time)</span>
+            <span className="text-slate-600">{legendPresent}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-[#ff6900] shadow-sm" />
-            <span className="text-slate-600">Late / Absent</span>
+            <span className="text-slate-600">{legendLate}</span>
           </div>
         </div>
       </div>
 
       {/* Chart Canvas with Y-Axis */}
-      <div className="flex items-stretch gap-3 w-full h-56 sm:h-64 pt-2">
+      <div className="flex items-stretch gap-3 w-full min-h-[220px] h-60 sm:h-64 pt-2">
         {/* Y-axis labels */}
         <div className="flex flex-col justify-between text-[11px] font-bold text-slate-400 py-1 select-none pr-1 shrink-0">
           <span>100%</span>

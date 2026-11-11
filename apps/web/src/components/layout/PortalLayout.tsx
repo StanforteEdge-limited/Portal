@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect, type ReactNode } from "react";
+import { useState, useMemo, useRef, useEffect, createContext, useContext, type ReactNode } from "react";
 import { Link, useNavigate, useLocation } from "@/shared/router-adapter";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { StanforteLogo } from "@/components/brand/StanforteLogo";
@@ -46,7 +46,26 @@ import {
   ShieldCheck,
   ArrowRight,
   Globe,
+  SlidersHorizontal,
 } from "lucide-react";
+
+export type WorkspaceMode = "employee" | "admin";
+
+export interface WorkspaceContextValue {
+  mode: WorkspaceMode;
+  isAdmin: boolean;
+  switchMode: (mode: WorkspaceMode) => void;
+}
+
+export const WorkspaceContext = createContext<WorkspaceContextValue>({
+  mode: "employee",
+  isAdmin: false,
+  switchMode: () => {},
+});
+
+export function useWorkspace() {
+  return useContext(WorkspaceContext);
+}
 
 export interface NavItemDef {
   label: string;
@@ -483,6 +502,8 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
   // Drawers & Modals
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDrawerOpen, setUserDrawerOpen] = useState(false);
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const userDropdownRef = useRef<HTMLDivElement>(null);
   const [appLauncherOpen, setAppLauncherOpen] = useState(false);
 
   // Search
@@ -537,11 +558,7 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
   const switchWorkspaceMode = (mode: "employee" | "admin") => {
     setWorkspaceMode(mode);
     localStorage.setItem("portal_workspace_mode", mode);
-    if (mode === "admin") {
-      navigate("/admin/users");
-    } else {
-      navigate("/dashboard");
-    }
+    navigate("/dashboard");
   };
 
   const userName = user?.first_name
@@ -608,6 +625,9 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
       if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
         setSearchFocused(false);
       }
+      if (userDropdownRef.current && !userDropdownRef.current.contains(event.target as Node)) {
+        setUserDropdownOpen(false);
+      }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -640,7 +660,8 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
   }, [launcherSearch, isAdmin]);
 
   return (
-    <div className="min-h-screen bg-[#f4f7fc] flex flex-col font-sans text-slate-900 selection:bg-[#ff6900] selection:text-white antialiased">
+    <WorkspaceContext.Provider value={{ mode: workspaceMode, isAdmin, switchMode: switchWorkspaceMode }}>
+      <div className="min-h-screen bg-[#f4f7fc] flex flex-col font-sans text-slate-900 selection:bg-[#ff6900] selection:text-white antialiased">
       {/* ------------------------------------------------------------- */}
       {/* 1. LEFT SIDEBAR (Streamlined & Uncluttered, with Compact Rail)  */}
       {/* ------------------------------------------------------------- */}
@@ -991,19 +1012,179 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
             </button>
 
             {/* --------------------------------------------------------- */}
-            {/* USER PROFILE AVATAR (Matching Image 2)                    */}
+            {/* USER PROFILE DROPDOWN (Right Corner)                       */}
             {/* --------------------------------------------------------- */}
-            <button
-              type="button"
-              onClick={() => setUserDrawerOpen(true)}
-              className="flex items-center gap-2 p-1 pl-1.5 rounded-full hover:bg-slate-100 transition border border-slate-200/80 shadow-sm"
-              title="User Account & Settings"
-            >
-              <div className="w-8 h-8 rounded-full bg-[#0a1128] text-white font-bold text-xs flex items-center justify-center">
-                {initials || "AD"}
-              </div>
-              <ChevronDown className="h-3.5 w-3.5 text-slate-500 mr-1" />
-            </button>
+            <div className="relative" ref={userDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setUserDropdownOpen((v) => !v)}
+                className={`flex items-center gap-2 p-1 pl-1.5 rounded-full transition border shadow-sm ${
+                  userDropdownOpen
+                    ? "bg-slate-100 border-slate-300 ring-2 ring-orange-500/20"
+                    : "hover:bg-slate-100 border-slate-200/80"
+                }`}
+                title="User Account & Settings"
+              >
+                <div className="w-8 h-8 rounded-full bg-[#0a1128] text-white font-bold text-xs flex items-center justify-center shadow-inner">
+                  {initials || "AD"}
+                </div>
+                <ChevronDown
+                  className={`h-3.5 w-3.5 text-slate-500 mr-1 transition-transform duration-200 ${
+                    userDropdownOpen ? "rotate-180 text-slate-800" : ""
+                  }`}
+                />
+              </button>
+
+              {/* Top-Right Dropdown Menu */}
+              {userDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-slate-200/90 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                  {/* User Profile Header */}
+                  <div className="px-4 py-3 border-b border-slate-100">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-[#0a1128] text-white font-bold text-sm flex items-center justify-center shrink-0 shadow-sm">
+                        {initials || "AD"}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs font-bold text-slate-900 truncate">
+                          {userName}
+                        </div>
+                        <div className="text-[11px] text-slate-400 truncate">
+                          {user?.email || "staff@stanforteedge.com"}
+                        </div>
+                        <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-orange-50 text-[#ff6900] border border-orange-200/60">
+                            {userRole}
+                          </span>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600">
+                            {workspaceMode === "admin" ? "Admin Mode" : "Staff Mode"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ADMIN CONSOLE VIEW SWITCH ACTION (Prominent for admins) */}
+                  {isAdmin && (
+                    <div className="p-2 border-b border-slate-100 bg-slate-50/50">
+                      {workspaceMode === "employee" ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            switchWorkspaceMode("admin");
+                            setUserDropdownOpen(false);
+                          }}
+                          className="w-full flex items-center justify-between p-2.5 rounded-xl bg-blue-50 hover:bg-blue-100/90 border border-blue-200/70 text-blue-900 transition text-xs font-bold group shadow-xs"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-sm shrink-0">
+                              <ShieldCheck className="h-4 w-4" />
+                            </div>
+                            <div className="text-left">
+                              <div className="text-xs font-black text-blue-900">
+                                View Admin Console
+                              </div>
+                              <div className="text-[10px] font-medium text-blue-700">
+                                Workforce &amp; Management Hub
+                              </div>
+                            </div>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-blue-500 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            switchWorkspaceMode("employee");
+                            setUserDropdownOpen(false);
+                          }}
+                          className="w-full flex items-center justify-between p-2.5 rounded-xl bg-orange-50 hover:bg-orange-100/90 border border-orange-200/70 text-orange-950 transition text-xs font-bold group shadow-xs"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-[#ff6900] text-white flex items-center justify-center shadow-sm shrink-0">
+                              <UserIcon className="h-4 w-4" />
+                            </div>
+                            <div className="text-left">
+                              <div className="text-xs font-black text-orange-900">
+                                Staff Workspace
+                              </div>
+                              <div className="text-[10px] font-medium text-[#ff6900]">
+                                Return to daily staff dashboard
+                              </div>
+                            </div>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-orange-500 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Navigation Links */}
+                  <div className="p-1 text-xs space-y-0.5">
+                    <Link
+                      to="/account/profile"
+                      onClick={() => setUserDropdownOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-700 hover:bg-slate-50 font-medium transition"
+                    >
+                      <UserIcon className="h-4 w-4 text-slate-400" />
+                      <span>My Profile</span>
+                    </Link>
+
+                    <Link
+                      to="/account/payslips"
+                      onClick={() => setUserDropdownOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-700 hover:bg-slate-50 font-medium transition"
+                    >
+                      <Receipt className="h-4 w-4 text-slate-400" />
+                      <span>My Payslips</span>
+                    </Link>
+
+                    <Link
+                      to="/account/timesheets"
+                      onClick={() => setUserDropdownOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-700 hover:bg-slate-50 font-medium transition"
+                    >
+                      <CalendarCheck className="h-4 w-4 text-slate-400" />
+                      <span>My Timesheets</span>
+                    </Link>
+
+                    <Link
+                      to="/account/settings"
+                      onClick={() => setUserDropdownOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-700 hover:bg-slate-50 font-medium transition"
+                    >
+                      <Settings className="h-4 w-4 text-slate-400" />
+                      <span>Account Settings</span>
+                    </Link>
+
+                    {isAdmin && (
+                      <Link
+                        to="/admin/settings"
+                        onClick={() => setUserDropdownOpen(false)}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-700 hover:bg-slate-50 font-medium transition"
+                      >
+                        <SlidersHorizontal className="h-4 w-4 text-slate-400" />
+                        <span>System Administration</span>
+                      </Link>
+                    )}
+                  </div>
+
+                  {/* Sign Out */}
+                  <div className="p-1 pt-1 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUserDropdownOpen(false);
+                        handleSignOut();
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 transition"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
@@ -1330,6 +1511,7 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </WorkspaceContext.Provider>
   );
 }
