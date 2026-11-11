@@ -164,7 +164,7 @@ export default function MyTasksTab({ onLogToday }: Props) {
             setSelected(null);
             refresh();
           }}
-          onLogToday={(item) => {
+          onLogToday={(item: any) => {
             setSelected(null);
             onLogToday(item);
           }}

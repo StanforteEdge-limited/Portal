@@ -115,6 +115,13 @@ export const EMPLOYEE_NAV_ITEMS: NavItemDef[] = [
     description: "Track personal requisitions and approvals",
   },
   {
+    label: "Tasks & Board",
+    icon: CheckSquare,
+    path: "/tasks",
+    aliases: ["Tasks", "Kanban", "Todo", "Work Items"],
+    description: "Personal deliverables, team tasks, and Kanban board",
+  },
+  {
     label: "My Payslips",
     icon: Receipt,
     path: "/account/payslips",
@@ -172,6 +179,13 @@ export const ADMIN_NAV_GROUPS: NavGroupDef[] = [
         badge: "23",
         aliases: ["Approvals", "Decisions"],
         description: "Managerial decision queue for finance and leave",
+      },
+      {
+        label: "Tasks & Work Items",
+        icon: CheckSquare,
+        path: "/tasks",
+        aliases: ["Tasks", "Kanban", "Deliverables"],
+        description: "Organization work items, Kanban board, and project sprints",
       },
     ],
   },
