@@ -241,21 +241,8 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          {/* Time & Shift Indicator + Mode Switch Pill */}
+          {/* Time & Shift Indicator */}
           <div className="relative z-10 flex flex-wrap items-center gap-3 self-start md:self-auto">
-            {/* If privileged user is in staff mode, offer instant Admin Console shortcut button */}
-            {isAdmin && isEmployeeMode && (
-              <button
-                type="button"
-                onClick={() => switchMode("admin")}
-                className="hidden sm:flex items-center gap-2 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-400/30 text-blue-200 px-3.5 py-2 rounded-2xl text-xs font-bold transition shadow-sm"
-                title="Switch to Executive Management Console"
-              >
-                <ShieldCheck className="h-4 w-4 text-blue-300" />
-                <span>Admin Console</span>
-              </button>
-            )}
-
             <div className="bg-white/10 backdrop-blur-md border border-white/15 px-4 py-2.5 rounded-2xl flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-orange-500/20 text-[#ff6900] flex items-center justify-center font-bold">
                 <Clock className="h-5 w-5" />

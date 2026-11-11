@@ -694,34 +694,6 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
               </button>
             )}
           </div>
-
-          {/* Mode Indicator / Admin Console Switch Pill (Only when expanded) */}
-          {!isCompactRail && isAdmin && (
-            <div className="mt-3 p-1 rounded-xl bg-white/5 border border-white/10 flex items-center gap-1 text-[11px] font-bold">
-              <button
-                type="button"
-                onClick={() => switchWorkspaceMode("employee")}
-                className={`flex-1 py-1 px-2 rounded-lg transition-all text-center ${
-                  workspaceMode === "employee"
-                    ? "bg-[#ff6900] text-white shadow-sm"
-                    : "text-slate-400 hover:text-white"
-                }`}
-              >
-                My Workspace
-              </button>
-              <button
-                type="button"
-                onClick={() => switchWorkspaceMode("admin")}
-                className={`flex-1 py-1 px-2 rounded-lg transition-all text-center ${
-                  workspaceMode === "admin"
-                    ? "bg-blue-600 text-white shadow-sm"
-                    : "text-slate-400 hover:text-white"
-                }`}
-              >
-                Admin Console
-              </button>
-            </div>
-          )}
         </div>
 
         {/* Middle: Clean Navigation Items */}
