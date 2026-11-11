@@ -2,6 +2,7 @@ import { useState, type MouseEvent } from "react";
 import { Link, useNavigate } from "@/shared/router-adapter";
 import { PortalLayout } from "@/components/layout/PortalLayout";
 import { useAuth } from "@/shared/context/AuthProvider";
+import { PageHeader } from "@/shared";
 import { adminUsersApi, resourceApi, useCachedQuery } from "@/shared/lib/core";
 import type { AdminUser } from "@stanforte/shared";
 import AdminUserCreateSlideOver from "./AdminUserCreateSlideOver";
@@ -82,43 +83,36 @@ export default function AdminUsersPage() {
 
   return (
     <PortalLayout activeNav="HR & Workforce">
-      {/* 1. Page Header with Title and Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-xs text-slate-500 font-medium mb-1">
-            <span>Administration</span>
-            <ChevronRight className="h-3 w-3" />
-            <span className="text-slate-900 font-semibold">HR & Workforce</span>
+      {/* Modern Unified Page Header (No Breadcrumbs) */}
+      <PageHeader
+        title="HR & Workforce Directory"
+        description="Manage organization members, employee directories, roles, and access permissions."
+        icon={Users}
+        iconColor="bg-blue-50 text-blue-600"
+        badge="● Admin Directory"
+        badgeColor="bg-blue-50 text-blue-700 border-blue-200/60"
+        actions={
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => navigate("/admin/users/bulk")}
+              className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-xs transition flex items-center gap-2"
+            >
+              <UploadCloud className="h-4 w-4 text-slate-500" />
+              <span>Bulk Import</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowCreate(true)}
+              className="px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] active:scale-95 text-white text-xs font-bold shadow-sm shadow-orange-500/20 transition flex items-center gap-2"
+            >
+              <UserPlus className="h-4 w-4" />
+              <span>Add User</span>
+            </button>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight font-headline">
-            HR & Workforce Directory
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Manage organization members, employee directories, roles, and access permissions.
-          </p>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => navigate("/admin/users/bulk")}
-            className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-sm transition flex items-center gap-2"
-          >
-            <UploadCloud className="h-4 w-4 text-slate-500" />
-            <span>Bulk Import</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setShowCreate(true)}
-            className="px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-bold shadow-md shadow-orange-500/25 transition flex items-center gap-2"
-          >
-            <UserPlus className="h-4 w-4" />
-            <span>Add User</span>
-          </button>
-        </div>
-      </div>
+        }
+      />
 
       {/* 2. Stat Metric Cards (Matching the design system screenshot) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">

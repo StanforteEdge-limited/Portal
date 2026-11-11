@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { PortalLayout } from "@/components/layout/PortalLayout";
 import { useAuth } from "@/shared/context/AuthProvider";
+import { PageHeader } from "@/shared";
 import { useCachedQuery } from "@/shared/lib/core";
 import {
   getMyLeaveBalance,
@@ -162,25 +163,15 @@ export default function LeavePage() {
   return (
     <PortalLayout activeNav="HR & Workforce">
       <div className="space-y-6">
-        {/* Header Row */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-medium text-slate-500 mb-1">
-              <Link to="/dashboard" className="hover:text-slate-800 transition">Dashboard</Link>
-              <ChevronRight className="h-3 w-3" />
-              <Link to="/admin/users" className="hover:text-slate-800 transition">HR & Workforce</Link>
-              <ChevronRight className="h-3 w-3" />
-              <span className="text-slate-800 font-semibold">Leave & Absence</span>
-            </div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight font-headline">
-              Leave & Absence Tracker
-            </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Manage personal leave balances, monitor annual entitlements, and track request approvals.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
+        {/* Modern Unified Page Header (No Breadcrumbs) */}
+        <PageHeader
+          title="Leave & Absence Tracker"
+          description="Manage personal leave balances, monitor annual entitlements, and track request approvals."
+          icon={Calendar}
+          iconColor="bg-emerald-50 text-emerald-600"
+          badge="● Annual Cycle 2026"
+          badgeColor="bg-blue-50 text-blue-700 border-blue-200/60"
+          actions={
             <Link
               to="/requests/new"
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#e05d00] text-white text-xs font-bold shadow-sm shadow-orange-500/20 transition active:scale-95"
@@ -188,8 +179,8 @@ export default function LeavePage() {
               <CalendarPlus className="h-4 w-4" />
               <span>Request Leave</span>
             </Link>
-          </div>
-        </div>
+          }
+        />
 
         {/* 4 Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { Link, useNavigate } from "@/shared/router-adapter";
 import { PortalLayout, useWorkspace } from "@/components/layout/PortalLayout";
 import { useAuth } from "@/shared/context/AuthProvider";
+import { PageHeader } from "@/shared";
 import { useCachedQuery } from "@/shared/lib/core";
 import { getWorkspaceProfile } from "@/shared/api/workspace-api";
 import {
@@ -67,34 +68,26 @@ export default function TeamsPage() {
   return (
     <PortalLayout activeNav="Teams & Groups">
       <div className="space-y-6">
-        {/* Breadcrumbs & Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1">
-              <span>Organization</span>
-              <ChevronRight className="h-3 w-3 text-slate-400" />
-              <span className="text-[#ff6900]">Teams & Groups</span>
-            </div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight font-headline">
-              Teams & Departments
-            </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Browse organizational departments, cross-functional squads, project committees, and your team rosters.
-            </p>
-          </div>
-
-          {isAdmin && (
-            <div className="flex items-center gap-2">
+        {/* Modern Unified Page Header (No Breadcrumbs) */}
+        <PageHeader
+          title="Teams & Departments"
+          description="Browse organizational departments, cross-functional squads, project committees, and your team rosters."
+          icon={Users}
+          iconColor="bg-blue-50 text-blue-600"
+          badge="● Active Directory"
+          badgeColor="bg-slate-100 text-slate-700 border-slate-200"
+          actions={
+            isAdmin ? (
               <Link
                 to="/admin/groups"
-                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition shadow-sm"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition shadow-sm active:scale-95"
               >
-                <Building2 className="h-3.5 w-3.5" />
+                <Building2 className="h-4 w-4" />
                 <span>Manage Groups</span>
               </Link>
-            </div>
-          )}
-        </div>
+            ) : null
+          }
+        />
 
         {/* 4 KPI Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

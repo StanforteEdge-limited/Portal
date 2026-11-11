@@ -3,7 +3,7 @@ import { Link } from "@/shared/router-adapter";
 import { PortalLayout } from "@/components/layout/PortalLayout";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { useCachedQuery } from "@/shared/lib/core";
-import { useToast } from "@/shared";
+import { useToast, PageHeader } from "@/shared";
 import { deriveAttendanceStatus, toneFromStatus } from "./attendance-data";
 import {
   clockIn,
@@ -252,44 +252,37 @@ export function AttendancePage() {
 
   return (
     <PortalLayout activeNav="Attendance">
-      {/* 1. Page Header & Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-xs text-slate-500 font-medium mb-1">
-            <span>Human Resources</span>
-            <ChevronRight className="h-3 w-3" />
-            <span className="text-slate-900 font-semibold">Time & Attendance</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight font-headline">
-            Time & Attendance
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Real-time check-in terminal, geofence verification, shift tracking, and monthly reconciliation.
-          </p>
-        </div>
+      {/* 1. Page Header Card */}
+      <PageHeader
+        title="Time & Attendance"
+        description="Real-time check-in terminal, geofence verification, shift tracking, and monthly reconciliation."
+        icon={Clock}
+        iconColor="bg-orange-50 text-[#ff6900]"
+        badge="● Live Terminal"
+        badgeColor="bg-emerald-50 text-emerald-700 border-emerald-200/60"
+        actions={
+          <>
+            <button
+              type="button"
+              onClick={() => setShowCorrectionForm(true)}
+              className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold shadow-xs transition flex items-center gap-2"
+            >
+              <FileEdit className="h-4 w-4 text-slate-500" />
+              <span>Request Correction</span>
+            </button>
 
-        {/* Action Buttons */}
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setShowCorrectionForm(true)}
-            className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-sm transition flex items-center gap-2"
-          >
-            <FileEdit className="h-4 w-4 text-slate-500" />
-            <span>Request Correction</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => void refetch()}
-            disabled={loading}
-            className="px-4 py-2.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-sm transition flex items-center gap-2"
-          >
-            <RotateCcw className={`h-4 w-4 text-slate-500 ${loading ? "animate-spin" : ""}`} />
-            <span>{loading ? "Refreshing..." : "Refresh"}</span>
-          </button>
-        </div>
-      </div>
+            <button
+              type="button"
+              onClick={() => void refetch()}
+              disabled={loading}
+              className="px-3.5 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold shadow-xs transition flex items-center gap-2"
+            >
+              <RotateCcw className={`h-4 w-4 text-slate-500 ${loading ? "animate-spin" : ""}`} />
+              <span>{loading ? "Refreshing..." : "Refresh"}</span>
+            </button>
+          </>
+        }
+      />
 
       {/* 2. Top Hero Section: Check-In Terminal & Shift Overview */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-stretch">

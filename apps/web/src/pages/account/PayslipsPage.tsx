@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "@/shared/router-adapter";
 import { PortalLayout } from "@/components/layout/PortalLayout";
-import { useToast } from "@/shared";
+import { useToast, PageHeader } from "@/shared";
 import { useCachedQuery } from "@/shared/lib/core";
 import { downloadBase64File } from "@/shared/lib/download";
 import {
@@ -116,40 +116,28 @@ export default function PayslipsPage() {
   return (
     <PortalLayout activeNav="My Payslips">
       <div className="space-y-6">
-        {/* Breadcrumb & Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-medium text-slate-500 mb-1">
-              <Link to="/dashboard" className="hover:text-slate-800 transition">
-                Dashboard
-              </Link>
-              <ChevronRight className="h-3 w-3" />
-              <Link to="/finance" className="hover:text-slate-800 transition">
-                Finance & Payroll
-              </Link>
-              <ChevronRight className="h-3 w-3" />
-              <span className="text-slate-800 font-semibold">My Payslips</span>
-            </div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight font-headline">
-              My Payslips & Compensation
-            </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Access your itemized monthly earnings, statutory deductions, tax withholdings, and verifiable slips.
-            </p>
-          </div>
-
-          {summary.latest && (
-            <button
-              type="button"
-              onClick={() => void handleDownload(summary.latest!)}
-              disabled={downloadingId === summary.latest.id}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#e05d00] text-white text-xs font-bold shadow-sm shadow-orange-500/20 transition active:scale-95 disabled:opacity-50"
-            >
-              <Download className="h-4 w-4" />
-              <span>{downloadingId === summary.latest.id ? "Downloading..." : "Download Latest Payslip"}</span>
-            </button>
-          )}
-        </div>
+        {/* Modern Unified Page Header (No Breadcrumbs) */}
+        <PageHeader
+          title="My Payslips & Compensation"
+          description="Access your itemized monthly earnings, statutory deductions, tax withholdings, and verifiable slips."
+          icon={Receipt}
+          iconColor="bg-emerald-50 text-emerald-600"
+          badge="● Payroll Active"
+          badgeColor="bg-emerald-50 text-emerald-700 border-emerald-200/60"
+          actions={
+            summary.latest ? (
+              <button
+                type="button"
+                onClick={() => void handleDownload(summary.latest!)}
+                disabled={downloadingId === summary.latest.id}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#e05d00] text-white text-xs font-bold shadow-sm shadow-orange-500/20 transition active:scale-95 disabled:opacity-50"
+              >
+                <Download className="h-4 w-4" />
+                <span>{downloadingId === summary.latest.id ? "Downloading..." : "Download Latest Payslip"}</span>
+              </button>
+            ) : null
+          }
+        />
 
         {/* 4 KPI Stat Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

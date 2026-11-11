@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { PortalLayout } from "@/components/layout/PortalLayout";
+import { PageHeader } from "@/shared";
 import { useCachedQuery } from "@/shared/lib/core";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { getWorkspaceProfile } from "@/shared/api/workspace-api";
@@ -192,40 +193,34 @@ export function RequestsListPage() {
   return (
     <PortalLayout activeNav="Approvals">
       <div className="space-y-6">
-        {/* Header Row */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-medium text-slate-500 mb-1">
-              <Link to="/dashboard" className="hover:text-slate-800 transition">Dashboard</Link>
-              <ChevronRight className="h-3 w-3" />
-              <span className="text-slate-800 font-semibold">My Requests</span>
+        {/* Modern Unified Page Header (No Breadcrumbs) */}
+        <PageHeader
+          title="My Requests & Submissions"
+          description="Track the progress, audit trails, and status of your submitted operational requisitions."
+          icon={FileText}
+          iconColor="bg-amber-50 text-amber-600"
+          badge="● Workflow Central"
+          badgeColor="bg-amber-50 text-amber-700 border-amber-200/60"
+          actions={
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => refetchRequests()}
+                className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-xs transition"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${loadingRequests ? "animate-spin text-[#ff6900]" : ""}`} />
+                <span>Refresh</span>
+              </button>
+              <Link
+                to="/requests/new"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#e05d00] text-white text-xs font-bold shadow-sm shadow-orange-500/20 transition active:scale-95"
+              >
+                <Plus className="h-4 w-4" />
+                <span>New Request</span>
+              </Link>
             </div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight font-headline">
-              My Requests & Submissions
-            </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Track the progress, audit trails, and status of your submitted operational requisitions.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => refetchRequests()}
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-sm transition"
-            >
-              <RefreshCw className={`h-3.5 w-3.5 ${loadingRequests ? "animate-spin text-[#ff6900]" : ""}`} />
-              <span>Refresh</span>
-            </button>
-            <Link
-              to="/requests/new"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#ff6900] hover:bg-[#e05d00] text-white text-xs font-bold shadow-sm shadow-orange-500/20 transition active:scale-95"
-            >
-              <Plus className="h-4 w-4" />
-              <span>New Request</span>
-            </Link>
-          </div>
-        </div>
+          }
+        />
 
         {/* 4 Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

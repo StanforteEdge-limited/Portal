@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { PortalLayout } from "@/components/layout/PortalLayout";
-import { useToast } from "@/shared";
+import { useToast, PageHeader } from "@/shared";
 import { useCachedQuery, timesheetApi } from "@/shared/lib/core";
 import { formatDisplayDate, type TimesheetEntry } from "@stanforte/shared";
 import TimesheetEditorSlideOver from "./TimesheetEditorSlideOver";
@@ -97,52 +97,40 @@ export default function TimesheetsPage() {
   return (
     <PortalLayout activeNav="Timesheets">
       <div className="space-y-6 w-full min-w-0">
-        {/* Breadcrumb & Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1">
-              <Link to="/" className="hover:text-slate-800 transition">
-                Workspace
-              </Link>
-              <ChevronRight className="h-3 w-3 text-slate-400" />
-              <Link to="/attendance" className="hover:text-slate-800 transition">
-                Workforce
-              </Link>
-              <ChevronRight className="h-3 w-3 text-slate-400" />
-              <span className="text-[#ff6900] font-bold">Timesheets</span>
+        {/* Modern Unified Page Header (No Breadcrumbs) */}
+        <PageHeader
+          title="Project Timesheets"
+          description="Log billable hours against grant allocations, projects, and donor funds to feed monthly payroll."
+          icon={CalendarCheck}
+          iconColor="bg-cyan-50 text-cyan-600"
+          badge="● Monthly Cycle"
+          badgeColor="bg-cyan-50 text-cyan-700 border-cyan-200/60"
+          actions={
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => void refetch()}
+                disabled={loading}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-slate-400" : ""}`} />
+                <span>Refresh</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingId(null);
+                  setEditorOpen(true);
+                }}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#e05d00] text-white text-xs font-bold shadow-sm shadow-orange-500/20 transition active:scale-95"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Log Time Entry</span>
+              </button>
             </div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight font-headline">
-              Project Timesheets
-            </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Log billable hours against grant allocations, projects, and donor funds to feed monthly payroll.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => void refetch()}
-              disabled={loading}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50 transition disabled:opacity-50"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-slate-400" : ""}`} />
-              <span>Refresh</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setEditingId(null);
-                setEditorOpen(true);
-              }}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#e05d00] text-white text-xs font-bold shadow-sm shadow-orange-500/20 transition active:scale-95"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Log Time Entry</span>
-            </button>
-          </div>
-        </div>
+          }
+        />
 
         {/* 4 KPI Summary Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

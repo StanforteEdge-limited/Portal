@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { PortalLayout, useWorkspace } from "@/components/layout/PortalLayout";
 import { useAuth } from "@/shared/context/AuthProvider";
+import { PageHeader } from "@/shared";
 import {
   CheckSquare,
   Clock,
@@ -169,39 +170,29 @@ export default function TasksPage() {
   return (
     <PortalLayout activeNav="Tasks & Board">
       <div className="space-y-6 max-w-[1600px] mx-auto pb-12">
-        {/* 1. Header & Breadcrumbs */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1">
-              <Link to="/dashboard" className="hover:text-slate-800 transition">
-                Workspace
-              </Link>
-              <ChevronRight className="h-3 w-3 text-slate-400" />
-              <span className="text-[#ff6900]">
-                {isAdmin ? "Enterprise Task Board & Sprints" : "My Work Items & Deliverables"}
-              </span>
-            </div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight font-headline">
-              {isAdmin ? "Work Items & Sprint Board" : "My Deliverables & Tasks"}
-            </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {isAdmin
-                ? "Assign deliverables across staff, monitor team lanes, review blockers, and organize sprints."
-                : "Manage your assigned deliverables and personal to-dos. Update your progress and log daily standups."}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
+        {/* 1. Grounded Modern Header (No Breadcrumbs) */}
+        <PageHeader
+          title={isAdmin ? "Work Items & Sprint Board" : "My Deliverables & Tasks"}
+          description={
+            isAdmin
+              ? "Assign deliverables across staff, monitor team lanes, review blockers, and organize sprints."
+              : "Manage your assigned deliverables and personal to-dos. Update your progress and log daily standups."
+          }
+          icon={CheckSquare}
+          iconColor="bg-orange-50 text-[#ff6900]"
+          badge={isAdmin ? "● Enterprise Board" : "● Personal Scope"}
+          badgeColor={isAdmin ? "bg-purple-50 text-purple-700 border-purple-200/60" : "bg-emerald-50 text-emerald-700 border-emerald-200/60"}
+          actions={
             <button
               type="button"
               onClick={() => handleOpenNewTask("planned")}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-bold transition shadow-sm"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-bold transition shadow-sm active:scale-95"
             >
               <Plus className="h-4 w-4" />
               <span>{isAdmin ? "Create & Assign Task" : "+ New Personal Task"}</span>
             </button>
-          </div>
-        </div>
+          }
+        />
 
         {/* 2. Top 4 Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

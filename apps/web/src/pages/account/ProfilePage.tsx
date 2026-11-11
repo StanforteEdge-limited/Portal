@@ -20,6 +20,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { PortalLayout } from "@/components/layout/PortalLayout";
+import { PageHeader } from "@/shared";
 import { humanize, roleLabel, sortRoles, userDisplayName } from "@stanforte/shared";
 import { useCachedQuery } from "@/shared/lib/core";
 import { useAuth } from "@/shared/context/AuthProvider";
@@ -89,45 +90,37 @@ export default function ProfilePage() {
   return (
     <PortalLayout activeNav="Profile">
       <div className="space-y-6 w-full min-w-0">
-        {/* Breadcrumb & Navigation */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1">
-              <Link to="/" className="hover:text-slate-800 transition">
-                Workspace
-              </Link>
-              <ChevronRight className="h-3 w-3 text-slate-400" />
-              <span className="text-[#ff6900] font-bold">Personal Profile</span>
+        {/* Modern Unified Page Header (No Breadcrumbs) */}
+        <PageHeader
+          title="My Profile & Account"
+          description="Manage your personal staff identity, contact information, assignments, and credentials."
+          icon={User}
+          iconColor="bg-blue-50 text-blue-600"
+          badge="● Staff Account"
+          badgeColor="bg-blue-50 text-blue-700 border-blue-200/60"
+          actions={
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => void refetch()}
+                disabled={loading}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 shadow-xs transition hover:bg-slate-50 disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-slate-400" : ""}`} />
+                <span>Refresh</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setEditorOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#e05d00] active:scale-95 text-white font-bold text-xs shadow-sm shadow-orange-500/20 transition"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>Edit Profile</span>
+              </button>
             </div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight font-headline">
-              My Profile &amp; Account
-            </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Manage your personal staff identity, contact information, assignments, and credentials.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2.5">
-            <button
-              type="button"
-              onClick={() => void refetch()}
-              disabled={loading}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-slate-400" : ""}`} />
-              <span>Refresh</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setEditorOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#ff6900] hover:bg-[#e05d00] active:scale-95 text-white font-bold text-xs shadow-sm shadow-orange-500/20 transition"
-            >
-              <Edit3 className="w-3.5 h-3.5" />
-              <span>Edit Profile</span>
-            </button>
-          </div>
-        </div>
+          }
+        />
 
         {/* Hero Profile Banner Card */}
         <div className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm overflow-hidden relative">

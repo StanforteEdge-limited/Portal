@@ -3,7 +3,7 @@ import { Link } from "@/shared/router-adapter";
 import { PortalLayout } from "@/components/layout/PortalLayout";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { useCachedQuery, resourceApi, httpRequest } from "@/shared/lib/core";
-import { useToast } from "@/shared";
+import { useToast, PageHeader } from "@/shared";
 import type { TeamOption } from "@stanforte/shared";
 import AdminGroupSlideOver from "./AdminGroupSlideOver";
 import AdminGroupTypeSlideOver from "./AdminGroupTypeSlideOver";
@@ -106,30 +106,16 @@ export default function AdminGroupsPage() {
   return (
     <PortalLayout activeNav="Teams & Departments">
       <div className="space-y-6 max-w-[1600px] mx-auto pb-12">
-        {/* Header Row */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-medium text-slate-500 mb-1">
-              <Link to="/dashboard" className="hover:text-slate-800 transition">
-                Dashboard
-              </Link>
-              <ChevronRight className="h-3 w-3" />
-              <Link to="/teams" className="hover:text-slate-800 transition">
-                Governance & Structure
-              </Link>
-              <ChevronRight className="h-3 w-3" />
-              <span className="text-slate-800 font-semibold">Groups & Teams</span>
-            </div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight font-headline">
-              Groups & Functional Teams
-            </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Configure operating units, departments, and cross-subsidiary workforce coverage.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {activeTab === "groups" ? (
+        {/* Modern Unified Page Header (No Breadcrumbs) */}
+        <PageHeader
+          title="Groups & Functional Teams"
+          description="Configure operating units, departments, and cross-subsidiary workforce coverage."
+          icon={Building2}
+          iconColor="bg-indigo-50 text-indigo-600"
+          badge="● Admin Governance"
+          badgeColor="bg-indigo-50 text-indigo-700 border-indigo-200/60"
+          actions={
+            activeTab === "groups" ? (
               <button
                 type="button"
                 onClick={() => setShowCreate(true)}
@@ -147,9 +133,9 @@ export default function AdminGroupsPage() {
                 <Plus className="h-4 w-4" />
                 <span>Add Group Type</span>
               </button>
-            )}
-          </div>
-        </div>
+            )
+          }
+        />
 
         {/* 4 Metric KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
