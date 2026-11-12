@@ -986,33 +986,35 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
 
           {/* Direct Core Modules: Analytics, AI Assistant, Chat */}
           <div className="pt-2 border-t border-slate-100 space-y-0.5">
-            {/* Analytics */}
-            <Link
-              to="/analytics"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`w-full flex items-center rounded-xl transition-all group ${
-                isCompactRail
-                  ? "justify-center p-2.5 my-1"
-                  : "justify-between px-3 py-2 text-xs font-semibold"
-              } ${
-                currentPath.startsWith("/analytics")
-                  ? "bg-[#ff6900] text-white shadow-sm shadow-orange-500/20 font-bold"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-              }`}
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <PieChart
-                  className={`shrink-0 transition-colors ${
-                    isCompactRail ? "h-5 w-5" : "h-4 w-4"
-                  } ${
-                    currentPath.startsWith("/analytics")
-                      ? "text-white"
-                      : "text-slate-400 group-hover:text-slate-700"
-                  }`}
-                />
-                {!isCompactRail && <span className="truncate">Analytics</span>}
-              </div>
-            </Link>
+            {/* Analytics (Admin Only) */}
+            {isAdmin && (
+              <Link
+                to="/analytics"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`w-full flex items-center rounded-xl transition-all group ${
+                  isCompactRail
+                    ? "justify-center p-2.5 my-1"
+                    : "justify-between px-3 py-2 text-xs font-semibold"
+                } ${
+                  currentPath.startsWith("/analytics")
+                    ? "bg-[#ff6900] text-white shadow-sm shadow-orange-500/20 font-bold"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <PieChart
+                    className={`shrink-0 transition-colors ${
+                      isCompactRail ? "h-5 w-5" : "h-4 w-4"
+                    } ${
+                      currentPath.startsWith("/analytics")
+                        ? "text-white"
+                        : "text-slate-400 group-hover:text-slate-700"
+                    }`}
+                  />
+                  {!isCompactRail && <span className="truncate">Analytics</span>}
+                </div>
+              </Link>
+            )}
 
             {/* AI Assistant */}
             <button

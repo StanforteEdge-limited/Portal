@@ -9,6 +9,7 @@ import {
 import { BrandingProvider } from "@/shared/branding/BrandingProvider";
 import { AuthProvider, useAuth } from "@/shared/context/AuthProvider";
 import { UpdateBanner } from "@/shared/components/ui/UpdateBanner";
+import { useNavigate } from "@/shared/router-adapter";
 
 // Lazy-load page component helper for clean route code-splitting
 const lazy = (importer: () => Promise<{ default: React.ComponentType<any> }>) =>
@@ -36,6 +37,7 @@ const rootRoute = createRootRoute({
 
 import HomePage from "@/pages/home/HomePage";
 import DashboardPage from "@/pages/dashboard/DashboardPage";
+import WorkspaceAnalyticsPage from "@/pages/analytics/WorkspaceAnalyticsPage";
 
 // Lazy Page Definitions
 const PricingPage = lazy(() => import("@/pages/public/PricingPage"));
@@ -672,6 +674,57 @@ const adminSettingsRoute = createRoute({
   component: AdminSettingsPage,
 });
 
+const AnalyticsAdminGatedPage = () => {
+  const { user, status } = useAuth();
+  const navigate = useNavigate();
+
+  if (status === "checking") {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-2 border-[#ff6900] border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+
+  const userRoles = (user?.roles || []).map((r: any) =>
+    typeof r === "string" ? r.toLowerCase() : (r?.name || "").toLowerCase()
+  );
+  const adminRoles = ["admin", "superadmin", "super_admin", "director", "hr_manager", "finance_manager"];
+  const isAdmin = userRoles.some((r) => adminRoles.some((ar) => r.includes(ar))) ||
+    (user?.permissions || []).some((p: string) => p.startsWith("admin.") || p.startsWith("finance.") || p.startsWith("hr."));
+
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl p-8 max-w-md w-full border border-slate-200 shadow-sm text-center space-y-4">
+          <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto text-xl font-black">
+            🔒
+          </div>
+          <h2 className="text-lg font-bold text-slate-900">Administrator Access Required</h2>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Workspace Analytics &amp; Reporting is strictly reserved for administrators and management personnel.
+          </p>
+          <button
+            type="button"
+            onClick={() => navigate("/dashboard")}
+            className="w-full py-2.5 px-4 bg-[#ff6900] hover:bg-[#ea580c] text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
+          >
+            Return to Staff Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return <WorkspaceAnalyticsPage />;
+};
+
+const analyticsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/analytics",
+  component: AnalyticsAdminGatedPage,
+});
+
 // 13. Vendor Portal Routes
 const vendorDashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -795,6 +848,7 @@ const routeTree = rootRoute.addChildren([
   adminRolesRoute,
   adminOrgsRoute,
   adminSettingsRoute,
+  analyticsRoute,
 
   // Vendor Portal
   vendorDashboardRoute,
