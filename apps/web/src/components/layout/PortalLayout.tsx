@@ -69,8 +69,108 @@ export const WorkspaceContext = createContext<WorkspaceContextValue>({
   switchMode: () => {},
 });
 
-export function useWorkspace() {
-  return useContext(WorkspaceContext);
+const WORKSPACE_MODE_EVENT = "portal-workspace-mode-change";
+
+export function useWorkspace(): WorkspaceContextValue {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const userRoles = useMemo(
+    () => (user?.roles || []).map((r) => String(r).toLowerCase()),
+    [user]
+  );
+
+  const isAdmin = useMemo(() => {
+    return (
+      userRoles.some((r) =>
+        ["admin", "administrator", "super_admin", "hr_admin", "finance_admin", "owner"].includes(r)
+      ) ||
+      (user?.permissions || []).includes("*") ||
+      (user?.permissions || []).some((p) => p.endsWith(".manage"))
+    );
+  }, [userRoles, user?.permissions]);
+
+  const currentPath = location?.pathname || "";
+  const isDefaultAdminRoute =
+    currentPath.startsWith("/admin") ||
+    currentPath.startsWith("/finance") ||
+    currentPath.startsWith("/hr/") ||
+    currentPath.startsWith("/procurement") ||
+    currentPath.startsWith("/analytics") ||
+    currentPath.startsWith("/requests/approvals");
+
+  const computeEffectiveMode = (): WorkspaceMode => {
+    if (typeof window === "undefined") return "employee";
+    const saved = localStorage.getItem("portal_workspace_mode");
+    if (saved === "admin" && isAdmin) return "admin";
+    if (saved === "employee") return "employee";
+    if (isDefaultAdminRoute && isAdmin) return "admin";
+    return "employee";
+  };
+
+  const [mode, setMode] = useState<WorkspaceMode>(computeEffectiveMode);
+
+  useEffect(() => {
+    setMode(computeEffectiveMode());
+  }, [isAdmin, currentPath]);
+
+  useEffect(() => {
+    const handleModeChange = (e: Event) => {
+      const next = (e as CustomEvent<WorkspaceMode>).detail;
+      if (next === "admin" || next === "employee") {
+        setMode(next === "admin" && isAdmin ? "admin" : "employee");
+      } else {
+        setMode(computeEffectiveMode());
+      }
+    };
+    window.addEventListener(WORKSPACE_MODE_EVENT, handleModeChange);
+    return () => window.removeEventListener(WORKSPACE_MODE_EVENT, handleModeChange);
+  }, [isAdmin, currentPath]);
+
+  const switchMode = (nextMode: WorkspaceMode) => {
+    const resolved: WorkspaceMode = nextMode === "admin" && isAdmin ? "admin" : "employee";
+    localStorage.setItem("portal_workspace_mode", resolved);
+    setMode(resolved);
+    window.dispatchEvent(new CustomEvent<WorkspaceMode>(WORKSPACE_MODE_EVENT, { detail: resolved }));
+
+    if (resolved === "employee") {
+      if (currentPath.startsWith("/hr/leave")) {
+        navigate("/leave");
+      } else if (currentPath.startsWith("/hr/attendance")) {
+        navigate("/attendance");
+      } else if (currentPath.startsWith("/admin/groups")) {
+        navigate("/teams");
+      } else if (isDefaultAdminRoute) {
+        navigate("/dashboard");
+      }
+    } else {
+      if (currentPath === "/leave") {
+        navigate("/hr/leave");
+      } else if (currentPath === "/attendance") {
+        navigate("/hr/attendance");
+      } else if (currentPath === "/teams") {
+        navigate("/admin/groups");
+      } else if (
+        currentPath.startsWith("/requests") &&
+        !currentPath.startsWith("/requests/approvals")
+      ) {
+        navigate("/requests/approvals");
+      } else if (
+        currentPath.startsWith("/account") ||
+        currentPath.startsWith("/profile") ||
+        currentPath === "/settings"
+      ) {
+        navigate("/dashboard");
+      }
+    }
+  };
+
+  return {
+    mode: mode === "admin" && isAdmin ? "admin" : "employee",
+    isAdmin,
+    switchMode,
+  };
 }
 
 export interface NavItemDef {
@@ -99,11 +199,18 @@ export const WORKSPACE_NAV_GROUPS: NavGroupDef[] = [
     title: "Operations",
     items: [
       {
-        label: "Tasks",
+        label: "Admin Console",
+        icon: LayoutDashboard,
+        path: "/dashboard",
+        aliases: ["Dashboard", "Command Center", "Overview"],
+        description: "Organization management overview, approvals, and staff workflows",
+      },
+      {
+        label: "Staff Tasks",
         icon: CheckSquare,
         path: "/tasks",
-        aliases: ["Work Items", "Kanban", "Deliverables", "Sprints"],
-        description: "Organization deliverables, Kanban sprint board, and backlog",
+        aliases: ["Tasks", "Tasks & Board", "Work Items", "Kanban", "Deliverables", "Sprints"],
+        description: "Assign tasks to any staff member, monitor team lanes, and manage sprints",
       },
       {
         label: "Approvals",
@@ -111,40 +218,47 @@ export const WORKSPACE_NAV_GROUPS: NavGroupDef[] = [
         path: "/requests/approvals",
         badge: "23",
         aliases: ["Decisions", "Approval Queue", "Vouchers"],
-        description: "Tiered sign-off queue for requisitions and leave",
+        description: "Tiered sign-off queue for staff requisitions, vouchers, and leave",
       },
       {
-        label: "Teams",
-        icon: Users,
-        path: "/teams",
-        aliases: ["Groups", "Departments", "Roster"],
-        description: "Team rosters and departmental structure",
+        label: "Analytics",
+        icon: PieChart,
+        path: "/analytics",
+        aliases: ["Workspace Analytics", "Insights", "Metrics"],
+        description: "Organization SLA velocity, attendance rhythms, and turnaround analytics",
       },
     ],
   },
   {
-    title: "People",
+    title: "People & Workforce",
     items: [
       {
         label: "Employees",
         icon: UserCheck,
         path: "/admin/users",
         aliases: ["Staff", "Directory", "HR", "Workforce"],
-        description: "Centralized personnel directory and profiles",
+        description: "Centralized personnel directory, onboarding, and staff profiles",
       },
       {
-        label: "Attendance",
+        label: "Staff Attendance",
         icon: Clock,
-        path: "/attendance",
-        aliases: ["Time & Attendance", "Shifts", "Clock In"],
-        description: "Geofenced check-in logs and shift rhythms",
+        path: "/hr/attendance",
+        aliases: ["Time & Attendance", "Shifts", "Attendance"],
+        description: "Workforce check-in roster, punctuality logs, and correction approvals",
       },
       {
-        label: "Leave",
+        label: "Staff Leave",
         icon: Calendar,
-        path: "/leave",
-        aliases: ["Leave Management", "Vacation", "Absence", "Time Off"],
-        description: "Leave balances, applications, and coverage",
+        path: "/hr/leave",
+        aliases: ["Leave Management", "Leave & Absence", "Vacation", "Absence", "Time Off"],
+        description: "Review staff leave applications, approve time off, and track who is out",
+      },
+      {
+        label: "Teams & Units",
+        icon: Users,
+        path: "/admin/groups",
+        aliases: ["Teams", "Teams & Groups", "Groups", "Departments", "Roster"],
+        description: "Manage organizational departments, squads, and team rosters",
       },
     ],
   },
@@ -230,8 +344,15 @@ export const EMPLOYEE_PRIMARY_NAV_ITEMS: NavItemDef[] = [
     label: "Leave",
     icon: Calendar,
     path: "/leave",
-    aliases: ["Leave & Absence", "Time Off", "Vacation"],
+    aliases: ["Leave & Absence", "Time Off", "Vacation", "HR & Workforce"],
     description: "Submit leave requests and view balances",
+  },
+  {
+    label: "My Tasks",
+    icon: CheckSquare,
+    path: "/tasks",
+    aliases: ["Tasks", "Tasks & Board", "Deliverables"],
+    description: "Personal to-dos, assigned deliverables, and daily standup logs",
   },
   {
     label: "My Requests",
@@ -564,39 +685,9 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
     localStorage.setItem("portal_rail_compact", String(compact));
   };
 
-  // Determine User Role & Admin Authority
-  const userRoles = useMemo(
-    () => (user?.roles || []).map((r) => String(r).toLowerCase()),
-    [user]
-  );
-
-  const isAdmin = useMemo(() => {
-    return (
-      userRoles.some((r) =>
-        ["admin", "administrator", "super_admin", "hr_admin", "finance_admin", "owner"].includes(r)
-      ) ||
-      (user?.permissions || []).includes("*") ||
-      (user?.permissions || []).some((p) => p.endsWith(".manage"))
-    );
-  }, [userRoles, user?.permissions]);
-
-  // Workspace Mode: 'employee' (clean staff view) vs 'admin' (management console)
+  // Determine User Role, Admin Authority & Active Workspace Mode
+  const { mode: workspaceMode, isAdmin, switchMode: switchWorkspaceMode } = useWorkspace();
   const currentPath = location?.pathname || "";
-  const isDefaultAdminRoute = currentPath.startsWith("/admin") || currentPath.startsWith("/finance");
-
-  const [workspaceMode, setWorkspaceMode] = useState<"employee" | "admin">(() => {
-    const saved = localStorage.getItem("portal_workspace_mode");
-    if (isDefaultAdminRoute && isAdmin) return "admin";
-    if (saved === "admin" && isAdmin && !currentPath.startsWith("/dashboard")) return "admin";
-    return "employee";
-  });
-
-  // Switch workspace mode
-  const switchWorkspaceMode = (mode: "employee" | "admin") => {
-    setWorkspaceMode(mode);
-    localStorage.setItem("portal_workspace_mode", mode);
-    navigate("/dashboard");
-  };
 
   const userName = user?.first_name
     ? `${user.first_name} ${user.last_name || ""}`.trim()
@@ -1023,7 +1114,7 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
         {/* Bottom: Settings & Quick Profile */}
         <div className="shrink-0 pt-2 border-t border-slate-100 space-y-1">
           <Link
-            to="/admin/settings"
+            to={workspaceMode === "admin" ? "/admin/settings" : "/settings"}
             className={`w-full flex items-center gap-2.5 py-2 px-3 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition-colors text-xs font-semibold ${
               isCompactRail ? "justify-center" : "justify-start"
             }`}
@@ -1107,8 +1198,40 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
             </button>
           </div>
 
-          {/* Right Action Items: AI Assistant Pill, Notifications, User Profile */}
+          {/* Right Action Items: Workspace Mode Switcher, AI Assistant Pill, Notifications, User Profile */}
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* One-Click Workspace Mode Switcher for Admins */}
+            {isAdmin && (
+              <div className="hidden md:flex items-center p-0.5 rounded-full bg-slate-100 border border-slate-200/80 text-xs font-bold shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => switchWorkspaceMode("employee")}
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-full transition cursor-pointer ${
+                    workspaceMode === "employee"
+                      ? "bg-white text-slate-900 shadow-xs"
+                      : "text-slate-500 hover:text-slate-800"
+                  }`}
+                  title="Switch to your Personal Workplace (My Tasks, Clock-In, My Leave, Payslips)"
+                >
+                  <UserIcon className={`h-3.5 w-3.5 ${workspaceMode === "employee" ? "text-[#ff6900]" : "text-slate-400"}`} />
+                  <span>Personal Workplace</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchWorkspaceMode("admin")}
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-full transition cursor-pointer ${
+                    workspaceMode === "admin"
+                      ? "bg-[#0f172a] text-white shadow-xs"
+                      : "text-slate-500 hover:text-slate-800"
+                  }`}
+                  title="Switch to Admin Console (Manage Staff Tasks, Approve Leaves, Workforce & Finance)"
+                >
+                  <ShieldCheck className={`h-3.5 w-3.5 ${workspaceMode === "admin" ? "text-[#ff6900]" : "text-slate-400"}`} />
+                  <span>Admin Console</span>
+                </button>
+              </div>
+            )}
+
             {/* AI Assistant Button (High-visibility 2026 design) */}
             <button
               type="button"

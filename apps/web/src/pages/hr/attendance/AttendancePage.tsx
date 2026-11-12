@@ -2,10 +2,11 @@ import { DateInput } from "@/components/ui/date-picker";
 import { SelectBox } from "@/components/ui/select";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@/shared/router-adapter";
-import { PortalLayout } from "@/components/layout/PortalLayout";
+import { PortalLayout, useWorkspace } from "@/components/layout/PortalLayout";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { useCachedQuery } from "@/shared/lib/core";
 import { useToast, PageHeader } from "@/shared";
+import HrAttendancePage from "./HrAttendancePage";
 import { deriveAttendanceStatus, toneFromStatus } from "./attendance-data";
 import {
   clockIn,
@@ -84,7 +85,13 @@ function formatMinutes(minutes?: number | null) {
 export function AttendancePage() {
   const { showToast } = useToast();
   const { user: authUser } = useAuth();
+  const { mode, isAdmin } = useWorkspace();
+  const isAdminView = mode === "admin" && isAdmin;
   const localization = useLocalization();
+
+  if (isAdminView) {
+    return <HrAttendancePage />;
+  }
 
   // Current live clock
   const [currentTime, setCurrentTime] = useState(new Date());

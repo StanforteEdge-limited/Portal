@@ -22,7 +22,8 @@ import {
 export default function TeamsPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { isAdmin } = useWorkspace();
+  const { mode, isAdmin } = useWorkspace();
+  const isAdminView = mode === "admin" && isAdmin;
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState("all");
 
@@ -75,7 +76,7 @@ export default function TeamsPage() {
           icon={Users}
           iconColor="bg-blue-50 text-blue-600"
           actions={
-            isAdmin ? (
+            isAdminView ? (
               <Link
                 to="/admin/groups"
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition shadow-sm active:scale-95"

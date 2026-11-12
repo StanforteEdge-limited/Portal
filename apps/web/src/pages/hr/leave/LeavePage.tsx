@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { PortalLayout } from "@/components/layout/PortalLayout";
+import { PortalLayout, useWorkspace } from "@/components/layout/PortalLayout";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { PageHeader } from "@/shared";
 import { useCachedQuery } from "@/shared/lib/core";
+import HrLeavePage from "./HrLeavePage";
 import {
   getMyLeaveBalance,
   listRequests,
@@ -80,8 +81,14 @@ function toLeaveRow(record: RequestRecord): LeaveRow {
 
 export default function LeavePage() {
   const { user } = useAuth();
+  const { mode, isAdmin } = useWorkspace();
+  const isAdminView = mode === "admin" && isAdmin;
   const currentYear = new Date().getFullYear();
   const [activeTab, setActiveTab] = useState<"all" | "pending" | "approved">("all");
+
+  if (isAdminView) {
+    return <HrLeavePage />;
+  }
 
   const {
     data: leaveBalanceData,

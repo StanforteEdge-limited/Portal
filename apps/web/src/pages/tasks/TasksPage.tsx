@@ -1,5 +1,5 @@
 import { SelectBox } from "@/components/ui/select";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { PortalLayout, useWorkspace } from "@/components/layout/PortalLayout";
 import { useAuth } from "@/shared/context/AuthProvider";
@@ -20,7 +20,7 @@ import {
   User,
 } from "lucide-react";
 import type { TaskItem, TaskStatus, TaskPriority } from "./types";
-import { INITIAL_TASKS } from "./types";
+import { INITIAL_TASKS, SAMPLE_TEAM_MEMBERS } from "./types";
 import { TaskKanbanView } from "./TaskKanbanView";
 import { TaskTableView } from "./TaskTableView";
 import { TaskDetailSlideOver } from "./TaskDetailSlideOver";
@@ -32,7 +32,8 @@ type ScopeFilter = "all" | "assigned" | "personal";
 
 export default function TasksPage() {
   const { user } = useAuth();
-  const { isAdmin } = useWorkspace();
+  const { mode, isAdmin } = useWorkspace();
+  const isAdminView = mode === "admin" && isAdmin;
   const [searchParams, setSearchParams] = useSearchParams();
 
   const currentUserName = user?.first_name
@@ -60,9 +61,9 @@ export default function TasksPage() {
     (searchParams.get("view") as ViewMode | null) || "kanban"
   );
 
-  const handleSetViewMode = (mode: ViewMode) => {
-    setViewMode(mode);
-    setSearchParams({ view: mode }, { replace: true });
+  const handleSetViewMode = (nextMode: ViewMode) => {
+    setViewMode(nextMode);
+    setSearchParams({ view: nextMode }, { replace: true });
   };
 
   // Filters & Search
@@ -78,9 +79,23 @@ export default function TasksPage() {
   const [newTaskDefaultStatus, setNewTaskDefaultStatus] = useState<TaskStatus>("planned");
   const [logTaskId, setLogTaskId] = useState<string | undefined>();
 
-  // Filter tasks based on role (Normal staff only see their assigned tasks and personal tasks)
+  // Open new task modal if ?new=1 is in URL
+  useEffect(() => {
+    if (searchParams.get("new") === "1") {
+      setIsNewTaskOpen(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete("new");
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
+  // Filter tasks based on active workspace mode:
+  // - Admin Mode (isAdminView): see all staff work items across the organization (not personal to-dos)
+  // - Personal Workplace (!isAdminView): see only personal tasks and tasks assigned to the user
   const scopedTasks = useMemo(() => {
-    if (isAdmin) return tasks;
+    if (isAdminView) {
+      return tasks.filter((t) => !t.is_personal);
+    }
 
     return tasks.filter((t) => {
       const isPersonal = Boolean(t.is_personal) || t.owner_name?.toLowerCase() === currentUserName.toLowerCase();
@@ -98,7 +113,7 @@ export default function TasksPage() {
       if (scopeFilter === "assigned") return isAssigned && !isPersonal;
       return isPersonal || isAssigned;
     });
-  }, [tasks, isAdmin, currentUserName, user, scopeFilter]);
+  }, [tasks, isAdminView, currentUserName, user, scopeFilter]);
 
   // Metrics based on scoped tasks
   const inProgressCount = scopedTasks.filter((t) => t.status === "in_progress").length;
@@ -168,15 +183,15 @@ export default function TasksPage() {
   };
 
   return (
-    <PortalLayout activeNav="Tasks & Board">
+    <PortalLayout activeNav={isAdminView ? "Staff Tasks" : "My Tasks"}>
       <div className="space-y-6 max-w-[1600px] mx-auto pb-12">
         {/* 1. Grounded Modern Header (No Breadcrumbs) */}
         <PageHeader
-          title={isAdmin ? "Work Items & Sprint Board" : "My Deliverables & Tasks"}
+          title={isAdminView ? "Organization Tasks & Staff Sprint Board" : "My Deliverables & Personal Tasks"}
           description={
-            isAdmin
-              ? "Assign deliverables across staff, monitor team lanes, review blockers, and organize sprints."
-              : "Manage your assigned deliverables and personal to-dos. Update your progress and log daily standups."
+            isAdminView
+              ? "View everyone's tasks across the organization, create & assign deliverables to any staff member, and review team blockers."
+              : "Manage your personal to-dos and assigned deliverables. Update your progress and log daily standups."
           }
           icon={CheckSquare}
           iconColor="bg-orange-50 text-[#ff6900]"
@@ -184,10 +199,10 @@ export default function TasksPage() {
             <button
               type="button"
               onClick={() => handleOpenNewTask("planned")}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-bold transition shadow-sm active:scale-95"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-bold transition shadow-sm active:scale-95 cursor-pointer"
             >
               <Plus className="h-4 w-4" />
-              <span>{isAdmin ? "Create & Assign Task" : "+ New Personal Task"}</span>
+              <span>{isAdminView ? "Create & Assign Task to Staff" : "+ New Personal Task"}</span>
             </button>
           }
         />
@@ -202,13 +217,13 @@ export default function TasksPage() {
               </div>
               <div>
                 <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  {isAdmin ? "Total Work Items" : "My Tasks"}
+                  {isAdminView ? "All Staff Work Items" : "My Tasks"}
                 </div>
                 <div className="text-2xl font-black text-slate-900 mt-0.5 font-headline">{scopedTasks.length}</div>
               </div>
             </div>
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-              Active Scope
+              {isAdminView ? "Org Scope" : "Personal"}
             </span>
           </div>
 
@@ -292,22 +307,24 @@ export default function TasksPage() {
                 <span>Table View</span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => handleSetViewMode("log")}
-                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
-                  viewMode === "log"
-                    ? "bg-white text-slate-900 shadow-xs"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                <Clock className={`h-4 w-4 ${viewMode === "log" ? "text-[#ff6900]" : "text-slate-400"}`} />
-                <span>Daily Log &amp; Standup</span>
-              </button>
+              {!isAdminView && (
+                <button
+                  type="button"
+                  onClick={() => handleSetViewMode("log")}
+                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                    viewMode === "log"
+                      ? "bg-white text-slate-900 shadow-xs"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  <Clock className={`h-4 w-4 ${viewMode === "log" ? "text-[#ff6900]" : "text-slate-400"}`} />
+                  <span>Daily Log &amp; Standup</span>
+                </button>
+              )}
             </div>
 
-            {/* Scope Filter for Staff: All My Tasks / Assigned to Me / Personal Tasks */}
-            {!isAdmin && viewMode !== "log" && (
+            {/* Scope Filter for Personal Workplace: All My Tasks / Assigned to Me / Personal Tasks */}
+            {!isAdminView && viewMode !== "log" && (
               <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl text-xs font-semibold">
                 <button
                   type="button"
@@ -350,10 +367,26 @@ export default function TasksPage() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search tasks, tags, or deliverables..."
+                  placeholder={isAdminView ? "Search staff tasks, projects, or assignees..." : "Search my tasks or tags..."}
                   className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
                 />
               </div>
+
+              {/* Staff Member Filter (Admin Console Only) */}
+              {isAdminView && (
+                <SelectBox
+                  value={assigneeFilter}
+                  onChange={(e) => setAssigneeFilter(e.target.value)}
+                  className="text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-slate-700 outline-none hover:bg-slate-100"
+                >
+                  <option value="all">All Staff Members</option>
+                  {SAMPLE_TEAM_MEMBERS.map((member) => (
+                    <option key={member.id} value={member.name}>
+                      {member.name} ({member.role})
+                    </option>
+                  ))}
+                </SelectBox>
+              )}
 
               {/* Status Filter */}
               <SelectBox
@@ -400,11 +433,11 @@ export default function TasksPage() {
               tasks={filteredTasks}
               onSelectTask={(task) => setSelectedTask(task)}
               onUpdateStatus={handleUpdateStatus}
-              onDeleteTask={isAdmin ? handleDeleteTask : undefined}
+              onDeleteTask={isAdminView ? handleDeleteTask : undefined}
             />
           )}
 
-          {viewMode === "log" && (
+          {viewMode === "log" && !isAdminView && (
             <DailyLogTab
               preselectedTaskId={logTaskId}
               onPreselectedConsumed={() => setLogTaskId(undefined)}
@@ -417,10 +450,10 @@ export default function TasksPage() {
           <TaskDetailSlideOver
             task={selectedTask}
             isOpen={Boolean(selectedTask)}
-            isAdmin={isAdmin}
+            isAdmin={isAdminView}
             onClose={() => setSelectedTask(null)}
             onSaveTask={handleSaveTask}
-            onDeleteTask={isAdmin ? handleDeleteTask : undefined}
+            onDeleteTask={isAdminView ? handleDeleteTask : undefined}
           />
         )}
 
@@ -428,7 +461,7 @@ export default function TasksPage() {
           <NewTaskSlideOver
             isOpen={isNewTaskOpen}
             defaultStatus={newTaskDefaultStatus}
-            isAdmin={isAdmin}
+            isAdmin={isAdminView}
             onClose={() => setIsNewTaskOpen(false)}
             onCreateTask={handleCreateTask}
           />
