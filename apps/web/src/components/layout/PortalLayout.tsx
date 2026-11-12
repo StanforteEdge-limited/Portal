@@ -211,20 +211,13 @@ export const WORKSPACE_NAV_GROUPS: NavGroupDef[] = [
 
 export const ADMIN_NAV_GROUPS = WORKSPACE_NAV_GROUPS;
 
-export const EMPLOYEE_NAV_ITEMS: NavItemDef[] = [
+export const EMPLOYEE_PRIMARY_NAV_ITEMS: NavItemDef[] = [
   {
-    label: "Home",
+    label: "Dashboard",
     icon: Home,
     path: "/dashboard",
-    aliases: ["Dashboard", "Overview"],
+    aliases: ["Home", "Overview"],
     description: "Daily KPIs, tasks, and quick actions",
-  },
-  {
-    label: "Tasks",
-    icon: CheckSquare,
-    path: "/tasks",
-    aliases: ["Work Items", "Deliverables"],
-    description: "Personal tasks and team assignments",
   },
   {
     label: "Attendance",
@@ -254,6 +247,9 @@ export const EMPLOYEE_NAV_ITEMS: NavItemDef[] = [
     aliases: ["My Payslips", "Salary"],
     description: "Monthly salary statements and tax deductions",
   },
+];
+
+export const EMPLOYEE_SECONDARY_NAV_ITEMS: NavItemDef[] = [
   {
     label: "Teams",
     icon: Users,
@@ -275,6 +271,11 @@ export const EMPLOYEE_NAV_ITEMS: NavItemDef[] = [
     aliases: ["Team Chat", "Messages"],
     description: "Real-time communication and file sharing",
   },
+];
+
+export const EMPLOYEE_NAV_ITEMS: NavItemDef[] = [
+  ...EMPLOYEE_PRIMARY_NAV_ITEMS,
+  ...EMPLOYEE_SECONDARY_NAV_ITEMS,
 ];
 
 export interface AppLauncherItem {
@@ -570,8 +571,8 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
 
   const [workspaceMode, setWorkspaceMode] = useState<"employee" | "admin">(() => {
     const saved = localStorage.getItem("portal_workspace_mode");
-    if (saved === "admin" && isAdmin) return "admin";
     if (isDefaultAdminRoute && isAdmin) return "admin";
+    if (saved === "admin" && isAdmin && !currentPath.startsWith("/dashboard")) return "admin";
     return "employee";
   });
 
@@ -836,80 +837,99 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
 
         {/* Middle: Clean Navigation Items */}
         <div className="flex-1 overflow-y-auto min-h-0 my-3 space-y-3 scrollbar-thin scrollbar-thumb-slate-200 pr-0.5">
-          {/* Direct Home Link */}
-          <Link
-            to="/dashboard"
-            onClick={() => setMobileMenuOpen(false)}
-            title={isCompactRail ? "Home" : undefined}
-            className={`w-full flex items-center rounded-xl transition-all group ${
-              isCompactRail
-                ? "justify-center p-2.5 my-1"
-                : "justify-between px-3 py-2 text-xs font-semibold"
-            } ${
-              isItemActive({ label: "Home", icon: Home, path: "/dashboard", aliases: ["Dashboard"] })
-                ? "bg-[#ff6900] text-white shadow-sm shadow-orange-500/20 font-bold"
-                : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-            }`}
-          >
-            <div className="flex items-center gap-2.5 min-w-0">
-              <Home
-                className={`shrink-0 transition-colors ${
-                  isCompactRail ? "h-5 w-5" : "h-4 w-4"
-                } ${
-                  isItemActive({ label: "Home", icon: Home, path: "/dashboard", aliases: ["Dashboard"] })
-                    ? "text-white"
-                    : "text-slate-400 group-hover:text-slate-700"
-                }`}
-              />
-              {!isCompactRail && <span className="truncate">Home</span>}
-            </div>
-          </Link>
-
-          {/* Mode 1: Clean Employee Workspace Navigation */}
+          {/* Mode 1: Clean Employee Workspace Navigation (Matching 2026 Reference Mockup) */}
           {workspaceMode === "employee" ? (
-            <nav className="space-y-0.5">
-              {EMPLOYEE_NAV_ITEMS.filter((i) => i.label !== "Home").map((item) => {
-                const Icon = item.icon;
-                const isActive = isItemActive(item);
+            <div className="space-y-4">
+              {/* Primary Personal Navigation Group */}
+              <nav className="space-y-1">
+                {EMPLOYEE_PRIMARY_NAV_ITEMS.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = isItemActive(item);
 
-                return (
-                  <Link
-                    key={item.label}
-                    to={item.path}
-                    onClick={() => setMobileMenuOpen(false)}
-                    title={isCompactRail ? item.label : undefined}
-                    className={`w-full flex items-center rounded-xl transition-all group ${
-                      isCompactRail
-                        ? "justify-center p-2.5 my-1"
-                        : "justify-between px-3 py-2 text-xs font-semibold"
-                    } ${
-                      isActive
-                        ? "bg-[#ff6900] text-white shadow-sm shadow-orange-500/20 font-bold"
-                        : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <Icon
-                        className={`shrink-0 transition-colors ${
-                          isCompactRail ? "h-5 w-5" : "h-4 w-4"
-                        } ${
-                          isActive ? "text-white" : "text-slate-400 group-hover:text-slate-700"
-                        }`}
-                      />
-                      {!isCompactRail && <span className="truncate">{item.label}</span>}
-                    </div>
+                  return (
+                    <Link
+                      key={item.label}
+                      to={item.path}
+                      onClick={() => setMobileMenuOpen(false)}
+                      title={isCompactRail ? item.label : undefined}
+                      className={`w-full flex items-center rounded-xl transition-all group ${
+                        isCompactRail
+                          ? "justify-center p-2.5 my-1"
+                          : "justify-between px-3 py-2 text-xs font-semibold"
+                      } ${
+                        isActive
+                          ? "bg-[#fff7ed] text-[#ff6900] font-bold"
+                          : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Icon
+                          className={`shrink-0 transition-colors ${
+                            isCompactRail ? "h-5 w-5" : "h-4 w-4"
+                          } ${
+                            isActive ? "text-[#ff6900]" : "text-slate-400 group-hover:text-slate-600"
+                          }`}
+                        />
+                        {!isCompactRail && <span className="truncate">{item.label}</span>}
+                      </div>
 
-                    {!isCompactRail && item.badge && (
-                      <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${
-                        isActive ? "bg-white text-[#ff6900]" : "bg-orange-100 text-[#ff6900]"
-                      }`}>
-                        {item.badge}
-                      </span>
-                    )}
-                  </Link>
-                );
-              })}
-            </nav>
+                      {!isCompactRail && item.badge && (
+                        <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${
+                          isActive ? "bg-orange-100 text-[#ff6900]" : "bg-slate-100 text-slate-600"
+                        }`}>
+                          {item.badge}
+                        </span>
+                      )}
+                    </Link>
+                  );
+                })}
+              </nav>
+
+              {/* Secondary Collaboration Group */}
+              <nav className="space-y-1 pt-2 border-t border-slate-100/60">
+                {EMPLOYEE_SECONDARY_NAV_ITEMS.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = isItemActive(item);
+
+                  return (
+                    <Link
+                      key={item.label}
+                      to={item.path}
+                      onClick={() => setMobileMenuOpen(false)}
+                      title={isCompactRail ? item.label : undefined}
+                      className={`w-full flex items-center rounded-xl transition-all group ${
+                        isCompactRail
+                          ? "justify-center p-2.5 my-1"
+                          : "justify-between px-3 py-2 text-xs font-semibold"
+                      } ${
+                        isActive
+                          ? "bg-[#fff7ed] text-[#ff6900] font-bold"
+                          : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Icon
+                          className={`shrink-0 transition-colors ${
+                            isCompactRail ? "h-5 w-5" : "h-4 w-4"
+                          } ${
+                            isActive ? "text-[#ff6900]" : "text-slate-400 group-hover:text-slate-600"
+                          }`}
+                        />
+                        {!isCompactRail && <span className="truncate">{item.label}</span>}
+                      </div>
+
+                      {!isCompactRail && item.badge && (
+                        <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${
+                          isActive ? "bg-orange-100 text-[#ff6900]" : "bg-slate-100 text-slate-600"
+                        }`}>
+                          {item.badge}
+                        </span>
+                      )}
+                    </Link>
+                  );
+                })}
+              </nav>
+            </div>
           ) : (
             /* Mode 2: Executive 2026 Workspace Navigation Groups */
             <div className="space-y-3">
@@ -951,7 +971,7 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
                                   : "justify-between px-3 py-2 text-xs font-semibold"
                               } ${
                                 isActive
-                                  ? "bg-[#ff6900] text-white shadow-sm shadow-orange-500/20 font-bold"
+                                  ? "bg-[#fff7ed] text-[#ff6900] font-bold"
                                   : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                               }`}
                             >
@@ -960,7 +980,7 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
                                   className={`shrink-0 transition-colors ${
                                     isCompactRail ? "h-5 w-5" : "h-4 w-4"
                                   } ${
-                                    isActive ? "text-white" : "text-slate-400 group-hover:text-slate-700"
+                                    isActive ? "text-[#ff6900]" : "text-slate-400 group-hover:text-slate-700"
                                   }`}
                                 />
                                 {!isCompactRail && <span className="truncate">{item.label}</span>}
@@ -968,7 +988,7 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
 
                               {!isCompactRail && item.badge && (
                                 <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${
-                                  isActive ? "bg-white text-[#ff6900]" : "bg-orange-50 text-[#ff6900] border border-orange-200/60"
+                                  isActive ? "bg-orange-100 text-[#ff6900]" : "bg-orange-50 text-[#ff6900] border border-orange-200/60"
                                 }`}>
                                   {item.badge}
                                 </span>
@@ -983,82 +1003,6 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
               })}
             </div>
           )}
-
-          {/* Direct Core Modules: AI Assistant, plus Admin Analytics & Chat */}
-          <div className="pt-2 border-t border-slate-100 space-y-0.5">
-            {/* Analytics (Admin Console Only - Hidden completely from Normal Staff Workspace) */}
-            {workspaceMode === "admin" && (
-              <Link
-                to="/analytics"
-                onClick={() => setMobileMenuOpen(false)}
-                className={`w-full flex items-center rounded-xl transition-all group ${
-                  isCompactRail
-                    ? "justify-center p-2.5 my-1"
-                    : "justify-between px-3 py-2 text-xs font-semibold"
-                } ${
-                  currentPath.startsWith("/analytics")
-                    ? "bg-[#ff6900] text-white shadow-sm shadow-orange-500/20 font-bold"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-                }`}
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <PieChart
-                    className={`shrink-0 transition-colors ${
-                      isCompactRail ? "h-5 w-5" : "h-4 w-4"
-                    } ${
-                      currentPath.startsWith("/analytics")
-                        ? "text-white"
-                        : "text-slate-400 group-hover:text-slate-700"
-                    }`}
-                  />
-                  {!isCompactRail && <span className="truncate">Analytics</span>}
-                </div>
-              </Link>
-            )}
-
-            {/* AI Assistant */}
-            <button
-              type="button"
-              onClick={() => setAiDrawerOpen(true)}
-              className={`w-full flex items-center rounded-xl transition-all group ${
-                isCompactRail
-                  ? "justify-center p-2.5 my-1"
-                  : "justify-between px-3 py-2 text-xs font-semibold"
-              } text-[#ff6900] hover:bg-orange-50/80`}
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <Sparkles className="h-4 w-4 text-[#ff6900] shrink-0" />
-                {!isCompactRail && <span className="font-bold truncate">Stanforte AI</span>}
-              </div>
-              {!isCompactRail && (
-                <span className="px-1.5 py-0.5 text-[9px] font-black rounded-md bg-orange-100 text-[#ff6900]">
-                  ⌘K
-                </span>
-              )}
-            </button>
-
-            {/* Team Chat (Admin Console Only - In Employee mode, Chat already exists in the main staff items list) */}
-            {workspaceMode === "admin" && (
-              <Link
-                to="/chat"
-                onClick={() => setMobileMenuOpen(false)}
-                className={`w-full flex items-center rounded-xl transition-all group ${
-                  isCompactRail
-                    ? "justify-center p-2.5 my-1"
-                    : "justify-between px-3 py-2 text-xs font-semibold"
-                } ${
-                  currentPath.startsWith("/chat")
-                    ? "bg-[#ff6900] text-white shadow-sm shadow-orange-500/20 font-bold"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-                }`}
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <MessageSquare className="h-4 w-4 text-slate-400 group-hover:text-slate-700 shrink-0" />
-                  {!isCompactRail && <span className="truncate">Team Chat</span>}
-                </div>
-              </Link>
-            )}
-          </div>
         </div>
 
         {/* Bottom: Settings & Quick Profile */}

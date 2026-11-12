@@ -6,3 +6,7 @@ export * from "./table";
 export * from "./separator";
 export * from "./accordion";
 export * from "./input";
+export * from "./select";
+export * from "./popover";
+export * from "./calendar";
+export * from "./date-picker";

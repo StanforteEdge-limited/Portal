@@ -1,4 +1,13 @@
 import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
+import { DatePicker } from "@/components/ui/date-picker";
+import {
+  Select as ShadcnSelect,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ChevronDown } from "lucide-react";
 
 type FieldShellProps = {
   label: string;
@@ -32,11 +41,28 @@ export function TextField({
   helpText,
   error,
   className,
+  type,
   ...props
 }: InputProps) {
+  if (type === "date") {
+    return (
+      <FieldShell label={label} helpText={helpText} error={error}>
+        <DatePicker
+          value={props.value as string}
+          onChange={(val) => {
+            props.onChange?.({ target: { value: val, name: props.name } } as any);
+          }}
+          disabled={props.disabled}
+          placeholder={props.placeholder || "Select date"}
+          className={className}
+        />
+      </FieldShell>
+    );
+  }
+
   return (
     <FieldShell label={label} helpText={helpText} error={error}>
-      <input className={["input-base", className].filter(Boolean).join(" ")} {...props} />
+      <input type={type} className={["input-base", className].filter(Boolean).join(" ")} {...props} />
     </FieldShell>
   );
 }
@@ -57,9 +83,22 @@ export function SelectField({
 }: SelectProps) {
   return (
     <FieldShell label={label} helpText={helpText} error={error}>
-      <select className={["input-base", className].filter(Boolean).join(" ")} {...props}>
-        {children}
-      </select>
+      <div className="relative">
+        <select
+          className={[
+            "input-base appearance-none pr-9 cursor-pointer",
+            className,
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          {...props}
+        >
+          {children}
+        </select>
+        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400">
+          <ChevronDown className="h-4 w-4" />
+        </div>
+      </div>
     </FieldShell>
   );
 }
@@ -87,17 +126,18 @@ export function Select({
 }: SelectComponentProps) {
   return (
     <FieldShell label={label} helpText={helpText} error={error}>
-      <select
-        className={["input-base", className].filter(Boolean).join(" ")}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      >
-        {options.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
+      <ShadcnSelect value={value} onValueChange={onChange}>
+        <SelectTrigger className={className}>
+          <SelectValue placeholder="Select an option" />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((opt) => (
+            <SelectItem key={opt.value} value={opt.value}>
+              {opt.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </ShadcnSelect>
     </FieldShell>
   );
 }
