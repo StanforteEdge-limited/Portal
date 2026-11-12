@@ -71,7 +71,7 @@ export default function PoIndex() {
 
         {/* 4 KPI Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between">
+          <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-2xs hover:border-slate-200/80 transition-all flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
                 <ShoppingCart className="h-5 w-5" />
@@ -81,12 +81,12 @@ export default function PoIndex() {
                 <div className="text-xl font-black text-slate-900 mt-0.5">{pos.length}</div>
               </div>
             </div>
-            <div className="text-[11px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
+            <div className="text-[11px] font-bold text-[#ff6900] bg-orange-50 px-2 py-0.5 rounded-full">
               POs
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
+          <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-2xs hover:border-slate-200/80 transition-all flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
               <CheckCircle2 className="h-5 w-5" />
             </div>
@@ -96,7 +96,7 @@ export default function PoIndex() {
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
+          <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-2xs hover:border-slate-200/80 transition-all flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
               <Clock className="h-5 w-5" />
             </div>
@@ -106,7 +106,7 @@ export default function PoIndex() {
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
+          <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-2xs hover:border-slate-200/80 transition-all flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
               <DollarSign className="h-5 w-5" />
             </div>
@@ -120,9 +120,9 @@ export default function PoIndex() {
         </div>
 
         {/* Purchase Orders Table */}
-        <div className="rounded-2xl bg-white border border-slate-200/80 shadow-sm overflow-hidden">
+        <div className="rounded-2xl bg-white border border-slate-100 shadow-2xs overflow-hidden">
           <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
               All Purchase Orders ({pos.length})
             </h3>
           </div>
@@ -143,7 +143,7 @@ export default function PoIndex() {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="bg-slate-50/75 border-b border-slate-100 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <tr className="bg-slate-50/70 border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                     <th className="py-3 px-5">PO Number</th>
                     <th className="py-3 px-4">Requisition & Title</th>
                     <th className="py-3 px-4">Vendor</th>

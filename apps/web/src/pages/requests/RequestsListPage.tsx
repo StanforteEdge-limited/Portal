@@ -222,7 +222,7 @@ export function RequestsListPage() {
 
         {/* 4 Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between">
+          <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-2xs hover:border-slate-200/80 transition-all flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
                 <Clock className="h-5 w-5" />
@@ -235,7 +235,7 @@ export function RequestsListPage() {
             {pendingCount > 0 && <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />}
           </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between">
+          <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-2xs hover:border-slate-200/80 transition-all flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
                 <CheckCircle2 className="h-5 w-5" />
@@ -250,7 +250,7 @@ export function RequestsListPage() {
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between">
+          <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-2xs hover:border-slate-200/80 transition-all flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
                 <AlertCircle className="h-5 w-5" />
@@ -265,7 +265,7 @@ export function RequestsListPage() {
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between">
+          <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-2xs hover:border-slate-200/80 transition-all flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
                 <CreditCard className="h-5 w-5" />
@@ -285,7 +285,7 @@ export function RequestsListPage() {
 
         {/* Filter and Tab Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl">
+          <div className="flex items-center gap-1 p-1 bg-slate-100/80 rounded-xl">
             <button
               type="button"
               onClick={() => {
@@ -294,7 +294,7 @@ export function RequestsListPage() {
                 setSearchParams(next);
               }}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                activeCategory === "all" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"
+                activeCategory === "all" ? "bg-white text-slate-900 shadow-2xs" : "text-slate-500 hover:text-slate-800"
               }`}
             >
               All Requests
@@ -307,7 +307,7 @@ export function RequestsListPage() {
                 setSearchParams(next);
               }}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                activeCategory === "financial" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-800"
+                activeCategory === "financial" ? "bg-white text-blue-600 shadow-2xs" : "text-slate-500 hover:text-slate-800"
               }`}
             >
               Financial & Expenses
@@ -320,7 +320,7 @@ export function RequestsListPage() {
                 setSearchParams(next);
               }}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                activeCategory === "hr" ? "bg-white text-purple-600 shadow-sm" : "text-slate-500 hover:text-slate-800"
+                activeCategory === "hr" ? "bg-white text-purple-600 shadow-2xs" : "text-slate-500 hover:text-slate-800"
               }`}
             >
               Leave & HR
@@ -334,17 +334,17 @@ export function RequestsListPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search request ID, reason, team..."
-              className="w-full pl-9 pr-4 py-2 rounded-xl bg-white border border-slate-200 text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900] shadow-sm"
+              className="w-full pl-9 pr-4 py-2 rounded-xl bg-white border border-slate-200 text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900] shadow-2xs"
             />
           </div>
         </div>
 
         {/* Requests Table */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-2xs overflow-hidden">
           <div className="p-5 border-b border-slate-100 flex items-center justify-between">
             <div>
               <h2 className="text-base font-bold text-slate-900">Submission Records</h2>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-400 mt-0.5">
                 Showing {filteredRows.length} requests in this view.
               </p>
             </div>
@@ -364,7 +364,7 @@ export function RequestsListPage() {
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50/75 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-100">
+              <thead className="bg-slate-50/70 text-slate-400 font-bold uppercase tracking-wider border-b border-slate-100 text-[11px]">
                 <tr>
                   <th className="py-3.5 px-5">Request ID</th>
                   <th className="py-3.5 px-4">Type</th>

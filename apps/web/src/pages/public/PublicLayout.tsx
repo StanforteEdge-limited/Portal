@@ -33,7 +33,10 @@ interface PublicLayoutProps {
 type DropdownKey = "product" | "solutions" | "resources" | null;
 
 export function PublicLayout({ children, activePath }: PublicLayoutProps) {
-  const [activeDropdown, setActiveDropdown] = useState<DropdownKey>(null);
+  const [pinnedDropdown, setPinnedDropdown] = useState<DropdownKey>(null);
+  const [hoveredDropdown, setHoveredDropdown] = useState<DropdownKey>(null);
+  const activeDropdown = pinnedDropdown || hoveredDropdown;
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileAccordion, setMobileAccordion] = useState<string | null>(null);
   const navRef = useRef<HTMLDivElement>(null);
@@ -44,12 +47,14 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (navRef.current && !navRef.current.contains(event.target as Node)) {
-        setActiveDropdown(null);
+        setPinnedDropdown(null);
+        setHoveredDropdown(null);
       }
     }
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        setActiveDropdown(null);
+        setPinnedDropdown(null);
+        setHoveredDropdown(null);
         setMobileMenuOpen(false);
       }
     }
@@ -66,14 +71,14 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
       clearTimeout(closeTimeoutRef.current);
       closeTimeoutRef.current = null;
     }
-    setActiveDropdown(key);
+    setHoveredDropdown(key);
   };
 
   const handleMouseLeave = () => {
     if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
     closeTimeoutRef.current = setTimeout(() => {
-      setActiveDropdown(null);
-    }, 250);
+      setHoveredDropdown(null);
+    }, 200);
   };
 
   const toggleDropdown = (key: "product" | "solutions" | "resources") => {
@@ -81,12 +86,19 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
       clearTimeout(closeTimeoutRef.current);
       closeTimeoutRef.current = null;
     }
-    setActiveDropdown((prev) => (prev === key ? null : key));
+    if (pinnedDropdown === key) {
+      setPinnedDropdown(null);
+      setHoveredDropdown(null);
+    } else {
+      setPinnedDropdown(key);
+      setHoveredDropdown(key);
+    }
   };
 
   const closeAll = () => {
     if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
-    setActiveDropdown(null);
+    setPinnedDropdown(null);
+    setHoveredDropdown(null);
     setMobileMenuOpen(false);
   };
 

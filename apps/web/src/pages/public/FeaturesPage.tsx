@@ -1,5 +1,6 @@
+import { useEffect } from "react";
 import { PublicLayout } from "./PublicLayout";
-import { Link } from "@/shared/router-adapter";
+import { Link, useLocation } from "@/shared/router-adapter";
 import {
   Users,
   CreditCard,
@@ -11,6 +12,19 @@ import {
 } from "lucide-react";
 
 export default function FeaturesPage() {
+  const location = useLocation();
+
+  useEffect(() => {
+    if (window.location.hash) {
+      const id = window.location.hash.replace("#", "");
+      const el = document.getElementById(id);
+      if (el) {
+        setTimeout(() => {
+          el.scrollIntoView({ behavior: "smooth" });
+        }, 100);
+      }
+    }
+  }, [location]);
   const suites = [
     {
       id: "workforce",

@@ -79,7 +79,7 @@ export default function SecurityPage() {
           {pillars.map((pillar, idx) => {
             const Icon = pillar.icon;
             return (
-              <div key={idx} className="p-6 rounded-2xl border border-slate-200/80 bg-white shadow-sm space-y-3">
+              <div key={idx} className="p-6 rounded-2xl border border-slate-100 bg-white shadow-2xs hover:border-slate-200/80 transition-all space-y-3">
                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${pillar.iconColor}`}>
                   <Icon className="h-4 w-4" />
                 </div>
@@ -103,7 +103,7 @@ export default function SecurityPage() {
       {/* Compliance Standards Notice */}
       <section className="border-t border-slate-100 bg-slate-50/60 py-16 px-6">
         <div className="max-w-4xl mx-auto space-y-8">
-          <div className="p-8 rounded-3xl border border-slate-200/80 bg-white shadow-sm space-y-4">
+          <div className="p-8 rounded-3xl border border-slate-100 bg-white shadow-2xs space-y-4">
             <div className="text-xs font-bold uppercase tracking-widest text-[#ff6900]">
               Regulatory Alignment
             </div>

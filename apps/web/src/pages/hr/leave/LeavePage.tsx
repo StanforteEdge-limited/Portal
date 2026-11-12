@@ -182,7 +182,7 @@ export default function LeavePage() {
 
         {/* 4 Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between">
+          <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-2xs hover:border-slate-200/80 transition-all flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
                 <Calendar className="h-5 w-5" />
@@ -199,7 +199,7 @@ export default function LeavePage() {
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between">
+          <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-2xs hover:border-slate-200/80 transition-all flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
                 <Clock className="h-5 w-5" />
@@ -216,7 +216,7 @@ export default function LeavePage() {
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between">
+          <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-2xs hover:border-slate-200/80 transition-all flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
                 <AlertCircle className="h-5 w-5" />
@@ -233,7 +233,7 @@ export default function LeavePage() {
             )}
           </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between">
+          <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-2xs hover:border-slate-200/80 transition-all flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
                 <CheckCircle2 className="h-5 w-5" />
@@ -259,7 +259,7 @@ export default function LeavePage() {
             return (
               <div
                 key={cat.title}
-                className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-sm hover:border-slate-300 transition"
+                className="p-5 rounded-2xl bg-white border border-slate-100 shadow-2xs hover:border-slate-200/80 transition-all"
               >
                 <div className="flex items-start justify-between">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${cat.color}`}>
@@ -278,7 +278,7 @@ export default function LeavePage() {
                   </div>
                   <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
                     <div
-                      className="bg-[#0a1128] h-2 rounded-full transition-all duration-500"
+                      className="bg-[#ff6900] h-2 rounded-full transition-all duration-500"
                       style={{ width: `${pct}%` }}
                     />
                   </div>
@@ -288,30 +288,30 @@ export default function LeavePage() {
           })}
         </div>
 
-        {/* Policy Snapshot Card */}
-        <div className="p-5 rounded-2xl bg-gradient-to-r from-[#0a1128] to-[#162044] text-white shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        {/* Policy Snapshot Card - Clean White Theme */}
+        <div className="p-5 rounded-2xl bg-white border border-slate-100 shadow-2xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-white/10 text-orange-400 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
               <Info className="h-5 w-5" />
             </div>
             <div>
-              <h4 className="text-sm font-bold text-white">Leave Policy Guidelines</h4>
-              <p className="text-xs text-slate-300 mt-0.5">
+              <h4 className="text-sm font-bold text-slate-900">Leave Policy Guidelines</h4>
+              <p className="text-xs text-slate-500 mt-0.5">
                 Annual leave requires at least 5 business days advance notice. Handover notes must be attached.
               </p>
             </div>
           </div>
           <Link
-            to="/requests/new"
-            className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition flex items-center gap-1.5 whitespace-nowrap self-stretch md:self-auto justify-center"
+            to="/documents"
+            className="px-4 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700 transition flex items-center gap-1.5 whitespace-nowrap self-stretch md:self-auto justify-center"
           >
             <span>Read Full Policy</span>
-            <ArrowUpRight className="h-3.5 w-3.5 text-slate-300" />
+            <ArrowUpRight className="h-3.5 w-3.5 text-slate-400" />
           </Link>
         </div>
 
         {/* Recent Leave Requests Table */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-2xs overflow-hidden">
           <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h2 className="text-base font-bold text-slate-900">Leave Applications & History</h2>

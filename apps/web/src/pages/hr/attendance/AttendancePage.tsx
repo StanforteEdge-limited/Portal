@@ -284,7 +284,7 @@ export function AttendancePage() {
       {/* 2. Top Hero Section: Check-In Terminal & Shift Overview */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-stretch">
         {/* Terminal Card (Left 7 Cols) */}
-        <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 flex flex-col justify-between space-y-6">
+        <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-100 shadow-2xs p-6 flex flex-col justify-between space-y-6">
           <div className="space-y-4">
             {/* Header with Digital Clock & Status Pill */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
@@ -341,7 +341,7 @@ export function AttendancePage() {
                   onClick={() => setSelectedMode("onsite")}
                   className={`p-3 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1.5 ${
                     selectedMode === "onsite"
-                      ? "border-[#ff6900] bg-orange-50/60 text-[#ff6900] shadow-sm"
+                      ? "border-[#ff6900] bg-orange-50/60 text-[#ff6900] shadow-2xs"
                       : "border-slate-200 bg-white hover:bg-slate-50 text-slate-600"
                   }`}
                 >
@@ -354,7 +354,7 @@ export function AttendancePage() {
                   onClick={() => setSelectedMode("remote")}
                   className={`p-3 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1.5 ${
                     selectedMode === "remote"
-                      ? "border-[#ff6900] bg-orange-50/60 text-[#ff6900] shadow-sm"
+                      ? "border-[#ff6900] bg-orange-50/60 text-[#ff6900] shadow-2xs"
                       : "border-slate-200 bg-white hover:bg-slate-50 text-slate-600"
                   }`}
                 >
@@ -367,7 +367,7 @@ export function AttendancePage() {
                   onClick={() => setSelectedMode("field")}
                   className={`p-3 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1.5 ${
                     selectedMode === "field"
-                      ? "border-[#ff6900] bg-orange-50/60 text-[#ff6900] shadow-sm"
+                      ? "border-[#ff6900] bg-orange-50/60 text-[#ff6900] shadow-2xs"
                       : "border-slate-200 bg-white hover:bg-slate-50 text-slate-600"
                   }`}
                 >
@@ -386,7 +386,7 @@ export function AttendancePage() {
                 <select
                   value={selectedOfficeLocationId}
                   onChange={(e) => setSelectedOfficeLocationId(e.target.value)}
-                  className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800 font-semibold focus:bg-white focus:border-[#ff6900]"
+                  className="w-full px-3.5 py-2.5 text-xs bg-white border border-slate-200 rounded-xl outline-none text-slate-800 font-semibold focus:border-[#ff6900]"
                 >
                   {officeLocations.map((loc) => (
                     <option key={loc.id} value={loc.id}>
@@ -405,7 +405,7 @@ export function AttendancePage() {
                 type="button"
                 disabled={acting === "in"}
                 onClick={() => handleClockAction("in")}
-                className="w-full py-3.5 px-6 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] active:scale-[0.99] text-white font-extrabold text-sm shadow-lg shadow-orange-500/25 transition flex items-center justify-center gap-2.5 disabled:opacity-50"
+                className="w-full py-3.5 px-6 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] active:scale-[0.99] text-white font-extrabold text-sm shadow-sm shadow-orange-500/25 transition flex items-center justify-center gap-2.5 disabled:opacity-50 cursor-pointer"
               >
                 {acting === "in" ? (
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -419,14 +419,15 @@ export function AttendancePage() {
                 type="button"
                 disabled={acting === "out"}
                 onClick={() => handleClockAction("out")}
-                className="w-full py-3.5 px-6 rounded-xl bg-rose-600 hover:bg-rose-700 active:scale-[0.99] text-white font-extrabold text-sm shadow-lg shadow-rose-600/25 transition flex items-center justify-center gap-2.5 disabled:opacity-50"
+                className="w-full py-3.5 px-6 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] active:scale-[0.99] text-white font-extrabold text-sm shadow-sm shadow-orange-500/25 transition flex items-center justify-center gap-2.5 disabled:opacity-50 cursor-pointer"
               >
                 {acting === "out" ? (
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 ) : (
                   <Square className="h-4 w-4 fill-white" />
                 )}
-                <span>{acting === "out" ? "Closing Out Session..." : "Clock Out & End Session"}</span>
+                <span>{acting === "out" ? "Closing Out Session..." : "Clock Out"}</span>
+                <ArrowRight className="h-4 w-4 ml-1" />
               </button>
             )}
 
@@ -437,90 +438,87 @@ export function AttendancePage() {
           </div>
         </div>
 
-        {/* Right Shift Overview Card (Right 5 Cols - Matching Dark Navy Spec) */}
-        <div className="lg:col-span-5 bg-[#0a1128] text-white rounded-2xl shadow-lg p-6 relative overflow-hidden flex flex-col justify-between min-h-[320px]">
-          {/* Subtle Orange Radial Glow */}
-          <div className="absolute top-0 right-0 w-44 h-44 bg-orange-500/10 rounded-full blur-3xl pointer-events-none" />
-
-          <div className="space-y-5 relative z-10">
-            <div className="flex items-center justify-between">
+        {/* Right Shift Overview Card - Clean White Theme */}
+        <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-100 shadow-2xs p-6 flex flex-col justify-between min-h-[320px]">
+          <div className="space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-orange-400">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#ff6900]">
                   Daily Work Session
                 </span>
-                <h3 className="text-xl font-black text-white font-headline mt-0.5">
+                <h3 className="text-xl font-bold text-slate-900 font-headline mt-0.5">
                   Shift & Schedule
                 </h3>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center">
-                <Clock className="h-5 w-5 text-white" />
+              <div className="w-10 h-10 rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center">
+                <Clock className="h-5 w-5" />
               </div>
             </div>
 
             {/* Shift Time Pill */}
-            <div className="p-3.5 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between">
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between">
               <div>
-                <div className="text-[11px] text-slate-400">Expected Shift</div>
-                <div className="text-sm font-bold text-white mt-0.5">
+                <div className="text-[11px] text-slate-400 font-medium">Expected Shift</div>
+                <div className="text-sm font-bold text-slate-900 mt-0.5">
                   {shiftStartTime} – {shiftEndTime}
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-[11px] text-slate-400">Total Hours</div>
-                <div className="text-sm font-bold text-orange-400 mt-0.5">8h Standard</div>
+                <div className="text-[11px] text-slate-400 font-medium">Total Hours</div>
+                <div className="text-sm font-bold text-[#ff6900] mt-0.5">8h Standard</div>
               </div>
             </div>
 
             {/* Hours Worked Progress Tracker */}
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs font-semibold">
-                <span className="text-slate-300">Logged Today</span>
-                <span className="text-emerald-400">{formatMinutes(workedMinutesToday)} / 8h</span>
+                <span className="text-slate-500">Logged Today</span>
+                <span className="text-slate-900 font-bold">{formatMinutes(workedMinutesToday)} / 8h</span>
               </div>
-              <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
+              <div className="w-full h-2.5 rounded-full bg-slate-100 overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-[#ff6900] to-emerald-400 rounded-full transition-all duration-500"
+                  className="h-full bg-[#ff6900] rounded-full transition-all duration-500"
                   style={{ width: `${Math.min(100, Math.round((workedMinutesToday / 480) * 100))}%` }}
                 />
               </div>
             </div>
 
             {/* Details List */}
-            <div className="space-y-1.5 text-xs text-slate-300">
-              <div className="flex items-center justify-between py-1 border-b border-white/5">
+            <div className="space-y-2 text-xs text-slate-600">
+              <div className="flex items-center justify-between py-1 border-b border-slate-100">
                 <span className="text-slate-400">Break Entitlement</span>
-                <span className="font-semibold text-white">60 mins included</span>
+                <span className="font-semibold text-slate-800">60 mins included</span>
               </div>
-              <div className="flex items-center justify-between py-1 border-b border-white/5">
+              <div className="flex items-center justify-between py-1 border-b border-slate-100">
                 <span className="text-slate-400">Grace Period</span>
-                <span className="font-semibold text-white">{policy?.grace_minutes ?? 15} mins threshold</span>
+                <span className="font-semibold text-slate-800">{policy?.grace_minutes ?? 15} mins threshold</span>
               </div>
               <div className="flex items-center justify-between py-1">
                 <span className="text-slate-400">Overtime Rate</span>
-                <span className="font-semibold text-white">1.5× standard hourly</span>
+                <span className="font-semibold text-slate-800">1.5× standard hourly</span>
               </div>
             </div>
           </div>
 
-          <div className="pt-4 relative z-10">
+          <div className="pt-4">
             <Link
               to="/leave"
-              className="w-full py-2.5 px-4 rounded-xl font-bold text-xs bg-white/10 hover:bg-white/15 text-white text-center border border-white/10 transition inline-flex items-center justify-center gap-2"
+              className="w-full py-2.5 px-4 rounded-xl font-bold text-xs bg-slate-50 hover:bg-slate-100 text-slate-700 text-center border border-slate-200 transition inline-flex items-center justify-center gap-2"
             >
               <span>Apply for Leave / Time Off</span>
-              <ArrowRight className="h-3.5 w-3.5" />
+              <ArrowRight className="h-3.5 w-3.5 text-slate-400" />
             </Link>
           </div>
         </div>
       </div>
 
-      {/* 3. 4 Metric Cards (Matching the design spec screenshot) */}
+      {/* 3. 4 Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
         {/* Present Days */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-2xs hover:border-slate-200/80 transition-all flex items-center justify-between">
           <div className="space-y-1.5">
             <span className="text-xs font-semibold text-slate-500">Days Present</span>
-            <div className="text-2xl font-black text-slate-900 tracking-tight">
+            <div className="text-2xl font-bold text-slate-900 tracking-tight font-headline">
               {stats.present}
             </div>
             <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-600">
@@ -534,10 +532,10 @@ export function AttendancePage() {
         </div>
 
         {/* Remote Days */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-2xs hover:border-slate-200/80 transition-all flex items-center justify-between">
           <div className="space-y-1.5">
             <span className="text-xs font-semibold text-slate-500">Remote Days</span>
-            <div className="text-2xl font-black text-slate-900 tracking-tight">
+            <div className="text-2xl font-bold text-slate-900 tracking-tight font-headline">
               {stats.remote}
             </div>
             <div className="text-[11px] font-medium text-slate-400">
@@ -550,10 +548,10 @@ export function AttendancePage() {
         </div>
 
         {/* Late Check-Ins */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-2xs hover:border-slate-200/80 transition-all flex items-center justify-between">
           <div className="space-y-1.5">
             <span className="text-xs font-semibold text-slate-500">Late Check-Ins</span>
-            <div className="text-2xl font-black text-slate-900 tracking-tight">
+            <div className="text-2xl font-bold text-slate-900 tracking-tight font-headline">
               {stats.late}
             </div>
             <div className="text-[11px] font-semibold text-amber-600">
@@ -566,10 +564,10 @@ export function AttendancePage() {
         </div>
 
         {/* Absences / Off-Days */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-2xs hover:border-slate-200/80 transition-all flex items-center justify-between">
           <div className="space-y-1.5">
             <span className="text-xs font-semibold text-slate-500">Absences / Off</span>
-            <div className="text-2xl font-black text-slate-900 tracking-tight">
+            <div className="text-2xl font-bold text-slate-900 tracking-tight font-headline">
               {stats.absent}
             </div>
             <div className="text-[11px] font-medium text-slate-400">
@@ -585,20 +583,20 @@ export function AttendancePage() {
       {/* 4. Weekly Attendance Overview & Rhythm Chart */}
       <WeeklyAttendanceRhythmChart
         daily={daily}
-        title="Attendance Overview & Weekly Rhythm"
-        subtitle="Visual log of on-time check-ins vs late arrivals over the last 7 calendar days."
+        title="Attendance This Week"
+        subtitle="Your daily check-ins and on-time performance"
       />
 
       {/* 5. Detailed Attendance History & Corrections */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-white border border-slate-100 rounded-2xl shadow-2xs overflow-hidden">
         {/* Tab Headers */}
-        <div className="flex items-center gap-2 p-4 border-b border-slate-200/80 bg-slate-50/50">
+        <div className="flex items-center gap-2 p-4 border-b border-slate-100 bg-slate-50/70">
           <button
             type="button"
             onClick={() => setActiveTab("daily")}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
               activeTab === "daily"
-                ? "bg-[#ff6900] text-white shadow-sm"
+                ? "bg-[#ff6900] text-white shadow-sm shadow-orange-500/20"
                 : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
             }`}
           >
@@ -609,7 +607,7 @@ export function AttendancePage() {
             onClick={() => setActiveTab("raw")}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
               activeTab === "raw"
-                ? "bg-[#ff6900] text-white shadow-sm"
+                ? "bg-[#ff6900] text-white shadow-sm shadow-orange-500/20"
                 : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
             }`}
           >
@@ -620,7 +618,7 @@ export function AttendancePage() {
             onClick={() => setActiveTab("corrections")}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
               activeTab === "corrections"
-                ? "bg-[#ff6900] text-white shadow-sm"
+                ? "bg-[#ff6900] text-white shadow-sm shadow-orange-500/20"
                 : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
             }`}
           >
@@ -633,7 +631,7 @@ export function AttendancePage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                <tr className="bg-slate-50/70 border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                   <th className="px-6 py-3.5">Work Date</th>
                   <th className="px-6 py-3.5">First In</th>
                   <th className="px-6 py-3.5">Last Out</th>
