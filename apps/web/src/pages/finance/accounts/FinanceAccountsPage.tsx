@@ -1,3 +1,4 @@
+import { SelectBox } from "@/components/ui/select";
 import { useState, useMemo } from "react";
 import {
   Button,
@@ -395,9 +396,9 @@ export default function FinanceAccountsPage() {
                 </label>
                 <label className="grid gap-1.5 text-sm">
                   <span className="font-semibold text-slate-700">Type</span>
-                  <select value={form.account_type} onChange={(e) => setForm((f) => ({ ...f, account_type: e.target.value as AccountType }))} className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 focus:outline-none focus:ring-4 focus:ring-brand-900/10">
+                  <SelectBox value={form.account_type} onChange={(e) => setForm((f) => ({ ...f, account_type: e.target.value as AccountType }))} className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 focus:outline-none focus:ring-4 focus:ring-brand-900/10">
                     {ACCOUNT_TYPES.map((t) => (<option key={t.value} value={t.value}>{t.label}</option>))}
-                  </select>
+                  </SelectBox>
                 </label>
               </div>
               {form.account_type === "bank" && (

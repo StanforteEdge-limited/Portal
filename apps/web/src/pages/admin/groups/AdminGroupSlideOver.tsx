@@ -1,3 +1,4 @@
+import { SelectBox } from "@/components/ui/select";
 import { useState, useEffect } from "react";
 import { useToast } from "@/shared";
 import {
@@ -127,7 +128,7 @@ export default function AdminGroupSlideOver({ group, types = [], onClose, onSave
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Classification Type
                 </label>
-                <select
+                <SelectBox
                   value={groupType}
                   onChange={(e) => setGroupType(e.target.value)}
                   className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
@@ -137,7 +138,7 @@ export default function AdminGroupSlideOver({ group, types = [], onClose, onSave
                       {t.name}
                     </option>
                   ))}
-                </select>
+                </SelectBox>
               </div>
 
               {group && (
@@ -222,7 +223,7 @@ export default function AdminGroupSlideOver({ group, types = [], onClose, onSave
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Primary Headquarters Entity
                 </label>
-                <select
+                <SelectBox
                   value={primaryOrgId}
                   onChange={(e) => setPrimaryOrgId(e.target.value)}
                   className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
@@ -235,7 +236,7 @@ export default function AdminGroupSlideOver({ group, types = [], onClose, onSave
                         {org.name}
                       </option>
                     ))}
-                </select>
+                </SelectBox>
               </div>
             )}
           </div>

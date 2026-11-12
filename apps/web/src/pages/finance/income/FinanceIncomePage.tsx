@@ -1,3 +1,4 @@
+import { DateInput } from "@/components/ui/date-picker";
 import { useState, useMemo } from "react";
 import {
   AppShell,
@@ -304,8 +305,8 @@ export default function FinanceIncomePage() {
               </label>
               <label className="grid gap-1.5 text-sm">
                 <span className="font-semibold text-slate-700">Date Received</span>
-                <input
-                  type="date"
+                <DateInput
+                  
                   className="rounded-2xl border border-slate-200 px-4 py-2.5"
                   value={form.received_at}
                   onChange={(e) => setForm((f) => ({ ...f, received_at: e.target.value }))}

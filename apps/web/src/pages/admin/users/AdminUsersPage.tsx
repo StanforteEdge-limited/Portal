@@ -1,3 +1,4 @@
+import { SelectBox } from "@/components/ui/select";
 import { useState, type MouseEvent } from "react";
 import { Link, useNavigate } from "@/shared/router-adapter";
 import { PortalLayout } from "@/components/layout/PortalLayout";
@@ -197,7 +198,7 @@ export default function AdminUsersPage() {
 
           {/* Type Filter */}
           <div className="lg:col-span-2">
-            <select
+            <SelectBox
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
               className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-700 focus:bg-white focus:border-[#ff6900]"
@@ -207,12 +208,12 @@ export default function AdminUsersPage() {
               <option value="vendor">Vendor</option>
               <option value="client">Client</option>
               <option value="board_member">Board Member</option>
-            </select>
+            </SelectBox>
           </div>
 
           {/* Status Filter */}
           <div className="lg:col-span-2">
-            <select
+            <SelectBox
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-700 focus:bg-white focus:border-[#ff6900]"
@@ -222,12 +223,12 @@ export default function AdminUsersPage() {
               <option value="pending">Pending</option>
               <option value="suspended">Suspended</option>
               <option value="inactive">Inactive</option>
-            </select>
+            </SelectBox>
           </div>
 
           {/* Organization Filter */}
           <div className="lg:col-span-3">
-            <select
+            <SelectBox
               value={orgFilter}
               onChange={(e) => setOrgFilter(e.target.value)}
               className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-700 focus:bg-white focus:border-[#ff6900]"
@@ -238,7 +239,7 @@ export default function AdminUsersPage() {
                   {org.name}
                 </option>
               )) ?? null}
-            </select>
+            </SelectBox>
           </div>
         </div>
       </div>

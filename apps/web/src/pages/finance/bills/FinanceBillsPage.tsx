@@ -1,3 +1,4 @@
+import { DateInput } from "@/components/ui/date-picker";
 import { useState, useMemo } from "react";
 import {
   AppShell,
@@ -372,8 +373,8 @@ export default function FinanceBillsPage() {
               </SelectField>
               <label className="grid gap-1.5 text-sm">
                 <span className="font-semibold text-slate-700">Bill Date</span>
-                <input
-                  type="date"
+                <DateInput
+                  
                   className="rounded-2xl border border-slate-200 px-4 py-2.5"
                   value={form.bill_date}
                   onChange={(e) =>
@@ -383,8 +384,8 @@ export default function FinanceBillsPage() {
               </label>
               <label className="grid gap-1.5 text-sm">
                 <span className="font-semibold text-slate-700">Due Date</span>
-                <input
-                  type="date"
+                <DateInput
+                  
                   className="rounded-2xl border border-slate-200 px-4 py-2.5"
                   value={form.due_date}
                   onChange={(e) =>

@@ -26,6 +26,13 @@
     @apply min-h-screen bg-[#f8fafc] font-sans antialiased text-slate-900 selection:bg-[#ff6900] selection:text-white;
   }
 
+  /* Lock background page scrolling whenever any modal, dialog, or SlideOver side panel is open */
+  html:has(.fixed.inset-0),
+  body:has(.fixed.inset-0) {
+    overflow: hidden !important;
+    overscroll-behavior: none !important;
+  }
+
   #root {
     @apply min-h-screen;
   }

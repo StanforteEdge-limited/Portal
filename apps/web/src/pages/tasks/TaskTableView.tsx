@@ -1,3 +1,4 @@
+import { SelectBox } from "@/components/ui/select";
 import React from "react";
 import {
   Calendar,
@@ -91,7 +92,7 @@ export function TaskTableView({
 
                   {/* Status Dropdown */}
                   <td className="py-3.5 px-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                    <select
+                    <SelectBox
                       value={task.status}
                       onChange={(e) => onUpdateStatus(task.id, e.target.value as TaskStatus)}
                       className={`text-[11px] font-bold rounded-lg border px-2.5 py-1 outline-none cursor-pointer transition ${statusStyle.bg}`}
@@ -100,7 +101,7 @@ export function TaskTableView({
                       <option value="in_progress">● In Progress</option>
                       <option value="blocked">● Under Review</option>
                       <option value="completed">✓ Completed</option>
-                    </select>
+                    </SelectBox>
                   </td>
 
                   {/* Priority */}

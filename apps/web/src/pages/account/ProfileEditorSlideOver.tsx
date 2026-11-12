@@ -1,3 +1,5 @@
+import { DateInput } from "@/components/ui/date-picker";
+import { SelectBox } from "@/components/ui/select";
 import { useState, useEffect } from "react";
 import { X, Save, User, MapPin, Briefcase, Phone, Calendar } from "lucide-react";
 import { updateWorkspaceProfile } from "@/shared/api/workspace-api";
@@ -157,8 +159,8 @@ export default function ProfileEditorSlideOver({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Date of Birth</label>
-                  <input
-                    type="date"
+                  <DateInput
+                    
                     value={form.date_of_birth}
                     onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })}
                     className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
@@ -167,7 +169,7 @@ export default function ProfileEditorSlideOver({
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Gender</label>
-                  <select
+                  <SelectBox
                     value={form.gender}
                     onChange={(e) => setForm({ ...form, gender: e.target.value })}
                     className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
@@ -175,14 +177,14 @@ export default function ProfileEditorSlideOver({
                     <option value="">Prefer not to say</option>
                     <option value="male">Male</option>
                     <option value="female">Female</option>
-                  </select>
+                  </SelectBox>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Marital Status</label>
-                  <select
+                  <SelectBox
                     value={form.marital_status}
                     onChange={(e) => setForm({ ...form, marital_status: e.target.value })}
                     className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
@@ -192,7 +194,7 @@ export default function ProfileEditorSlideOver({
                     <option value="married">Married</option>
                     <option value="divorced">Divorced</option>
                     <option value="widowed">Widowed</option>
-                  </select>
+                  </SelectBox>
                 </div>
 
                 <div>

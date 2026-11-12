@@ -1,3 +1,4 @@
+import { SelectBox } from "@/components/ui/select";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Link } from "@/shared/router-adapter";
@@ -233,7 +234,7 @@ export default function AdminProjectsPage() {
               />
             </div>
 
-            <select
+            <SelectBox
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20"
@@ -243,7 +244,7 @@ export default function AdminProjectsPage() {
                   {opt.label}
                 </option>
               ))}
-            </select>
+            </SelectBox>
 
             <button
               type="button"

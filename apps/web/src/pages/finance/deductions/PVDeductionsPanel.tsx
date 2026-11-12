@@ -1,3 +1,4 @@
+import { SelectBox } from "@/components/ui/select";
 import { useState } from "react";
 import { SlideOver, SlideOverHeader, SlideOverContent, SlideOverFooter } from "@/shared/components/ui/SlideOver";
 import { Button, useToast } from "@/shared";
@@ -199,7 +200,7 @@ export default function PVDeductionsPanel({ pv, onClose, onSaved }: Props) {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="mb-1 block text-xs text-slate-500">Deduction Type</label>
-                        <select
+                        <SelectBox
                           className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-900/20"
                           value={line.deduction_type_id}
                           onChange={(e) => updateLine(i, "deduction_type_id", e.target.value)}
@@ -210,7 +211,7 @@ export default function PVDeductionsPanel({ pv, onClose, onSaved }: Props) {
                               {t.name} ({(Number(t.rate) * 100).toFixed(1)}%)
                             </option>
                           ))}
-                        </select>
+                        </SelectBox>
                       </div>
                       <div>
                         <label className="mb-1 block text-xs text-slate-500">Rate (decimal)</label>

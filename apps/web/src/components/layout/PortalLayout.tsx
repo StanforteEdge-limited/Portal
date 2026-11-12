@@ -512,6 +512,21 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
     setCollapsedGroups((prev) => ({ ...prev, [title]: !prev[title] }));
   };
 
+  // Lock background page scroll whenever any side panel or modal is open
+  const isAnyOverlayOpen =
+    mobileMenuOpen || userDrawerOpen || appLauncherOpen || commandPaletteOpen || aiDrawerOpen;
+  useEffect(() => {
+    if (!isAnyOverlayOpen || typeof document === "undefined") return;
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevBodyOverflow;
+      document.documentElement.style.overflow = prevHtmlOverflow;
+    };
+  }, [isAnyOverlayOpen]);
+
   // Global ⌘K / Ctrl+K keyboard shortcut
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

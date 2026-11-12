@@ -1,3 +1,4 @@
+import { SelectBox } from "@/components/ui/select";
 import { useState, useEffect } from "react";
 import { useToast } from "@/shared";
 import {
@@ -199,7 +200,7 @@ export default function RequestTypeSlideOver({
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Requisition Category <span className="text-rose-500">*</span>
                 </label>
-                <select
+                <SelectBox
                   value={categoryId}
                   onChange={(e) => setCategoryId(e.target.value)}
                   required
@@ -211,7 +212,7 @@ export default function RequestTypeSlideOver({
                       {c.name} {c.groupName ? `(${c.groupName})` : ""}
                     </option>
                   ))}
-                </select>
+                </SelectBox>
                 {selectedCategory?.groupName && (
                   <p className="text-[11px] text-slate-500 mt-1">
                     Group: <strong className="text-slate-700">{selectedCategory.groupName}</strong>
@@ -223,7 +224,7 @@ export default function RequestTypeSlideOver({
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Workflow Class
                 </label>
-                <select
+                <SelectBox
                   value={workflowType}
                   onChange={(e) => setWorkflowType(e.target.value)}
                   className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
@@ -233,7 +234,7 @@ export default function RequestTypeSlideOver({
                   <option value="leave">Leave & Time Off</option>
                   <option value="loan">Staff Loan</option>
                   <option value="other">General Operations</option>
-                </select>
+                </SelectBox>
               </div>
             </div>
 

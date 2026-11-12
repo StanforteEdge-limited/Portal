@@ -1,3 +1,4 @@
+import { SelectBox } from "@/components/ui/select";
 import { useState } from "react";
 import { Link } from "@/shared/router-adapter";
 import { PortalLayout } from "@/components/layout/PortalLayout";
@@ -242,7 +243,7 @@ export default function AdminGroupsPage() {
               </div>
 
               {/* Type Filter */}
-              <select
+              <SelectBox
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value)}
                 className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20"
@@ -253,10 +254,10 @@ export default function AdminGroupsPage() {
                     {t.name}
                   </option>
                 ))}
-              </select>
+              </SelectBox>
 
               {/* Status Filter */}
-              <select
+              <SelectBox
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20"
@@ -264,7 +265,7 @@ export default function AdminGroupsPage() {
                 <option value="all">All Statuses</option>
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
-              </select>
+              </SelectBox>
 
               {/* Refetch button */}
               <button

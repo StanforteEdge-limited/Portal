@@ -1,3 +1,5 @@
+import { DateInput } from "@/components/ui/date-picker";
+import { SelectBox } from "@/components/ui/select";
 import { useMemo, useState } from "react";
 import {
   AppShell,
@@ -228,7 +230,7 @@ export default function FinanceManualEntryPage() {
         <div className="grid gap-4 md:grid-cols-3">
           <label className="grid gap-1.5 text-sm">
             <span className="font-semibold text-slate-700">Entry Date</span>
-            <input type="date" className="rounded-2xl border border-slate-200 px-4 py-2.5" value={entryDate} onChange={(e) => setEntryDate(e.target.value)} />
+            <DateInput  className="rounded-2xl border border-slate-200 px-4 py-2.5" value={entryDate} onChange={(e) => setEntryDate(e.target.value)} />
           </label>
           <label className="grid gap-1.5 text-sm">
             <span className="font-semibold text-slate-700">Currency</span>
@@ -251,12 +253,12 @@ export default function FinanceManualEntryPage() {
             <div key={index} className="grid gap-3 md:grid-cols-12 items-end">
               <label className="grid gap-1.5 text-sm md:col-span-4">
                 <span className="font-semibold text-slate-700">Chart Account</span>
-                <select className="rounded-2xl border border-slate-200 px-4 py-2.5" value={line.chart_account_id} onChange={(e) => setLine(index, { chart_account_id: e.target.value })}>
+                <SelectBox className="rounded-2xl border border-slate-200 px-4 py-2.5" value={line.chart_account_id} onChange={(e) => setLine(index, { chart_account_id: e.target.value })}>
                   <option value="">Select account</option>
                   {chartAccounts.map((account: any) => (
                     <option key={account.id} value={account.id}>{account.code} - {account.name}</option>
                   ))}
-                </select>
+                </SelectBox>
               </label>
               <label className="grid gap-1.5 text-sm md:col-span-3">
                 <span className="font-semibold text-slate-700">Description</span>
@@ -321,7 +323,7 @@ export default function FinanceManualEntryPage() {
             <h3 className="font-semibold text-slate-800">Edit Journal Entry</h3>
             <label className="grid gap-1.5 text-sm">
               <span className="font-semibold text-slate-700">Entry Date</span>
-              <input type="date" className="rounded-2xl border border-slate-200 px-4 py-2.5" value={editEntryDate} onChange={(e) => setEditEntryDate(e.target.value)} />
+              <DateInput  className="rounded-2xl border border-slate-200 px-4 py-2.5" value={editEntryDate} onChange={(e) => setEditEntryDate(e.target.value)} />
             </label>
             <label className="grid gap-1.5 text-sm">
               <span className="font-semibold text-slate-700">Currency</span>
@@ -335,10 +337,10 @@ export default function FinanceManualEntryPage() {
               <span className="font-semibold text-slate-700 text-sm">Lines</span>
               {editLines.map((line, idx) => (
                 <div key={idx} className="grid gap-2 md:grid-cols-12 items-end">
-                  <select className="md:col-span-4 rounded-2xl border border-slate-200 px-3 py-2 text-sm" value={line.chart_account_id} onChange={(e) => setEditLines((p) => p.map((l, i) => i === idx ? { ...l, chart_account_id: e.target.value } : l))}>
+                  <SelectBox className="md:col-span-4 rounded-2xl border border-slate-200 px-3 py-2 text-sm" value={line.chart_account_id} onChange={(e) => setEditLines((p) => p.map((l, i) => i === idx ? { ...l, chart_account_id: e.target.value } : l))}>
                     <option value="">Account</option>
                     {chartAccounts.map((a: any) => <option key={a.id} value={a.id}>{a.code} - {a.name}</option>)}
-                  </select>
+                  </SelectBox>
                   <input className="md:col-span-3 rounded-2xl border border-slate-200 px-3 py-2 text-sm" placeholder="Description" value={line.description} onChange={(e) => setEditLines((p) => p.map((l, i) => i === idx ? { ...l, description: e.target.value } : l))} />
                   <input type="number" className="md:col-span-2 rounded-2xl border border-slate-200 px-3 py-2 text-sm" placeholder="Debit" value={line.debit} onChange={(e) => setEditLines((p) => p.map((l, i) => i === idx ? { ...l, debit: Number(e.target.value) } : l))} />
                   <input type="number" className="md:col-span-2 rounded-2xl border border-slate-200 px-3 py-2 text-sm" placeholder="Credit" value={line.credit} onChange={(e) => setEditLines((p) => p.map((l, i) => i === idx ? { ...l, credit: Number(e.target.value) } : l))} />

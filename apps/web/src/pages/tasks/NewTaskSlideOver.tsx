@@ -1,3 +1,5 @@
+import { DateInput } from "@/components/ui/date-picker";
+import { SelectBox } from "@/components/ui/select";
 import React, { useState } from "react";
 import {
   X,
@@ -169,7 +171,7 @@ export function NewTaskSlideOver({
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
                   Initial Column / Status
                 </label>
-                <select
+                <SelectBox
                   value={status}
                   onChange={(e) => setStatus(e.target.value as TaskStatus)}
                   className="w-full text-xs font-bold bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-slate-800 outline-none focus:border-[#ff6900]"
@@ -178,14 +180,14 @@ export function NewTaskSlideOver({
                   <option value="in_progress">● In Progress</option>
                   <option value="blocked">● Under Review / Blocked</option>
                   <option value="completed">✓ Completed</option>
-                </select>
+                </SelectBox>
               </div>
 
               <div>
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
                   Priority
                 </label>
-                <select
+                <SelectBox
                   value={priority}
                   onChange={(e) => setPriority(e.target.value as TaskPriority)}
                   className="w-full text-xs font-bold bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-slate-800 outline-none focus:border-[#ff6900]"
@@ -194,15 +196,15 @@ export function NewTaskSlideOver({
                   <option value="medium">Medium</option>
                   <option value="high">High</option>
                   <option value="critical">Critical</option>
-                </select>
+                </SelectBox>
               </div>
 
               <div>
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
                   Due Date
                 </label>
-                <input
-                  type="date"
+                <DateInput
+                  
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
                   className="w-full text-xs font-bold bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-slate-800 outline-none focus:border-[#ff6900]"

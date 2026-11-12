@@ -1,3 +1,5 @@
+import { DateInput } from "@/components/ui/date-picker";
+import { SelectBox } from "@/components/ui/select";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Button, Icon, PageHeader,
@@ -630,8 +632,8 @@ export default function StatutoryDeductionsPage() {
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Payment Date</label>
-            <input
-              type="date"
+            <DateInput
+              
               className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               value={remitDate}
               onChange={(e) => setRemitDate(e.target.value)}
@@ -640,7 +642,7 @@ export default function StatutoryDeductionsPage() {
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Paid From Account</label>
-            <select
+            <SelectBox
               className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               value={remitAccountId}
               onChange={(e) => setRemitAccountId(e.target.value)}
@@ -651,7 +653,7 @@ export default function StatutoryDeductionsPage() {
                   {a.name}{a.bank_name ? ` — ${a.bank_name}` : ""}
                 </option>
               ))}
-            </select>
+            </SelectBox>
           </div>
 
             <div>
@@ -727,10 +729,10 @@ export default function StatutoryDeductionsPage() {
             <h3 className="font-semibold text-slate-800">Edit Pending Deduction</h3>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Deduction Type</label>
-              <select className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" value={editForm.deduction_type_id} onChange={(e) => setEditForm((p) => ({ ...p, deduction_type_id: e.target.value }))}>
+              <SelectBox className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" value={editForm.deduction_type_id} onChange={(e) => setEditForm((p) => ({ ...p, deduction_type_id: e.target.value }))}>
                 <option value="">Select type</option>
                 {deductionTypes.map((dt: any) => <option key={dt.id} value={dt.id}>{dt.name}{dt.code ? ` (${dt.code})` : ""}</option>)}
-              </select>
+              </SelectBox>
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Gross Amount</label>
@@ -772,14 +774,14 @@ export default function StatutoryDeductionsPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Payment Date</label>
-              <input type="date" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" value={editRemitForm.remitted_at} onChange={(e) => setEditRemitForm((p) => ({ ...p, remitted_at: e.target.value }))} />
+              <DateInput  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" value={editRemitForm.remitted_at} onChange={(e) => setEditRemitForm((p) => ({ ...p, remitted_at: e.target.value }))} />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Paid From Account</label>
-              <select className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" value={editRemitForm.paid_from_account_id} onChange={(e) => setEditRemitForm((p) => ({ ...p, paid_from_account_id: e.target.value }))}>
+              <SelectBox className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" value={editRemitForm.paid_from_account_id} onChange={(e) => setEditRemitForm((p) => ({ ...p, paid_from_account_id: e.target.value }))}>
                 <option value="">Select account…</option>
                 {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}{a.bank_name ? ` — ${a.bank_name}` : ""}</option>)}
-              </select>
+              </SelectBox>
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>

@@ -1,3 +1,4 @@
+import { SelectBox } from "@/components/ui/select";
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -433,7 +434,7 @@ export function BulkImportDashboard<T extends Record<string, any>>({
                     cell: (row: any) => {
                       const rowIndex = rows.indexOf(row);
                       return col.type === "select" ? (
-                        <select
+                        <SelectBox
                           value={String(row[col.key] ?? "")}
                           onChange={(e) =>
                             handleCellChange(rowIndex, col.key, e.target.value)
@@ -445,7 +446,7 @@ export function BulkImportDashboard<T extends Record<string, any>>({
                               {opt.label}
                             </option>
                           ))}
-                        </select>
+                        </SelectBox>
                       ) : col.type === "checkbox" ? (
                         <div className="flex justify-center items-center py-1">
                           <input

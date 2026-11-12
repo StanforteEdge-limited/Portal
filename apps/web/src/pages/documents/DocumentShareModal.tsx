@@ -1,3 +1,4 @@
+import { SelectBox } from "@/components/ui/select";
 import { useState } from "react";
 import {
   X,
@@ -285,7 +286,7 @@ export default function DocumentShareModal({
               </div>
             ) : (
               <div className="space-y-2">
-                <select
+                <SelectBox
                   value={selectedColleagueId}
                   onChange={(e) => setSelectedColleagueId(e.target.value)}
                   className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none transition font-medium text-slate-800 focus:bg-white focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
@@ -295,7 +296,7 @@ export default function DocumentShareModal({
                       {member.name} • {member.role} ({member.email})
                     </option>
                   ))}
-                </select>
+                </SelectBox>
 
                 {/* Selected Colleague Preview Badge */}
                 {selectedColleague && (

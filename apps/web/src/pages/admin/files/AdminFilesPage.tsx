@@ -1,3 +1,4 @@
+import { SelectBox } from "@/components/ui/select";
 import { useState, useRef, useMemo } from "react";
 import { Link } from "@/shared/router-adapter";
 import { PortalLayout } from "@/components/layout/PortalLayout";
@@ -225,7 +226,7 @@ export default function AdminFilesPage() {
               />
             </div>
 
-            <select
+            <SelectBox
               value={fileType}
               onChange={(e) => {
                 setFileType(e.target.value);
@@ -237,7 +238,7 @@ export default function AdminFilesPage() {
               <option value="images">Images</option>
               <option value="videos">Videos</option>
               <option value="documents">Documents</option>
-            </select>
+            </SelectBox>
 
             <button
               type="button"

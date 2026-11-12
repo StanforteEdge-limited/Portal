@@ -1,3 +1,5 @@
+import { DateInput } from "@/components/ui/date-picker";
+import { SelectBox } from "@/components/ui/select";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { PortalLayout } from "@/components/layout/PortalLayout";
@@ -347,7 +349,7 @@ export function ApprovalsPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <select
+            <SelectBox
               value={status}
               onChange={(e) => setStatus(e.target.value)}
               className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20"
@@ -355,9 +357,9 @@ export function ApprovalsPage() {
               {statusOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
-            </select>
+            </SelectBox>
 
-            <select
+            <SelectBox
               value={selectedRequestTypeId}
               onChange={(e) => setSelectedRequestTypeId(e.target.value)}
               className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20"
@@ -365,10 +367,10 @@ export function ApprovalsPage() {
               {requestTypeOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
-            </select>
+            </SelectBox>
 
-            <input
-              type="date"
+            <DateInput
+              
               value={filterDate}
               onChange={(e) => setFilterDate(e.target.value)}
               className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 focus:outline-none"

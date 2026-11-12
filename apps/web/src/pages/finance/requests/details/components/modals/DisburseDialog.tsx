@@ -1,3 +1,4 @@
+import { SelectBox } from "@/components/ui/select";
 import { useEffect, useState } from "react";
 import {
   Button,
@@ -361,7 +362,7 @@ export function DisburseDialog() {
                             <label className="mb-1 block text-xs text-slate-500">
                               Deduction Type
                             </label>
-                            <select
+                            <SelectBox
                               className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-900/20"
                               value={line.deduction_type_id}
                               onChange={(e) =>
@@ -379,7 +380,7 @@ export function DisburseDialog() {
                                   %)
                                 </option>
                               ))}
-                            </select>
+                            </SelectBox>
                           </div>
                           <div>
                             <label className="mb-1 block text-xs text-slate-500">

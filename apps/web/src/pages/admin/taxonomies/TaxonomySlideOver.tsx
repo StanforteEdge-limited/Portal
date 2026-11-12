@@ -1,3 +1,4 @@
+import { SelectBox } from "@/components/ui/select";
 import { useState } from "react";
 import { useToast } from "@/shared";
 import {
@@ -149,7 +150,7 @@ export default function TaxonomySlideOver({ taxonomy, onClose, onSaved }: Props)
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Render Control
                 </label>
-                <select
+                <SelectBox
                   value={renderType}
                   onChange={(e) => setRenderType(e.target.value)}
                   className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
@@ -158,7 +159,7 @@ export default function TaxonomySlideOver({ taxonomy, onClose, onSaved }: Props)
                   <option value="radio">Radio Buttons</option>
                   <option value="checkbox">Multi Checkboxes</option>
                   <option value="tag">Pill Badges</option>
-                </select>
+                </SelectBox>
               </div>
             </div>
 

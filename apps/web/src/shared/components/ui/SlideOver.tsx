@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
 import { createPortal } from "react-dom";
 
 type SlideOverProps = {
@@ -17,6 +17,19 @@ export function SlideOver({
   size = "lg",
 }: SlideOverProps) {
   const isVisible = open !== undefined ? open : isOpen !== undefined ? isOpen : true;
+
+  useEffect(() => {
+    if (!isVisible || typeof document === "undefined") return;
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevBodyOverflow;
+      document.documentElement.style.overflow = prevHtmlOverflow;
+    };
+  }, [isVisible]);
+
   if (!isVisible) return null;
 
   const sizeClasses = {
@@ -28,10 +41,10 @@ export function SlideOver({
   }[size];
 
   const content = (
-    <div className="fixed inset-0 z-[100] flex justify-end overflow-hidden">
+    <div className="fixed inset-0 z-[100] flex justify-end overflow-hidden overscroll-none">
       {/* Backdrop with smooth blur */}
       <div
-        className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity duration-300"
+        className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity duration-300 touch-none"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -39,13 +52,13 @@ export function SlideOver({
       {/* Panel - full height top-to-bottom grounded to screen edges */}
       <div
         className={`
-          relative z-[101] w-full h-full h-[100dvh] max-h-screen flex flex-col bg-white shadow-2xl border-l border-slate-200
+          relative z-[101] w-full h-full h-[100dvh] max-h-screen flex flex-col bg-white shadow-2xl border-l border-slate-200 overscroll-contain
           ${sizeClasses}
           animate-in slide-in-from-right duration-200
         `}
       >
         {/* Inner container with overflow handling */}
-        <div className="flex flex-col min-h-0 h-full overflow-hidden">
+        <div className="flex flex-col min-h-0 h-full overflow-hidden overscroll-contain">
           {children}
         </div>
       </div>
@@ -61,7 +74,7 @@ type SlideOverPanelProps = {
 };
 
 export function SlideOverPanel({ children }: SlideOverPanelProps) {
-  return <div className="flex flex-col min-h-0 h-full">{children}</div>;
+  return <div className="flex flex-col min-h-0 h-full overscroll-contain">{children}</div>;
 }
 
 type SlideOverHeaderProps = {
@@ -109,7 +122,7 @@ export function SlideOverContent({
   className = "",
 }: SlideOverContentProps) {
   return (
-    <div className={`flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-6 space-y-4 ${className}`}>
+    <div className={`flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain p-6 space-y-4 ${className}`}>
       {children}
     </div>
   );

@@ -1,3 +1,5 @@
+import { DateInput } from "@/components/ui/date-picker";
+import { SelectBox } from "@/components/ui/select";
 import React, { useState } from "react";
 import {
   X,
@@ -166,7 +168,7 @@ export function TaskDetailSlideOver({
               <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
                 Status
               </label>
-              <select
+              <SelectBox
                 value={currentTask.status}
                 onChange={(e) => {
                   const updated = { ...currentTask, status: e.target.value as TaskStatus };
@@ -180,7 +182,7 @@ export function TaskDetailSlideOver({
                 <option value="in_progress">● In Progress</option>
                 <option value="blocked">● Under Review / Blocked</option>
                 <option value="completed">✓ Completed</option>
-              </select>
+              </SelectBox>
             </div>
 
             {/* Priority */}
@@ -188,7 +190,7 @@ export function TaskDetailSlideOver({
               <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
                 Priority
               </label>
-              <select
+              <SelectBox
                 value={currentTask.priority}
                 onChange={(e) => {
                   const updated = { ...currentTask, priority: e.target.value as TaskPriority };
@@ -202,7 +204,7 @@ export function TaskDetailSlideOver({
                 <option value="medium">Medium</option>
                 <option value="high">High</option>
                 <option value="critical">Critical</option>
-              </select>
+              </SelectBox>
             </div>
 
             {/* Due Date */}
@@ -210,8 +212,8 @@ export function TaskDetailSlideOver({
               <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
                 Target Due Date
               </label>
-              <input
-                type="date"
+              <DateInput
+                
                 value={currentTask.due_date || ""}
                 onChange={(e) => {
                   const updated = { ...currentTask, due_date: e.target.value };
@@ -251,7 +253,7 @@ export function TaskDetailSlideOver({
               {/* Tag Colleague Selector (Admins / Managers only) */}
               {isAdmin && (
                 <div className="flex items-center gap-2">
-                  <select
+                  <SelectBox
                     value={selectedColleagueId}
                     onChange={(e) => handleTagColleague(e.target.value)}
                     className="text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-slate-700 outline-none hover:bg-slate-100"
@@ -262,7 +264,7 @@ export function TaskDetailSlideOver({
                         {m.name} ({m.role})
                       </option>
                     ))}
-                  </select>
+                  </SelectBox>
                 </div>
               )}
             </div>

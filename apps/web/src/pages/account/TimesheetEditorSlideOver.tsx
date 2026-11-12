@@ -1,3 +1,5 @@
+import { DateInput } from "@/components/ui/date-picker";
+import { SelectBox } from "@/components/ui/select";
 import { useEffect, useState } from "react";
 import {
   Calendar,
@@ -228,8 +230,8 @@ export default function TimesheetEditorSlideOver({
                     <Calendar className="w-3.5 h-3.5 text-orange-600" />
                     Work Date <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="date"
+                  <DateInput
+                    
                     value={form.work_date}
                     onChange={(e) => setForm({ ...form, work_date: e.target.value })}
                     required
@@ -262,7 +264,7 @@ export default function TimesheetEditorSlideOver({
                   <Briefcase className="w-3.5 h-3.5 text-slate-500" />
                   Assigned Project
                 </label>
-                <select
+                <SelectBox
                   value={form.project_id}
                   onChange={(e) => setForm({ ...form, project_id: e.target.value })}
                   className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
@@ -273,7 +275,7 @@ export default function TimesheetEditorSlideOver({
                       {opt.label}
                     </option>
                   ))}
-                </select>
+                </SelectBox>
               </div>
 
               {/* Fund & Grant Allocations */}
@@ -283,7 +285,7 @@ export default function TimesheetEditorSlideOver({
                     <PiggyBank className="w-3.5 h-3.5 text-slate-500" />
                     Funding Stream
                   </label>
-                  <select
+                  <SelectBox
                     value={form.fund_id}
                     onChange={(e) => setForm({ ...form, fund_id: e.target.value })}
                     className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
@@ -294,7 +296,7 @@ export default function TimesheetEditorSlideOver({
                         {opt.label}
                       </option>
                     ))}
-                  </select>
+                  </SelectBox>
                 </div>
 
                 <div>
@@ -302,7 +304,7 @@ export default function TimesheetEditorSlideOver({
                     <Wallet className="w-3.5 h-3.5 text-slate-500" />
                     Grant Allocation
                   </label>
-                  <select
+                  <SelectBox
                     value={form.grant_id}
                     onChange={(e) => setForm({ ...form, grant_id: e.target.value })}
                     className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
@@ -313,7 +315,7 @@ export default function TimesheetEditorSlideOver({
                         {opt.label}
                       </option>
                     ))}
-                  </select>
+                  </SelectBox>
                 </div>
               </div>
 
@@ -326,7 +328,7 @@ export default function TimesheetEditorSlideOver({
                         <Building2 className="w-3.5 h-3.5 text-slate-500" />
                         Organization
                       </label>
-                      <select
+                      <SelectBox
                         value={form.organization_id}
                         onChange={(e) => setForm({ ...form, organization_id: e.target.value })}
                         className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
@@ -337,7 +339,7 @@ export default function TimesheetEditorSlideOver({
                             {opt.label}
                           </option>
                         ))}
-                      </select>
+                      </SelectBox>
                     </div>
                   )}
 
@@ -347,7 +349,7 @@ export default function TimesheetEditorSlideOver({
                         <Users className="w-3.5 h-3.5 text-slate-500" />
                         Team / Workgroup
                       </label>
-                      <select
+                      <SelectBox
                         value={form.team_id}
                         onChange={(e) => setForm({ ...form, team_id: e.target.value })}
                         className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
@@ -358,7 +360,7 @@ export default function TimesheetEditorSlideOver({
                             {opt.label}
                           </option>
                         ))}
-                      </select>
+                      </SelectBox>
                     </div>
                   )}
                 </div>

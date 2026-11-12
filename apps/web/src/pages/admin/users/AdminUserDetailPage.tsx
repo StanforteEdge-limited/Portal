@@ -1,3 +1,4 @@
+import { SelectBox } from "@/components/ui/select";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
@@ -388,7 +389,7 @@ export default function AdminUserDetailPage() {
                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                       Primary Organization
                     </label>
-                    <select
+                    <SelectBox
                       value={organizationId}
                       onChange={(e) => setOrganizationId(e.target.value)}
                       className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-900 outline-none transition focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
@@ -399,14 +400,14 @@ export default function AdminUserDetailPage() {
                           {org.name} {org.code ? `(${org.code})` : ""}
                         </option>
                       ))}
-                    </select>
+                    </SelectBox>
                   </div>
 
                   <div className="sm:col-span-2">
                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                       User Classification
                     </label>
-                    <select
+                    <SelectBox
                       value={type}
                       onChange={(e) => setType(e.target.value)}
                       className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-900 outline-none transition focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
@@ -415,7 +416,7 @@ export default function AdminUserDetailPage() {
                       <option value="vendor">Vendor</option>
                       <option value="client">Client</option>
                       <option value="board_member">Board Member</option>
-                    </select>
+                    </SelectBox>
                   </div>
                 </div>
 

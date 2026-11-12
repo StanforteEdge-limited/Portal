@@ -1,3 +1,4 @@
+import { SelectBox } from "@/components/ui/select";
 import React from "react";
 import {
   Clock,
@@ -222,7 +223,7 @@ export function TaskKanbanView({
 
                       {/* Quick Move Action Bar on Hover */}
                       <div className="pt-2 mt-2 border-t border-dashed border-slate-100 flex items-center justify-between">
-                        <select
+                        <SelectBox
                           value={task.status}
                           onClick={(e) => e.stopPropagation()}
                           onChange={(e) => {
@@ -235,7 +236,7 @@ export function TaskKanbanView({
                           <option value="in_progress">In Progress</option>
                           <option value="blocked">Blocked / Review</option>
                           <option value="completed">Completed</option>
-                        </select>
+                        </SelectBox>
 
                         <button
                           type="button"

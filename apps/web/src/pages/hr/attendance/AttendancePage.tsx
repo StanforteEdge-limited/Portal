@@ -1,3 +1,5 @@
+import { DateInput } from "@/components/ui/date-picker";
+import { SelectBox } from "@/components/ui/select";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@/shared/router-adapter";
 import { PortalLayout } from "@/components/layout/PortalLayout";
@@ -383,7 +385,7 @@ export function AttendancePage() {
                 <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
                   Assigned Facility
                 </label>
-                <select
+                <SelectBox
                   value={selectedOfficeLocationId}
                   onChange={(e) => setSelectedOfficeLocationId(e.target.value)}
                   className="w-full px-3.5 py-2.5 text-xs bg-white border border-slate-200 rounded-xl outline-none text-slate-800 font-semibold focus:border-[#ff6900]"
@@ -393,7 +395,7 @@ export function AttendancePage() {
                       {loc.name} {loc.address ? `— ${loc.address}` : ""}
                     </option>
                   ))}
-                </select>
+                </SelectBox>
               </div>
             )}
           </div>
@@ -855,8 +857,8 @@ export function AttendancePage() {
                   <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
                     Work Date
                   </label>
-                  <input
-                    type="date"
+                  <DateInput
+                    
                     required
                     value={correctionForm.work_date}
                     onChange={(e) => setCorrectionForm((prev) => ({ ...prev, work_date: e.target.value }))}
@@ -868,7 +870,7 @@ export function AttendancePage() {
                   <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
                     Correction Type
                   </label>
-                  <select
+                  <SelectBox
                     value={correctionForm.request_type}
                     onChange={(e) => setCorrectionForm((prev) => ({ ...prev, request_type: e.target.value }))}
                     className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-[#ff6900]"
@@ -876,7 +878,7 @@ export function AttendancePage() {
                     <option value="clock_in">Clock In Time</option>
                     <option value="clock_out">Clock Out Time</option>
                     <option value="full_day">Full Day Record</option>
-                  </select>
+                  </SelectBox>
                 </div>
 
                 <div>
@@ -896,7 +898,7 @@ export function AttendancePage() {
                   <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
                     Mode
                   </label>
-                  <select
+                  <SelectBox
                     value={correctionForm.proposed_mode}
                     onChange={(e) => setCorrectionForm((prev) => ({ ...prev, proposed_mode: e.target.value }))}
                     className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-[#ff6900]"
@@ -904,7 +906,7 @@ export function AttendancePage() {
                     <option value="onsite">Onsite</option>
                     <option value="remote">Remote</option>
                     <option value="field">Field</option>
-                  </select>
+                  </SelectBox>
                 </div>
 
                 <div>

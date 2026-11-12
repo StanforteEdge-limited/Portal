@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "@/shared/router-adapter";
 import { PortalLayout, useWorkspace } from "@/components/layout/PortalLayout";
+import { SelectBox } from "@/components/ui/select";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { useToast } from "@/shared";
 import {
@@ -382,14 +383,16 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
-                  <div className="relative">
-                    <button
-                      type="button"
-                      className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 flex items-center gap-1.5 shadow-2xs"
+                  <div className="w-36">
+                    <SelectBox
+                      defaultValue="this_week"
+                      className="h-8 px-3 py-1 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 shadow-2xs"
                     >
-                      <span>This Week</span>
-                      <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
-                    </button>
+                      <option value="this_week">This Week</option>
+                      <option value="last_week">Last Week</option>
+                      <option value="this_month">This Month</option>
+                      <option value="last_30_days">Last 30 Days</option>
+                    </SelectBox>
                   </div>
                 </div>
               </div>

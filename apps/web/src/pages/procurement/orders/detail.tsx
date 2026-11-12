@@ -1,3 +1,4 @@
+import { SelectBox } from "@/components/ui/select";
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { procurementApi } from "@/shared/lib/core";
@@ -277,7 +278,7 @@ export default function PoDetail() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-1">Overall Condition</label>
-                    <select
+                    <SelectBox
                       className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                       value={grnCondition}
                       onChange={e => setGrnCondition(e.target.value as any)}
@@ -285,7 +286,7 @@ export default function PoDetail() {
                       <option value="satisfactory">Satisfactory (All Good)</option>
                       <option value="partial">Partial Delivery/Issue</option>
                       <option value="rejected">Rejected</option>
-                    </select>
+                    </SelectBox>
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-1">Receiving Notes</label>

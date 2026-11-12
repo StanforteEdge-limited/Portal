@@ -1,3 +1,4 @@
+import { SelectBox } from "@/components/ui/select";
 import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { PortalLayout } from "@/components/layout/PortalLayout";
@@ -471,7 +472,7 @@ export default function AdminSettingsPage() {
                   {typeof editingCategory !== "object" && (
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-1">Module / Group</label>
-                      <select
+                      <SelectBox
                         value={categoryForm.group_id}
                         onChange={(e) => setCategoryForm((p) => ({ ...p, group_id: e.target.value }))}
                         className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20"
@@ -480,7 +481,7 @@ export default function AdminSettingsPage() {
                         {groups.map((g) => (
                           <option key={g.id} value={g.id}>{g.name}</option>
                         ))}
-                      </select>
+                      </SelectBox>
                     </div>
                   )}
                   <div>
@@ -543,7 +544,7 @@ export default function AdminSettingsPage() {
                     <h2 className="text-base font-bold text-slate-900">Request Categories</h2>
                     <p className="text-xs text-slate-500 mt-0.5">Organize request classifications by domain.</p>
                   </div>
-                  <select
+                  <SelectBox
                     value={categoryFilter}
                     onChange={(e) => setCategoryFilter(e.target.value)}
                     className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700"
@@ -552,7 +553,7 @@ export default function AdminSettingsPage() {
                     {groups.map((g) => (
                       <option key={g.id} value={g.id}>{g.name}</option>
                     ))}
-                  </select>
+                  </SelectBox>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -712,7 +713,7 @@ export default function AdminSettingsPage() {
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Subscription Plan</label>
-                <select
+                <SelectBox
                   value={tenantForm.plan}
                   onChange={(e) => setTenantForm((p) => ({ ...p, plan: e.target.value }))}
                   className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 focus:outline-none"
@@ -720,7 +721,7 @@ export default function AdminSettingsPage() {
                   <option value="trial">Trial Plan (14 Days Free)</option>
                   <option value="standard">Standard Growth Plan</option>
                   <option value="enterprise">Enterprise OS Dedicated</option>
-                </select>
+                </SelectBox>
               </div>
             </div>
 
@@ -805,7 +806,7 @@ export default function AdminSettingsPage() {
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">
                     Organization Timezone
                   </label>
-                  <select
+                  <SelectBox
                     value={localSettingsForm.timezone}
                     onChange={(e) => setLocalSettingsForm((p) => ({ ...p, timezone: e.target.value }))}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-800 focus:outline-none focus:bg-white focus:border-[#ff6900]"
@@ -815,7 +816,7 @@ export default function AdminSettingsPage() {
                         {tz.label}
                       </option>
                     ))}
-                  </select>
+                  </SelectBox>
                   <p className="text-[11px] text-slate-400 mt-1">
                     Used to calculate work sessions, attendance punches, scheduled reports, and payroll timestamps.
                   </p>
@@ -906,7 +907,7 @@ export default function AdminSettingsPage() {
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">
                     First Day of Week
                   </label>
-                  <select
+                  <SelectBox
                     value={localSettingsForm.weekStartsOn}
                     onChange={(e) =>
                       setLocalSettingsForm((p) => ({ ...p, weekStartsOn: e.target.value as any }))
@@ -915,7 +916,7 @@ export default function AdminSettingsPage() {
                   >
                     <option value="monday">Monday (Nigeria / International Standard)</option>
                     <option value="sunday">Sunday (US Standard)</option>
-                  </select>
+                  </SelectBox>
                 </div>
 
                 {/* 5. Currency */}
@@ -923,7 +924,7 @@ export default function AdminSettingsPage() {
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">
                     Operating Currency
                   </label>
-                  <select
+                  <SelectBox
                     value={localSettingsForm.currency}
                     onChange={(e) => setLocalSettingsForm((p) => ({ ...p, currency: e.target.value }))}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-800 focus:outline-none focus:bg-white focus:border-[#ff6900]"
@@ -932,7 +933,7 @@ export default function AdminSettingsPage() {
                     <option value="USD">USD ($) — US Dollar</option>
                     <option value="GBP">GBP (£) — British Pound</option>
                     <option value="EUR">EUR (€) — Euro</option>
-                  </select>
+                  </SelectBox>
                 </div>
               </div>
 

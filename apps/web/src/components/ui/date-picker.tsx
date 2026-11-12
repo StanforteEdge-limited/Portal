@@ -23,8 +23,19 @@ export function DatePicker({
 
   const selectedDate = React.useMemo(() => {
     if (!value) return null;
-    const d = typeof value === "string" ? new Date(value) : value;
-    return isNaN(d.getTime()) ? null : d;
+    if (value instanceof Date) {
+      return isNaN(value.getTime()) ? null : value;
+    }
+    const str = String(value).trim();
+    if (!str) return null;
+    // Handle YYYY-MM-DD in local time without UTC shift
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+      const [y, m, d] = str.split("-").map(Number);
+      const localDate = new Date(y, m - 1, d);
+      return isNaN(localDate.getTime()) ? null : localDate;
+    }
+    const parsed = new Date(str);
+    return isNaN(parsed.getTime()) ? null : parsed;
   }, [value]);
 
   const displayString = React.useMemo(() => {
@@ -81,5 +92,41 @@ export function DatePicker({
         <Calendar selected={selectedDate} onSelect={handleSelect} />
       </PopoverContent>
     </Popover>
+  );
+}
+
+export interface DateInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "value" | "onChange"> {
+  value?: string | number | readonly string[] | null;
+  onChange?: React.ChangeEventHandler<HTMLInputElement>;
+}
+
+export function DateInput({
+  value,
+  onChange,
+  placeholder = "Select date",
+  className,
+  disabled,
+  name,
+  id,
+}: DateInputProps) {
+  const strValue = value !== undefined && value !== null ? String(value) : "";
+  return (
+    <DatePicker
+      value={strValue}
+      placeholder={placeholder}
+      disabled={disabled}
+      className={className}
+      onChange={(newVal) => {
+        if (onChange) {
+          const syntheticEvent = {
+            target: { value: newVal, name: name || "", id: id || "" },
+            currentTarget: { value: newVal, name: name || "", id: id || "" },
+            preventDefault: () => {},
+            stopPropagation: () => {},
+          } as unknown as React.ChangeEvent<HTMLInputElement>;
+          onChange(syntheticEvent);
+        }
+      }}
+    />
   );
 }

@@ -1,3 +1,5 @@
+import { DateInput } from "@/components/ui/date-picker";
+import { SelectBox } from "@/components/ui/select";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Link } from "@/shared/router-adapter";
 import { PortalLayout } from "@/components/layout/PortalLayout";
@@ -323,7 +325,7 @@ export default function FinancePaymentVouchersPage() {
 
             {/* Payment Method Filter */}
             <div className="lg:col-span-3">
-              <select
+              <SelectBox
                 value={filters.method}
                 onChange={(e) => updateFilter("method", e.target.value)}
                 className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-[#ff6900] transition"
@@ -332,13 +334,13 @@ export default function FinancePaymentVouchersPage() {
                 <option value="bank_transfer">Bank Transfer</option>
                 <option value="cash">Cash</option>
                 <option value="cheque">Cheque</option>
-              </select>
+              </SelectBox>
             </div>
 
             {/* Date Range: From */}
             <div className="lg:col-span-2">
-              <input
-                type="date"
+              <DateInput
+                
                 value={filters.from}
                 onChange={(e) => updateFilter("from", e.target.value)}
                 className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-[#ff6900] transition text-slate-600"
@@ -349,8 +351,8 @@ export default function FinancePaymentVouchersPage() {
 
             {/* Date Range: To */}
             <div className="lg:col-span-2">
-              <input
-                type="date"
+              <DateInput
+                
                 value={filters.to}
                 onChange={(e) => updateFilter("to", e.target.value)}
                 className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-[#ff6900] transition text-slate-600"
@@ -561,7 +563,7 @@ export default function FinancePaymentVouchersPage() {
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-1.5">
                   <span className="text-slate-400 font-medium">Per page:</span>
-                  <select
+                  <SelectBox
                     value={perPage}
                     onChange={(e) => {
                       setPerPage(Number(e.target.value));
@@ -573,7 +575,7 @@ export default function FinancePaymentVouchersPage() {
                     <option value={20}>20</option>
                     <option value={50}>50</option>
                     <option value={100}>100</option>
-                  </select>
+                  </SelectBox>
                 </div>
 
                 <div className="flex items-center gap-1">

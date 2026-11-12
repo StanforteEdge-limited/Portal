@@ -1,3 +1,4 @@
+import { SelectBox } from "@/components/ui/select";
 import { useState, useEffect, useRef } from "react";
 import {
   FileText,
@@ -204,7 +205,7 @@ export default function DocumentSlideOver({ documentRecord, onClose, onSaved }: 
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1.5">Category</label>
-            <select
+            <SelectBox
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               className="w-full px-3.5 py-2 text-xs bg-white border border-slate-200 rounded-xl outline-none transition focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
@@ -213,7 +214,7 @@ export default function DocumentSlideOver({ documentRecord, onClose, onSaved }: 
               <option value="wiki">Wiki / Guide</option>
               <option value="handbook">Handbook</option>
               {isHrOrAdmin && <option value="policy">Policy (Official)</option>}
-            </select>
+            </SelectBox>
           </div>
         </div>
 

@@ -1,3 +1,5 @@
+import { DateInput } from "@/components/ui/date-picker";
+import { SelectBox } from "@/components/ui/select";
 import { useState, useEffect } from "react";
 import { useToast } from "@/shared";
 import {
@@ -188,7 +190,7 @@ export default function AdminProjectSlideOver({
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Host Organization Entity
                 </label>
-                <select
+                <SelectBox
                   value={organizationId}
                   onChange={(e) => setOrganizationId(e.target.value)}
                   className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
@@ -199,14 +201,14 @@ export default function AdminProjectSlideOver({
                       {org.name}
                     </option>
                   ))}
-                </select>
+                </SelectBox>
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Project Owner / Lead
                 </label>
-                <select
+                <SelectBox
                   value={ownerId}
                   onChange={(e) => setOwnerId(e.target.value)}
                   className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
@@ -223,7 +225,7 @@ export default function AdminProjectSlideOver({
                       </option>
                     );
                   })}
-                </select>
+                </SelectBox>
               </div>
             </div>
 
@@ -232,7 +234,7 @@ export default function AdminProjectSlideOver({
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Governance Status
                 </label>
-                <select
+                <SelectBox
                   value={status}
                   onChange={(e) => setStatus(e.target.value)}
                   className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
@@ -242,15 +244,15 @@ export default function AdminProjectSlideOver({
                       {opt.label}
                     </option>
                   ))}
-                </select>
+                </SelectBox>
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Start Date
                 </label>
-                <input
-                  type="date"
+                <DateInput
+                  
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
                   className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
@@ -261,8 +263,8 @@ export default function AdminProjectSlideOver({
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Target End Date
                 </label>
-                <input
-                  type="date"
+                <DateInput
+                  
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
                   className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"

@@ -1,3 +1,4 @@
+import { SelectBox } from "@/components/ui/select";
 import { useState, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { PortalLayout, useWorkspace } from "@/components/layout/PortalLayout";
@@ -355,7 +356,7 @@ export default function TasksPage() {
               </div>
 
               {/* Status Filter */}
-              <select
+              <SelectBox
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-slate-700 outline-none hover:bg-slate-100"
@@ -365,10 +366,10 @@ export default function TasksPage() {
                 <option value="in_progress">In Progress</option>
                 <option value="blocked">Under Review</option>
                 <option value="completed">Completed</option>
-              </select>
+              </SelectBox>
 
               {/* Priority Filter */}
-              <select
+              <SelectBox
                 value={priorityFilter}
                 onChange={(e) => setPriorityFilter(e.target.value)}
                 className="text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-slate-700 outline-none hover:bg-slate-100"
@@ -378,7 +379,7 @@ export default function TasksPage() {
                 <option value="high">High</option>
                 <option value="medium">Medium</option>
                 <option value="low">Low</option>
-              </select>
+              </SelectBox>
             </div>
           )}
         </div>
