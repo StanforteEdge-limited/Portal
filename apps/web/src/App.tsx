@@ -131,6 +131,7 @@ import {
   ProfilePage,
   SettingsPage,
 } from "@/pages/account";
+import WorkspaceAnalyticsPage from "@/pages/analytics/WorkspaceAnalyticsPage";
 
 type LegacyDetailRedirectProps = {
   toBase: string;
@@ -178,6 +179,7 @@ export default function App() {
         <Route path="/onboarding" element={<EmployeeOnboardingPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/attendance" element={<AttendancePage />} />
+        <Route path="/analytics" element={<WorkspaceAnalyticsPage />} />
         <Route path="/leave" element={<LeavePage />} />
         <Route path="/leave/new/form" element={<LeaveRequestFormPage />} />
         <Route

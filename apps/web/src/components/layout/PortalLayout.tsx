@@ -620,13 +620,25 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
   // Flattened searchable navigation list
   const allNavItems = useMemo(() => {
     const list: Array<NavItemDef & { group: string }> = [];
-    ADMIN_NAV_GROUPS.forEach((group) => {
-      group.items.forEach((item) => {
-        list.push({ ...item, group: group.title });
+    if (isAdmin) {
+      ADMIN_NAV_GROUPS.forEach((group) => {
+        group.items.forEach((item) => {
+          list.push({ ...item, group: group.title });
+        });
       });
+    }
+    EMPLOYEE_NAV_ITEMS.forEach((item) => {
+      list.push({ ...item, group: "Staff Workspace" });
+    });
+    list.push({
+      label: "Analytics",
+      icon: PieChart,
+      path: "/analytics",
+      group: "Insights",
+      description: "Workspace analytics, punctuality velocity, and turnaround rhythms",
     });
     return list;
-  }, []);
+  }, [isAdmin]);
 
   const searchResults = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -641,22 +653,41 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
   }, [allNavItems, searchQuery]);
 
   // 2026 Linear-style Search Entities (Employees, Documents, Vouchers, Leaves, Tasks, Departments, Payroll)
-  const commandEntities = useMemo(() => [
-    { id: "emp-1", type: "Employee", title: "Oluwaseun Adeleke", subtitle: "Chief Financial Officer • Finance", path: "/admin/users", icon: UserCheck, tag: "CFO" },
-    { id: "emp-2", type: "Employee", title: "Fatima Olarinwaju", subtitle: "Head of People • HR & Culture", path: "/admin/users", icon: UserCheck, tag: "HR Lead" },
-    { id: "emp-3", type: "Employee", title: "Chinedu Ibeawuchi", subtitle: "Logistics Manager • Supply Chain", path: "/admin/users", icon: UserCheck, tag: "Supply Chain" },
-    { id: "emp-4", type: "Employee", title: "Amina Yusuf", subtitle: "Senior Systems Engineer • Tech", path: "/admin/users", icon: UserCheck, tag: "Tech" },
-    { id: "pv-1", type: "Voucher", title: "PV-2026-089: Core Switch Rack Upgrade", subtitle: "₦420,000 • Pending CFO Review • IT Dept", path: "/finance/payment-vouchers", icon: Receipt, tag: "₦420,000" },
-    { id: "pv-2", type: "Voucher", title: "PV-2026-088: PenCom Q4 Pension Remittance", subtitle: "₦1,476,000 • Verified & Ready • Treasury", path: "/finance/payment-vouchers", icon: Receipt, tag: "₦1,476,000" },
-    { id: "pv-3", type: "Voucher", title: "PV-2026-085: Campus Diesel Generator Refill", subtitle: "₦680,000 • Awaiting Retirement • Facilities", path: "/finance/payment-vouchers", icon: Receipt, tag: "₦680,000" },
-    { id: "doc-1", type: "Document", title: "Stanforte 2026 Employee Handbook & Code of Conduct", subtitle: "HR Policy • Updated Nov 2026", path: "/documents", icon: FolderOpen, tag: "Policy" },
-    { id: "doc-2", type: "Document", title: "Financial Delegation of Authority Matrix (DoA)", subtitle: "Governance SOP • Tiered Approval Thresholds", path: "/documents", icon: FolderOpen, tag: "Governance" },
-    { id: "lv-1", type: "Leave", title: "Annual Leave: Ibrahim Bello", subtitle: "Nov 20 – Nov 24, 2026 • Approved", path: "/leave", icon: Calendar, tag: "Annual" },
-    { id: "lv-2", type: "Leave", title: "Medical Leave: Oluwaseun Adebayo", subtitle: "Nov 11 – Nov 13, 2026 • In Review", path: "/leave", icon: Calendar, tag: "Medical" },
-    { id: "tsk-1", type: "Task", title: "Lagos HQ Biometric Terminal #2 Firmware Sync", subtitle: "Infrastructure • High Priority • Due Today", path: "/tasks", icon: CheckSquare, tag: "Urgent" },
-    { id: "tsk-2", type: "Task", title: "Finalize November Commercial Bank Batch File", subtitle: "Finance & Payroll • In Progress", path: "/tasks", icon: CheckSquare, tag: "Finance" },
-    { id: "pay-1", type: "Payroll", title: "November 2026 Monthly Payroll Run", subtitle: "₦18,450,000 Gross • 48 Staff • Ready for Sign-off", path: "/admin/payroll/authorization", icon: CreditCard, tag: "Nov 2026" },
-  ], []);
+  const commandEntities = useMemo(() => {
+    const baseEntities = [
+      { id: "doc-1", type: "Document", title: "Stanforte 2026 Employee Handbook & Code of Conduct", subtitle: "HR Policy • Updated Nov 2026", path: "/documents", icon: FolderOpen, tag: "Policy" },
+      { id: "doc-2", type: "Document", title: "Financial Delegation of Authority Matrix (DoA)", subtitle: "Governance SOP • Tiered Approval Thresholds", path: "/documents", icon: FolderOpen, tag: "Governance" },
+      { id: "lv-1", type: "Leave", title: "Annual Leave: Ibrahim Bello", subtitle: "Nov 20 – Nov 24, 2026 • Approved", path: "/leave", icon: Calendar, tag: "Annual" },
+      { id: "lv-2", type: "Leave", title: "Medical Leave: Oluwaseun Adebayo", subtitle: "Nov 11 – Nov 13, 2026 • In Review", path: "/leave", icon: Calendar, tag: "Medical" },
+      { id: "tsk-1", type: "Task", title: "Lagos HQ Biometric Terminal #2 Firmware Sync", subtitle: "Infrastructure • High Priority • Due Today", path: "/tasks", icon: CheckSquare, tag: "Urgent" },
+      { id: "tsk-2", type: "Task", title: "Finalize November Commercial Bank Batch File", subtitle: "Finance & Payroll • In Progress", path: "/tasks", icon: CheckSquare, tag: "Finance" },
+      { id: "ana-1", type: "Analytics", title: "Workspace Analytics & Turnaround Velocity", subtitle: "Operational SLA & Attendance Rhythms", path: "/analytics", icon: PieChart, tag: "Metrics" },
+    ];
+
+    if (!isAdmin) {
+      // For standard staff: only display team colleagues linking to /teams, no admin payroll/vouchers
+      return [
+        ...baseEntities,
+        { id: "emp-1", type: "Colleague", title: "Oluwaseun Adeleke", subtitle: "Chief Financial Officer • Finance", path: "/teams", icon: UserCheck, tag: "Finance" },
+        { id: "emp-2", type: "Colleague", title: "Fatima Olarinwaju", subtitle: "Head of People • HR & Culture", path: "/teams", icon: UserCheck, tag: "People" },
+        { id: "emp-3", type: "Colleague", title: "Chinedu Ibeawuchi", subtitle: "Logistics Manager • Supply Chain", path: "/teams", icon: UserCheck, tag: "Supply Chain" },
+        { id: "emp-4", type: "Colleague", title: "Amina Yusuf", subtitle: "Senior Systems Engineer • Tech", path: "/teams", icon: UserCheck, tag: "Engineering" },
+      ];
+    }
+
+    // Admin exclusive entities
+    return [
+      ...baseEntities,
+      { id: "emp-1", type: "Employee", title: "Oluwaseun Adeleke", subtitle: "Chief Financial Officer • Finance", path: "/admin/users", icon: UserCheck, tag: "CFO" },
+      { id: "emp-2", type: "Employee", title: "Fatima Olarinwaju", subtitle: "Head of People • HR & Culture", path: "/admin/users", icon: UserCheck, tag: "HR Lead" },
+      { id: "emp-3", type: "Employee", title: "Chinedu Ibeawuchi", subtitle: "Logistics Manager • Supply Chain", path: "/admin/users", icon: UserCheck, tag: "Supply Chain" },
+      { id: "emp-4", type: "Employee", title: "Amina Yusuf", subtitle: "Senior Systems Engineer • Tech", path: "/admin/users", icon: UserCheck, tag: "Tech" },
+      { id: "pv-1", type: "Voucher", title: "PV-2026-089: Core Switch Rack Upgrade", subtitle: "₦420,000 • Pending CFO Review • IT Dept", path: "/finance/payment-vouchers", icon: Receipt, tag: "₦420,000" },
+      { id: "pv-2", type: "Voucher", title: "PV-2026-088: PenCom Q4 Pension Remittance", subtitle: "₦1,476,000 • Verified & Ready • Treasury", path: "/finance/payment-vouchers", icon: Receipt, tag: "₦1,476,000" },
+      { id: "pv-3", type: "Voucher", title: "PV-2026-085: Campus Diesel Generator Refill", subtitle: "₦680,000 • Awaiting Retirement • Facilities", path: "/finance/payment-vouchers", icon: Receipt, tag: "₦680,000" },
+      { id: "pay-1", type: "Payroll", title: "November 2026 Monthly Payroll Run", subtitle: "₦18,450,000 Gross • 48 Staff • Ready for Sign-off", path: "/admin/payroll/authorization", icon: CreditCard, tag: "Nov 2026" },
+    ];
+  }, [isAdmin]);
 
   const filteredCommandEntities = useMemo(() => {
     const q = commandQuery.trim().toLowerCase();
@@ -957,20 +988,28 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
           <div className="pt-2 border-t border-slate-100 space-y-0.5">
             {/* Analytics */}
             <Link
-              to="/finance/reports"
+              to="/analytics"
               onClick={() => setMobileMenuOpen(false)}
               className={`w-full flex items-center rounded-xl transition-all group ${
                 isCompactRail
                   ? "justify-center p-2.5 my-1"
                   : "justify-between px-3 py-2 text-xs font-semibold"
               } ${
-                currentPath.startsWith("/finance/reports")
+                currentPath.startsWith("/analytics")
                   ? "bg-[#ff6900] text-white shadow-sm shadow-orange-500/20 font-bold"
                   : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
               }`}
             >
               <div className="flex items-center gap-2.5 min-w-0">
-                <PieChart className="h-4 w-4 text-slate-400 group-hover:text-slate-700 shrink-0" />
+                <PieChart
+                  className={`shrink-0 transition-colors ${
+                    isCompactRail ? "h-5 w-5" : "h-4 w-4"
+                  } ${
+                    currentPath.startsWith("/analytics")
+                      ? "text-white"
+                      : "text-slate-400 group-hover:text-slate-700"
+                  }`}
+                />
                 {!isCompactRail && <span className="truncate">Analytics</span>}
               </div>
             </Link>
