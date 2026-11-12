@@ -49,6 +49,10 @@ import {
   ArrowRight,
   Globe,
   SlidersHorizontal,
+  Sparkles,
+  Command,
+  Bot,
+  Zap,
 } from "lucide-react";
 
 export type WorkspaceMode = "employee" | "admin";
@@ -87,13 +91,140 @@ export interface NavGroupDef {
 /**
  * Standard Employee Navigation (Clean, minimal, uncluttered daily workspace)
  */
+/**
+ * Modern 2026 Navigation Architecture (Linear / Ramp / Stripe / Workday inspired)
+ */
+export const WORKSPACE_NAV_GROUPS: NavGroupDef[] = [
+  {
+    title: "Operations",
+    items: [
+      {
+        label: "Tasks",
+        icon: CheckSquare,
+        path: "/tasks",
+        aliases: ["Work Items", "Kanban", "Deliverables", "Sprints"],
+        description: "Organization deliverables, Kanban sprint board, and backlog",
+      },
+      {
+        label: "Approvals",
+        icon: FileCheck,
+        path: "/requests/approvals",
+        badge: "23",
+        aliases: ["Decisions", "Approval Queue", "Vouchers"],
+        description: "Tiered sign-off queue for requisitions and leave",
+      },
+      {
+        label: "Teams",
+        icon: Users,
+        path: "/teams",
+        aliases: ["Groups", "Departments", "Roster"],
+        description: "Team rosters and departmental structure",
+      },
+    ],
+  },
+  {
+    title: "People",
+    items: [
+      {
+        label: "Employees",
+        icon: UserCheck,
+        path: "/admin/users",
+        aliases: ["Staff", "Directory", "HR", "Workforce"],
+        description: "Centralized personnel directory and profiles",
+      },
+      {
+        label: "Attendance",
+        icon: Clock,
+        path: "/attendance",
+        aliases: ["Time & Attendance", "Shifts", "Clock In"],
+        description: "Geofenced check-in logs and shift rhythms",
+      },
+      {
+        label: "Leave",
+        icon: Calendar,
+        path: "/leave",
+        aliases: ["Leave Management", "Vacation", "Absence", "Time Off"],
+        description: "Leave balances, applications, and coverage",
+      },
+    ],
+  },
+  {
+    title: "Finance",
+    items: [
+      {
+        label: "Ledger",
+        icon: Wallet,
+        path: "/finance/accounts",
+        aliases: ["Accounts", "General Ledger", "GL", "Cash Flow"],
+        description: "Operating bank accounts and ledger entries",
+      },
+      {
+        label: "Payroll",
+        icon: CreditCard,
+        path: "/admin/payroll/authorization",
+        aliases: ["Payroll Runs", "Salary", "PAYE", "Disbursements"],
+        description: "Automated monthly payroll runs and remittances",
+      },
+      {
+        label: "Vouchers",
+        icon: Receipt,
+        path: "/finance/payment-vouchers",
+        aliases: ["Payment Vouchers", "PVs", "Disbursements"],
+        description: "Disbursement vouchers and expense retirements",
+      },
+      {
+        label: "Procurement",
+        icon: ShoppingCart,
+        path: "/procurement",
+        aliases: ["Procurement & POs", "Purchase Orders", "Vendors"],
+        description: "Purchase requisitions, orders, and fulfillment",
+      },
+    ],
+  },
+  {
+    title: "Governance",
+    items: [
+      {
+        label: "Roles",
+        icon: Shield,
+        path: "/admin/roles",
+        aliases: ["Roles & Permissions", "RBAC", "Access"],
+        description: "Granular capabilities and authorization",
+      },
+      {
+        label: "Legal",
+        icon: Landmark,
+        path: "/admin/organizations",
+        aliases: ["Legal Entities", "Organizations", "Subsidiaries"],
+        description: "Corporate legal entities and branch subsidiaries",
+      },
+      {
+        label: "Settings",
+        icon: Settings,
+        path: "/admin/settings",
+        aliases: ["System Settings", "Configuration"],
+        description: "Security policies, audit logs, and preferences",
+      },
+    ],
+  },
+];
+
+export const ADMIN_NAV_GROUPS = WORKSPACE_NAV_GROUPS;
+
 export const EMPLOYEE_NAV_ITEMS: NavItemDef[] = [
   {
-    label: "Dashboard",
+    label: "Home",
     icon: Home,
     path: "/dashboard",
-    aliases: ["Home", "Overview"],
+    aliases: ["Dashboard", "Overview"],
     description: "Daily KPIs, tasks, and quick actions",
+  },
+  {
+    label: "Tasks",
+    icon: CheckSquare,
+    path: "/tasks",
+    aliases: ["Work Items", "Deliverables"],
+    description: "Personal tasks and team assignments",
   },
   {
     label: "Attendance",
@@ -141,154 +272,8 @@ export const EMPLOYEE_NAV_ITEMS: NavItemDef[] = [
     label: "Chat",
     icon: MessageSquare,
     path: "/chat",
-    aliases: ["Team Chat", "Messages", "Messenger", "Direct Messages"],
-    description: "Real-time communication and file sharing with colleagues",
-  },
-];
-
-/**
- * Admin Console Navigation (Management oversight & configuration)
- */
-export const ADMIN_NAV_GROUPS: NavGroupDef[] = [
-  {
-    title: "Executive",
-    items: [
-      {
-        label: "Dashboard",
-        icon: LayoutDashboard,
-        path: "/dashboard",
-        aliases: ["Home", "Overview"],
-        description: "Organization executive KPI metrics & activity stream",
-      },
-      {
-        label: "Approval Queue",
-        icon: FileCheck,
-        path: "/requests/approvals",
-        badge: "23",
-        aliases: ["Approvals", "Decisions"],
-        description: "Managerial decision queue for finance and leave",
-      },
-      {
-        label: "Tasks & Work Items",
-        icon: CheckSquare,
-        path: "/tasks",
-        aliases: ["Tasks", "Kanban", "Deliverables"],
-        description: "Organization work items, Kanban board, and project sprints",
-      },
-    ],
-  },
-  {
-    title: "HR & Workforce",
-    items: [
-      {
-        label: "Employees Directory",
-        icon: Users,
-        path: "/admin/users",
-        aliases: ["HR & Workforce", "Users", "Directory", "Staff"],
-        description: "Staff directory, onboarding and employee profiles",
-      },
-      {
-        label: "Time & Attendance",
-        icon: Clock,
-        path: "/attendance",
-        aliases: ["Attendance", "Shifts"],
-        description: "Workforce hours tracked, anomalies and corrections",
-      },
-      {
-        label: "Leave Management",
-        icon: Calendar,
-        path: "/leave",
-        aliases: ["Leave", "Absences"],
-        description: "Approve leave and monitor coverage",
-      },
-      {
-        label: "Teams & Departments",
-        icon: UserCheck,
-        path: "/teams",
-        aliases: ["Teams", "Groups"],
-        description: "Organizational structure and department leads",
-      },
-    ],
-  },
-  {
-    title: "Finance & Treasury",
-    items: [
-      {
-        label: "Finance Hub",
-        icon: Building2,
-        path: "/finance",
-        aliases: ["Finance", "Cash Flow"],
-        description: "Treasury overview, payables and cash position",
-      },
-      {
-        label: "Payroll Runs",
-        icon: CreditCard,
-        path: "/admin/payroll/authorization",
-        aliases: ["Payroll", "Authorization"],
-        description: "Monthly payroll sign-offs and disbursements",
-      },
-      {
-        label: "Accounts & Ledger",
-        icon: Wallet,
-        path: "/finance/accounts",
-        aliases: ["Accounts", "Ledger", "GL"],
-        description: "Operating bank accounts and ledger entries",
-      },
-      {
-        label: "Payment Vouchers",
-        icon: Receipt,
-        path: "/finance/payment-vouchers",
-        aliases: ["Vouchers", "PVs", "Disbursements"],
-        description: "Disbursement payment vouchers and retirement tracking",
-      },
-      {
-        label: "Budgets & Plans",
-        icon: PieChart,
-        path: "/finance/budgets",
-        aliases: ["Budgets"],
-        description: "Fiscal year departmental budget envelopes",
-      },
-      {
-        label: "Procurement & POs",
-        icon: ShoppingCart,
-        path: "/procurement",
-        aliases: ["Procurement", "Purchase Orders"],
-        description: "Vendor purchase orders and fulfillment",
-      },
-    ],
-  },
-  {
-    title: "Governance & System",
-    items: [
-      {
-        label: "Roles & Permissions",
-        icon: Shield,
-        path: "/admin/roles",
-        aliases: ["Roles", "Permissions", "RBAC"],
-        description: "Granular capabilities and access control",
-      },
-      {
-        label: "Legal Entities",
-        icon: Landmark,
-        path: "/admin/organizations",
-        aliases: ["Organizations", "Entities"],
-        description: "Corporate entities and subsidiaries",
-      },
-      {
-        label: "System Settings",
-        icon: Settings,
-        path: "/admin/settings",
-        aliases: ["Settings", "Admin Settings"],
-        description: "Audit trail, taxonomies and system config",
-      },
-      {
-        label: "Team Chat",
-        icon: MessageSquare,
-        path: "/chat",
-        aliases: ["Chat", "Messages", "Messenger", "Channels"],
-        description: "Organization channels, direct messages and file sharing",
-      },
-    ],
+    aliases: ["Team Chat", "Messages"],
+    description: "Real-time communication and file sharing",
   },
 ];
 
@@ -508,6 +493,40 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
   const userDropdownRef = useRef<HTMLDivElement>(null);
   const [appLauncherOpen, setAppLauncherOpen] = useState(false);
 
+  // 2026 AI-Native & Command Palette States
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [commandQuery, setCommandQuery] = useState("");
+  const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
+  const [aiInput, setAiInput] = useState("");
+  const [aiConversation, setAiConversation] = useState<Array<{ sender: "user" | "ai"; text: string; data?: any; time: string }>>([
+    {
+      sender: "ai",
+      text: "Hello Daniel. I'm Stanforte AI, your operational co-pilot for 2026. How can I assist you with approvals, attendance, payroll, or vouchers today?",
+      time: "Just now",
+    },
+  ]);
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+
+  const toggleGroup = (title: string) => {
+    setCollapsedGroups((prev) => ({ ...prev, [title]: !prev[title] }));
+  };
+
+  // Global ⌘K / Ctrl+K keyboard shortcut
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setCommandPaletteOpen((prev) => !prev);
+      }
+      if (e.key === "Escape") {
+        setCommandPaletteOpen(false);
+        setAiDrawerOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   // Search
   const [searchQuery, setSearchQuery] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
@@ -621,6 +640,92 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
     });
   }, [allNavItems, searchQuery]);
 
+  // 2026 Linear-style Search Entities (Employees, Documents, Vouchers, Leaves, Tasks, Departments, Payroll)
+  const commandEntities = useMemo(() => [
+    { id: "emp-1", type: "Employee", title: "Oluwaseun Adeleke", subtitle: "Chief Financial Officer • Finance", path: "/admin/users", icon: UserCheck, tag: "CFO" },
+    { id: "emp-2", type: "Employee", title: "Fatima Olarinwaju", subtitle: "Head of People • HR & Culture", path: "/admin/users", icon: UserCheck, tag: "HR Lead" },
+    { id: "emp-3", type: "Employee", title: "Chinedu Ibeawuchi", subtitle: "Logistics Manager • Supply Chain", path: "/admin/users", icon: UserCheck, tag: "Supply Chain" },
+    { id: "emp-4", type: "Employee", title: "Amina Yusuf", subtitle: "Senior Systems Engineer • Tech", path: "/admin/users", icon: UserCheck, tag: "Tech" },
+    { id: "pv-1", type: "Voucher", title: "PV-2026-089: Core Switch Rack Upgrade", subtitle: "₦420,000 • Pending CFO Review • IT Dept", path: "/finance/payment-vouchers", icon: Receipt, tag: "₦420,000" },
+    { id: "pv-2", type: "Voucher", title: "PV-2026-088: PenCom Q4 Pension Remittance", subtitle: "₦1,476,000 • Verified & Ready • Treasury", path: "/finance/payment-vouchers", icon: Receipt, tag: "₦1,476,000" },
+    { id: "pv-3", type: "Voucher", title: "PV-2026-085: Campus Diesel Generator Refill", subtitle: "₦680,000 • Awaiting Retirement • Facilities", path: "/finance/payment-vouchers", icon: Receipt, tag: "₦680,000" },
+    { id: "doc-1", type: "Document", title: "Stanforte 2026 Employee Handbook & Code of Conduct", subtitle: "HR Policy • Updated Nov 2026", path: "/documents", icon: FolderOpen, tag: "Policy" },
+    { id: "doc-2", type: "Document", title: "Financial Delegation of Authority Matrix (DoA)", subtitle: "Governance SOP • Tiered Approval Thresholds", path: "/documents", icon: FolderOpen, tag: "Governance" },
+    { id: "lv-1", type: "Leave", title: "Annual Leave: Ibrahim Bello", subtitle: "Nov 20 – Nov 24, 2026 • Approved", path: "/leave", icon: Calendar, tag: "Annual" },
+    { id: "lv-2", type: "Leave", title: "Medical Leave: Oluwaseun Adebayo", subtitle: "Nov 11 – Nov 13, 2026 • In Review", path: "/leave", icon: Calendar, tag: "Medical" },
+    { id: "tsk-1", type: "Task", title: "Lagos HQ Biometric Terminal #2 Firmware Sync", subtitle: "Infrastructure • High Priority • Due Today", path: "/tasks", icon: CheckSquare, tag: "Urgent" },
+    { id: "tsk-2", type: "Task", title: "Finalize November Commercial Bank Batch File", subtitle: "Finance & Payroll • In Progress", path: "/tasks", icon: CheckSquare, tag: "Finance" },
+    { id: "pay-1", type: "Payroll", title: "November 2026 Monthly Payroll Run", subtitle: "₦18,450,000 Gross • 48 Staff • Ready for Sign-off", path: "/admin/payroll/authorization", icon: CreditCard, tag: "Nov 2026" },
+  ], []);
+
+  const filteredCommandEntities = useMemo(() => {
+    const q = commandQuery.trim().toLowerCase();
+    if (!q) return commandEntities;
+    return commandEntities.filter(
+      (item) =>
+        item.title.toLowerCase().includes(q) ||
+        item.subtitle.toLowerCase().includes(q) ||
+        item.type.toLowerCase().includes(q) ||
+        item.tag.toLowerCase().includes(q)
+    );
+  }, [commandEntities, commandQuery]);
+
+  const handleRunAiPrompt = (promptText: string) => {
+    const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const userMsg = { sender: "user" as const, text: promptText, time: timeStr };
+
+    let aiReplyText = "";
+    let actionLink: string | undefined = undefined;
+    let actionLabel: string | undefined = undefined;
+
+    const lower = promptText.toLowerCase();
+
+    if (lower.includes("approval") || lower.includes("needs my approval")) {
+      aiReplyText =
+        "You currently have 4 items requiring executive sign-off:\n\n• PV-2026-089 (₦420,000 - IT Server Upgrade)\n• PR-2026-042 (₦850,000 - Office Workstation Replacements)\n• Leave Application: Oluwaseun Adebayo (3 Days Medical)\n• Expense Reimbursement: Chinedu Ibeawuchi (₦45,000)\n\nAll items comply with current budgetary caps.";
+      actionLink = "/requests/approvals";
+      actionLabel = "Open Approval Queue (4 Items)";
+    } else if (lower.includes("vouchers above") || lower.includes("500,000") || lower.includes("500k")) {
+      aiReplyText =
+        "Found 2 payment vouchers above ₦500,000 in the current fiscal period:\n\n1. PV-2026-088: ₦1,476,000 (PenCom Q4 Remittance) — Status: Verified\n2. PV-2026-085: ₦680,000 (Generator Fuel Reserves) — Status: Awaiting Retirement\n\nTotal high-value volume: ₦2,156,000.";
+      actionLink = "/finance/payment-vouchers";
+      actionLabel = "View Payment Vouchers";
+    } else if (lower.includes("absent") || lower.includes("who is absent")) {
+      aiReplyText =
+        "Workforce Status for Today (Lagos HQ):\n\n• 45 / 48 personnel verified on-duty (96.4% on-time rate).\n• 3 staff members on approved leave:\n  - Ibrahim Bello (Annual Leave, returns Nov 25)\n  - Oluwaseun Adebayo (Medical Leave, returns Nov 14)\n  - Kemi Eze (Personal Leave, returns tomorrow)";
+      actionLink = "/attendance";
+      actionLabel = "View Live Attendance Roster";
+    } else if (lower.includes("payroll summary") || lower.includes("payroll")) {
+      aiReplyText =
+        "November 2026 Payroll Execution Snapshot:\n\n• Gross Disbursal: ₦18,450,000\n• PAYE Statutory Tax: ₦2,860,000 (LIRS schedule generated)\n• PenCom Pension: ₦1,476,000 (PFA schedules attached)\n• Net Staff Take-Home: ₦14,114,000\n• 48 Active Personnel • 0 Discrepancies detected.";
+      actionLink = "/admin/payroll/authorization";
+      actionLabel = "Review Payroll Authorization";
+    } else if (lower.includes("budget variance") || lower.includes("variance")) {
+      aiReplyText =
+        "Budget Variance Analysis (Q4 2026):\n\n• Operations & Logistics: 72% utilized (₦8.2M / ₦11.4M) — +4% ahead of projection due to fuel price indexation.\n• Information Technology: 48% utilized (₦3.45M / ₦7.2M) — on track.\n• People & Culture: 30% utilized (₦1.2M / ₦4.0M) — under budget.\n\nOverall organizational variance is within the 10% safety envelope.";
+      actionLink = "/finance/budgets";
+      actionLabel = "Open Departmental Budgets";
+    } else if (lower.includes("delayed") || lower.includes("delayed requisitions")) {
+      aiReplyText =
+        "Delayed Requisitions Flagged:\n\n• PR-2026-038: Network Fiber Upgrade (Pending Vendor Quote > 72 hrs)\n• PR-2026-039: Q4 Audit Documentation Printing (Awaiting Dept Head acknowledgement).\n\nAutomated escalation reminders have been dispatched.";
+      actionLink = "/procurement";
+      actionLabel = "Check Procurement Pipeline";
+    } else {
+      aiReplyText = `Analyzed your query: "${promptText}". Operational records across Lagos HQ, Treasury, and People Operations are synced. You can explore corresponding dossiers below.`;
+      actionLink = "/dashboard";
+      actionLabel = "Return to Executive Workspace";
+    }
+
+    const aiMsg = {
+      sender: "ai" as const,
+      text: aiReplyText,
+      data: actionLink ? { actionLink, actionLabel } : undefined,
+      time: timeStr,
+    };
+
+    setAiConversation((prev) => [...prev, userMsg, aiMsg]);
+  };
+
   // Click outside listener for search palette
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -699,11 +804,40 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
         </div>
 
         {/* Middle: Clean Navigation Items */}
-        <div className="flex-1 overflow-y-auto min-h-0 my-3 space-y-4 scrollbar-thin scrollbar-thumb-slate-200 pr-0.5">
+        <div className="flex-1 overflow-y-auto min-h-0 my-3 space-y-3 scrollbar-thin scrollbar-thumb-slate-200 pr-0.5">
+          {/* Direct Home Link */}
+          <Link
+            to="/dashboard"
+            onClick={() => setMobileMenuOpen(false)}
+            title={isCompactRail ? "Home" : undefined}
+            className={`w-full flex items-center rounded-xl transition-all group ${
+              isCompactRail
+                ? "justify-center p-2.5 my-1"
+                : "justify-between px-3 py-2 text-xs font-semibold"
+            } ${
+              isItemActive({ label: "Home", icon: Home, path: "/dashboard", aliases: ["Dashboard"] })
+                ? "bg-[#ff6900] text-white shadow-sm shadow-orange-500/20 font-bold"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+            }`}
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <Home
+                className={`shrink-0 transition-colors ${
+                  isCompactRail ? "h-5 w-5" : "h-4 w-4"
+                } ${
+                  isItemActive({ label: "Home", icon: Home, path: "/dashboard", aliases: ["Dashboard"] })
+                    ? "text-white"
+                    : "text-slate-400 group-hover:text-slate-700"
+                }`}
+              />
+              {!isCompactRail && <span className="truncate">Home</span>}
+            </div>
+          </Link>
+
           {/* Mode 1: Clean Employee Workspace Navigation */}
           {workspaceMode === "employee" ? (
-            <nav className="space-y-1">
-              {EMPLOYEE_NAV_ITEMS.map((item) => {
+            <nav className="space-y-0.5">
+              {EMPLOYEE_NAV_ITEMS.filter((i) => i.label !== "Home").map((item) => {
                 const Icon = item.icon;
                 const isActive = isItemActive(item);
 
@@ -716,10 +850,10 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
                     className={`w-full flex items-center rounded-xl transition-all group ${
                       isCompactRail
                         ? "justify-center p-2.5 my-1"
-                        : "justify-between px-3 py-2.5 text-xs font-semibold"
+                        : "justify-between px-3 py-2 text-xs font-semibold"
                     } ${
                       isActive
-                        ? "bg-orange-50 text-[#ff6900] font-bold"
+                        ? "bg-[#ff6900] text-white shadow-sm shadow-orange-500/20 font-bold"
                         : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                     }`}
                   >
@@ -728,14 +862,16 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
                         className={`shrink-0 transition-colors ${
                           isCompactRail ? "h-5 w-5" : "h-4 w-4"
                         } ${
-                          isActive ? "text-[#ff6900]" : "text-slate-400 group-hover:text-slate-600"
+                          isActive ? "text-white" : "text-slate-400 group-hover:text-slate-700"
                         }`}
                       />
                       {!isCompactRail && <span className="truncate">{item.label}</span>}
                     </div>
 
                     {!isCompactRail && item.badge && (
-                      <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-orange-100 text-[#ff6900]">
+                      <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${
+                        isActive ? "bg-white text-[#ff6900]" : "bg-orange-100 text-[#ff6900]"
+                      }`}>
                         {item.badge}
                       </span>
                     )}
@@ -744,60 +880,142 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
               })}
             </nav>
           ) : (
-            /* Mode 2: Executive Admin Console Navigation */
-            <div className="space-y-4">
-              {ADMIN_NAV_GROUPS.map((group) => (
-                <div key={group.title} className="space-y-1">
-                  {!isCompactRail && (
-                    <div className="px-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                      {group.title}
-                    </div>
-                  )}
-                  <nav className="space-y-0.5">
-                    {group.items.map((item) => {
-                      const Icon = item.icon;
-                      const isActive = isItemActive(item);
+            /* Mode 2: Executive 2026 Workspace Navigation Groups */
+            <div className="space-y-3">
+              {ADMIN_NAV_GROUPS.map((group) => {
+                const isCollapsed = collapsedGroups[group.title];
 
-                      return (
-                        <Link
-                          key={item.label}
-                          to={item.path}
-                          onClick={() => setMobileMenuOpen(false)}
-                          title={isCompactRail ? item.label : undefined}
-                          className={`w-full flex items-center rounded-xl transition-all group ${
-                            isCompactRail
-                              ? "justify-center p-2.5 my-1"
-                              : "justify-between px-3 py-2 text-xs font-semibold"
-                          } ${
-                            isActive
-                              ? "bg-blue-600 text-white shadow-md shadow-blue-500/25"
-                              : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                return (
+                  <div key={group.title} className="space-y-0.5">
+                    {!isCompactRail && (
+                      <button
+                        type="button"
+                        onClick={() => toggleGroup(group.title)}
+                        className="w-full px-2.5 py-1 flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-slate-700 transition"
+                      >
+                        <span>{group.title}</span>
+                        <ChevronDown
+                          className={`h-3 w-3 text-slate-400 transition-transform duration-200 ${
+                            isCollapsed ? "-rotate-90" : ""
                           }`}
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <Icon
-                              className={`shrink-0 transition-colors ${
-                                isCompactRail ? "h-5 w-5" : "h-4 w-4"
-                              } ${
-                                isActive ? "text-white" : "text-slate-400 group-hover:text-slate-600"
-                              }`}
-                            />
-                            {!isCompactRail && <span className="truncate">{item.label}</span>}
-                          </div>
+                        />
+                      </button>
+                    )}
 
-                          {!isCompactRail && item.badge && (
-                            <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-white text-blue-700">
-                              {item.badge}
-                            </span>
-                          )}
-                        </Link>
-                      );
-                    })}
-                  </nav>
-                </div>
-              ))}
+                    {!isCollapsed && (
+                      <nav className="space-y-0.5">
+                        {group.items.map((item) => {
+                          const Icon = item.icon;
+                          const isActive = isItemActive(item);
+
+                          return (
+                            <Link
+                              key={item.label}
+                              to={item.path}
+                              onClick={() => setMobileMenuOpen(false)}
+                              title={isCompactRail ? item.label : undefined}
+                              className={`w-full flex items-center rounded-xl transition-all group ${
+                                isCompactRail
+                                  ? "justify-center p-2.5 my-1"
+                                  : "justify-between px-3 py-2 text-xs font-semibold"
+                              } ${
+                                isActive
+                                  ? "bg-[#ff6900] text-white shadow-sm shadow-orange-500/20 font-bold"
+                                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <Icon
+                                  className={`shrink-0 transition-colors ${
+                                    isCompactRail ? "h-5 w-5" : "h-4 w-4"
+                                  } ${
+                                    isActive ? "text-white" : "text-slate-400 group-hover:text-slate-700"
+                                  }`}
+                                />
+                                {!isCompactRail && <span className="truncate">{item.label}</span>}
+                              </div>
+
+                              {!isCompactRail && item.badge && (
+                                <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${
+                                  isActive ? "bg-white text-[#ff6900]" : "bg-orange-50 text-[#ff6900] border border-orange-200/60"
+                                }`}>
+                                  {item.badge}
+                                </span>
+                              )}
+                            </Link>
+                          );
+                        })}
+                      </nav>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
+
+          {/* Direct Core Modules: Analytics, AI Assistant, Chat */}
+          <div className="pt-2 border-t border-slate-100 space-y-0.5">
+            {/* Analytics */}
+            <Link
+              to="/finance/reports"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`w-full flex items-center rounded-xl transition-all group ${
+                isCompactRail
+                  ? "justify-center p-2.5 my-1"
+                  : "justify-between px-3 py-2 text-xs font-semibold"
+              } ${
+                currentPath.startsWith("/finance/reports")
+                  ? "bg-[#ff6900] text-white shadow-sm shadow-orange-500/20 font-bold"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+              }`}
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <PieChart className="h-4 w-4 text-slate-400 group-hover:text-slate-700 shrink-0" />
+                {!isCompactRail && <span className="truncate">Analytics</span>}
+              </div>
+            </Link>
+
+            {/* AI Assistant */}
+            <button
+              type="button"
+              onClick={() => setAiDrawerOpen(true)}
+              className={`w-full flex items-center rounded-xl transition-all group ${
+                isCompactRail
+                  ? "justify-center p-2.5 my-1"
+                  : "justify-between px-3 py-2 text-xs font-semibold"
+              } text-[#ff6900] hover:bg-orange-50/80`}
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <Sparkles className="h-4 w-4 text-[#ff6900] shrink-0" />
+                {!isCompactRail && <span className="font-bold truncate">Stanforte AI</span>}
+              </div>
+              {!isCompactRail && (
+                <span className="px-1.5 py-0.5 text-[9px] font-black rounded-md bg-orange-100 text-[#ff6900]">
+                  ⌘K
+                </span>
+              )}
+            </button>
+
+            {/* Team Chat */}
+            <Link
+              to="/chat"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`w-full flex items-center rounded-xl transition-all group ${
+                isCompactRail
+                  ? "justify-center p-2.5 my-1"
+                  : "justify-between px-3 py-2 text-xs font-semibold"
+              } ${
+                currentPath.startsWith("/chat")
+                  ? "bg-[#ff6900] text-white shadow-sm shadow-orange-500/20 font-bold"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+              }`}
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <MessageSquare className="h-4 w-4 text-slate-400 group-hover:text-slate-700 shrink-0" />
+                {!isCompactRail && <span className="truncate">Team Chat</span>}
+              </div>
+            </Link>
+          </div>
         </div>
 
         {/* Bottom: Settings & Quick Profile */}
@@ -852,99 +1070,57 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
           isCompactRail ? "lg:pl-16" : "lg:pl-64"
         }`}
       >
-        {/* Sticky Top Bar */}
-        <header className="h-16 shrink-0 bg-white/95 backdrop-blur-sm border-b border-slate-200/80 px-4 sm:px-8 flex items-center justify-between sticky top-0 z-20">
-          {/* Left: Mobile hamburger & Interactive Search */}
-          <div className="flex items-center gap-3 relative" ref={searchContainerRef}>
+        {/* Sticky Top Bar (2026 Linear/Ramp Standard) */}
+        <header className="h-16 shrink-0 bg-white/95 backdrop-blur-sm border-b border-slate-100 px-4 sm:px-8 flex items-center justify-between sticky top-0 z-20">
+          {/* Left: Mobile hamburger + Workspace Switcher + ⌘K Command Palette Trigger */}
+          <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => setMobileMenuOpen(true)}
-              className="lg:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100"
+              className="lg:hidden p-2 rounded-xl text-slate-600 hover:bg-slate-100"
               aria-label="Open menu"
             >
               <Menu className="h-5 w-5" />
             </button>
 
-            {/* Quick module search bar */}
-            <div className="relative w-64 sm:w-[380px]">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onFocus={() => setSearchFocused(true)}
-                placeholder="Search employees, requests, documents... (Ctrl + K)"
-                className="w-full pl-10 pr-4 py-2 text-xs bg-slate-50/80 border border-slate-200/80 rounded-2xl outline-none transition focus:bg-white focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/10"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded text-slate-400 hover:text-slate-600"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              )}
+            {/* Workspace Switcher Pill */}
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200/70 text-xs font-bold text-slate-800 shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="truncate max-w-[140px] sm:max-w-none">Stanforte Group • Lagos HQ</span>
             </div>
 
-            {/* Quick Search Palette */}
-            {searchFocused && searchQuery.trim().length > 0 && (
-              <div className="absolute top-full left-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 py-2 z-50 max-h-96 overflow-y-auto">
-                <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Matching Modules ({searchResults.length})
-                </div>
-
-                {searchResults.length === 0 ? (
-                  <div className="px-4 py-6 text-center text-xs text-slate-500">
-                    No matching modules found for &ldquo;{searchQuery}&rdquo;
-                  </div>
-                ) : (
-                  <div className="mt-1 divide-y divide-slate-100">
-                    {searchResults.map((res) => {
-                      const Icon = res.icon;
-                      return (
-                        <Link
-                          key={res.path + res.label}
-                          to={res.path}
-                          onClick={() => {
-                            setSearchFocused(false);
-                            setSearchQuery("");
-                          }}
-                          className="flex items-start gap-3 px-3.5 py-2.5 hover:bg-slate-50 transition-colors group"
-                        >
-                          <div className="p-1.5 rounded-lg bg-orange-50 text-[#ff6900] group-hover:bg-[#ff6900] group-hover:text-white transition-colors shrink-0">
-                            <Icon className="h-4 w-4" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-semibold text-slate-900 group-hover:text-[#ff6900] transition-colors">
-                                {res.label}
-                              </span>
-                              <span className="text-[10px] font-medium text-slate-400">
-                                {res.group}
-                              </span>
-                            </div>
-                            {res.description && (
-                              <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">
-                                {res.description}
-                              </p>
-                            )}
-                          </div>
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )}
+            {/* Linear-Style ⌘K Command Search Bar Trigger */}
+            <button
+              type="button"
+              onClick={() => setCommandPaletteOpen(true)}
+              className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-50/80 hover:bg-slate-100/80 border border-slate-200/80 text-xs text-slate-500 hover:text-slate-800 transition w-64 lg:w-80 justify-between shadow-2xs group cursor-pointer"
+            >
+              <div className="flex items-center gap-2 truncate">
+                <Search className="h-3.5 w-3.5 text-slate-400 group-hover:text-slate-600 shrink-0" />
+                <span className="truncate">Search records or ask AI...</span>
               </div>
-            )}
+              <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-mono font-semibold bg-white border border-slate-200 rounded-md text-slate-500 shadow-xs">
+                ⌘K
+              </kbd>
+            </button>
           </div>
 
-          {/* Right Action Items: Help, Notifications, Branch Dropdown */}
-          <div className="flex items-center gap-2.5 sm:gap-3">
+          {/* Right Action Items: AI Assistant Pill, Notifications, User Profile */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* AI Assistant Button (High-visibility 2026 design) */}
+            <button
+              type="button"
+              onClick={() => setAiDrawerOpen(true)}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-orange-50 hover:bg-orange-100 text-[#ff6900] border border-orange-200/70 text-xs font-bold transition shadow-2xs group cursor-pointer"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-[#ff6900] group-hover:rotate-12 transition-transform" />
+              <span>Ask AI</span>
+            </button>
+
             {/* Help Center */}
             <Link
               to="/help"
-              className="p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+              className="p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors hidden sm:flex"
               title="Help & Documentation"
             >
               <HelpCircle className="h-4 w-4" />
@@ -959,12 +1135,6 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
               <Bell className="h-4 w-4" />
               <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[#ff6900]" />
             </Link>
-
-            {/* Branch / Entity Dropdown */}
-            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 hover:text-slate-900 px-3 py-1.5 rounded-xl hover:bg-slate-100/80 transition cursor-pointer">
-              <span>Lagos HQ</span>
-              <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
-            </div>
 
             {/* --------------------------------------------------------- */}
             {/* 9-DOTS APP LAUNCHER BUTTON (Admin Console only)           */}
@@ -994,7 +1164,7 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
                 }`}
                 title="User Account & Settings"
               >
-                <div className="w-8 h-8 rounded-full bg-[#0a1128] text-white font-bold text-xs flex items-center justify-center shadow-inner">
+                <div className="w-8 h-8 rounded-full bg-[#ff6900] text-white font-bold text-xs flex items-center justify-center shadow-inner">
                   {initials || "AD"}
                 </div>
                 <ChevronDown
@@ -1006,11 +1176,11 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
 
               {/* Top-Right Dropdown Menu */}
               {userDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-slate-200/90 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-2026 border border-slate-100 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                   {/* User Profile Header */}
                   <div className="px-4 py-3 border-b border-slate-100">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-[#0a1128] text-white font-bold text-sm flex items-center justify-center shrink-0 shadow-sm">
+                      <div className="w-10 h-10 rounded-full bg-[#ff6900] text-white font-bold text-sm flex items-center justify-center shrink-0 shadow-sm">
                         {initials || "AD"}
                       </div>
                       <div className="min-w-0 flex-1">
@@ -1475,6 +1645,271 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
                   <LogOut className="h-4 w-4" />
                   <span>SIGN OUT</span>
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ============================================================= */}
+      {/* 2026 GLOBAL COMMAND PALETTE (⌘K) MODAL                        */}
+      {/* ============================================================= */}
+      {commandPaletteOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto p-4 sm:p-6 md:p-20 flex justify-center items-start animate-in fade-in duration-150">
+          <div
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
+            onClick={() => setCommandPaletteOpen(false)}
+          />
+
+          <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2026 border border-slate-100 overflow-hidden z-10 animate-in zoom-in-95 duration-150">
+            {/* Input Bar */}
+            <div className="flex items-center px-4 py-3.5 border-b border-slate-100 gap-3">
+              <Search className="h-5 w-5 text-slate-400 shrink-0" />
+              <input
+                type="text"
+                autoFocus
+                value={commandQuery}
+                onChange={(e) => setCommandQuery(e.target.value)}
+                placeholder="Search employees, vouchers, leaves, or ask Stanforte AI..."
+                className="w-full text-sm font-medium bg-transparent outline-none placeholder:text-slate-400 text-slate-900 border-none p-0 focus:ring-0"
+              />
+              {commandQuery ? (
+                <button
+                  type="button"
+                  onClick={() => setCommandQuery("")}
+                  className="p-1 rounded-md text-slate-400 hover:text-slate-600"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              ) : (
+                <span className="text-[10px] font-mono text-slate-400 px-1.5 py-0.5 rounded bg-slate-100">
+                  ESC
+                </span>
+              )}
+            </div>
+
+            {/* Quick Natural Language AI Suggestion Chips */}
+            <div className="px-4 py-2.5 bg-slate-50/70 border-b border-slate-100 flex items-center gap-2 overflow-x-auto text-[11px]">
+              <span className="text-slate-400 font-bold uppercase tracking-wider shrink-0 text-[10px]">
+                Suggested:
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setCommandPaletteOpen(false);
+                  setAiDrawerOpen(true);
+                  handleRunAiPrompt("What needs my approval?");
+                }}
+                className="px-2.5 py-1 rounded-full bg-white border border-slate-200/80 text-slate-700 hover:border-[#ff6900] hover:text-[#ff6900] transition whitespace-nowrap font-medium shrink-0 cursor-pointer"
+              >
+                ⚡ What needs my approval?
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setCommandPaletteOpen(false);
+                  setAiDrawerOpen(true);
+                  handleRunAiPrompt("Show payment vouchers above ₦500,000");
+                }}
+                className="px-2.5 py-1 rounded-full bg-white border border-slate-200/80 text-slate-700 hover:border-[#ff6900] hover:text-[#ff6900] transition whitespace-nowrap font-medium shrink-0 cursor-pointer"
+              >
+                ₦ Vouchers above ₦500k
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setCommandPaletteOpen(false);
+                  setAiDrawerOpen(true);
+                  handleRunAiPrompt("Who is absent today?");
+                }}
+                className="px-2.5 py-1 rounded-full bg-white border border-slate-200/80 text-slate-700 hover:border-[#ff6900] hover:text-[#ff6900] transition whitespace-nowrap font-medium shrink-0 cursor-pointer"
+              >
+                👥 Who is absent today?
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setCommandPaletteOpen(false);
+                  setAiDrawerOpen(true);
+                  handleRunAiPrompt("Generate payroll summary");
+                }}
+                className="px-2.5 py-1 rounded-full bg-white border border-slate-200/80 text-slate-700 hover:border-[#ff6900] hover:text-[#ff6900] transition whitespace-nowrap font-medium shrink-0 cursor-pointer"
+              >
+                📊 Generate payroll summary
+              </button>
+            </div>
+
+            {/* Entity Results List */}
+            <div className="max-h-96 overflow-y-auto p-2 divide-y divide-slate-50">
+              {filteredCommandEntities.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.id}
+                    to={item.path}
+                    onClick={() => {
+                      setCommandPaletteOpen(false);
+                      setCommandQuery("");
+                    }}
+                    className="flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 transition group"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-slate-100 group-hover:bg-orange-50 text-slate-600 group-hover:text-[#ff6900] flex items-center justify-center shrink-0 transition">
+                        <Icon className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-slate-900 group-hover:text-[#ff6900] transition truncate">
+                          {item.title}
+                        </div>
+                        <div className="text-[11px] text-slate-400 truncate">{item.subtitle}</div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0 ml-3">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">
+                        {item.tag}
+                      </span>
+                      <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-slate-600 group-hover:translate-x-0.5 transition" />
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+
+            {/* Footer */}
+            <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+              <div className="flex items-center gap-3">
+                <span>Navigate <kbd className="px-1.5 py-0.5 bg-white border rounded text-[10px]">↑</kbd> <kbd className="px-1.5 py-0.5 bg-white border rounded text-[10px]">↓</kbd></span>
+                <span>Select <kbd className="px-1.5 py-0.5 bg-white border rounded text-[10px]">↵</kbd></span>
+              </div>
+              <span className="font-semibold text-slate-500">Stanforte Edge 2026</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================= */}
+      {/* 2026 STANFORTE AI ASSISTANT SLIDE-OVER DRAWER                */}
+      {/* ============================================================= */}
+      {aiDrawerOpen && (
+        <div className="fixed inset-0 z-50 overflow-hidden">
+          <div
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
+            onClick={() => setAiDrawerOpen(false)}
+          />
+
+          <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
+            <div className="w-screen max-w-md bg-white text-slate-900 shadow-2026 flex flex-col justify-between border-l border-slate-100">
+              {/* Header */}
+              <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-2xl bg-orange-50 text-[#ff6900] flex items-center justify-center font-bold">
+                    <Sparkles className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm text-slate-900 flex items-center gap-1.5">
+                      <span>Stanforte AI</span>
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-orange-100 text-[#ff6900]">
+                        2026
+                      </span>
+                    </h3>
+                    <p className="text-[11px] text-slate-400">Enterprise Contextual Assistant</p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setAiDrawerOpen(false)}
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Suggested Questions Grid */}
+              <div className="p-4 bg-slate-50/70 border-b border-slate-100 space-y-2">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Contextual Suggestions:
+                </div>
+                <div className="grid grid-cols-1 gap-1.5 text-xs">
+                  {[
+                    "What needs my approval?",
+                    "Show delayed requisitions",
+                    "Compare payroll costs",
+                    "Explain this budget variance",
+                    "Show payment vouchers above ₦500,000",
+                    "Who is absent today?",
+                  ].map((q) => (
+                    <button
+                      key={q}
+                      type="button"
+                      onClick={() => handleRunAiPrompt(q)}
+                      className="text-left px-3 py-2 rounded-xl bg-white border border-slate-200/80 hover:border-[#ff6900] hover:text-[#ff6900] text-slate-700 font-medium transition shadow-2xs text-[11px] flex items-center justify-between group cursor-pointer"
+                    >
+                      <span>{q}</span>
+                      <ArrowRight className="h-3 w-3 text-slate-300 group-hover:text-[#ff6900] group-hover:translate-x-0.5 transition" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Chat Thread */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-3.5 scrollbar-thin">
+                {aiConversation.map((msg, idx) => (
+                  <div
+                    key={idx}
+                    className={`flex flex-col ${msg.sender === "user" ? "items-end" : "items-start"}`}
+                  >
+                    <div
+                      className={`max-w-[88%] rounded-2xl p-3.5 text-xs leading-relaxed ${
+                        msg.sender === "user"
+                          ? "bg-[#ff6900] text-white shadow-sm"
+                          : "bg-slate-50 border border-slate-100 text-slate-800 shadow-2xs"
+                      }`}
+                    >
+                      <div className="font-medium whitespace-pre-wrap">{msg.text}</div>
+
+                      {msg.data && msg.data.actionLink && (
+                        <Link
+                          to={msg.data.actionLink}
+                          onClick={() => setAiDrawerOpen(false)}
+                          className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-[#ff6900] font-bold text-[11px] shadow-2xs hover:bg-slate-50 transition"
+                        >
+                          <span>{msg.data.actionLabel || "View Record"}</span>
+                          <ArrowRight className="h-3 w-3" />
+                        </Link>
+                      )}
+                    </div>
+                    <span className="text-[10px] text-slate-400 mt-1 px-1">{msg.time}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Bottom Input Box */}
+              <div className="p-4 border-t border-slate-100 bg-white">
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (aiInput.trim()) {
+                      handleRunAiPrompt(aiInput.trim());
+                      setAiInput("");
+                    }
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <input
+                    type="text"
+                    value={aiInput}
+                    onChange={(e) => setAiInput(e.target.value)}
+                    placeholder="Ask Stanforte AI anything..."
+                    className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-900 outline-none focus:border-[#ff6900]"
+                  />
+                  <button
+                    type="submit"
+                    className="p-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white font-bold transition shadow-sm cursor-pointer"
+                  >
+                    <Zap className="h-4 w-4" />
+                  </button>
+                </form>
               </div>
             </div>
           </div>
