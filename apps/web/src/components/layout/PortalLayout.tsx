@@ -626,16 +626,16 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
           list.push({ ...item, group: group.title });
         });
       });
+      list.push({
+        label: "Analytics",
+        icon: PieChart,
+        path: "/analytics",
+        group: "Insights",
+        description: "Workspace analytics, punctuality velocity, and turnaround rhythms",
+      });
     }
     EMPLOYEE_NAV_ITEMS.forEach((item) => {
       list.push({ ...item, group: "Staff Workspace" });
-    });
-    list.push({
-      label: "Analytics",
-      icon: PieChart,
-      path: "/analytics",
-      group: "Insights",
-      description: "Workspace analytics, punctuality velocity, and turnaround rhythms",
     });
     return list;
   }, [isAdmin]);
@@ -661,7 +661,6 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
       { id: "lv-2", type: "Leave", title: "Medical Leave: Oluwaseun Adebayo", subtitle: "Nov 11 – Nov 13, 2026 • In Review", path: "/leave", icon: Calendar, tag: "Medical" },
       { id: "tsk-1", type: "Task", title: "Lagos HQ Biometric Terminal #2 Firmware Sync", subtitle: "Infrastructure • High Priority • Due Today", path: "/tasks", icon: CheckSquare, tag: "Urgent" },
       { id: "tsk-2", type: "Task", title: "Finalize November Commercial Bank Batch File", subtitle: "Finance & Payroll • In Progress", path: "/tasks", icon: CheckSquare, tag: "Finance" },
-      { id: "ana-1", type: "Analytics", title: "Workspace Analytics & Turnaround Velocity", subtitle: "Operational SLA & Attendance Rhythms", path: "/analytics", icon: PieChart, tag: "Metrics" },
     ];
 
     if (!isAdmin) {
@@ -678,6 +677,7 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
     // Admin exclusive entities
     return [
       ...baseEntities,
+      { id: "ana-1", type: "Analytics", title: "Workspace Analytics & Turnaround Velocity", subtitle: "Operational SLA & Attendance Rhythms", path: "/analytics", icon: PieChart, tag: "Metrics" },
       { id: "emp-1", type: "Employee", title: "Oluwaseun Adeleke", subtitle: "Chief Financial Officer • Finance", path: "/admin/users", icon: UserCheck, tag: "CFO" },
       { id: "emp-2", type: "Employee", title: "Fatima Olarinwaju", subtitle: "Head of People • HR & Culture", path: "/admin/users", icon: UserCheck, tag: "HR Lead" },
       { id: "emp-3", type: "Employee", title: "Chinedu Ibeawuchi", subtitle: "Logistics Manager • Supply Chain", path: "/admin/users", icon: UserCheck, tag: "Supply Chain" },
@@ -984,10 +984,10 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
             </div>
           )}
 
-          {/* Direct Core Modules: Analytics, AI Assistant, Chat */}
+          {/* Direct Core Modules: AI Assistant, plus Admin Analytics & Chat */}
           <div className="pt-2 border-t border-slate-100 space-y-0.5">
-            {/* Analytics (Admin Only) */}
-            {isAdmin && (
+            {/* Analytics (Admin Console Only - Hidden completely from Normal Staff Workspace) */}
+            {workspaceMode === "admin" && (
               <Link
                 to="/analytics"
                 onClick={() => setMobileMenuOpen(false)}
@@ -1037,25 +1037,27 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
               )}
             </button>
 
-            {/* Team Chat */}
-            <Link
-              to="/chat"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`w-full flex items-center rounded-xl transition-all group ${
-                isCompactRail
-                  ? "justify-center p-2.5 my-1"
-                  : "justify-between px-3 py-2 text-xs font-semibold"
-              } ${
-                currentPath.startsWith("/chat")
-                  ? "bg-[#ff6900] text-white shadow-sm shadow-orange-500/20 font-bold"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-              }`}
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <MessageSquare className="h-4 w-4 text-slate-400 group-hover:text-slate-700 shrink-0" />
-                {!isCompactRail && <span className="truncate">Team Chat</span>}
-              </div>
-            </Link>
+            {/* Team Chat (Admin Console Only - In Employee mode, Chat already exists in the main staff items list) */}
+            {workspaceMode === "admin" && (
+              <Link
+                to="/chat"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`w-full flex items-center rounded-xl transition-all group ${
+                  isCompactRail
+                    ? "justify-center p-2.5 my-1"
+                    : "justify-between px-3 py-2 text-xs font-semibold"
+                } ${
+                  currentPath.startsWith("/chat")
+                    ? "bg-[#ff6900] text-white shadow-sm shadow-orange-500/20 font-bold"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <MessageSquare className="h-4 w-4 text-slate-400 group-hover:text-slate-700 shrink-0" />
+                  {!isCompactRail && <span className="truncate">Team Chat</span>}
+                </div>
+              </Link>
+            )}
           </div>
         </div>
 
