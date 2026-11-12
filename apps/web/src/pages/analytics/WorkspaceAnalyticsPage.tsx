@@ -2,24 +2,11 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import {
   TrendingUp,
-  Clock,
-  CheckCircle2,
-  AlertTriangle,
   ArrowRight,
-  BarChart3,
-  Users,
-  Calendar,
   Sparkles,
   Download,
-  Filter,
-  CheckSquare,
-  FileText,
-  Activity,
-  Zap,
-  ArrowUpRight,
   ShieldCheck,
   ChevronRight,
-  PieChart,
 } from "lucide-react";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { useWorkspace } from "@/components/layout/PortalLayout";
@@ -76,33 +63,30 @@ export default function WorkspaceAnalyticsPage() {
               <button
                 type="button"
                 onClick={() => setTimeRange("week")}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
-                  timeRange === "week"
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${timeRange === "week"
                     ? "bg-white text-slate-900 shadow-xs"
                     : "text-slate-500 hover:text-slate-900"
-                }`}
+                  }`}
               >
                 This Week
               </button>
               <button
                 type="button"
                 onClick={() => setTimeRange("month")}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
-                  timeRange === "month"
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${timeRange === "month"
                     ? "bg-white text-slate-900 shadow-xs"
                     : "text-slate-500 hover:text-slate-900"
-                }`}
+                  }`}
               >
                 This Month
               </button>
               <button
                 type="button"
                 onClick={() => setTimeRange("quarter")}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
-                  timeRange === "quarter"
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${timeRange === "quarter"
                     ? "bg-white text-slate-900 shadow-xs"
                     : "text-slate-500 hover:text-slate-900"
-                }`}
+                  }`}
               >
                 Q4 2026
               </button>
@@ -244,8 +228,8 @@ export default function WorkspaceAnalyticsPage() {
                         item.status === "optimal"
                           ? "#22c55e"
                           : item.status === "good"
-                          ? "#ff6900"
-                          : "#94a3b8",
+                            ? "#ff6900"
+                            : "#94a3b8",
                     }}
                   />
                   <span className="text-xs font-bold text-slate-700 mt-1">
@@ -430,3 +414,4 @@ export default function WorkspaceAnalyticsPage() {
     </div>
   );
 }
+
