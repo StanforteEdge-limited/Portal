@@ -9,7 +9,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useAuth } from "@/shared/context/AuthProvider";
-import { useWorkspace } from "@/components/layout/PortalLayout";
+import { PortalLayout, useWorkspace } from "@/components/layout/PortalLayout";
 
 export default function WorkspaceAnalyticsPage() {
   const { user } = useAuth();
@@ -36,24 +36,25 @@ export default function WorkspaceAnalyticsPage() {
   ];
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-16">
+    <PortalLayout activeNav="Analytics">
+    <div className="space-y-6 max-w-[1600px] mx-auto pb-16">
       {/* 1. PAGE HEADER (2026 Executive Workspace Architecture) */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-2026 border border-slate-100/80 transition-all">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2.5">
               <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-orange-50 text-[#ff6900] border border-orange-200/60">
-                Workspace Intelligence
+                Admin Intelligence
               </span>
               <span className="text-xs text-slate-400 font-medium">
                 Live Data • Lagos HQ Engine
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-slate-950 tracking-tight">
-              Workspace Analytics &amp; Velocity
+              Organization Analytics &amp; Velocity
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 max-w-2xl font-normal">
-              Continuous operational metrics, punctuality velocity, task turnaround rhythms, and team productivity tracking for Stanforte Edge.
+              Executive operational metrics, workforce punctuality velocity, task turnaround rhythms, and department productivity tracking across Stanforte Group.
             </p>
           </div>
 
@@ -109,7 +110,7 @@ export default function WorkspaceAnalyticsPage() {
             <div className="flex items-center gap-2 text-slate-600">
               <ShieldCheck className="h-4 w-4 text-blue-600" />
               <span>
-                You are viewing the <strong>Standard Staff Workspace Analytics</strong>. As an authorized administrator, you also have access to audited finance reports.
+                You are viewing <strong>Executive Admin Organization Analytics</strong>. Need detailed financial statements and ledger audits?
               </span>
             </div>
             <Link
@@ -401,10 +402,10 @@ export default function WorkspaceAnalyticsPage() {
 
             <div className="mt-5 pt-4 border-t border-slate-100">
               <Link
-                to="/attendance"
+                to="/hr/attendance"
                 className="flex items-center justify-between text-xs font-bold text-[#ff6900] hover:underline"
               >
-                <span>View Attendance Logs</span>
+                <span>View Workforce Attendance Logs</span>
                 <ChevronRight className="h-3.5 w-3.5" />
               </Link>
             </div>
@@ -412,6 +413,7 @@ export default function WorkspaceAnalyticsPage() {
         </div>
       </div>
     </div>
+    </PortalLayout>
   );
 }
 
