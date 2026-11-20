@@ -85,8 +85,8 @@ export default function AdminProjectsPage() {
   const projects: ProjectRow[] = Array.isArray((projectsData as any)?.data?.items)
     ? (projectsData as any).data.items
     : Array.isArray(projectsData)
-    ? projectsData
-    : [];
+      ? projectsData
+      : [];
 
   const activeProjects = projects.filter(
     (p) => p.isActive && p.governance?.governance_status !== "archived",
@@ -124,120 +124,94 @@ export default function AdminProjectsPage() {
     const s = (status || "active").toLowerCase();
     switch (s) {
       case "active":
-        return "bg-emerald-50 text-emerald-700 border-emerald-200";
-      case "planned":
-        return "bg-neutral-100 text-neutral-700 border-neutral-200";
+        return {
+          pill: "bg-emerald-50 text-emerald-700 border-emerald-600/15",
+          dot: "bg-emerald-600",
+        };
       case "on_hold":
-        return "bg-amber-50 text-amber-700 border-amber-200";
-      case "completed":
-        return "bg-neutral-100 text-neutral-700 border-neutral-200";
+        return {
+          pill: "bg-amber-50 text-amber-800 border-amber-600/15",
+          dot: "bg-amber-600",
+        };
       default:
-        return "bg-neutral-100 text-neutral-600 border-neutral-200";
+        return {
+          pill: "bg-neutral-100 text-neutral-700 border-neutral-900/[0.08]",
+          dot: "bg-neutral-400",
+        };
     }
   };
 
   return (
-    <PortalLayout activeNav="Teams & Departments">
-      <div className="space-y-6 max-w-[1600px] mx-auto pb-12">
-        {/* Modern Unified Page Header (No Breadcrumbs) */}
+    <PortalLayout activeNav="Teams & Units">
+      <div className="space-y-6 max-w-[1440px] mx-auto pb-12">
         <PageHeader
-          title="Enterprise Projects & Initiatives"
-          description="Manage project governance codes, client delivery timelines, and executive ownership."
-          icon={Briefcase}
-          iconColor="bg-orange-50 text-[#ff6900]"
+          title="Enterprise projects and initiatives"
+          description="Manage project governance codes, client delivery timelines, and executive ownership"
           actions={
             <button
               type="button"
               onClick={() => setShowCreate(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-medium shadow-sm transition active:scale-[0.98]"
+              className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#ff6900] hover:bg-[#ea580c] text-white text-sm font-medium transition-colors duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30"
             >
-              <Plus className="h-4 w-4" />
-              <span>Create New Project</span>
+              <Plus className="h-4 w-4" strokeWidth={1.5} />
+              <span>Create project</span>
             </button>
           }
         />
 
-        {/* 4 Metric KPI Cards */}
+        {/* 4 Compact Numbers-Only KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
-                <Briefcase className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="text-xs font-semibold text-neutral-500">Total Projects</div>
-                <div className="text-xl font-semibold text-neutral-900 mt-0.5">{projects.length}</div>
-              </div>
-            </div>
-            <span className="text-xs font-medium text-neutral-700 bg-neutral-100 px-2 py-0.5 rounded-full">
-              Tracked
-            </span>
-          </div>
+          <article className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
+            <p className="text-xs text-neutral-500">Total projects</p>
+            <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+              {projects.length.toLocaleString()}
+            </p>
+            <p className="text-xs text-neutral-500">Tracked initiatives</p>
+          </article>
 
-          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                <CheckCircle2 className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="text-xs font-semibold text-neutral-500">Active Delivery</div>
-                <div className="text-xl font-semibold text-neutral-900 mt-0.5">{activeProjects}</div>
-              </div>
-            </div>
-            <span className="text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
-              In Flight
-            </span>
-          </div>
+          <article className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
+            <p className="text-xs text-neutral-500">Active delivery</p>
+            <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+              {activeProjects.toLocaleString()}
+            </p>
+            <p className="text-xs text-neutral-500">Currently in flight</p>
+          </article>
 
-          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
-                <Calendar className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="text-xs font-semibold text-neutral-500">Archived / Closed</div>
-                <div className="text-xl font-semibold text-neutral-900 mt-0.5">{archivedProjects}</div>
-              </div>
-            </div>
-            <span className="text-xs font-medium text-neutral-700 bg-neutral-100 px-2 py-0.5 rounded-full">
-              Concluded
-            </span>
-          </div>
+          <article className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
+            <p className="text-xs text-neutral-500">Archived or closed</p>
+            <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+              {archivedProjects.toLocaleString()}
+            </p>
+            <p className="text-xs text-neutral-500">Concluded records</p>
+          </article>
 
-          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-                <Building2 className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="text-xs font-semibold text-neutral-500">Governance Policy</div>
-                <div className="text-sm font-semibold text-neutral-900 mt-0.5">Stanforte Edge</div>
-              </div>
-            </div>
-            <span className="text-xs font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
-              Compliant
-            </span>
-          </div>
+          <article className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
+            <p className="text-xs text-neutral-500">Governance policy</p>
+            <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline">
+              Enforced
+            </p>
+            <p className="text-xs text-neutral-500">Stanforte Edge standard</p>
+          </article>
         </div>
 
         {/* Filter and Search Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
-            <div className="relative min-w-[240px] flex-1 sm:flex-none">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400 pointer-events-none" />
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            <div className="relative min-w-[260px] flex-1 sm:flex-none">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400 pointer-events-none" strokeWidth={1.5} />
               <input
                 type="search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search projects or codes..."
-                className="w-full pl-9 pr-3 py-1.5 rounded-xl border border-neutral-200 bg-white text-xs font-semibold text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                placeholder="Search projects or codes"
+                className="w-full h-9 pl-9 pr-3 rounded-lg border border-neutral-900/[0.12] bg-white text-sm text-neutral-900 placeholder:text-neutral-400 outline-none transition-[border-color,box-shadow] duration-150 focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
               />
             </div>
 
             <SelectBox
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-1.5 rounded-xl border border-neutral-200 bg-white text-xs font-semibold text-neutral-700 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20"
+              className="h-9 px-3 rounded-lg border border-neutral-900/[0.12] bg-white text-sm text-neutral-700 outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
             >
               {STATUS_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -249,41 +223,41 @@ export default function AdminProjectsPage() {
             <button
               type="button"
               onClick={() => void refetchProjects()}
-              className="p-2 rounded-xl border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50 transition"
+              className="h-9 w-9 inline-flex items-center justify-center rounded-lg border border-neutral-900/[0.10] bg-white text-neutral-500 hover:text-neutral-900 hover:bg-neutral-50 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30"
               title="Refresh projects"
             >
-              <RotateCcw className="h-3.5 w-3.5" />
+              <RotateCcw className="h-4 w-4" strokeWidth={1.5} />
             </button>
           </div>
         </div>
 
         {/* Projects Table */}
-        <div className="bg-white border border-neutral-200/80 rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-white border border-neutral-900/[0.08] rounded-2xl shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-neutral-200/80 bg-neutral-50/70 text-xs font-medium text-neutral-500">
-                  <th className="py-3 px-5">Project Name & Code</th>
-                  <th className="py-3 px-4">Timeline</th>
-                  <th className="py-3 px-4">Status</th>
+                <tr className="border-b border-neutral-900/[0.08] bg-neutral-50/80 text-xs font-medium text-neutral-500">
+                  <th className="py-3 px-5">Project and code</th>
+                  <th className="py-3 px-5">Timeline</th>
+                  <th className="py-3 px-5">Status</th>
                   <th className="py-3 px-5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-100 text-xs">
+              <tbody className="divide-y divide-neutral-900/[0.06] text-sm text-neutral-700">
                 {projectsLoading ? (
                   <tr>
-                    <td colSpan={4} className="py-12 text-center text-neutral-400 font-medium">
-                      <div className="w-6 h-6 border-2 border-[#ff6900] border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                      Loading projects...
+                    <td colSpan={4} className="py-12 text-center text-sm text-neutral-500">
+                      <div className="w-5 h-5 border-2 border-[#ff6900] border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                      Loading projects
                     </td>
                   </tr>
                 ) : filteredProjects.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="py-12 text-center text-neutral-500">
-                      <Briefcase className="h-8 w-8 text-neutral-300 mx-auto mb-2" />
-                      <div className="font-medium text-neutral-700">No projects found</div>
-                      <p className="text-xs text-neutral-400 mt-0.5">
-                        Adjust search filters or create a new enterprise initiative.
+                    <td colSpan={4} className="py-14 text-center">
+                      <Briefcase className="h-6 w-6 text-neutral-400 mx-auto mb-2" strokeWidth={1.5} />
+                      <div className="text-sm font-medium text-neutral-900">No projects found</div>
+                      <p className="text-xs text-neutral-500 mt-1">
+                        Adjust search filters or create a new enterprise initiative
                       </p>
                     </td>
                   </tr>
@@ -291,15 +265,16 @@ export default function AdminProjectsPage() {
                   filteredProjects.map((p) => {
                     const statusStr =
                       p.governance?.governance_status || (p.isActive ? "active" : "archived");
+                    const badge = getStatusBadge(statusStr);
                     return (
-                      <tr key={p.id} className="hover:bg-neutral-50/60 transition group">
+                      <tr key={p.id} className="hover:bg-neutral-50 focus-within:bg-neutral-50/80 transition-colors duration-150">
                         <td className="py-3.5 px-5">
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-neutral-900">{p.name}</span>
                             {p.governance?.project_code && (
-                              <span className="font-mono text-xs font-medium px-2 py-0.5 rounded-md bg-neutral-100 text-neutral-600 border border-neutral-200">
+                              <code className="font-mono text-xs px-2 py-0.5 rounded-md bg-neutral-100 text-neutral-700 border border-neutral-900/[0.06]">
                                 {p.governance.project_code}
-                              </span>
+                              </code>
                             )}
                           </div>
                           {p.description && (
@@ -308,41 +283,40 @@ export default function AdminProjectsPage() {
                             </p>
                           )}
                         </td>
-                        <td className="py-3.5 px-4 text-neutral-600">
+                        <td className="py-3.5 px-5 text-xs font-mono text-neutral-500 tabular-nums">
                           {p.governance?.start_date || p.governance?.end_date ? (
-                            <span className="text-xs">
-                              {p.governance.start_date || "-"} – {p.governance.end_date || "Ongoing"}
+                            <span>
+                              {p.governance.start_date || "—"} – {p.governance.end_date || "Ongoing"}
                             </span>
                           ) : (
-                            <span className="text-neutral-400 text-xs">-</span>
+                            <span>—</span>
                           )}
                         </td>
-                        <td className="py-3.5 px-4">
+                        <td className="py-3.5 px-5">
                           <span
-                            className={`px-2.5 py-0.5 rounded-full text-xs font-medium border   ${getStatusBadge(
-                              statusStr,
-                            )}`}
+                            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium border capitalize ${badge.pill}`}
                           >
-                            {statusStr}
+                            <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
+                            {statusStr.replace(/_/g, " ")}
                           </span>
                         </td>
                         <td className="py-3.5 px-5 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
+                          <div className="flex items-center justify-end gap-1">
                             <button
                               type="button"
                               onClick={() => setEditingProject(p)}
-                              className="p-1.5 rounded-lg border border-neutral-200 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 transition"
+                              className="h-8 w-8 inline-flex items-center justify-center rounded-lg text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30 transition-colors duration-150"
                               title="Edit project"
                             >
-                              <Pencil className="h-3.5 w-3.5" />
+                              <Pencil className="h-4 w-4" strokeWidth={1.5} />
                             </button>
                             <button
                               type="button"
                               onClick={() => handleDeleteProject(p)}
-                              className="p-1.5 rounded-lg border border-neutral-200 text-rose-600 hover:bg-rose-50 transition"
-                              title="Delete project"
+                              className="h-8 w-8 inline-flex items-center justify-center rounded-lg text-neutral-400 hover:text-rose-600 hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30 transition-colors duration-150"
+                              title="Archive project"
                             >
-                              <Trash2 className="h-3.5 w-3.5" />
+                              <Trash2 className="h-4 w-4" strokeWidth={1.5} />
                             </button>
                           </div>
                         </td>
@@ -361,16 +335,16 @@ export default function AdminProjectsPage() {
             project={
               editingProject
                 ? {
-                    id: editingProject.id,
-                    name: editingProject.name,
-                    description: editingProject.description || undefined,
-                    projectCode: editingProject.governance?.project_code || undefined,
-                    organizationId: editingProject.organizationId || undefined,
-                    ownerId: editingProject.governance?.owner_user_id || undefined,
-                    status: editingProject.governance?.governance_status || "active",
-                    startDate: editingProject.governance?.start_date || undefined,
-                    endDate: editingProject.governance?.end_date || undefined,
-                  }
+                  id: editingProject.id,
+                  name: editingProject.name,
+                  description: editingProject.description || undefined,
+                  projectCode: editingProject.governance?.project_code || undefined,
+                  organizationId: editingProject.organizationId || undefined,
+                  ownerId: editingProject.governance?.owner_user_id || undefined,
+                  status: editingProject.governance?.governance_status || "active",
+                  startDate: editingProject.governance?.start_date || undefined,
+                  endDate: editingProject.governance?.end_date || undefined,
+                }
                 : null
             }
             defaultOrgId={createOrgId}

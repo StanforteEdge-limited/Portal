@@ -2,6 +2,7 @@ import { SelectBox } from "@/components/ui/select";
 import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { PortalLayout } from "@/components/layout/PortalLayout";
+import { PageHeader } from "@/shared";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { requestApi, httpRequest } from "@/shared/lib/core";
 import { type RequestType } from "@stanforte/shared";
@@ -266,80 +267,68 @@ export default function AdminSettingsPage() {
 
   return (
     <PortalLayout activeNav="Settings">
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-medium text-neutral-500 mb-1">
-              <Link to="/dashboard" className="hover:text-neutral-800 transition">Dashboard</Link>
-              <ChevronRight className="h-3 w-3" />
-              <span className="text-neutral-800 font-semibold">Settings</span>
-            </div>
-            <h1 className="text-2xl font-semibold text-neutral-900 tracking-tight font-headline">
-              Workspace & System Settings
-            </h1>
-            <p className="text-xs text-neutral-500 mt-0.5">
-              Configure tenant parameters, request approval workflows, taxonomy dictionaries, and security.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {activeTab === "types" && (
-              <button
-                type="button"
-                onClick={() => setEditingType(true)}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#e05d00] text-white text-xs font-medium shadow-sm transition active:scale-[0.98]"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Add Request Type</span>
-              </button>
-            )}
-            {activeTab === "categories" && (
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingCategory(true);
-                  setCategoryForm({ group_id: groups[0]?.id || "", name: "", code: "", description: "" });
-                }}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#e05d00] text-white text-xs font-medium shadow-sm transition active:scale-[0.98]"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Add Category</span>
-              </button>
-            )}
-            {activeTab === "taxonomy" && (
-              <button
-                type="button"
-                onClick={() => setEditingTaxonomy(true)}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#e05d00] text-white text-xs font-medium shadow-sm transition active:scale-[0.98]"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Add Taxonomy</span>
-              </button>
-            )}
-          </div>
-        </div>
+      <div className="space-y-6 max-w-[1440px] mx-auto pb-12">
+        <PageHeader
+          title="Workspace and system settings"
+          description="Configure tenant parameters, request approval workflows, taxonomy dictionaries, and security"
+          actions={
+            <>
+              {activeTab === "types" && (
+                <button
+                  type="button"
+                  onClick={() => setEditingType(true)}
+                  className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#ff6900] hover:bg-[#ea580c] text-white text-sm font-medium transition-colors duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30"
+                >
+                  <Plus className="h-4 w-4" strokeWidth={1.5} />
+                  <span>Add request type</span>
+                </button>
+              )}
+              {activeTab === "categories" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingCategory(true);
+                    setCategoryForm({ group_id: groups[0]?.id || "", name: "", code: "", description: "" });
+                  }}
+                  className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#ff6900] hover:bg-[#ea580c] text-white text-sm font-medium transition-colors duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30"
+                >
+                  <Plus className="h-4 w-4" strokeWidth={1.5} />
+                  <span>Add category</span>
+                </button>
+              )}
+              {activeTab === "taxonomy" && (
+                <button
+                  type="button"
+                  onClick={() => setEditingTaxonomy(true)}
+                  className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#ff6900] hover:bg-[#ea580c] text-white text-sm font-medium transition-colors duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30"
+                >
+                  <Plus className="h-4 w-4" strokeWidth={1.5} />
+                  <span>Add taxonomy</span>
+                </button>
+              )}
+            </>
+          }
+        />
 
         {/* Toast feedback */}
         {toastMsg && (
           <div
-            className={`p-3 rounded-xl text-xs font-semibold flex items-center gap-2 ${
-              toastMsg.tone === "success"
-                ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                : "bg-rose-50 text-rose-800 border border-rose-200"
-            }`}
+            className={`px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-2.5 border ${toastMsg.tone === "success"
+                ? "bg-emerald-50 text-emerald-800 border-emerald-600/15"
+                : "bg-rose-50 text-rose-800 border-rose-600/15"
+              }`}
           >
             {toastMsg.tone === "success" ? (
-              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" strokeWidth={1.5} />
             ) : (
-              <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
+              <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" strokeWidth={1.5} />
             )}
             <span>{toastMsg.text}</span>
           </div>
         )}
 
         {/* Tab Selector */}
-        <div className="flex items-center gap-1.5 p-1.5 bg-neutral-100 rounded-2xl overflow-x-auto">
+        <div className="inline-flex items-center gap-1 p-1 bg-neutral-100 rounded-xl border border-neutral-900/[0.06] max-w-full overflow-x-auto">
           {tabs.map((tab) => {
             const IconComp = tab.icon;
             const isActive = activeTab === tab.id;
@@ -348,13 +337,15 @@ export default function AdminSettingsPage() {
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium transition whitespace-nowrap ${
-                  isActive
-                    ? "bg-white text-neutral-900 shadow-sm"
-                    : "text-neutral-500 hover:text-neutral-900 hover:bg-neutral-200/50"
-                }`}
+                className={`inline-flex items-center gap-2 h-8 px-3 rounded-lg text-xs font-medium transition-colors duration-150 whitespace-nowrap ${isActive
+                    ? "bg-white text-neutral-900 shadow-xs"
+                    : "text-neutral-600 hover:text-neutral-900"
+                  }`}
               >
-                <IconComp className={`h-4 w-4 ${isActive ? "text-[#ff6900]" : "text-neutral-400"}`} />
+                <IconComp
+                  className={`h-4 w-4 shrink-0 ${isActive ? "text-neutral-900" : "text-neutral-500"}`}
+                  strokeWidth={1.5}
+                />
                 <span>{tab.label}</span>
               </button>
             );
@@ -363,82 +354,82 @@ export default function AdminSettingsPage() {
 
         {/* Tab 1: Request Types */}
         {activeTab === "types" && (
-          <div className="bg-white rounded-2xl border border-neutral-200/80 shadow-sm overflow-hidden">
-            <div className="p-5 border-b border-neutral-100 flex items-center justify-between">
+          <div className="bg-white rounded-2xl border border-neutral-900/[0.08] shadow-xs overflow-hidden">
+            <div className="px-5 py-4 border-b border-neutral-900/[0.08] flex items-center justify-between gap-4">
               <div>
-                <h2 className="text-base font-medium text-neutral-900">Configured Request Types</h2>
+                <h2 className="text-base font-medium text-neutral-900 font-headline">Configured request types</h2>
                 <p className="text-xs text-neutral-500 mt-0.5">
-                  Define custom schemas, approval stages, and notification rules per request type.
+                  Define custom schemas, approval stages, and notification rules per request type
                 </p>
               </div>
-              <span className="text-xs font-semibold text-neutral-500">
-                {types.length} total types
+              <span className="text-xs font-mono text-neutral-500 tabular-nums shrink-0">
+                {types.length} types
               </span>
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-neutral-50/75 text-neutral-500 font-medium border-b border-neutral-100">
-                  <tr>
-                    <th className="py-3.5 px-5">Type Name</th>
-                    <th className="py-3.5 px-4">Prefix / Slug</th>
-                    <th className="py-3.5 px-4">Category</th>
-                    <th className="py-3.5 px-4">Status</th>
-                    <th className="py-3.5 px-5 text-right">Actions</th>
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-neutral-50/80 text-xs text-neutral-500 font-medium border-b border-neutral-900/[0.08]">
+                    <th className="py-3 px-5">Type name</th>
+                    <th className="py-3 px-5">Identifier</th>
+                    <th className="py-3 px-5">Category</th>
+                    <th className="py-3 px-5">Status</th>
+                    <th className="py-3 px-5 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-neutral-100 text-neutral-700">
+                <tbody className="divide-y divide-neutral-900/[0.06] text-sm text-neutral-700">
                   {loading ? (
                     <tr>
-                      <td colSpan={5} className="py-8 text-center text-neutral-400">
-                        Loading request types...
+                      <td colSpan={5} className="py-12 text-center text-sm text-neutral-500">
+                        Loading request types
                       </td>
                     </tr>
                   ) : types.length > 0 ? (
                     types.map((t) => (
-                      <tr key={t.id} className="hover:bg-neutral-50/60 transition">
+                      <tr key={t.id} className="hover:bg-neutral-50 focus-within:bg-neutral-50/80 transition-colors duration-150">
                         <td className="py-3.5 px-5 font-medium text-neutral-900">
                           {t.name}
                         </td>
-                        <td className="py-3.5 px-4 font-mono text-neutral-500">
-                          {t.slug}
+                        <td className="py-3.5 px-5">
+                          <code className="text-xs font-mono bg-neutral-100 border border-neutral-900/[0.06] px-2 py-0.5 rounded-md text-neutral-700">
+                            {t.slug}
+                          </code>
                         </td>
-                        <td className="py-3.5 px-4 capitalize font-semibold text-neutral-700">
+                        <td className="py-3.5 px-5 capitalize text-neutral-600">
                           {t.category || "General"}
                         </td>
-                        <td className="py-3.5 px-4">
+                        <td className="py-3.5 px-5">
                           <span
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-semibold text-xs ${
-                              t.is_active
-                                ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
-                                : "bg-neutral-100 text-neutral-600"
-                            }`}
+                            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md font-medium text-xs border ${t.is_active
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-600/15"
+                                : "bg-neutral-100 text-neutral-600 border-neutral-900/[0.08]"
+                              }`}
                           >
                             <span
-                              className={`w-1.5 h-1.5 rounded-full ${
-                                t.is_active ? "bg-emerald-500" : "bg-neutral-400"
-                              }`}
+                              className={`w-1.5 h-1.5 rounded-full ${t.is_active ? "bg-emerald-600" : "bg-neutral-400"
+                                }`}
                             />
                             {t.is_active ? "Active" : "Disabled"}
                           </span>
                         </td>
                         <td className="py-3.5 px-5 text-right">
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-end gap-1">
                             <button
                               type="button"
                               onClick={() => setEditingType(t)}
-                              className="p-1.5 rounded-lg hover:bg-neutral-100 text-neutral-600 hover:text-neutral-900 transition"
-                              title="Edit Type"
+                              className="h-8 w-8 inline-flex items-center justify-center rounded-lg hover:bg-neutral-100 text-neutral-500 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30 transition-colors duration-150"
+                              title="Edit type"
                             >
-                              <Pencil className="h-3.5 w-3.5" />
+                              <Pencil className="h-4 w-4" strokeWidth={1.5} />
                             </button>
                             <button
                               type="button"
                               onClick={() => void handleDeleteType(t)}
-                              className="p-1.5 rounded-lg hover:bg-rose-50 text-neutral-400 hover:text-rose-600 transition"
-                              title="Delete Type"
+                              className="h-8 w-8 inline-flex items-center justify-center rounded-lg hover:bg-rose-50 text-neutral-400 hover:text-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30 transition-colors duration-150"
+                              title="Delete type"
                             >
-                              <Trash2 className="h-3.5 w-3.5" />
+                              <Trash2 className="h-4 w-4" strokeWidth={1.5} />
                             </button>
                           </div>
                         </td>
@@ -446,10 +437,10 @@ export default function AdminSettingsPage() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={5} className="py-10 text-center">
-                        <p className="font-semibold text-neutral-700 text-sm">No request types configured</p>
-                        <p className="text-xs text-neutral-400 mt-0.5">
-                          Click &quot;Add Request Type&quot; above to create the first one.
+                      <td colSpan={5} className="py-12 text-center">
+                        <p className="font-medium text-neutral-900 text-sm">No request types configured</p>
+                        <p className="text-xs text-neutral-500 mt-1">
+                          Select Add request type above to create the first one
                         </p>
                       </td>
                     </tr>
@@ -464,18 +455,18 @@ export default function AdminSettingsPage() {
         {activeTab === "categories" && (
           <div className="space-y-4">
             {editingCategory !== false ? (
-              <div className="bg-white rounded-2xl border border-neutral-200/80 shadow-sm p-6 space-y-4">
-                <h3 className="text-base font-medium text-neutral-900">
-                  {typeof editingCategory === "object" ? "Edit Category" : "New Category"}
+              <div className="bg-white rounded-2xl border border-neutral-900/[0.08] shadow-xs p-6 space-y-5">
+                <h3 className="text-base font-medium text-neutral-900 font-headline">
+                  {typeof editingCategory === "object" ? "Edit category" : "New category"}
                 </h3>
                 <div className="grid gap-4 md:grid-cols-2">
                   {typeof editingCategory !== "object" && (
                     <div>
-                      <label className="block text-xs font-medium text-neutral-700 mb-1">Module / Group</label>
+                      <label className="block text-xs font-medium text-neutral-700 mb-1.5">Module or group</label>
                       <SelectBox
                         value={categoryForm.group_id}
                         onChange={(e) => setCategoryForm((p) => ({ ...p, group_id: e.target.value }))}
-                        className="w-full px-3 py-2 rounded-xl bg-neutral-50 border border-neutral-200 text-xs font-semibold text-neutral-700 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20"
+                        className="w-full h-9 px-3 rounded-lg bg-white border border-neutral-900/[0.12] text-sm text-neutral-900 outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
                       >
                         <option value="">Select module</option>
                         {groups.map((g) => (
@@ -485,45 +476,45 @@ export default function AdminSettingsPage() {
                     </div>
                   )}
                   <div>
-                    <label className="block text-xs font-medium text-neutral-700 mb-1">Category Name</label>
+                    <label className="block text-xs font-medium text-neutral-700 mb-1.5">Category name</label>
                     <input
                       type="text"
                       value={categoryForm.name}
                       onChange={(e) => setCategoryForm((p) => ({ ...p, name: e.target.value }))}
-                      placeholder="e.g., Office Supplies"
-                      className="w-full px-3 py-2 rounded-xl bg-neutral-50 border border-neutral-200 text-xs font-semibold text-neutral-700 focus:outline-none"
+                      placeholder="Office supplies"
+                      className="w-full h-9 px-3 rounded-lg bg-white border border-neutral-900/[0.12] text-sm text-neutral-900 outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-neutral-700 mb-1">Code</label>
+                    <label className="block text-xs font-medium text-neutral-700 mb-1.5">Code</label>
                     <input
                       type="text"
                       value={categoryForm.code}
                       onChange={(e) => setCategoryForm((p) => ({ ...p, code: e.target.value }))}
-                      placeholder="e.g., OFFICE"
+                      placeholder="OFFICE"
                       disabled={typeof editingCategory === "object"}
-                      className="w-full px-3 py-2 rounded-xl bg-neutral-50 border border-neutral-200 text-xs font-semibold text-neutral-700 focus:outline-none disabled:opacity-50"
+                      className="w-full h-9 px-3 rounded-lg bg-white border border-neutral-900/[0.12] text-sm font-mono text-neutral-900 outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15 disabled:opacity-50"
                     />
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-xs font-medium text-neutral-700 mb-1">Description</label>
+                    <label className="block text-xs font-medium text-neutral-700 mb-1.5">Description</label>
                     <input
                       type="text"
                       value={categoryForm.description}
                       onChange={(e) => setCategoryForm((p) => ({ ...p, description: e.target.value }))}
                       placeholder="Optional description"
-                      className="w-full px-3 py-2 rounded-xl bg-neutral-50 border border-neutral-200 text-xs font-semibold text-neutral-700 focus:outline-none"
+                      className="w-full h-9 px-3 rounded-lg bg-white border border-neutral-900/[0.12] text-sm text-neutral-900 outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
                     />
                   </div>
                 </div>
-                <div className="flex items-center gap-3 pt-2">
+                <div className="flex items-center gap-2 pt-2">
                   <button
                     type="button"
                     onClick={() => void handleSaveCategory()}
                     disabled={categorySaving}
-                    className="px-4 py-2 rounded-xl bg-[#ff6900] hover:bg-[#e05d00] text-white text-xs font-medium shadow-sm transition disabled:opacity-50"
+                    className="h-9 px-4 rounded-lg bg-[#ff6900] hover:bg-[#ea580c] text-white text-sm font-medium transition-colors duration-150 active:scale-[0.98] disabled:opacity-50"
                   >
-                    {categorySaving ? "Saving..." : typeof editingCategory === "object" ? "Update Category" : "Create Category"}
+                    {categorySaving ? "Saving" : typeof editingCategory === "object" ? "Update category" : "Create category"}
                   </button>
                   <button
                     type="button"
@@ -531,23 +522,23 @@ export default function AdminSettingsPage() {
                       setEditingCategory(false);
                       setCategoryForm({ group_id: "", name: "", code: "", description: "" });
                     }}
-                    className="px-4 py-2 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-xs font-medium transition"
+                    className="h-9 px-4 rounded-lg border border-neutral-900/[0.10] bg-white hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors duration-150"
                   >
                     Cancel
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="bg-white rounded-2xl border border-neutral-200/80 shadow-sm overflow-hidden">
-                <div className="p-5 border-b border-neutral-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="bg-white rounded-2xl border border-neutral-900/[0.08] shadow-xs overflow-hidden">
+                <div className="px-5 py-4 border-b border-neutral-900/[0.08] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
-                    <h2 className="text-base font-medium text-neutral-900">Request Categories</h2>
-                    <p className="text-xs text-neutral-500 mt-0.5">Organize request classifications by domain.</p>
+                    <h2 className="text-base font-medium text-neutral-900 font-headline">Request categories</h2>
+                    <p className="text-xs text-neutral-500 mt-0.5">Organize request classifications by domain</p>
                   </div>
                   <SelectBox
                     value={categoryFilter}
                     onChange={(e) => setCategoryFilter(e.target.value)}
-                    className="px-3 py-1.5 rounded-xl bg-neutral-50 border border-neutral-200 text-xs font-semibold text-neutral-700"
+                    className="h-9 px-3 rounded-lg bg-white border border-neutral-900/[0.12] text-sm text-neutral-700 outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
                   >
                     <option value="">All modules</option>
                     {groups.map((g) => (
@@ -557,31 +548,35 @@ export default function AdminSettingsPage() {
                 </div>
 
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-neutral-50/75 text-neutral-500 font-medium border-b border-neutral-100">
-                      <tr>
-                        <th className="py-3.5 px-5">Name</th>
-                        <th className="py-3.5 px-4">Code</th>
-                        <th className="py-3.5 px-4">Module</th>
-                        <th className="py-3.5 px-4">Status</th>
-                        <th className="py-3.5 px-5 text-right">Actions</th>
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-neutral-50/80 text-xs text-neutral-500 font-medium border-b border-neutral-900/[0.08]">
+                        <th className="py-3 px-5">Name</th>
+                        <th className="py-3 px-5">Code</th>
+                        <th className="py-3 px-5">Module</th>
+                        <th className="py-3 px-5">Status</th>
+                        <th className="py-3 px-5 text-right">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-neutral-100 text-neutral-700">
+                    <tbody className="divide-y divide-neutral-900/[0.06] text-sm text-neutral-700">
                       {categories.length > 0 ? (
                         categories.map((cat) => (
-                          <tr key={cat.id} className="hover:bg-neutral-50/60 transition">
+                          <tr key={cat.id} className="hover:bg-neutral-50 focus-within:bg-neutral-50/80 transition-colors duration-150">
                             <td className="py-3.5 px-5 font-medium text-neutral-900">{cat.name}</td>
-                            <td className="py-3.5 px-4 font-mono text-neutral-500">{cat.code}</td>
-                            <td className="py-3.5 px-4 font-semibold text-neutral-700">{groupMap[cat.groupId] || "-"}</td>
-                            <td className="py-3.5 px-4">
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-semibold text-xs bg-emerald-50 text-emerald-700">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                            <td className="py-3.5 px-5">
+                              <code className="text-xs font-mono bg-neutral-100 border border-neutral-900/[0.06] px-2 py-0.5 rounded-md text-neutral-700">
+                                {cat.code}
+                              </code>
+                            </td>
+                            <td className="py-3.5 px-5 text-neutral-600">{groupMap[cat.groupId] || "—"}</td>
+                            <td className="py-3.5 px-5">
+                              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md font-medium text-xs bg-emerald-50 text-emerald-700 border border-emerald-600/15">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
                                 Active
                               </span>
                             </td>
                             <td className="py-3.5 px-5 text-right">
-                              <div className="flex items-center justify-end gap-2">
+                              <div className="flex items-center justify-end gap-1">
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -593,16 +588,18 @@ export default function AdminSettingsPage() {
                                       description: "",
                                     });
                                   }}
-                                  className="p-1.5 rounded-lg hover:bg-neutral-100 text-neutral-600 transition"
+                                  className="h-8 w-8 inline-flex items-center justify-center rounded-lg hover:bg-neutral-100 text-neutral-500 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30 transition-colors duration-150"
+                                  title="Edit category"
                                 >
-                                  <Pencil className="h-3.5 w-3.5" />
+                                  <Pencil className="h-4 w-4" strokeWidth={1.5} />
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => void handleDeleteCategory(cat)}
-                                  className="p-1.5 rounded-lg hover:bg-rose-50 text-neutral-400 hover:text-rose-600 transition"
+                                  className="h-8 w-8 inline-flex items-center justify-center rounded-lg hover:bg-rose-50 text-neutral-400 hover:text-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30 transition-colors duration-150"
+                                  title="Delete category"
                                 >
-                                  <Trash2 className="h-3.5 w-3.5" />
+                                  <Trash2 className="h-4 w-4" strokeWidth={1.5} />
                                 </button>
                               </div>
                             </td>
@@ -610,8 +607,8 @@ export default function AdminSettingsPage() {
                         ))
                       ) : (
                         <tr>
-                          <td colSpan={5} className="py-10 text-center text-neutral-400">
-                            No categories found for this module.
+                          <td colSpan={5} className="py-12 text-center text-sm text-neutral-500">
+                            No categories found for this module
                           </td>
                         </tr>
                       )}
@@ -625,53 +622,57 @@ export default function AdminSettingsPage() {
 
         {/* Tab 3: Taxonomies */}
         {activeTab === "taxonomy" && (
-          <div className="bg-white rounded-2xl border border-neutral-200/80 shadow-sm overflow-hidden">
-            <div className="p-5 border-b border-neutral-100 flex items-center justify-between">
+          <div className="bg-white rounded-2xl border border-neutral-900/[0.08] shadow-xs overflow-hidden">
+            <div className="px-5 py-4 border-b border-neutral-900/[0.08] flex items-center justify-between gap-4">
               <div>
-                <h2 className="text-base font-medium text-neutral-900">Taxonomies & Term Catalogs</h2>
-                <p className="text-xs text-neutral-500 mt-0.5">Custom controlled vocabularies and dropdown term sets.</p>
+                <h2 className="text-base font-medium text-neutral-900 font-headline">Taxonomies and term catalogs</h2>
+                <p className="text-xs text-neutral-500 mt-0.5">Custom controlled vocabularies and dropdown term sets</p>
               </div>
-              <span className="text-xs font-semibold text-neutral-500">{taxonomies.length} sets</span>
+              <span className="text-xs font-mono text-neutral-500 tabular-nums shrink-0">{taxonomies.length} sets</span>
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-neutral-50/75 text-neutral-500 font-medium border-b border-neutral-100">
-                  <tr>
-                    <th className="py-3.5 px-5">Taxonomy Name</th>
-                    <th className="py-3.5 px-4">Key Identifier</th>
-                    <th className="py-3.5 px-4">Module</th>
-                    <th className="py-3.5 px-4">Terms Count</th>
-                    <th className="py-3.5 px-5 text-right">Actions</th>
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-neutral-50/80 text-xs text-neutral-500 font-medium border-b border-neutral-900/[0.08]">
+                    <th className="py-3 px-5">Taxonomy name</th>
+                    <th className="py-3 px-5">Key identifier</th>
+                    <th className="py-3 px-5">Module</th>
+                    <th className="py-3 px-5 text-right">Terms</th>
+                    <th className="py-3 px-5 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-neutral-100 text-neutral-700">
+                <tbody className="divide-y divide-neutral-900/[0.06] text-sm text-neutral-700">
                   {taxonomies.length > 0 ? (
                     taxonomies.map((tax) => (
-                      <tr key={tax.id} className="hover:bg-neutral-50/60 transition">
+                      <tr key={tax.id} className="hover:bg-neutral-50 focus-within:bg-neutral-50/80 transition-colors duration-150">
                         <td className="py-3.5 px-5 font-medium text-neutral-900">{tax.name}</td>
-                        <td className="py-3.5 px-4 font-mono text-neutral-500">{tax.key}</td>
-                        <td className="py-3.5 px-4 font-semibold text-neutral-700">{tax.module || "-"}</td>
-                        <td className="py-3.5 px-4">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-neutral-100 font-semibold text-neutral-700">
-                            {tax.terms.length} terms
-                          </span>
+                        <td className="py-3.5 px-5">
+                          <code className="text-xs font-mono bg-neutral-100 border border-neutral-900/[0.06] px-2 py-0.5 rounded-md text-neutral-700">
+                            {tax.key}
+                          </code>
+                        </td>
+                        <td className="py-3.5 px-5 text-neutral-600">{tax.module || "—"}</td>
+                        <td className="py-3.5 px-5 text-right font-mono text-xs text-neutral-700 tabular-nums">
+                          {tax.terms.length}
                         </td>
                         <td className="py-3.5 px-5 text-right">
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-end gap-1">
                             <button
                               type="button"
                               onClick={() => setEditingTaxonomy(tax)}
-                              className="p-1.5 rounded-lg hover:bg-neutral-100 text-neutral-600 transition"
+                              className="h-8 w-8 inline-flex items-center justify-center rounded-lg hover:bg-neutral-100 text-neutral-500 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30 transition-colors duration-150"
+                              title="Edit taxonomy"
                             >
-                              <Pencil className="h-3.5 w-3.5" />
+                              <Pencil className="h-4 w-4" strokeWidth={1.5} />
                             </button>
                             <button
                               type="button"
                               onClick={() => void handleDeleteTaxonomy(tax)}
-                              className="p-1.5 rounded-lg hover:bg-rose-50 text-neutral-400 hover:text-rose-600 transition"
+                              className="h-8 w-8 inline-flex items-center justify-center rounded-lg hover:bg-rose-50 text-neutral-400 hover:text-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30 transition-colors duration-150"
+                              title="Delete taxonomy"
                             >
-                              <Trash2 className="h-3.5 w-3.5" />
+                              <Trash2 className="h-4 w-4" strokeWidth={1.5} />
                             </button>
                           </div>
                         </td>
@@ -679,8 +680,8 @@ export default function AdminSettingsPage() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={5} className="py-10 text-center text-neutral-400">
-                        No taxonomies created yet.
+                      <td colSpan={5} className="py-12 text-center text-sm text-neutral-500">
+                        No taxonomies created yet
                       </td>
                     </tr>
                   )}
@@ -692,61 +693,64 @@ export default function AdminSettingsPage() {
 
         {/* Tab 4: Workspace Profile */}
         {activeTab === "general" && (
-          <div className="bg-white rounded-2xl border border-neutral-200/80 shadow-sm p-6 space-y-6">
+          <div className="bg-white rounded-2xl border border-neutral-900/[0.08] shadow-xs p-6 space-y-6">
             <div>
-              <h2 className="text-base font-medium text-neutral-900">Workspace Profile</h2>
+              <h2 className="text-base font-medium text-neutral-900 font-headline">Workspace profile</h2>
               <p className="text-xs text-neutral-500 mt-0.5">
-                Manage your organization’s identity, multi-tenant subdomain slug, and subscription plan.
+                Manage your organization identity, multi-tenant subdomain slug, and subscription plan
               </p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <label className="block text-xs font-medium text-neutral-700 mb-1">Organization Name</label>
+                <label className="block text-xs font-medium text-neutral-700 mb-1.5">Organization name</label>
                 <input
                   type="text"
                   value={tenantForm.name}
                   onChange={(e) => setTenantForm((p) => ({ ...p, name: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-xl bg-neutral-50 border border-neutral-200 text-xs font-semibold text-neutral-700 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20"
+                  className="w-full h-9 px-3 rounded-lg bg-white border border-neutral-900/[0.12] text-sm text-neutral-900 outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-neutral-700 mb-1">Subscription Plan</label>
+                <label className="block text-xs font-medium text-neutral-700 mb-1.5">Subscription plan</label>
                 <SelectBox
                   value={tenantForm.plan}
                   onChange={(e) => setTenantForm((p) => ({ ...p, plan: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-xl bg-neutral-50 border border-neutral-200 text-xs font-semibold text-neutral-700 focus:outline-none"
+                  className="w-full h-9 px-3 rounded-lg bg-white border border-neutral-900/[0.12] text-sm text-neutral-900 outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
                 >
-                  <option value="trial">Trial Plan (14 Days Free)</option>
-                  <option value="standard">Standard Growth Plan</option>
-                  <option value="enterprise">Enterprise OS Dedicated</option>
+                  <option value="trial">Trial plan (14 days free)</option>
+                  <option value="standard">Standard growth plan</option>
+                  <option value="enterprise">Enterprise OS dedicated</option>
                 </SelectBox>
               </div>
             </div>
 
-            <div className="p-4 rounded-xl bg-neutral-50 border border-neutral-100 flex items-center justify-between">
+            <div className="p-4 rounded-xl bg-neutral-50 border border-neutral-900/[0.08] flex items-center justify-between gap-4">
               <div>
-                <div className="text-xs font-medium text-neutral-800">Workspace Subdomain URL</div>
+                <div className="text-sm font-medium text-neutral-900">Workspace subdomain</div>
                 <div className="text-xs text-neutral-500 mt-0.5">
-                  Your team logs in at <span className="font-mono text-[#ff6900] font-semibold">{tenant?.slug || "acme"}.stanforteedge.com</span>
+                  Team sign-in URL:{" "}
+                  <code className="font-mono text-[#c2410c] font-medium">
+                    {tenant?.slug || "workspace"}.stanforteedge.com
+                  </code>
                 </div>
               </div>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-semibold text-xs bg-emerald-50 text-emerald-700 border border-emerald-100">
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md font-medium text-xs bg-emerald-50 text-emerald-700 border border-emerald-600/15 shrink-0">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
                 Active
               </span>
             </div>
 
-            <div className="flex items-center gap-3 pt-2">
+            <div className="flex items-center gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => void handleSaveTenant()}
                 disabled={tenantSaving}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#e05d00] text-white text-xs font-medium shadow-sm transition active:scale-[0.98] disabled:opacity-50"
+                className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#ff6900] hover:bg-[#ea580c] text-white text-sm font-medium transition-colors duration-150 active:scale-[0.98] disabled:opacity-50"
               >
-                <Save className="h-4 w-4" />
-                <span>{tenantSaving ? "Saving..." : "Save Workspace Changes"}</span>
+                <Save className="h-4 w-4" strokeWidth={1.5} />
+                <span>{tenantSaving ? "Saving" : "Save workspace changes"}</span>
               </button>
             </div>
           </div>
@@ -756,34 +760,32 @@ export default function AdminSettingsPage() {
         {activeTab === "localization" && (
           <div className="space-y-6">
             {/* Live Preview Card */}
-            <div className="rounded-2xl border border-neutral-200/80 bg-[#0a1128] text-white p-6 shadow-lg relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-52 h-52 bg-orange-500/10 rounded-full hidden pointer-events-none" />
-
-              <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="rounded-2xl border border-neutral-900/[0.08] bg-white p-6 shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <div className="flex items-center gap-2 text-xs font-medium text-orange-400">
-                    <Globe className="w-3.5 h-3.5" />
-                    <span>Live Display Preview</span>
+                  <div className="flex items-center gap-2 text-xs font-medium text-[#c2410c]">
+                    <Globe className="h-4 w-4" strokeWidth={1.5} />
+                    <span>Live display preview</span>
                   </div>
-                  <h3 className="text-xl font-semibold text-white mt-1">
+                  <h3 className="text-2xl font-medium text-neutral-900 font-headline tabular-nums mt-1">
                     {formatDisplayTime(new Date(), localSettingsForm.timeFormat)}
                   </h3>
-                  <p className="text-xs text-neutral-300 mt-0.5">
-                    {formatDisplayDateLocalized(new Date(), localSettingsForm.dateFormat)} &bull; {localSettingsForm.timezone}
+                  <p className="text-xs text-neutral-500 font-mono mt-0.5 tabular-nums">
+                    {formatDisplayDateLocalized(new Date(), localSettingsForm.dateFormat)} · {localSettingsForm.timezone}
                   </p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="px-3.5 py-2 rounded-xl bg-white/10 border border-white/15 text-left">
-                    <div className="text-xs text-neutral-400 font-semibold">Shift Hours Preview</div>
-                    <div className="text-xs font-medium text-orange-400 mt-0.5">
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="px-3.5 py-2.5 rounded-xl bg-neutral-50 border border-neutral-900/[0.08] text-left">
+                    <div className="text-xs text-neutral-500">Shift hours preview</div>
+                    <div className="text-sm font-mono font-medium text-neutral-900 tabular-nums mt-0.5">
                       {formatDisplayTime("09:00", localSettingsForm.timeFormat)} – {formatDisplayTime("17:00", localSettingsForm.timeFormat)}
                     </div>
                   </div>
 
-                  <div className="px-3.5 py-2 rounded-xl bg-white/10 border border-white/15 text-left">
-                    <div className="text-xs text-neutral-400 font-semibold">Time Format</div>
-                    <div className="text-xs font-medium text-white mt-0.5">
+                  <div className="px-3.5 py-2.5 rounded-xl bg-neutral-50 border border-neutral-900/[0.08] text-left">
+                    <div className="text-xs text-neutral-500">Time format</div>
+                    <div className="text-sm font-medium text-neutral-900 mt-0.5">
                       {localSettingsForm.timeFormat === "12h" ? "12-hour (1 AM, 3 PM)" : "24-hour (13:00)"}
                     </div>
                   </div>
@@ -792,24 +794,23 @@ export default function AdminSettingsPage() {
             </div>
 
             {/* Main Form */}
-            <div className="bg-white rounded-2xl border border-neutral-200/80 shadow-sm p-6 space-y-6">
+            <div className="bg-white rounded-2xl border border-neutral-900/[0.08] shadow-xs p-6 space-y-6">
               <div>
-                <h2 className="text-base font-medium text-neutral-900">Timezone &amp; Regional Formatting</h2>
+                <h2 className="text-base font-medium text-neutral-900 font-headline">Timezone and regional formatting</h2>
                 <p className="text-xs text-neutral-500 mt-0.5">
                   Configure the primary organization timezone and time/date display standards. Nigerian workforces typically prefer 12-hour AM/PM and DD/MM/YYYY.
                 </p>
               </div>
 
               <div className="grid gap-6 md:grid-cols-2">
-                {/* 1. Timezone Selector */}
                 <div className="md:col-span-2">
                   <label className="block text-xs font-medium text-neutral-700 mb-1.5">
-                    Organization Timezone
+                    Organization timezone
                   </label>
                   <SelectBox
                     value={localSettingsForm.timezone}
                     onChange={(e) => setLocalSettingsForm((p) => ({ ...p, timezone: e.target.value }))}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 border border-neutral-200 text-xs font-semibold text-neutral-800 focus:outline-none focus:bg-white focus:border-[#ff6900]"
+                    className="w-full h-9 px-3 rounded-lg bg-white border border-neutral-900/[0.12] text-sm text-neutral-900 outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
                   >
                     {COMMON_TIMEZONES.map((tz) => (
                       <option key={tz.value} value={tz.value}>
@@ -817,117 +818,111 @@ export default function AdminSettingsPage() {
                       </option>
                     ))}
                   </SelectBox>
-                  <p className="text-xs text-neutral-400 mt-1">
-                    Used to calculate work sessions, attendance punches, scheduled reports, and payroll timestamps.
+                  <p className="text-xs text-neutral-500 mt-1.5">
+                    Used to calculate work sessions, attendance punches, scheduled reports, and payroll timestamps
                   </p>
                 </div>
 
-                {/* 2. Time Format (12h vs 24h) */}
                 <div>
                   <label className="block text-xs font-medium text-neutral-700 mb-2">
-                    Time Display Format
+                    Time display format
                   </label>
-                  <div className="space-y-2.5">
+                  <div className="space-y-2">
                     {TIME_FORMAT_OPTIONS.map((opt) => {
                       const isSelected = localSettingsForm.timeFormat === opt.value;
                       return (
                         <label
                           key={opt.value}
                           onClick={() => setLocalSettingsForm((p) => ({ ...p, timeFormat: opt.value }))}
-                          className={`flex items-start justify-between p-3 rounded-xl border cursor-pointer transition ${
-                            isSelected
-                              ? "border-[#ff6900] bg-orange-50/20 shadow-xs"
-                              : "border-neutral-200 bg-white hover:border-neutral-300"
-                          }`}
+                          className={`flex items-start justify-between p-3 rounded-xl border cursor-pointer transition-colors duration-150 ${isSelected
+                              ? "border-[#ff6900] bg-orange-50/30"
+                              : "border-neutral-900/[0.10] bg-white hover:bg-neutral-50"
+                            }`}
                         >
                           <div className="flex items-start gap-2.5">
                             <input
                               type="radio"
                               name="timeFormat"
                               checked={isSelected}
-                              onChange={() => {}}
+                              onChange={() => { }}
                               className="mt-0.5 h-4 w-4 text-[#ff6900] focus:ring-[#ff6900]"
                             />
                             <div>
-                              <div className="text-xs font-medium text-neutral-900">{opt.label}</div>
-                              <div className="text-xs text-neutral-500 mt-0.5">
-                                e.g. <span className="font-semibold text-neutral-700">{opt.preview}</span>
+                              <div className="text-sm font-medium text-neutral-900">{opt.label}</div>
+                              <div className="text-xs text-neutral-500 mt-0.5 font-mono tabular-nums">
+                                {opt.preview}
                               </div>
                             </div>
                           </div>
-                          {isSelected && <CheckCircle2 className="w-4 h-4 text-[#ff6900] shrink-0" />}
+                          {isSelected && <CheckCircle2 className="h-4 w-4 text-[#c2410c] shrink-0" strokeWidth={1.5} />}
                         </label>
                       );
                     })}
                   </div>
                 </div>
 
-                {/* 3. Date Format */}
                 <div>
                   <label className="block text-xs font-medium text-neutral-700 mb-2">
-                    Date Display Format
+                    Date display format
                   </label>
-                  <div className="space-y-2.5">
+                  <div className="space-y-2">
                     {DATE_FORMAT_OPTIONS.map((opt) => {
                       const isSelected = localSettingsForm.dateFormat === opt.value;
                       return (
                         <label
                           key={opt.value}
                           onClick={() => setLocalSettingsForm((p) => ({ ...p, dateFormat: opt.value }))}
-                          className={`flex items-start justify-between p-3 rounded-xl border cursor-pointer transition ${
-                            isSelected
-                              ? "border-[#ff6900] bg-orange-50/20 shadow-xs"
-                              : "border-neutral-200 bg-white hover:border-neutral-300"
-                          }`}
+                          className={`flex items-start justify-between p-3 rounded-xl border cursor-pointer transition-colors duration-150 ${isSelected
+                              ? "border-[#ff6900] bg-orange-50/30"
+                              : "border-neutral-900/[0.10] bg-white hover:bg-neutral-50"
+                            }`}
                         >
                           <div className="flex items-start gap-2.5">
                             <input
                               type="radio"
                               name="dateFormat"
                               checked={isSelected}
-                              onChange={() => {}}
+                              onChange={() => { }}
                               className="mt-0.5 h-4 w-4 text-[#ff6900] focus:ring-[#ff6900]"
                             />
                             <div>
-                              <div className="text-xs font-medium text-neutral-900">{opt.label}</div>
-                              <div className="text-xs text-neutral-500 mt-0.5">
-                                e.g. <span className="font-semibold text-neutral-700">{opt.preview}</span>
+                              <div className="text-sm font-medium text-neutral-900">{opt.label}</div>
+                              <div className="text-xs text-neutral-500 mt-0.5 font-mono tabular-nums">
+                                {opt.preview}
                               </div>
                             </div>
                           </div>
-                          {isSelected && <CheckCircle2 className="w-4 h-4 text-[#ff6900] shrink-0" />}
+                          {isSelected && <CheckCircle2 className="h-4 w-4 text-[#c2410c] shrink-0" strokeWidth={1.5} />}
                         </label>
                       );
                     })}
                   </div>
                 </div>
 
-                {/* 4. First Day of Week */}
                 <div>
                   <label className="block text-xs font-medium text-neutral-700 mb-1.5">
-                    First Day of Week
+                    First day of week
                   </label>
                   <SelectBox
                     value={localSettingsForm.weekStartsOn}
                     onChange={(e) =>
                       setLocalSettingsForm((p) => ({ ...p, weekStartsOn: e.target.value as any }))
                     }
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 border border-neutral-200 text-xs font-semibold text-neutral-800 focus:outline-none focus:bg-white focus:border-[#ff6900]"
+                    className="w-full h-9 px-3 rounded-lg bg-white border border-neutral-900/[0.12] text-sm text-neutral-900 outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
                   >
-                    <option value="monday">Monday (Nigeria / International Standard)</option>
-                    <option value="sunday">Sunday (US Standard)</option>
+                    <option value="monday">Monday (Nigeria / International standard)</option>
+                    <option value="sunday">Sunday (US standard)</option>
                   </SelectBox>
                 </div>
 
-                {/* 5. Currency */}
                 <div>
                   <label className="block text-xs font-medium text-neutral-700 mb-1.5">
-                    Operating Currency
+                    Operating currency
                   </label>
                   <SelectBox
                     value={localSettingsForm.currency}
                     onChange={(e) => setLocalSettingsForm((p) => ({ ...p, currency: e.target.value }))}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 border border-neutral-200 text-xs font-semibold text-neutral-800 focus:outline-none focus:bg-white focus:border-[#ff6900]"
+                    className="w-full h-9 px-3 rounded-lg bg-white border border-neutral-900/[0.12] text-sm text-neutral-900 outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
                   >
                     <option value="NGN">NGN (₦) — Nigerian Naira (Default)</option>
                     <option value="USD">USD ($) — US Dollar</option>
@@ -937,24 +932,23 @@ export default function AdminSettingsPage() {
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-neutral-100">
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-neutral-900/[0.08]">
                 <button
                   type="button"
                   onClick={() => handleResetLocalization()}
-                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 text-xs font-semibold transition"
+                  className="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg border border-neutral-900/[0.10] bg-white hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors duration-150"
                 >
-                  <RotateCcw className="h-3.5 w-3.5 text-neutral-400" />
-                  <span>Reset to Nigeria Standards</span>
+                  <RotateCcw className="h-4 w-4 text-neutral-500" strokeWidth={1.5} />
+                  <span>Reset to Nigeria standards</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => handleSaveLocalization()}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#e05d00] text-white text-xs font-medium shadow-sm transition active:scale-[0.98]"
+                  className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#ff6900] hover:bg-[#ea580c] text-white text-sm font-medium transition-colors duration-150 active:scale-[0.98]"
                 >
-                  <Save className="h-4 w-4" />
-                  <span>Save Regional Preferences</span>
+                  <Save className="h-4 w-4" strokeWidth={1.5} />
+                  <span>Save regional preferences</span>
                 </button>
               </div>
             </div>
@@ -965,50 +959,44 @@ export default function AdminSettingsPage() {
         {activeTab === "security" && (
           <div className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center">
-                  <ShieldCheck className="h-5 w-5" />
-                </div>
-                <div>
-                  <div className="text-xs font-semibold text-neutral-500">Configured Roles</div>
-                  <div className="text-xl font-semibold text-neutral-900 mt-0.5">{securityOverview?.roles ?? 6}</div>
-                </div>
-              </div>
+              <article className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
+                <p className="text-xs text-neutral-500">Configured roles</p>
+                <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+                  {securityOverview?.roles != null ? Number(securityOverview.roles).toLocaleString() : "—"}
+                </p>
+                <p className="text-xs text-neutral-500">Defined access profiles</p>
+              </article>
 
-              <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center">
-                  <Layers className="h-5 w-5" />
-                </div>
-                <div>
-                  <div className="text-xs font-semibold text-neutral-500">Active Permissions</div>
-                  <div className="text-xl font-semibold text-neutral-900 mt-0.5">{securityOverview?.permissions ?? 48}</div>
-                </div>
-              </div>
+              <article className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
+                <p className="text-xs text-neutral-500">Active permissions</p>
+                <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+                  {securityOverview?.permissions != null ? Number(securityOverview.permissions).toLocaleString() : "—"}
+                </p>
+                <p className="text-xs text-neutral-500">Enforced capabilities</p>
+              </article>
 
-              <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                  <CheckCircle2 className="h-5 w-5" />
-                </div>
-                <div>
-                  <div className="text-xs font-semibold text-neutral-500">Assigned Users</div>
-                  <div className="text-xl font-semibold text-neutral-900 mt-0.5">{securityOverview?.assigned_users ?? 12}</div>
-                </div>
-              </div>
+              <article className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
+                <p className="text-xs text-neutral-500">Assigned users</p>
+                <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+                  {securityOverview?.assigned_users != null ? Number(securityOverview.assigned_users).toLocaleString() : "—"}
+                </p>
+                <p className="text-xs text-neutral-500">Active role bindings</p>
+              </article>
             </div>
 
-            <div className="p-6 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="p-6 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
-                <h3 className="text-base font-medium text-neutral-900">Role-Based Access Control (RBAC)</h3>
+                <h3 className="text-base font-medium text-neutral-900 font-headline">Role-based access control (RBAC)</h3>
                 <p className="text-xs text-neutral-500 mt-0.5 max-w-xl">
-                  Granular control over who can create requests, approve payment vouchers, disburse funds, or administer users.
+                  Granular control over who can create requests, approve payment vouchers, disburse funds, or administer users
                 </p>
               </div>
               <Link
                 to="/admin/roles"
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0a1128] hover:bg-[#162044] text-white text-xs font-medium transition shadow-sm"
+                className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#ff6900] hover:bg-[#ea580c] text-white text-sm font-medium transition-colors duration-150 active:scale-[0.98] shrink-0"
               >
-                <span>Manage Roles & Permissions</span>
-                <ExternalLink className="h-3.5 w-3.5" />
+                <span>Manage roles</span>
+                <ExternalLink className="h-4 w-4" strokeWidth={1.5} />
               </Link>
             </div>
           </div>

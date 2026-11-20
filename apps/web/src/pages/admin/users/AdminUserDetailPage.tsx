@@ -20,7 +20,7 @@ import { PortalLayout } from "@/components/layout/PortalLayout";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { adminUsersApi, resourceApi, useCachedQuery } from "@/shared/lib/core";
 import { getWorkspaceProfile } from "@/shared/api/workspace-api";
-import { useToast } from "@/shared";
+import { useToast, PageHeader } from "@/shared";
 import type { AdminUserRole, RoleOption } from "@stanforte/shared";
 import type { OrganizationItem } from "@/shared";
 
@@ -180,156 +180,82 @@ export default function AdminUserDetailPage() {
 
   return (
     <PortalLayout activeNav="Employees">
-      <div className="space-y-6 w-full min-w-0">
-        {/* Breadcrumb & Navigation */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-semibold text-neutral-500 mb-1">
-              <Link to="/admin/users" className="hover:text-neutral-800 transition flex items-center gap-1">
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Administration</span>
-              </Link>
-              <ChevronRight className="w-3 h-3 text-neutral-400" />
-              <Link to="/admin/users" className="hover:text-neutral-800 transition">
-                Users
-              </Link>
-              <ChevronRight className="w-3 h-3 text-neutral-400" />
-              <span className="text-[#ff6900] font-medium truncate max-w-[200px]">
-                {displayName}
-              </span>
-            </div>
-            <h1 className="text-2xl font-semibold text-neutral-900 tracking-tight font-headline">
-              {displayName}
-            </h1>
-            <p className="text-xs text-neutral-500 mt-0.5">{adminUser?.email ?? ""}</p>
-          </div>
-
-          <div className="flex items-center gap-2.5">
-            {adminUser?.type === "staff" && (
-              <Link
-                to={`/hr/employees/${adminUser?.id}`}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-xs font-semibold text-neutral-700 shadow-sm transition hover:bg-neutral-50"
-              >
-                <span>View in HR</span>
-                <ExternalLink className="w-3.5 h-3.5" />
-              </Link>
-            )}
-            <Link
-              to="/admin/users"
-              className="inline-flex items-center gap-1.5 rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-xs font-semibold text-neutral-700 shadow-sm transition hover:bg-neutral-50"
-            >
-              Back to Users
-            </Link>
-          </div>
-        </div>
-
-        {/* 4 KPI Summary Cards */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {/* Card 1: Account Status */}
-          <div className="rounded-2xl border border-neutral-200/80 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-neutral-500">
-                Account Status
-              </span>
-              <div
-                className={`flex h-9 w-9 items-center justify-center rounded-xl ${
-                  adminUser?.status === "active"
-                    ? "bg-emerald-50 text-emerald-600"
-                    : adminUser?.status === "suspended"
-                    ? "bg-rose-50 text-rose-600"
-                    : "bg-amber-50 text-amber-600"
-                }`}
-              >
-                {adminUser?.status === "active" ? (
-                  <UserCheck className="w-4 h-4" />
-                ) : (
-                  <UserX className="w-4 h-4" />
-                )}
-              </div>
-            </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-xl font-semibold capitalize tracking-tight text-neutral-900">
-                {adminUser?.status ?? "pending"}
-              </span>
-              <span
-                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${
-                  adminUser?.status === "active"
-                    ? "bg-emerald-50 text-emerald-700"
-                    : "bg-amber-50 text-amber-700"
-                }`}
-              >
-                {adminUser?.status === "active" ? "Verified" : "Action Required"}
-              </span>
-            </div>
-          </div>
-
-          {/* Card 2: Roles Count */}
-          <div className="rounded-2xl border border-neutral-200/80 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-neutral-500">
-                Active Roles
-              </span>
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-neutral-100 text-neutral-700">
-                <Shield className="w-4 h-4" />
-              </div>
-            </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-xl font-semibold tracking-tight text-neutral-900">
-                {selectedRoles.length}
-              </span>
-              <span className="text-xs font-medium text-neutral-500">
-                assigned role{selectedRoles.length === 1 ? "" : "s"}
-              </span>
-            </div>
-          </div>
-
-          {/* Card 3: User Type */}
-          <div className="rounded-2xl border border-neutral-200/80 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-neutral-500">
-                Classification
-              </span>
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-neutral-100 text-neutral-700">
-                <Users className="w-4 h-4" />
-              </div>
-            </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-xl font-semibold tracking-tight text-neutral-900 capitalize">
-                {typeLabel[type] ?? type}
-              </span>
-            </div>
-          </div>
-
-          {/* Card 4: Primary Organization */}
-          <div className="rounded-2xl border border-neutral-200/80 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-neutral-500">
-                Primary Organization
-              </span>
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
-                <Building2 className="w-4 h-4" />
-              </div>
-            </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-base font-semibold tracking-tight text-neutral-900 truncate">
-                {primaryOrg?.name ?? "None Assigned"}
-              </span>
-              {primaryOrg?.code && (
-                <span className="text-xs font-semibold text-neutral-400">({primaryOrg.code})</span>
+      <div className="space-y-6 max-w-[1440px] mx-auto pb-12 w-full min-w-0">
+        <PageHeader
+          title={displayName}
+          description={adminUser?.email ?? "Manage account profile, role assignments, and access lifecycle"}
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              {adminUser?.type === "staff" && (
+                <Link
+                  to={`/hr/employees/${adminUser?.id}`}
+                  className="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg border border-neutral-900/[0.10] bg-white text-sm font-medium text-neutral-900 hover:bg-neutral-50 transition-colors duration-150"
+                >
+                  <span>View in HR</span>
+                  <ExternalLink className="h-4 w-4 text-neutral-500" strokeWidth={1.5} />
+                </Link>
               )}
+              <Link
+                to="/admin/users"
+                className="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg border border-neutral-900/[0.10] bg-white text-sm font-medium text-neutral-700 hover:bg-neutral-50 transition-colors duration-150"
+              >
+                <ArrowLeft className="h-4 w-4 text-neutral-500" strokeWidth={1.5} />
+                <span>Back to users</span>
+              </Link>
             </div>
-          </div>
+          }
+        />
+
+        {/* 4 Compact Numbers-Only KPI Cards */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <article className="p-5 rounded-2xl border border-neutral-900/[0.08] bg-white shadow-xs space-y-2">
+            <p className="text-xs text-neutral-500">Account status</p>
+            <p className={`text-[28px] leading-none font-medium capitalize font-headline ${adminUser?.status === "pending" ? "text-[#c2410c]" : "text-neutral-900"}`}>
+              {adminUser?.status ?? "pending"}
+            </p>
+            <p className="text-xs text-neutral-500">
+              {adminUser?.status === "active" ? "Verified account" : "Action required"}
+            </p>
+          </article>
+
+          <article className="p-5 rounded-2xl border border-neutral-900/[0.08] bg-white shadow-xs space-y-2">
+            <p className="text-xs text-neutral-500">Active roles</p>
+            <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+              {selectedRoles.length}
+            </p>
+            <p className="text-xs text-neutral-500">
+              Assigned role{selectedRoles.length === 1 ? "" : "s"}
+            </p>
+          </article>
+
+          <article className="p-5 rounded-2xl border border-neutral-900/[0.08] bg-white shadow-xs space-y-2">
+            <p className="text-xs text-neutral-500">Classification</p>
+            <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline capitalize truncate">
+              {typeLabel[type] ?? type}
+            </p>
+            <p className="text-xs text-neutral-500">Directory account type</p>
+          </article>
+
+          <article className="p-5 rounded-2xl border border-neutral-900/[0.08] bg-white shadow-xs space-y-2">
+            <p className="text-xs text-neutral-500">Primary organization</p>
+            <p className="text-xl leading-snug font-medium text-neutral-900 font-headline truncate">
+              {primaryOrg?.name ?? "None assigned"}
+            </p>
+            <p className="text-xs text-neutral-500 font-mono">
+              {primaryOrg?.code ? primaryOrg.code : "Unscoped"}
+            </p>
+          </article>
         </div>
 
         {/* User Loading / Error */}
         {userLoading && (
-          <div className="rounded-2xl border border-neutral-200 bg-white p-8 text-center text-sm text-neutral-500">
-            Loading user profile...
+          <div className="rounded-2xl border border-neutral-900/[0.08] bg-white p-10 text-center text-sm text-neutral-500 shadow-xs">
+            Loading user profile
           </div>
         )}
 
         {userError && (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+          <div className="rounded-xl border border-rose-600/15 bg-rose-50 px-4 py-3 text-sm text-rose-800">
             {(userError as any)?.message || String(userError)}
           </div>
         )}
@@ -340,61 +266,61 @@ export default function AdminUserDetailPage() {
             {/* Left 8 Cols: Identity & Roles Form */}
             <div className="space-y-6 lg:col-span-8">
               {/* Identity Card */}
-              <div className="rounded-2xl border border-neutral-200/90 bg-white p-6 shadow-sm">
-                <h3 className="text-base font-medium text-neutral-900 mb-1">Identity &amp; Profile</h3>
+              <div className="rounded-2xl border border-neutral-900/[0.08] bg-white p-6 shadow-xs">
+                <h3 className="text-base font-medium text-neutral-900 font-headline mb-1">Identity and profile</h3>
                 <p className="text-xs text-neutral-500 mb-5">
-                  Update basic personal information and organizational assignment.
+                  Update basic personal information and organizational assignment
                 </p>
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <label className="block text-xs font-semibold text-neutral-700 mb-1.5">
-                      First Name
+                    <label className="block text-xs font-medium text-neutral-700 mb-1.5">
+                      First name
                     </label>
                     <input
                       type="text"
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
-                      placeholder="e.g. Folake"
-                      className="w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-xs text-neutral-900 outline-none transition focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+                      placeholder="Folake"
+                      className="w-full h-9 rounded-lg border border-neutral-900/[0.12] bg-white px-3 text-sm text-neutral-900 outline-none transition-[border-color,box-shadow] duration-150 focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-neutral-700 mb-1.5">
-                      Last Name
+                    <label className="block text-xs font-medium text-neutral-700 mb-1.5">
+                      Last name
                     </label>
                     <input
                       type="text"
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
-                      placeholder="e.g. Adeleke"
-                      className="w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-xs text-neutral-900 outline-none transition focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+                      placeholder="Adeleke"
+                      className="w-full h-9 rounded-lg border border-neutral-900/[0.12] bg-white px-3 text-sm text-neutral-900 outline-none transition-[border-color,box-shadow] duration-150 focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-neutral-700 mb-1.5">
-                      Email Address
+                    <label className="block text-xs font-medium text-neutral-700 mb-1.5">
+                      Email address
                     </label>
                     <input
                       type="email"
                       value={adminUser?.email ?? ""}
                       readOnly
-                      className="w-full rounded-xl border border-neutral-200 bg-neutral-50 px-3.5 py-2 text-xs text-neutral-500 cursor-not-allowed"
+                      className="w-full h-9 rounded-lg border border-neutral-900/[0.08] bg-neutral-50 px-3 text-sm text-neutral-500 cursor-not-allowed"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-neutral-700 mb-1.5">
-                      Primary Organization
+                    <label className="block text-xs font-medium text-neutral-700 mb-1.5">
+                      Primary organization
                     </label>
                     <SelectBox
                       value={organizationId}
                       onChange={(e) => setOrganizationId(e.target.value)}
-                      className="w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-xs text-neutral-900 outline-none transition focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+                      className="w-full h-9 rounded-lg border border-neutral-900/[0.12] bg-white px-3 text-sm text-neutral-900 outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
                     >
-                      <option value="">Select organization...</option>
+                      <option value="">Select organization</option>
                       {organizations.map((org) => (
                         <option key={org.id} value={org.id}>
                           {org.name} {org.code ? `(${org.code})` : ""}
@@ -404,18 +330,18 @@ export default function AdminUserDetailPage() {
                   </div>
 
                   <div className="sm:col-span-2">
-                    <label className="block text-xs font-semibold text-neutral-700 mb-1.5">
-                      User Classification
+                    <label className="block text-xs font-medium text-neutral-700 mb-1.5">
+                      User classification
                     </label>
                     <SelectBox
                       value={type}
                       onChange={(e) => setType(e.target.value)}
-                      className="w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-xs text-neutral-900 outline-none transition focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+                      className="w-full h-9 rounded-lg border border-neutral-900/[0.12] bg-white px-3 text-sm text-neutral-900 outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
                     >
                       <option value="staff">Staff / Employee</option>
                       <option value="vendor">Vendor</option>
                       <option value="client">Client</option>
-                      <option value="board_member">Board Member</option>
+                      <option value="board_member">Board member</option>
                     </SelectBox>
                   </div>
                 </div>
@@ -425,29 +351,29 @@ export default function AdminUserDetailPage() {
                     type="button"
                     onClick={() => void handleSaveInfo()}
                     disabled={infoSaving}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-[#ff6900] px-5 py-2.5 text-xs font-medium text-white shadow-md transition hover:bg-[#ea580c] active:scale-[0.98] disabled:opacity-50"
+                    className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#ff6900] text-sm font-medium text-white transition-colors duration-150 hover:bg-[#ea580c] active:scale-[0.98] disabled:opacity-50"
                   >
-                    {infoSaving ? "Saving details..." : "Save Details"}
+                    {infoSaving ? "Saving" : "Save details"}
                   </button>
                 </div>
               </div>
 
               {/* Roles Matrix Card */}
-              <div className="rounded-2xl border border-neutral-200/90 bg-white p-6 shadow-sm">
+              <div className="rounded-2xl border border-neutral-900/[0.08] bg-white p-6 shadow-xs">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h3 className="text-base font-medium text-neutral-900">Security Roles &amp; Permissions</h3>
+                    <h3 className="text-base font-medium text-neutral-900 font-headline">Security roles and permissions</h3>
                     <p className="text-xs text-neutral-500 mt-0.5">
-                      Select all security and functional access roles granted to this account.
+                      Select all security and functional access roles granted to this account
                     </p>
                   </div>
-                  <span className="text-xs font-semibold text-neutral-500">
+                  <span className="text-xs font-mono text-neutral-500 tabular-nums">
                     {selectedRoles.length} selected
                   </span>
                 </div>
 
                 {rolesLoading ? (
-                  <div className="py-6 text-center text-xs text-neutral-400">Loading roles...</div>
+                  <div className="py-8 text-center text-sm text-neutral-500">Loading roles</div>
                 ) : (
                   <>
                     <div className="grid gap-3 sm:grid-cols-2">
@@ -457,25 +383,24 @@ export default function AdminUserDetailPage() {
                           <label
                             key={r.slug}
                             onClick={() => toggleRole(r.slug)}
-                            className={`flex cursor-pointer items-center justify-between rounded-xl border p-3 transition ${
-                              isChecked
-                                ? "border-[#ff6900] bg-orange-50/20"
-                                : "border-neutral-200/80 bg-white hover:border-neutral-300"
-                            }`}
+                            className={`flex cursor-pointer items-center justify-between rounded-xl border p-3 transition-colors duration-150 ${isChecked
+                                ? "border-[#ff6900] bg-orange-50/30"
+                                : "border-neutral-900/[0.10] bg-white hover:bg-neutral-50"
+                              }`}
                           >
                             <div className="flex items-center gap-2.5 min-w-0">
                               <input
                                 type="checkbox"
                                 checked={isChecked}
-                                onChange={() => {}}
+                                onChange={() => { }}
                                 className="h-4 w-4 rounded border-neutral-300 text-[#ff6900] focus:ring-[#ff6900]"
                               />
-                              <span className="text-xs font-semibold text-neutral-800 truncate">
+                              <span className="text-sm font-medium text-neutral-900 truncate">
                                 {r.name}
                               </span>
                             </div>
                             {isChecked && (
-                              <CheckCircle2 className="w-4 h-4 text-[#ff6900] shrink-0 ml-2" />
+                              <CheckCircle2 className="h-4 w-4 text-[#c2410c] shrink-0 ml-2" strokeWidth={1.5} />
                             )}
                           </label>
                         );
@@ -487,9 +412,9 @@ export default function AdminUserDetailPage() {
                         type="button"
                         onClick={() => void handleSaveRole()}
                         disabled={roleSaving}
-                        className="inline-flex items-center gap-1.5 rounded-xl bg-[#0a1128] px-5 py-2.5 text-xs font-medium text-white shadow-md transition hover:bg-[#101b44] active:scale-[0.98] disabled:opacity-50"
+                        className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-sm font-medium text-white transition-colors duration-150 active:scale-[0.98] disabled:opacity-50"
                       >
-                        {roleSaving ? "Updating roles..." : "Update Roles"}
+                        {roleSaving ? "Updating" : "Update roles"}
                       </button>
                     </div>
                   </>
@@ -500,37 +425,44 @@ export default function AdminUserDetailPage() {
             {/* Right 4 Cols: Status & Invitations */}
             <div className="space-y-6 lg:col-span-4">
               {/* Account Status Card */}
-              <div className="rounded-2xl border border-neutral-200/90 bg-white p-6 shadow-sm">
-                <h3 className="text-base font-medium text-neutral-900 mb-1">Account Lifecycle</h3>
+              <div className="rounded-2xl border border-neutral-900/[0.08] bg-white p-6 shadow-xs">
+                <h3 className="text-base font-medium text-neutral-900 font-headline mb-1">Account lifecycle</h3>
                 <p className="text-xs text-neutral-500 mb-4">
-                  Manage active state, account suspension, or permanent deletion.
+                  Manage active state, account suspension, or permanent deletion
                 </p>
 
-                <div className="mb-5 flex items-center justify-between rounded-xl bg-neutral-50 p-3 border border-neutral-100">
-                  <span className="text-xs font-semibold text-neutral-600">Current Status</span>
+                <div className="mb-5 flex items-center justify-between rounded-xl bg-neutral-50 px-3.5 py-2.5 border border-neutral-900/[0.06]">
+                  <span className="text-xs font-medium text-neutral-600">Current status</span>
                   <span
-                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${
-                      adminUser?.status === "active"
-                        ? "bg-emerald-100 text-emerald-800"
+                    className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium capitalize border ${adminUser?.status === "active"
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-600/15"
                         : adminUser?.status === "suspended"
-                        ? "bg-rose-100 text-rose-800"
-                        : "bg-amber-100 text-amber-800"
-                    }`}
+                          ? "bg-rose-50 text-rose-700 border-rose-600/15"
+                          : "bg-amber-50 text-amber-800 border-amber-600/15"
+                      }`}
                   >
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${adminUser?.status === "active"
+                          ? "bg-emerald-600"
+                          : adminUser?.status === "suspended"
+                            ? "bg-rose-600"
+                            : "bg-amber-600"
+                        }`}
+                    />
                     {adminUser?.status ?? "pending"}
                   </span>
                 </div>
 
-                <div className="flex flex-col gap-2.5">
+                <div className="flex flex-col gap-2">
                   {adminUser?.status !== "active" && adminUser?.status !== "deleted" && (
                     <button
                       type="button"
                       onClick={() => void handleStatusChange("active")}
                       disabled={statusSaving}
-                      className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 py-2.5 text-xs font-medium text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50"
+                      className="w-full h-9 inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-sm font-medium text-white transition-colors duration-150 disabled:opacity-50"
                     >
-                      <UserCheck className="w-3.5 h-3.5" />
-                      <span>{statusSaving ? "Activating..." : "Activate Account"}</span>
+                      <UserCheck className="h-4 w-4" strokeWidth={1.5} />
+                      <span>{statusSaving ? "Activating" : "Activate account"}</span>
                     </button>
                   )}
 
@@ -539,10 +471,10 @@ export default function AdminUserDetailPage() {
                       type="button"
                       onClick={() => void handleStatusChange("suspended")}
                       disabled={statusSaving}
-                      className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50/50 py-2.5 text-xs font-medium text-rose-600 transition hover:bg-rose-100/70 disabled:opacity-50"
+                      className="w-full h-9 inline-flex items-center justify-center gap-2 rounded-lg border border-rose-600/20 bg-rose-50 hover:bg-rose-100 text-sm font-medium text-rose-700 transition-colors duration-150 disabled:opacity-50"
                     >
-                      <UserX className="w-3.5 h-3.5" />
-                      <span>{statusSaving ? "Suspending..." : "Suspend Account"}</span>
+                      <UserX className="h-4 w-4" strokeWidth={1.5} />
+                      <span>{statusSaving ? "Suspending" : "Suspend account"}</span>
                     </button>
                   )}
 
@@ -559,55 +491,53 @@ export default function AdminUserDetailPage() {
                         }
                       }}
                       disabled={statusSaving}
-                      className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-neutral-200 bg-white py-2.5 text-xs font-medium text-rose-600 transition hover:bg-rose-50 disabled:opacity-50"
+                      className="w-full h-9 inline-flex items-center justify-center gap-2 rounded-lg border border-neutral-900/[0.10] bg-white hover:bg-rose-50 text-sm font-medium text-rose-700 transition-colors duration-150 disabled:opacity-50"
                     >
-                      <ShieldAlert className="w-3.5 h-3.5 text-rose-500" />
-                      <span>Delete User</span>
+                      <ShieldAlert className="h-4 w-4 text-rose-600" strokeWidth={1.5} />
+                      <span>Delete user</span>
                     </button>
                   )}
                 </div>
               </div>
 
               {/* Invitation Card */}
-              <div className="rounded-2xl border border-neutral-200/90 bg-white p-6 shadow-sm">
-                <h3 className="text-base font-medium text-neutral-900 mb-1">Access Invitation</h3>
+              <div className="rounded-2xl border border-neutral-900/[0.08] bg-white p-6 shadow-xs">
+                <h3 className="text-base font-medium text-neutral-900 font-headline mb-1">Access invitation</h3>
                 <p className="text-xs text-neutral-500 mb-4">
                   {adminUser?.status === "pending"
-                    ? "This user has not accepted their invite yet."
-                    : "Send a fresh magic login / password setup link to this email."}
+                    ? "This user has not accepted their invite yet"
+                    : "Send a fresh login and password setup link to this email"}
                 </p>
 
                 <button
                   type="button"
                   onClick={() => void handleSendInvite()}
                   disabled={inviteSending}
-                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-neutral-200 bg-white py-2.5 text-xs font-medium text-neutral-700 shadow-sm transition hover:bg-neutral-50 active:scale-[0.98] disabled:opacity-50"
+                  className="w-full h-9 inline-flex items-center justify-center gap-2 rounded-lg border border-neutral-900/[0.10] bg-white hover:bg-neutral-50 text-sm font-medium text-neutral-900 transition-colors duration-150 active:scale-[0.98] disabled:opacity-50"
                 >
-                  <Send className="w-3.5 h-3.5 text-[#ff6900]" />
-                  <span>{inviteSending ? "Sending link..." : "Send / Resend Invite"}</span>
+                  <Send className="h-4 w-4 text-neutral-500" strokeWidth={1.5} />
+                  <span>{inviteSending ? "Sending link" : "Send invite"}</span>
                 </button>
               </div>
 
               {/* HR Profile Quick Link */}
               {adminUser?.type === "staff" && (
-                <div className="rounded-2xl border border-neutral-200 bg-neutral-100 p-5">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-neutral-100 text-neutral-700 shrink-0">
-                      <Users className="w-5 h-5" />
-                    </div>
+                <div className="rounded-2xl border border-neutral-900/[0.08] bg-white p-6 shadow-xs">
+                  <div className="flex items-start gap-3">
+                    <Users className="h-4 w-4 text-neutral-500 mt-0.5 shrink-0" strokeWidth={1.5} />
                     <div>
-                      <h4 className="text-xs font-medium text-neutral-900">Workforce Record</h4>
+                      <h4 className="text-sm font-medium text-neutral-900">Workforce record</h4>
                       <p className="text-xs text-neutral-500 mt-0.5">
-                        Manage employment contracts, leave policies, and manager relations in HR.
+                        Manage employment contracts, leave policies, and manager relations in HR
                       </p>
                     </div>
                   </div>
                   <Link
                     to={`/hr/employees/${adminUser?.id}`}
-                    className="mt-3.5 w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-white border border-neutral-200 py-2 text-xs font-medium text-neutral-700 shadow-sm hover:bg-neutral-100 transition"
+                    className="mt-4 w-full h-9 inline-flex items-center justify-center gap-2 rounded-lg bg-white border border-neutral-900/[0.10] text-sm font-medium text-neutral-900 hover:bg-neutral-50 transition-colors duration-150"
                   >
-                    <span>Open in HR Directory</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>Open in HR directory</span>
+                    <ExternalLink className="h-4 w-4 text-neutral-500" strokeWidth={1.5} />
                   </Link>
                 </div>
               )}

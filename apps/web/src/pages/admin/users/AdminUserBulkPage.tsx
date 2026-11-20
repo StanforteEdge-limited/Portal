@@ -102,27 +102,24 @@ export default function AdminUserBulkPage() {
   };
 
   return (
-    <PortalLayout activeNav="Employees Directory">
-      <div className="space-y-6 max-w-[1600px] mx-auto pb-12">
-        {/* Modern Unified Page Header (No Breadcrumbs) */}
+    <PortalLayout activeNav="Employees">
+      <div className="space-y-6 max-w-[1440px] mx-auto pb-12">
         <PageHeader
-          title="Bulk Employee Onboarding"
-          description="Stage, validate, and mass-register employee accounts across corporate organizations."
-          icon={Users}
-          iconColor="bg-orange-50 text-[#ff6900]"
+          title="Bulk employee onboarding"
+          description="Stage, validate, and mass-register employee accounts across corporate organizations"
           actions={
             <Link
               to="/admin/users"
-              className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 text-xs font-medium transition shadow-xs self-start sm:self-auto"
+              className="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg border border-neutral-900/[0.10] bg-white hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors duration-150 self-start sm:self-auto"
             >
-              <ArrowLeft className="h-4 w-4 text-neutral-400" />
-              <span>Back to Staff Directory</span>
+              <ArrowLeft className="h-4 w-4 text-neutral-500" strokeWidth={1.5} />
+              <span>Back to directory</span>
             </Link>
           }
         />
 
         {/* Bulk Dashboard */}
-        <div className="bg-white border border-neutral-200/80 rounded-2xl shadow-sm overflow-hidden p-6">
+        <div className="bg-white border border-neutral-900/[0.08] rounded-2xl shadow-xs overflow-hidden p-6">
           <BulkImportDashboard
             title="CSV / Spreadsheet Importer"
             description="Download the template, paste rows or upload a CSV file to register staff members."

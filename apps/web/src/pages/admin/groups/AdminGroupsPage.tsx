@@ -74,8 +74,8 @@ export default function AdminGroupsPage() {
   const teams: TeamOption[] = Array.isArray((groupsData as any)?.data?.items)
     ? (groupsData as any).data.items
     : Array.isArray(groupsData)
-    ? groupsData
-    : [];
+      ? groupsData
+      : [];
 
   const activeGroups = teams.filter((g) => g.isActive).length;
   const inactiveGroups = teams.length - activeGroups;
@@ -105,150 +105,117 @@ export default function AdminGroupsPage() {
   };
 
   return (
-    <PortalLayout activeNav="Teams & Departments">
-      <div className="space-y-6 max-w-[1600px] mx-auto pb-12">
-        {/* Modern Unified Page Header (No Breadcrumbs) */}
+    <PortalLayout activeNav="Teams & Units">
+      <div className="space-y-6 max-w-[1440px] mx-auto pb-12">
         <PageHeader
-          title="Groups & Functional Teams"
-          description="Configure operating units, departments, and cross-subsidiary workforce coverage."
-          icon={Building2}
-          iconColor="bg-neutral-100 text-neutral-700"
+          title="Groups and functional teams"
+          description="Configure operating units, departments, and cross-subsidiary workforce coverage"
           actions={
             activeTab === "groups" ? (
               <button
                 type="button"
                 onClick={() => setShowCreate(true)}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-medium shadow-sm transition active:scale-[0.98]"
+                className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#ff6900] hover:bg-[#ea580c] text-white text-sm font-medium transition-colors duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30"
               >
-                <Plus className="h-4 w-4" />
-                <span>Create New Group</span>
+                <Plus className="h-4 w-4" strokeWidth={1.5} />
+                <span>Create group</span>
               </button>
             ) : (
               <button
                 type="button"
                 onClick={() => setShowCreateType(true)}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-medium shadow-sm transition active:scale-[0.98]"
+                className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#ff6900] hover:bg-[#ea580c] text-white text-sm font-medium transition-colors duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30"
               >
-                <Plus className="h-4 w-4" />
-                <span>Add Group Type</span>
+                <Plus className="h-4 w-4" strokeWidth={1.5} />
+                <span>Add group type</span>
               </button>
             )
           }
         />
 
-        {/* 4 Metric KPI Cards */}
+        {/* 4 Compact Numbers-Only KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
-                <Users className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="text-xs font-semibold text-neutral-500">Total Groups</div>
-                <div className="text-xl font-semibold text-neutral-900 mt-0.5">{teams.length}</div>
-              </div>
-            </div>
-            <span className="text-xs font-medium text-neutral-700 bg-neutral-100 px-2 py-0.5 rounded-full">
-              Cataloged
-            </span>
-          </div>
+          <article className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
+            <p className="text-xs text-neutral-500">Total groups</p>
+            <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+              {teams.length.toLocaleString()}
+            </p>
+            <p className="text-xs text-neutral-500">Cataloged units</p>
+          </article>
 
-          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                <CheckCircle2 className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="text-xs font-semibold text-neutral-500">Active Units</div>
-                <div className="text-xl font-semibold text-neutral-900 mt-0.5">{activeGroups}</div>
-              </div>
-            </div>
-            <span className="text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
-              Operational
-            </span>
-          </div>
+          <article className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
+            <p className="text-xs text-neutral-500">Active units</p>
+            <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+              {activeGroups.toLocaleString()}
+            </p>
+            <p className="text-xs text-neutral-500">Currently operational</p>
+          </article>
 
-          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
-                <FolderTree className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="text-xs font-semibold text-neutral-500">Classification Types</div>
-                <div className="text-xl font-semibold text-neutral-900 mt-0.5">{groupTypes.length}</div>
-              </div>
-            </div>
-            <span className="text-xs font-medium text-neutral-700 bg-neutral-100 px-2 py-0.5 rounded-full">
-              Taxonomy
-            </span>
-          </div>
+          <article className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
+            <p className="text-xs text-neutral-500">Classification types</p>
+            <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+              {groupTypes.length.toLocaleString()}
+            </p>
+            <p className="text-xs text-neutral-500">Organizational taxonomy</p>
+          </article>
 
-          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-                <Building2 className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="text-xs font-semibold text-neutral-500">Inactive / Archived</div>
-                <div className="text-xl font-semibold text-neutral-900 mt-0.5">{inactiveGroups}</div>
-              </div>
-            </div>
-            <span className="text-xs font-medium text-neutral-500 bg-neutral-100 px-2 py-0.5 rounded-full">
-              Historical
-            </span>
-          </div>
+          <article className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
+            <p className="text-xs text-neutral-500">Inactive or archived</p>
+            <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+              {inactiveGroups.toLocaleString()}
+            </p>
+            <p className="text-xs text-neutral-500">Historical records</p>
+          </article>
         </div>
 
         {/* Tab & Toolbar Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-1 p-1 bg-neutral-100 rounded-xl self-start">
+          <div className="inline-flex items-center gap-1 p-1 bg-neutral-100 rounded-xl border border-neutral-900/[0.06] self-start">
             <button
               type="button"
               onClick={() => setActiveTab("groups")}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                activeTab === "groups"
-                  ? "bg-white text-neutral-900 shadow-sm"
-                  : "text-neutral-500 hover:text-neutral-800"
-              }`}
+              className={`inline-flex items-center gap-2 h-8 px-3 rounded-lg text-xs font-medium transition-colors duration-150 ${activeTab === "groups"
+                  ? "bg-white text-neutral-900 shadow-xs"
+                  : "text-neutral-600 hover:text-neutral-900"
+                }`}
             >
-              <Users className="h-3.5 w-3.5" />
-              <span>Groups Directory ({teams.length})</span>
+              <Users className="h-4 w-4 text-neutral-500" strokeWidth={1.5} />
+              <span>Groups directory</span>
+              <span className="font-mono text-neutral-500 tabular-nums">{teams.length}</span>
             </button>
             <button
               type="button"
               onClick={() => setActiveTab("types")}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                activeTab === "types"
-                  ? "bg-white text-neutral-900 shadow-sm"
-                  : "text-neutral-500 hover:text-neutral-800"
-              }`}
+              className={`inline-flex items-center gap-2 h-8 px-3 rounded-lg text-xs font-medium transition-colors duration-150 ${activeTab === "types"
+                  ? "bg-white text-neutral-900 shadow-xs"
+                  : "text-neutral-600 hover:text-neutral-900"
+                }`}
             >
-              <FolderTree className="h-3.5 w-3.5" />
-              <span>Types & Categories ({groupTypes.length})</span>
+              <FolderTree className="h-4 w-4 text-neutral-500" strokeWidth={1.5} />
+              <span>Types and categories</span>
+              <span className="font-mono text-neutral-500 tabular-nums">{groupTypes.length}</span>
             </button>
           </div>
 
           {activeTab === "groups" && (
-            <div className="flex flex-wrap items-center gap-2.5">
-              {/* Search input */}
+            <div className="flex flex-wrap items-center gap-2">
               <div className="relative min-w-[220px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400 pointer-events-none" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400 pointer-events-none" strokeWidth={1.5} />
                 <input
                   type="search"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Filter groups..."
-                  className="w-full pl-9 pr-3 py-1.5 rounded-xl border border-neutral-200 bg-white text-xs font-semibold text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                  placeholder="Search groups"
+                  className="w-full h-9 pl-9 pr-3 rounded-lg border border-neutral-900/[0.12] bg-white text-sm text-neutral-900 placeholder:text-neutral-400 outline-none transition-[border-color,box-shadow] duration-150 focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
                 />
               </div>
 
-              {/* Type Filter */}
               <SelectBox
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value)}
-                className="px-3 py-1.5 rounded-xl border border-neutral-200 bg-white text-xs font-semibold text-neutral-700 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20"
+                className="h-9 px-3 rounded-lg border border-neutral-900/[0.12] bg-white text-sm text-neutral-700 outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
               >
-                <option value="all">All Types</option>
+                <option value="all">All types</option>
                 {groupTypes.map((t) => (
                   <option key={t.id} value={t.slug}>
                     {t.name}
@@ -256,25 +223,23 @@ export default function AdminGroupsPage() {
                 ))}
               </SelectBox>
 
-              {/* Status Filter */}
               <SelectBox
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-1.5 rounded-xl border border-neutral-200 bg-white text-xs font-semibold text-neutral-700 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20"
+                className="h-9 px-3 rounded-lg border border-neutral-900/[0.12] bg-white text-sm text-neutral-700 outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
               >
-                <option value="all">All Statuses</option>
+                <option value="all">All statuses</option>
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
               </SelectBox>
 
-              {/* Refetch button */}
               <button
                 type="button"
                 onClick={() => void refetchGroups()}
-                className="p-2 rounded-xl border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50 transition"
+                className="h-9 w-9 inline-flex items-center justify-center rounded-lg border border-neutral-900/[0.10] bg-white text-neutral-500 hover:text-neutral-900 hover:bg-neutral-50 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30"
                 title="Refresh list"
               >
-                <RotateCcw className="h-3.5 w-3.5" />
+                <RotateCcw className="h-4 w-4" strokeWidth={1.5} />
               </button>
             </div>
           )}
@@ -282,39 +247,39 @@ export default function AdminGroupsPage() {
 
         {/* Tab 1: Groups Directory */}
         {activeTab === "groups" && (
-          <div className="bg-white border border-neutral-200/80 rounded-2xl shadow-sm overflow-hidden">
+          <div className="bg-white border border-neutral-900/[0.08] rounded-2xl shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-neutral-200/80 bg-neutral-50/70 text-xs font-medium text-neutral-500">
-                    <th className="py-3 px-5">Group Name</th>
-                    <th className="py-3 px-4">Classification</th>
-                    <th className="py-3 px-4">Status</th>
+                  <tr className="border-b border-neutral-900/[0.08] bg-neutral-50/80 text-xs font-medium text-neutral-500">
+                    <th className="py-3 px-5">Group name</th>
+                    <th className="py-3 px-5">Classification</th>
+                    <th className="py-3 px-5">Status</th>
                     <th className="py-3 px-5 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-neutral-100 text-xs">
+                <tbody className="divide-y divide-neutral-900/[0.06] text-sm text-neutral-700">
                   {groupsLoading ? (
                     <tr>
-                      <td colSpan={4} className="py-12 text-center text-neutral-400 font-medium">
-                        <div className="w-6 h-6 border-2 border-[#ff6900] border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                        Loading groups directory...
+                      <td colSpan={4} className="py-12 text-center text-sm text-neutral-500">
+                        <div className="w-5 h-5 border-2 border-[#ff6900] border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                        Loading groups directory
                       </td>
                     </tr>
                   ) : filteredGroups.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="py-12 text-center text-neutral-500">
-                        <Users className="h-8 w-8 text-neutral-300 mx-auto mb-2" />
-                        <div className="font-medium text-neutral-700">No groups found</div>
-                        <p className="text-xs text-neutral-400 mt-0.5">
-                          Try adjusting your search filters or create a new group.
+                      <td colSpan={4} className="py-14 text-center">
+                        <Users className="h-6 w-6 text-neutral-400 mx-auto mb-2" strokeWidth={1.5} />
+                        <div className="text-sm font-medium text-neutral-900">No groups found</div>
+                        <p className="text-xs text-neutral-500 mt-1">
+                          Try adjusting your search filters or create a new group
                         </p>
                       </td>
                     </tr>
                   ) : (
                     filteredGroups.map((group) => (
-                      <tr key={group.id} className="hover:bg-neutral-50/60 transition group">
-                        <td className="py-3 px-5">
+                      <tr key={group.id} className="hover:bg-neutral-50 focus-within:bg-neutral-50/80 transition-colors duration-150">
+                        <td className="py-3.5 px-5">
                           <div className="font-medium text-neutral-900">{group.name}</div>
                           {group.description && (
                             <div className="text-xs text-neutral-500 mt-0.5 max-w-md truncate">
@@ -322,39 +287,42 @@ export default function AdminGroupsPage() {
                             </div>
                           )}
                         </td>
-                        <td className="py-3 px-4">
-                          <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-neutral-100 text-neutral-700 border border-neutral-200">
+                        <td className="py-3.5 px-5">
+                          <code className="px-2 py-0.5 rounded-md text-xs font-mono bg-neutral-100 text-neutral-700 border border-neutral-900/[0.06]">
                             {group.groupType || "team"}
-                          </span>
+                          </code>
                         </td>
-                        <td className="py-3 px-4">
+                        <td className="py-3.5 px-5">
                           <span
-                            className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${
-                              group.isActive
-                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                : "bg-neutral-100 text-neutral-600 border-neutral-200"
-                            }`}
+                            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium border ${group.isActive
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-600/15"
+                                : "bg-neutral-100 text-neutral-600 border-neutral-900/[0.08]"
+                              }`}
                           >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${group.isActive ? "bg-emerald-600" : "bg-neutral-400"
+                                }`}
+                            />
                             {group.isActive ? "Active" : "Inactive"}
                           </span>
                         </td>
-                        <td className="py-3 px-5 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
+                        <td className="py-3.5 px-5 text-right">
+                          <div className="flex items-center justify-end gap-1">
                             <button
                               type="button"
                               onClick={() => setEditingGroup(group)}
-                              className="p-1.5 rounded-lg border border-neutral-200 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 transition"
+                              className="h-8 w-8 inline-flex items-center justify-center rounded-lg text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30 transition-colors duration-150"
                               title="Edit group"
                             >
-                              <Pencil className="h-3.5 w-3.5" />
+                              <Pencil className="h-4 w-4" strokeWidth={1.5} />
                             </button>
                             <button
                               type="button"
                               onClick={() => handleDeleteGroup(group)}
-                              className="p-1.5 rounded-lg border border-neutral-200 text-rose-600 hover:bg-rose-50 transition"
+                              className="h-8 w-8 inline-flex items-center justify-center rounded-lg text-neutral-400 hover:text-rose-600 hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30 transition-colors duration-150"
                               title="Remove group"
                             >
-                              <Trash2 className="h-3.5 w-3.5" />
+                              <Trash2 className="h-4 w-4" strokeWidth={1.5} />
                             </button>
                           </div>
                         </td>
@@ -369,32 +337,35 @@ export default function AdminGroupsPage() {
 
         {/* Tab 2: Group Types */}
         {activeTab === "types" && (
-          <div className="bg-white border border-neutral-200/80 rounded-2xl shadow-sm overflow-hidden">
+          <div className="bg-white border border-neutral-900/[0.08] rounded-2xl shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-neutral-200/80 bg-neutral-50/70 text-xs font-medium text-neutral-500">
-                    <th className="py-3 px-5">Type Name</th>
-                    <th className="py-3 px-4">Slug Identifier</th>
-                    <th className="py-3 px-4">Description</th>
+                  <tr className="border-b border-neutral-900/[0.08] bg-neutral-50/80 text-xs font-medium text-neutral-500">
+                    <th className="py-3 px-5">Type name</th>
+                    <th className="py-3 px-5">Identifier</th>
+                    <th className="py-3 px-5">Description</th>
                     <th className="py-3 px-5 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-neutral-100 text-xs">
+                <tbody className="divide-y divide-neutral-900/[0.06] text-sm text-neutral-700">
                   {groupTypes.map((t) => (
-                    <tr key={t.id} className="hover:bg-neutral-50/60 transition">
-                      <td className="py-3 px-5 font-medium text-neutral-900">{t.name}</td>
-                      <td className="py-3 px-4 font-mono text-xs text-neutral-600">
-                        {t.slug}
+                    <tr key={t.id} className="hover:bg-neutral-50 focus-within:bg-neutral-50/80 transition-colors duration-150">
+                      <td className="py-3.5 px-5 font-medium text-neutral-900">{t.name}</td>
+                      <td className="py-3.5 px-5">
+                        <code className="px-2 py-0.5 rounded-md text-xs font-mono bg-neutral-100 text-neutral-700 border border-neutral-900/[0.06]">
+                          {t.slug}
+                        </code>
                       </td>
-                      <td className="py-3 px-4 text-neutral-600">{t.description}</td>
-                      <td className="py-3 px-5 text-right">
+                      <td className="py-3.5 px-5 text-neutral-500">{t.description}</td>
+                      <td className="py-3.5 px-5 text-right">
                         <button
                           type="button"
                           onClick={() => setEditingType(t)}
-                          className="p-1.5 rounded-lg border border-neutral-200 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 transition"
+                          className="h-8 w-8 inline-flex items-center justify-center rounded-lg text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30 transition-colors duration-150"
+                          title="Edit type"
                         >
-                          <Pencil className="h-3.5 w-3.5" />
+                          <Pencil className="h-4 w-4" strokeWidth={1.5} />
                         </button>
                       </td>
                     </tr>
