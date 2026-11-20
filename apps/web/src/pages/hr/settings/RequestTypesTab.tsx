@@ -55,8 +55,8 @@ export default function RequestTypesTab() {
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-bold text-slate-900">HR Request Types</h3>
-          <p className="text-sm text-slate-500 mt-1">Manage HR-specific request categories (Leave, etc.)</p>
+          <h3 className="text-lg font-medium text-neutral-900">HR Request Types</h3>
+          <p className="text-sm text-neutral-500 mt-1">Manage HR-specific request categories (Leave, etc.)</p>
         </div>
         <Button onClick={() => setEditingType(true)}>
           <Icon name="add" className="mr-1" />
@@ -66,7 +66,7 @@ export default function RequestTypesTab() {
 
       <DataTable
         columns={[
-          { header: "Name", className: "font-bold text-slate-900", cell: (t: any) => t.name },
+          { header: "Name", className: "font-medium text-neutral-900", cell: (t: any) => t.name },
           { header: "Slug", className: "font-mono text-xs", cell: (t: any) => t.slug },
           { header: "Category", className: "capitalize", cell: (t: any) => t.category || "General" },
           { header: "Status", cell: (t: any) => (
@@ -85,7 +85,7 @@ export default function RequestTypesTab() {
         loading={loading}
       />
       
-      <p className="text-xs text-slate-400 p-4 bg-slate-50 rounded-2xl border border-slate-100 italic">
+      <p className="text-xs text-neutral-400 p-4 bg-neutral-50 rounded-2xl border border-neutral-100 italic">
         Configure the approval flow and visibility rules when creating or editing a type.
       </p>
 

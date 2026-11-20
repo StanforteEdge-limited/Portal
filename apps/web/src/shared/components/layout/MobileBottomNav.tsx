@@ -162,7 +162,7 @@ export function MobileBottomNav({
         {items.map((item) => {
           const active = item.active;
           const classes = [
-            "flex min-w-0 flex-1 flex-col items-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-semibold transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10",
+            "flex min-w-0 flex-1 flex-col items-center gap-1 rounded-2xl px-2 py-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10",
             active ? "text-primary" : "text-on-surface-variant",
           ].join(" ");
 
@@ -213,7 +213,7 @@ export function MobileBottomNav({
           <button
             type="button"
             aria-label="Close full menu"
-            className="fixed inset-0 z-[59] bg-slate-950/40 lg:hidden"
+            className="fixed inset-0 z-[59] bg-neutral-950/40 lg:hidden"
             onClick={() => setMenuOpen(false)}
           />
           <div
@@ -222,20 +222,20 @@ export function MobileBottomNav({
             role="dialog"
             aria-modal="true"
             aria-label="Full menu"
-            className="fixed inset-x-0 bottom-0 z-[60] max-h-[82dvh] overflow-y-auto rounded-t-[28px] border-t border-outline-variant bg-surface-container-lowest px-5 pb-8 pt-5 shadow-card lg:hidden"
+            className="fixed inset-x-0 bottom-0 z-[60] max-h-[82dvh] overflow-y-auto rounded-t-[28px] border-t border-outline-variant bg-surface-container-lowest px-5 pb-8 pt-5 shadow-xs lg:hidden"
           >
-            <div className="mx-auto mb-4 h-1.5 w-14 rounded-full bg-slate-200" />
+            <div className="mx-auto mb-4 h-1.5 w-14 rounded-full bg-neutral-200" />
             <div className="mb-5 flex items-center justify-between gap-3">
               <div>
-                <p className="text-[0.72rem] font-bold uppercase tracking-[0.16em] text-slate-500">Full Menu</p>
-                <h2 className="mt-2 text-lg font-semibold tracking-tight text-slate-950">{user.name}</h2>
-                <p className="mt-1 text-sm text-slate-500">{user.title || "Staff"}</p>
+                <p className="text-[0.72rem] font-medium text-neutral-500">Full Menu</p>
+                <h2 className="mt-2 text-lg font-semibold tracking-tight text-neutral-950">{user.name}</h2>
+                <p className="mt-1 text-sm text-neutral-500">{user.title || "Staff"}</p>
               </div>
               <button
                 ref={closeButtonRef}
                 type="button"
                 onClick={() => setMenuOpen(false)}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-neutral-100 text-neutral-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
                 aria-label="Close menu"
               >
                 <Icon name="close" />
@@ -254,11 +254,11 @@ export function MobileBottomNav({
                 return (
                   <div key={entry.label} className="space-y-2">
                     {showSectionLabel ? (
-                      <div className="px-1 pt-3 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-slate-400">
+                      <div className="px-1 pt-3 text-xs font-medium text-neutral-400">
                         {entry.section}
                       </div>
                     ) : null}
-                    <div className="rounded-[24px] border border-slate-100 bg-white p-4">
+                    <div className="rounded-2xl border border-neutral-100 bg-white p-4">
                       {entry.path && !hasChildren ? (
                         <NavLink
                           to={entry.path}
@@ -267,7 +267,7 @@ export function MobileBottomNav({
                             "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10",
                             entry.active
                               ? "bg-brand-900 text-white"
-                              : "bg-slate-50 text-slate-700 hover:bg-slate-100",
+                              : "bg-neutral-50 text-neutral-700 hover:bg-neutral-100",
                           ].join(" ")}
                         >
                           <Icon name={entry.icon} fill={entry.active} />
@@ -288,7 +288,7 @@ export function MobileBottomNav({
                               ? "bg-brand-900 text-white"
                               : entry.active
                                 ? "bg-brand-900/10 text-brand-900"
-                                : "bg-slate-50 text-slate-700 hover:bg-slate-100",
+                                : "bg-neutral-50 text-neutral-700 hover:bg-neutral-100",
                           ].join(" ")}
                           aria-expanded={isOpen}
                         >
@@ -296,18 +296,18 @@ export function MobileBottomNav({
                           <span className="flex-1 text-left">{entry.label}</span>
                           <Icon
                             name={isOpen ? "expand_less" : "expand_more"}
-                            className={isOpen ? "text-white" : "text-[18px] text-slate-400"}
+                            className={isOpen ? "text-white" : "text-[18px] text-neutral-400"}
                           />
                         </button>
                       ) : (
-                        <div className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-900">
+                        <div className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-neutral-900">
                           <Icon name={entry.icon} fill={entry.active} />
                           <span className="flex-1">{entry.label}</span>
                         </div>
                       )}
 
                       {hasChildren && isOpen ? (
-                        <div className="mt-4 space-y-2 border-l border-slate-200 pl-4">
+                        <div className="mt-4 space-y-2 border-l border-neutral-200 pl-4">
                           {entry.children!.map((child) => {
                             const nestedChildren = Array.isArray(child.children) && child.children.length > 0;
                             return (
@@ -320,7 +320,7 @@ export function MobileBottomNav({
                                       "flex items-center gap-2 rounded-2xl px-3 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10",
                                       child.active
                                         ? "bg-brand-900/10 text-brand-900"
-                                        : "text-slate-600 hover:bg-slate-50",
+                                        : "text-neutral-600 hover:bg-neutral-50",
                                     ].join(" ")}
                                   >
                                     <Icon name={child.icon} className="text-[16px]" />
@@ -331,8 +331,8 @@ export function MobileBottomNav({
                                     type="button"
                                     onClick={() => child.key && toggleGroup(child.key)}
                                     className={[
-                                      "flex w-full items-center justify-between px-1 pt-1 text-[0.65rem] font-bold uppercase tracking-[0.16em] transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10",
-                                      "text-slate-400 hover:text-slate-600",
+                                      "flex w-full items-center justify-between px-1 pt-1 text-xs font-medium   transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10",
+                                      "text-neutral-400 hover:text-neutral-600",
                                     ].join(" ")}
                                   >
                                     <span>{child.label}</span>
@@ -346,7 +346,7 @@ export function MobileBottomNav({
                                 )}
 
                                 {nestedChildren && child.key && openGroups.has(child.key) ? (
-                                  <div className="space-y-2 border-l border-slate-100 pl-3">
+                                  <div className="space-y-2 border-l border-neutral-100 pl-3">
                                     {child.children!.map((grandChild) =>
                                       grandChild.path ? (
                                         <NavLink
@@ -357,7 +357,7 @@ export function MobileBottomNav({
                                             "flex items-center gap-2 rounded-2xl px-3 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10",
                                             grandChild.active
                                               ? "bg-brand-900/10 text-brand-900"
-                                              : "text-slate-600 hover:bg-slate-50",
+                                              : "text-neutral-600 hover:bg-neutral-50",
                                           ].join(" ")}
                                         >
                                           <Icon name={grandChild.icon} className="text-[16px]" />

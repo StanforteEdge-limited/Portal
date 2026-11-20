@@ -429,7 +429,7 @@ export default function StatutoryDeductionsPage() {
           </Button>
         </div>
 
-          <div className="rounded-[22px] border border-slate-200 bg-white overflow-x-auto">
+          <div className="rounded-[22px] border border-neutral-200 bg-white overflow-x-auto">
             <DataTable
               columns={[
                 {
@@ -470,7 +470,7 @@ export default function StatutoryDeductionsPage() {
                   header: "Deduction Type", cell: (d) => (
                     <>
                       <p className="text-sm">{d.deduction_type_name}</p>
-                      <p className="text-xs text-slate-400">{d.deduction_type_code}</p>
+                      <p className="text-xs text-neutral-400">{d.deduction_type_code}</p>
                     </>
                   )
                 },
@@ -487,16 +487,16 @@ export default function StatutoryDeductionsPage() {
                   header: "TRM Ref", cell: (d) => (
                     <>
                       {d.remittance_number ? (
-                        <p className="text-sm font-mono font-semibold text-slate-800">{d.remittance_number}</p>
+                        <p className="text-sm font-mono font-semibold text-neutral-800">{d.remittance_number}</p>
                       ) : "—"}
                       {d.remittance_ref && (
-                        <p className="text-xs text-slate-400 mt-0.5">{d.remittance_ref}</p>
+                        <p className="text-xs text-neutral-400 mt-0.5">{d.remittance_ref}</p>
                       )}
                     </>
                   )
                 },
                 { header: "Remitted", cell: (d) => <span className="text-sm">{d.remitted_at ? formatDisplayDate(d.remitted_at) : "—"}</span> },
-                { header: "Account", cell: (d) => <span className="text-sm text-slate-600">{d.paid_from_account?.name ?? "—"}</span> },
+                { header: "Account", cell: (d) => <span className="text-sm text-neutral-600">{d.paid_from_account?.name ?? "—"}</span> },
                 {
                   header: " ", cell: (d) => (
                     <div className="flex gap-2 items-center" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
@@ -528,7 +528,7 @@ export default function StatutoryDeductionsPage() {
           {pagination && pagination.total_pages > 1 && (
             <div className="mt-3 flex gap-2 items-center">
               <Button variant="secondary" disabled={page <= 1} onClick={() => void fetchDeductions(page - 1)}>Prev</Button>
-              <span className="text-sm text-slate-600">Page {page} of {pagination.total_pages} ({pagination.total} total)</span>
+              <span className="text-sm text-neutral-600">Page {page} of {pagination.total_pages} ({pagination.total} total)</span>
               <Button variant="secondary" disabled={page >= pagination.total_pages} onClick={() => void fetchDeductions(page + 1)}>Next</Button>
             </div>
           )}
@@ -547,14 +547,14 @@ export default function StatutoryDeductionsPage() {
               placeholder="TRM number, reference, voucher, or account"
             />
           </div>
-          <div className="rounded-[22px] border border-slate-200 bg-white overflow-x-auto">
+          <div className="rounded-[22px] border border-neutral-200 bg-white overflow-x-auto">
             <DataTable
               columns={[
                 {
                   header: "TRM", cell: (item: FinanceRequestRemittanceRecord) => (
                     <>
-                      <div className="text-sm font-mono font-semibold text-slate-800">{item.remittance_number}</div>
-                      <div className="text-xs text-slate-400">{item.reference || "—"}</div>
+                      <div className="text-sm font-mono font-semibold text-neutral-800">{item.remittance_number}</div>
+                      <div className="text-xs text-neutral-400">{item.reference || "—"}</div>
                     </>
                   )
                 },
@@ -581,7 +581,7 @@ export default function StatutoryDeductionsPage() {
         <SlideOverHeader title="Remit Deductions" subtitle={`${selectedIds.size} deduction(s) selected`} onClose={() => setRemitOpen(false)} />
         <SlideOverContent>
           <div className="space-y-4">
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-neutral-600">
               Split the remittance across multiple deductions by setting the allocated amount for each one.
             </p>
 
@@ -593,35 +593,35 @@ export default function StatutoryDeductionsPage() {
           />
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Remittance Total Amount</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">Remittance Total Amount</label>
             <input
               type="number"
               min="0"
               step="0.01"
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               value={remitTotalAmount}
               onChange={(e) => setRemitTotalAmount(Number(e.target.value) || 0)}
             />
-            <p className="mt-1 text-xs text-slate-500">Allocated total: {formatCurrency(selectedAllocationTotal, "NGN")}</p>
+            <p className="mt-1 text-xs text-neutral-500">Allocated total: {formatCurrency(selectedAllocationTotal, "NGN")}</p>
           </div>
 
-          <div className="rounded-xl border border-slate-200">
-            <div className="border-b border-slate-200 px-3 py-2 text-sm font-medium text-slate-700">Allocation Split</div>
-            <div className="max-h-72 overflow-auto divide-y divide-slate-100">
+          <div className="rounded-xl border border-neutral-200">
+            <div className="border-b border-neutral-200 px-3 py-2 text-sm font-medium text-neutral-700">Allocation Split</div>
+            <div className="max-h-72 overflow-auto divide-y divide-neutral-100">
               {selectedAllocationRows.map((d) => (
                 <div key={d.id} className="grid gap-3 px-3 py-3 md:grid-cols-[1.6fr,0.8fr,0.9fr] items-center">
                   <div>
-                    <p className="text-sm font-medium text-slate-800">{d.deduction_type_name}</p>
-                    <p className="text-xs text-slate-500">{d.request_number}</p>
+                    <p className="text-sm font-medium text-neutral-800">{d.deduction_type_name}</p>
+                    <p className="text-xs text-neutral-500">{d.request_number}</p>
                   </div>
-                  <div className="text-xs text-slate-500">
-                    Remaining: <span className="font-semibold text-slate-700">{formatCurrency(Number(d.remaining_amount ?? d.amount ?? 0), "NGN")}</span>
+                  <div className="text-xs text-neutral-500">
+                    Remaining: <span className="font-semibold text-neutral-700">{formatCurrency(Number(d.remaining_amount ?? d.amount ?? 0), "NGN")}</span>
                   </div>
                   <input
                     type="number"
                     min="0"
                     step="0.01"
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                     value={String(allocationAmounts[d.id] ?? d.remaining_amount ?? d.amount ?? 0)}
                     onChange={(e) => setAllocationAmount(d.id, Number(e.target.value))}
                   />
@@ -631,19 +631,19 @@ export default function StatutoryDeductionsPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Payment Date</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">Payment Date</label>
             <DateInput
               
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               value={remitDate}
               onChange={(e) => setRemitDate(e.target.value)}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Paid From Account</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">Paid From Account</label>
             <SelectBox
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               value={remitAccountId}
               onChange={(e) => setRemitAccountId(e.target.value)}
             >
@@ -657,14 +657,14 @@ export default function StatutoryDeductionsPage() {
           </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Evidence Files</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Evidence Files</label>
               <div className="flex items-center gap-2">
                 <Button variant="secondary" onClick={() => setShowEvidencePicker(true)}>Select Evidence Files</Button>
               </div>
               {remitEvidenceFiles.length > 0 ? (
                 <div className="mt-2 flex flex-wrap gap-2">
                   {remitEvidenceFiles.map((file) => (
-                    <span key={file.id} className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700">
+                    <span key={file.id} className="inline-flex items-center gap-2 rounded-full bg-neutral-100 px-3 py-1 text-xs text-neutral-700">
                       {file.file_name}
                       <button type="button" onClick={() => setRemitEvidenceFiles((prev) => prev.filter((item) => item.id !== file.id))}>×</button>
                     </span>
@@ -726,29 +726,29 @@ export default function StatutoryDeductionsPage() {
       {editDeduction && (
         <SlideOver open onClose={() => setEditDeduction(null)} size="sm">
           <div className="space-y-4 p-4">
-            <h3 className="font-semibold text-slate-800">Edit Pending Deduction</h3>
+            <h3 className="font-semibold text-neutral-800">Edit Pending Deduction</h3>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Deduction Type</label>
-              <SelectBox className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" value={editForm.deduction_type_id} onChange={(e) => setEditForm((p) => ({ ...p, deduction_type_id: e.target.value }))}>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Deduction Type</label>
+              <SelectBox className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm" value={editForm.deduction_type_id} onChange={(e) => setEditForm((p) => ({ ...p, deduction_type_id: e.target.value }))}>
                 <option value="">Select type</option>
                 {deductionTypes.map((dt: any) => <option key={dt.id} value={dt.id}>{dt.name}{dt.code ? ` (${dt.code})` : ""}</option>)}
               </SelectBox>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Gross Amount</label>
-              <input type="number" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" value={editForm.gross_amount} onChange={(e) => setEditForm((p) => ({ ...p, gross_amount: Number(e.target.value) }))} />
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Gross Amount</label>
+              <input type="number" className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm" value={editForm.gross_amount} onChange={(e) => setEditForm((p) => ({ ...p, gross_amount: Number(e.target.value) }))} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Withheld Amount</label>
-              <input type="number" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" value={editForm.amount} onChange={(e) => setEditForm((p) => ({ ...p, amount: Number(e.target.value) }))} />
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Withheld Amount</label>
+              <input type="number" className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm" value={editForm.amount} onChange={(e) => setEditForm((p) => ({ ...p, amount: Number(e.target.value) }))} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Rate</label>
-              <input type="number" step="0.0001" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" value={editForm.rate} onChange={(e) => setEditForm((p) => ({ ...p, rate: Number(e.target.value) }))} />
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Rate</label>
+              <input type="number" step="0.0001" className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm" value={editForm.rate} onChange={(e) => setEditForm((p) => ({ ...p, rate: Number(e.target.value) }))} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
-              <textarea className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" rows={3} value={editForm.notes} onChange={(e) => setEditForm((p) => ({ ...p, notes: e.target.value }))} />
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Notes</label>
+              <textarea className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm" rows={3} value={editForm.notes} onChange={(e) => setEditForm((p) => ({ ...p, notes: e.target.value }))} />
             </div>
             <div className="flex gap-2 justify-end pt-4">
               <Button variant="secondary" onClick={() => setEditDeduction(null)}>Cancel</Button>
@@ -761,49 +761,49 @@ export default function StatutoryDeductionsPage() {
       {editRemittance && (
         <SlideOver open onClose={() => setEditRemittance(null)} size="sm">
           <div className="space-y-4 p-4">
-            <h3 className="font-semibold text-slate-800">Edit Remittance Record</h3>
-            <p className="text-sm text-slate-500">TRM: {editRemittance.remittance_number}</p>
+            <h3 className="font-semibold text-neutral-800">Edit Remittance Record</h3>
+            <p className="text-sm text-neutral-500">TRM: {editRemittance.remittance_number}</p>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Remittance Reference</label>
-              <input className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" value={editRemitForm.remittance_ref} onChange={(e) => setEditRemitForm((p) => ({ ...p, remittance_ref: e.target.value }))} />
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Remittance Reference</label>
+              <input className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm" value={editRemitForm.remittance_ref} onChange={(e) => setEditRemitForm((p) => ({ ...p, remittance_ref: e.target.value }))} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Remittance Total Amount</label>
-              <input type="number" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" value={editRemitForm.remittance_total_amount} onChange={(e) => setEditRemitForm((p) => ({ ...p, remittance_total_amount: Number(e.target.value) || 0 }))} />
-              <p className="mt-1 text-xs text-slate-500">Allocated total: {formatCurrency(editAllocationTotal, "NGN")}</p>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Remittance Total Amount</label>
+              <input type="number" className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm" value={editRemitForm.remittance_total_amount} onChange={(e) => setEditRemitForm((p) => ({ ...p, remittance_total_amount: Number(e.target.value) || 0 }))} />
+              <p className="mt-1 text-xs text-neutral-500">Allocated total: {formatCurrency(editAllocationTotal, "NGN")}</p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Payment Date</label>
-              <DateInput  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" value={editRemitForm.remitted_at} onChange={(e) => setEditRemitForm((p) => ({ ...p, remitted_at: e.target.value }))} />
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Payment Date</label>
+              <DateInput  className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm" value={editRemitForm.remitted_at} onChange={(e) => setEditRemitForm((p) => ({ ...p, remitted_at: e.target.value }))} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Paid From Account</label>
-              <SelectBox className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" value={editRemitForm.paid_from_account_id} onChange={(e) => setEditRemitForm((p) => ({ ...p, paid_from_account_id: e.target.value }))}>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Paid From Account</label>
+              <SelectBox className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm" value={editRemitForm.paid_from_account_id} onChange={(e) => setEditRemitForm((p) => ({ ...p, paid_from_account_id: e.target.value }))}>
                 <option value="">Select account…</option>
                 {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}{a.bank_name ? ` — ${a.bank_name}` : ""}</option>)}
               </SelectBox>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
-              <textarea className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" rows={3} value={editRemitForm.notes} onChange={(e) => setEditRemitForm((p) => ({ ...p, notes: e.target.value }))} />
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Notes</label>
+              <textarea className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm" rows={3} value={editRemitForm.notes} onChange={(e) => setEditRemitForm((p) => ({ ...p, notes: e.target.value }))} />
             </div>
-            <div className="rounded-xl border border-slate-200">
-              <div className="border-b border-slate-200 px-3 py-2 text-sm font-medium text-slate-700">Allocation Split</div>
-              <div className="max-h-72 overflow-auto divide-y divide-slate-100">
+            <div className="rounded-xl border border-neutral-200">
+              <div className="border-b border-neutral-200 px-3 py-2 text-sm font-medium text-neutral-700">Allocation Split</div>
+              <div className="max-h-72 overflow-auto divide-y divide-neutral-100">
                 {editRemittance.deductions.map((item: FinanceRequestRemittanceRecord["deductions"][number]) => (
                   <div key={item.allocation_id} className="grid gap-3 px-3 py-3 md:grid-cols-[1.6fr,0.8fr,0.9fr] items-center">
                     <div>
-                      <p className="text-sm font-medium text-slate-800">{item.deduction_type_name}</p>
-                      <p className="text-xs text-slate-500">{item.request_number}</p>
+                      <p className="text-sm font-medium text-neutral-800">{item.deduction_type_name}</p>
+                      <p className="text-xs text-neutral-500">{item.request_number}</p>
                     </div>
-                    <div className="text-xs text-slate-500">
-                      Withheld: <span className="font-semibold text-slate-700">{formatCurrency(Number(item.amount || 0), "NGN")}</span>
+                    <div className="text-xs text-neutral-500">
+                      Withheld: <span className="font-semibold text-neutral-700">{formatCurrency(Number(item.amount || 0), "NGN")}</span>
                     </div>
                     <input
                       type="number"
                       min="0"
                       step="0.01"
-                      className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                      className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm"
                       value={String(editRemitAllocations[item.allocation_id] ?? item.allocated_amount ?? 0)}
                       onChange={(e) => setEditRemitAllocations((prev) => ({ ...prev, [item.allocation_id]: Number(e.target.value) || 0 }))}
                     />

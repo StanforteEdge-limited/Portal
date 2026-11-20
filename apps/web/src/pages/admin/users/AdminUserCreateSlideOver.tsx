@@ -103,13 +103,13 @@ export default function AdminUserCreateSlideOver({ onClose, onCreated }: Props) 
         <SlideOverContent className="space-y-6 p-6">
           {/* Section 1: User Identity */}
           <div className="space-y-4">
-            <div className="flex items-center gap-2 pb-2 border-b border-slate-100 text-xs font-bold text-slate-900 uppercase tracking-wider">
+            <div className="flex items-center gap-2 pb-2 border-b border-neutral-100 text-xs font-medium text-neutral-900">
               <User className="h-4 w-4 text-[#ff6900]" />
               Staff Identity & Details
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-medium text-neutral-700 mb-1">
                 Work Email Address <span className="text-rose-500">*</span>
               </label>
               <input
@@ -118,13 +118,13 @@ export default function AdminUserCreateSlideOver({ onClose, onCreated }: Props) 
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="colleague@stanforteedge.com"
                 required
-                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
               />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-medium text-neutral-700 mb-1">
                   First Name
                 </label>
                 <input
@@ -132,12 +132,12 @@ export default function AdminUserCreateSlideOver({ onClose, onCreated }: Props) 
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   placeholder="e.g., Daniel"
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-medium text-neutral-700 mb-1">
                   Last Name
                 </label>
                 <input
@@ -145,19 +145,19 @@ export default function AdminUserCreateSlideOver({ onClose, onCreated }: Props) 
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                   placeholder="e.g., Owonikoko"
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-medium text-neutral-700 mb-1">
                 Account Classification
               </label>
               <SelectBox
                 value={type}
                 onChange={(e) => setType(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
               >
                 <option value="staff">Staff / Full-time Employee</option>
                 <option value="vendor">Vendor / External Partner</option>
@@ -169,20 +169,20 @@ export default function AdminUserCreateSlideOver({ onClose, onCreated }: Props) 
 
           {/* Section 2: Organization Entity */}
           <div className="space-y-4 pt-2">
-            <div className="flex items-center gap-2 pb-2 border-b border-slate-100 text-xs font-bold text-slate-900 uppercase tracking-wider">
-              <Building2 className="h-4 w-4 text-blue-600" />
+            <div className="flex items-center gap-2 pb-2 border-b border-neutral-100 text-xs font-medium text-neutral-900">
+              <Building2 className="h-4 w-4 text-neutral-700" />
               Primary Legal Organization
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-medium text-neutral-700 mb-1">
                 Primary Organization <span className="text-rose-500">*</span>
               </label>
               <SelectBox
                 value={organizationId}
                 onChange={(e) => setOrganizationId(e.target.value)}
                 required
-                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
               >
                 <option value="">Select legal organization...</option>
                 {organizations.map((org) => (
@@ -191,7 +191,7 @@ export default function AdminUserCreateSlideOver({ onClose, onCreated }: Props) 
                   </option>
                 ))}
               </SelectBox>
-              <p className="text-[11px] text-slate-400 mt-1">
+              <p className="text-xs text-neutral-400 mt-1">
                 Establishes the default cost center, tenant permissions, and reporting lines.
               </p>
             </div>
@@ -199,8 +199,8 @@ export default function AdminUserCreateSlideOver({ onClose, onCreated }: Props) 
 
           {/* Section 3: Granular Roles */}
           <div className="space-y-4 pt-2">
-            <div className="flex items-center gap-2 pb-2 border-b border-slate-100 text-xs font-bold text-slate-900 uppercase tracking-wider">
-              <Shield className="h-4 w-4 text-purple-600" />
+            <div className="flex items-center gap-2 pb-2 border-b border-neutral-100 text-xs font-medium text-neutral-900">
+              <Shield className="h-4 w-4 text-neutral-700" />
               Role & Capability Assignment
             </div>
 
@@ -208,17 +208,17 @@ export default function AdminUserCreateSlideOver({ onClose, onCreated }: Props) 
               {roles.map((r) => (
                 <label
                   key={r.slug}
-                  className="flex items-center gap-3 p-2.5 rounded-xl border border-slate-100 hover:border-slate-200 hover:bg-slate-50/50 cursor-pointer transition"
+                  className="flex items-center gap-3 p-2.5 rounded-xl border border-neutral-100 hover:border-neutral-200 hover:bg-neutral-50/50 cursor-pointer transition"
                 >
                   <input
                     type="checkbox"
                     checked={selectedRoles.includes(r.slug)}
                     onChange={() => toggleRole(r.slug)}
-                    className="w-4 h-4 rounded text-[#ff6900] border-slate-300 focus:ring-[#ff6900]"
+                    className="w-4 h-4 rounded text-[#ff6900] border-neutral-300 focus:ring-[#ff6900]"
                   />
                   <div className="min-w-0">
-                    <span className="text-xs font-bold text-slate-800 block truncate">{r.name}</span>
-                    <span className="text-[10px] text-slate-400 font-mono">{r.slug}</span>
+                    <span className="text-xs font-medium text-neutral-800 block truncate">{r.name}</span>
+                    <span className="text-xs text-neutral-400 font-mono">{r.slug}</span>
                   </div>
                 </label>
               ))}
@@ -227,7 +227,7 @@ export default function AdminUserCreateSlideOver({ onClose, onCreated }: Props) 
 
           {/* Section 4: Invite & Activation */}
           <div className="space-y-3 pt-2">
-            <div className="flex items-center gap-2 pb-2 border-b border-slate-100 text-xs font-bold text-slate-900 uppercase tracking-wider">
+            <div className="flex items-center gap-2 pb-2 border-b border-neutral-100 text-xs font-medium text-neutral-900">
               <Mail className="h-4 w-4 text-emerald-600" />
               Activation & Onboarding Invitation
             </div>
@@ -237,13 +237,13 @@ export default function AdminUserCreateSlideOver({ onClose, onCreated }: Props) 
                 type="checkbox"
                 checked={sendInvite}
                 onChange={(e) => setSendInvite(e.target.checked)}
-                className="mt-0.5 w-4 h-4 rounded text-[#ff6900] border-slate-300 focus:ring-[#ff6900]"
+                className="mt-0.5 w-4 h-4 rounded text-[#ff6900] border-neutral-300 focus:ring-[#ff6900]"
               />
               <div>
-                <span className="text-xs font-bold text-emerald-950 block">
+                <span className="text-xs font-medium text-emerald-950 block">
                   Send welcome email invitation immediately
                 </span>
-                <span className="text-[11px] text-emerald-800/80">
+                <span className="text-xs text-emerald-800/80">
                   The user will receive a secure token to set their password and sign in.
                 </span>
               </div>
@@ -251,19 +251,19 @@ export default function AdminUserCreateSlideOver({ onClose, onCreated }: Props) 
           </div>
         </SlideOverContent>
 
-        <SlideOverFooter className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3">
+        <SlideOverFooter className="p-4 bg-neutral-50 border-t border-neutral-100 flex items-center justify-end gap-3">
           <button
             type="button"
             onClick={onClose}
             disabled={saving}
-            className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 font-semibold text-xs hover:bg-white transition"
+            className="px-4 py-2 rounded-xl border border-neutral-200 text-neutral-700 font-semibold text-xs hover:bg-white transition"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={saving}
-            className="px-5 py-2 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white font-bold text-xs shadow-sm shadow-orange-500/20 transition flex items-center gap-2"
+            className="px-5 py-2 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white font-medium text-xs shadow-sm transition flex items-center gap-2"
           >
             {saving ? (
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />

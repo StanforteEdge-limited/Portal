@@ -61,15 +61,19 @@ const LOCAL_DEV_CORS_ORIGINS = [
   'http://127.0.0.1:5173',
 ];
 
+const isProduction = str('NODE_ENV', 'development').toLowerCase() === 'production';
+
 export const config = {
   env: str('NODE_ENV', 'development'),
-  isProduction: str('NODE_ENV', 'development').toLowerCase() === 'production',
+  isProduction,
   port: num('PORT', 3000),
   host: str('HOST', '0.0.0.0'),
   logLevel: str('LOG_LEVEL', 'info'),
   trustProxy: trustProxySetting(),
   uploadsRoot: resolve(process.cwd(), 'uploads'),
-  corsOrigins: Array.from(new Set([...list('CORS_ORIGINS'), ...LOCAL_DEV_CORS_ORIGINS])),
+  corsOrigins: isProduction
+    ? Array.from(new Set(list('CORS_ORIGINS')))
+    : Array.from(new Set([...list('CORS_ORIGINS'), ...LOCAL_DEV_CORS_ORIGINS])),
   realtimeEnabled: bool('REALTIME_ENABLED', true),
   jwt: {
     secret: str('JWT_SECRET', 'change-me'),

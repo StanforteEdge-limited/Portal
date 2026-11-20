@@ -57,16 +57,16 @@ export default function StaffLeaveSlideOver({ userId, userName, year, onClose }:
               ))}
             </div>
             {!staffBalances.length ? (
-              <p className="text-sm text-slate-500">No balance data available.</p>
+              <p className="text-sm text-neutral-500">No balance data available.</p>
             ) : null}
           </SectionCard>
         ) : balLoading ? (
-          <div className="text-sm text-slate-500">Loading balances...</div>
+          <div className="text-sm text-neutral-500">Loading balances...</div>
         ) : null}
 
         <SectionCard title="Leave Requests">
           {reqLoading ? (
-            <div className="text-sm text-slate-500">Loading requests...</div>
+            <div className="text-sm text-neutral-500">Loading requests...</div>
           ) : (
             <DataTable
               columns={[

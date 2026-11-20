@@ -11,10 +11,10 @@ export default function ReportingPeriodsTab() {
 
   return (
     <div className="space-y-4">
-      <h3 className="font-headline text-lg font-semibold text-slate-950">Reporting Periods</h3>
-      <p className="text-sm text-slate-500">Period governance and close/reopen readiness.</p>
+      <h3 className="font-headline text-lg font-semibold text-neutral-950">Reporting Periods</h3>
+      <p className="text-sm text-neutral-500">Period governance and close/reopen readiness.</p>
 
-      {loading ? <p className="text-sm text-slate-500">Loading periods...</p> : null}
+      {loading ? <p className="text-sm text-neutral-500">Loading periods...</p> : null}
       {error ? <p className="text-sm text-danger">{error}</p> : null}
 
       {periods.length ? (

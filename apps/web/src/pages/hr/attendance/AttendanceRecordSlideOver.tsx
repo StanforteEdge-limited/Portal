@@ -56,7 +56,7 @@ export default function AttendanceRecordSlideOver({ userId, workDate, employeeNa
       <SlideOverContent>
         {loading ? (
           <div className="flex items-center justify-center py-10">
-            <Icon name="sync" className="animate-spin text-2xl text-slate-400" />
+            <Icon name="sync" className="animate-spin text-2xl text-neutral-400" />
           </div>
         ) : error ? (
           <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div>
@@ -64,55 +64,55 @@ export default function AttendanceRecordSlideOver({ userId, workDate, employeeNa
           <div className="space-y-6">
             {/* Summary */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-                <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-slate-500">Status</p>
+              <div className="rounded-2xl border border-neutral-100 bg-neutral-50 px-4 py-3">
+                <p className="text-xs font-medium text-neutral-500">Status</p>
                 <Chip variant={statusVariant} className="mt-1 capitalize">{daily?.status || "-"}</Chip>
               </div>
-              <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-                <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-slate-500">Worked</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">{formatMinutes(daily?.worked_minutes)}</p>
+              <div className="rounded-2xl border border-neutral-100 bg-neutral-50 px-4 py-3">
+                <p className="text-xs font-medium text-neutral-500">Worked</p>
+                <p className="mt-1 text-sm font-semibold text-neutral-900">{formatMinutes(daily?.worked_minutes)}</p>
               </div>
-              <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-                <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-slate-500">Late</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">{formatMinutes(daily?.late_minutes)}</p>
+              <div className="rounded-2xl border border-neutral-100 bg-neutral-50 px-4 py-3">
+                <p className="text-xs font-medium text-neutral-500">Late</p>
+                <p className="mt-1 text-sm font-semibold text-neutral-900">{formatMinutes(daily?.late_minutes)}</p>
               </div>
-              <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-                <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-slate-500">Expected</p>
-                <p className="mt-1 text-sm font-semibold capitalize text-slate-900">{daily?.expected_mode || "-"}</p>
+              <div className="rounded-2xl border border-neutral-100 bg-neutral-50 px-4 py-3">
+                <p className="text-xs font-medium text-neutral-500">Expected</p>
+                <p className="mt-1 text-sm font-semibold capitalize text-neutral-900">{daily?.expected_mode || "-"}</p>
               </div>
             </div>
 
             {/* Clock In/Out Times */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-                <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-slate-500">First In</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">{formatTime(daily?.first_in_at)}</p>
+              <div className="rounded-2xl border border-neutral-100 bg-neutral-50 px-4 py-3">
+                <p className="text-xs font-medium text-neutral-500">First In</p>
+                <p className="mt-1 text-sm font-semibold text-neutral-900">{formatTime(daily?.first_in_at)}</p>
               </div>
-              <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-                <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-slate-500">Last Out</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900"><TimeWithNextDay time={daily?.last_out_at} referenceDate={daily?.first_in_at} /></p>
+              <div className="rounded-2xl border border-neutral-100 bg-neutral-50 px-4 py-3">
+                <p className="text-xs font-medium text-neutral-500">Last Out</p>
+                <p className="mt-1 text-sm font-semibold text-neutral-900"><TimeWithNextDay time={daily?.last_out_at} referenceDate={daily?.first_in_at} /></p>
               </div>
             </div>
 
             {/* Clock Entries */}
             <div>
-              <h3 className="text-sm font-semibold text-slate-900">Clock Entries</h3>
+              <h3 className="text-sm font-semibold text-neutral-900">Clock Entries</h3>
               <div className="mt-3 space-y-2">
                 {entries.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
+                  <div className="rounded-2xl border border-dashed border-neutral-200 bg-neutral-50 px-4 py-6 text-sm text-neutral-500">
                     No clock entries found.
                   </div>
                 ) : (
                   entries.map((entry: any) => (
-                    <div key={entry.id} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                    <div key={entry.id} className="flex items-center justify-between rounded-2xl border border-neutral-200 bg-white px-4 py-3">
                       <div>
-                        <p className="text-sm font-semibold text-slate-900">
+                        <p className="text-sm font-semibold text-neutral-900">
                           {entry.type === "clock_in" ? "Clock In" : entry.type === "clock_out" ? "Clock Out" : entry.type}
                         </p>
-                        <p className="text-xs text-slate-500"><TimeWithNextDay time={entry.timestamp} referenceDate={daily?.first_in_at} /></p>
-                        {entry.location && <p className="text-xs text-slate-400">{entry.location}</p>}
+                        <p className="text-xs text-neutral-500"><TimeWithNextDay time={entry.timestamp} referenceDate={daily?.first_in_at} /></p>
+                        {entry.location && <p className="text-xs text-neutral-400">{entry.location}</p>}
                         {entry.latitude && entry.longitude && (
-                          <p className="text-xs text-slate-400">
+                          <p className="text-xs text-neutral-400">
                             {entry.latitude.toFixed(4)}, {entry.longitude.toFixed(4)}
                           </p>
                         )}

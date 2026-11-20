@@ -8,7 +8,7 @@ export function RequestHeaderCard() {
   if (workflowType === "leave") {
     return (
       <section className="section-card bg-brand-900 p-5 text-white">
-        <p className="text-[0.72rem] font-bold uppercase tracking-[0.18em] text-white/70">
+        <p className="text-[0.72rem] font-medium text-white/70">
           Request Type
         </p>
         <h3 className="mt-3 text-[1.65rem] font-semibold tracking-tight">
@@ -23,7 +23,7 @@ export function RequestHeaderCard() {
 
   return (
     <section className="section-card bg-brand-900 p-5 text-white">
-      <p className="text-[0.72rem] font-bold uppercase tracking-[0.18em] text-white/70">
+      <p className="text-[0.72rem] font-medium text-white/70">
         {workflowType === "loan" ? "Loan Amount" : "Current Total"}
       </p>
       <div className="mt-3 flex items-baseline gap-2">
@@ -31,7 +31,7 @@ export function RequestHeaderCard() {
           {formatCurrency(request.total_amount, request.currency)}
         </h3>
         {workflowType === "payment" && finance.disbursedTotal > 0 ? (
-          <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/60">
+          <span className="text-xs font-medium text-white/60">
             / {formatCurrency(finance.disbursedTotal, request.currency)} disbursed
           </span>
         ) : null}

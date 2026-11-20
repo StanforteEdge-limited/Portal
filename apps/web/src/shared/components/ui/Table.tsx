@@ -27,7 +27,7 @@ export function Table({
   ...props
 }: TableProps) {
   return (
-    <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 shadow-2xs bg-white">
+    <div className="w-full overflow-x-auto rounded-2xl border border-neutral-900/[0.08] shadow-xs bg-white">
       <table className={["min-w-full text-left border-collapse", className].filter(Boolean).join(" ")} {...props}>
         {caption ? <caption className={captionClassName || "sr-only"}>{caption}</caption> : null}
         {children}
@@ -37,29 +37,36 @@ export function Table({
 }
 
 export function TableHead({ children }: { children: ReactNode }) {
-  return <thead className="bg-slate-50/70 border-b border-slate-100">{children}</thead>;
+  return <thead className="bg-neutral-50 border-b border-neutral-900/[0.08]">{children}</thead>;
 }
 
 export function TableHeaderRow({ children }: { children: ReactNode }) {
-  return <tr className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{children}</tr>;
+  return <tr className="text-xs font-medium text-neutral-500">{children}</tr>;
 }
 
 export function TableHeaderCell({ children, className, ...props }: HeaderCellProps) {
   return (
-    <th className={["px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-400", className].filter(Boolean).join(" ")} {...props}>
+    <th
+      className={["px-4 py-3 text-xs font-medium text-neutral-500", className].filter(Boolean).join(" ")}
+      {...props}
+    >
       {children}
     </th>
   );
 }
 
 export function TableBody({ children }: { children: ReactNode }) {
-  return <tbody className="divide-y divide-slate-50">{children}</tbody>;
+  return <tbody className="divide-y divide-neutral-900/[0.06]">{children}</tbody>;
 }
 
 export function TableRow({ children, className, onClick, ...props }: RowProps) {
   return (
     <tr
-      className={["bg-white transition-colors", onClick ? "cursor-pointer hover:bg-slate-50/70" : "hover:bg-slate-50/50", className]
+      className={[
+        "bg-white transition-colors duration-150 focus-within:bg-neutral-50",
+        onClick ? "cursor-pointer hover:bg-neutral-50" : "hover:bg-neutral-50/70",
+        className,
+      ]
         .filter(Boolean)
         .join(" ")}
       onClick={onClick}
@@ -72,7 +79,10 @@ export function TableRow({ children, className, onClick, ...props }: RowProps) {
 
 export function TableCell({ children, className, ...props }: CellProps) {
   return (
-    <td className={["px-4 py-3 text-xs text-slate-700", className].filter(Boolean).join(" ")} {...props}>
+    <td
+      className={["px-4 py-3 text-sm text-neutral-800 tabular-nums", className].filter(Boolean).join(" ")}
+      {...props}
+    >
       {children}
     </td>
   );

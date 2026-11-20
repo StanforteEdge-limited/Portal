@@ -9,34 +9,36 @@ type ChipProps = {
 };
 
 const styles: Record<ChipVariant, string> = {
-  neutral: "bg-slate-100 text-slate-700 border border-slate-200/60",
-  success: "bg-emerald-50 text-emerald-700 border border-emerald-200/60",
-  warning: "bg-amber-50 text-amber-700 border border-amber-200/60",
-  pending: "bg-blue-50 text-blue-700 border border-blue-200/60",
-  danger: "bg-rose-50 text-rose-700 border border-rose-200/60",
+  neutral: "bg-neutral-100 text-neutral-700 border border-neutral-900/[0.06]",
+  success: "bg-emerald-50 text-emerald-700 border border-emerald-600/15",
+  warning: "bg-amber-50 text-amber-800 border border-amber-600/15",
+  pending: "bg-neutral-100 text-neutral-700 border border-neutral-900/[0.08]",
+  danger: "bg-red-50 text-red-700 border border-red-600/15",
 };
 
 export function Chip({ variant = "neutral", className = "", children }: ChipProps) {
   return (
     <span
       className={[
-        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold transition-colors",
+        "inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium transition-colors duration-150",
         styles[variant],
         className,
-      ].filter(Boolean).join(" ")}
+      ]
+        .filter(Boolean)
+        .join(" ")}
     >
       <span
         className={[
           "w-1.5 h-1.5 rounded-full shrink-0",
           variant === "success"
-            ? "bg-emerald-500"
+            ? "bg-emerald-600"
             : variant === "warning"
-            ? "bg-amber-500"
+            ? "bg-amber-600"
             : variant === "pending"
-            ? "bg-blue-500"
+            ? "bg-neutral-500"
             : variant === "danger"
-            ? "bg-rose-500"
-            : "bg-slate-400",
+            ? "bg-red-600"
+            : "bg-neutral-400",
         ].join(" ")}
       />
       {children}

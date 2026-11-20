@@ -301,8 +301,8 @@ export default function NonprofitSetupTab() {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="font-headline text-lg font-semibold text-slate-950">Nonprofit Setup</h3>
-        <p className="text-sm text-slate-500">Donors, funds, grants, and signature setup.</p>
+        <h3 className="font-headline text-lg font-semibold text-neutral-950">Nonprofit Setup</h3>
+        <p className="text-sm text-neutral-500">Donors, funds, grants, and signature setup.</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -312,9 +312,9 @@ export default function NonprofitSetupTab() {
       </div>
 
       {/* Donors */}
-      <div className="rounded-2xl border border-slate-200 p-4 space-y-3">
+      <div className="rounded-2xl border border-neutral-200 p-4 space-y-3">
         <div className="flex items-center justify-between">
-          <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Donors</p>
+          <p className="text-xs text-neutral-400">Donors</p>
           <Button variant="secondary" size="sm" onClick={openAddDonor}>Add Donor</Button>
         </div>
         {donors.length === 0 ? (
@@ -349,9 +349,9 @@ export default function NonprofitSetupTab() {
       </div>
 
       {/* Funds */}
-      <div className="rounded-2xl border border-slate-200 p-4 space-y-3">
+      <div className="rounded-2xl border border-neutral-200 p-4 space-y-3">
         <div className="flex items-center justify-between">
-          <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Funds</p>
+          <p className="text-xs text-neutral-400">Funds</p>
           <Button variant="secondary" size="sm" onClick={openAddFund}>Add Fund</Button>
         </div>
         {funds.length === 0 ? (
@@ -387,9 +387,9 @@ export default function NonprofitSetupTab() {
       </div>
 
       {/* Grants */}
-      <div className="rounded-2xl border border-slate-200 p-4 space-y-3">
+      <div className="rounded-2xl border border-neutral-200 p-4 space-y-3">
         <div className="flex items-center justify-between">
-          <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Grants</p>
+          <p className="text-xs text-neutral-400">Grants</p>
           <Button variant="secondary" size="sm" onClick={openAddGrant}>Add Grant</Button>
         </div>
         {grants.length === 0 ? (
@@ -424,53 +424,53 @@ export default function NonprofitSetupTab() {
       </div>
 
       {/* PDF Signatories */}
-      <div className="rounded-2xl border border-slate-200 p-4 space-y-4">
+      <div className="rounded-2xl border border-neutral-200 p-4 space-y-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.14em] text-slate-400">PDF Signatories</p>
-          <p className="text-sm text-slate-500 mt-1">These names appear in the Approvals section of all request and payment voucher PDFs.</p>
+          <p className="text-xs text-neutral-400">PDF Signatories</p>
+          <p className="text-sm text-neutral-500 mt-1">These names appear in the Approvals section of all request and payment voucher PDFs.</p>
         </div>
         <div className="grid gap-4 md:grid-cols-3">
           <div className="space-y-2">
-            <p className="text-xs font-medium text-slate-600 uppercase tracking-wide">Prepared By (Accountant)</p>
+            <p className="text-xs font-medium text-neutral-600">Prepared By (Accountant)</p>
             <TextField label="Name" value={preparedBy.name} onChange={(e) => setPreparedBy((p) => ({ ...p, name: e.target.value }))} placeholder="e.g. Dunsin Babatunde" />
             <TextField label="Title" value={preparedBy.title} onChange={(e) => setPreparedBy((p) => ({ ...p, title: e.target.value }))} placeholder="e.g. Accountant" />
             {preparedBy.signature_url && (
-              <img src={preparedBy.signature_url} alt="Signature" className="h-10 rounded border border-slate-200 bg-white p-1" />
+              <img src={preparedBy.signature_url} alt="Signature" className="h-10 rounded border border-neutral-200 bg-white p-1" />
             )}
-            <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50">
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 transition hover:bg-neutral-50">
               <Icon name="draw" className="text-[16px]" />
               {uploadingSignature === "prepared_by" ? "Uploading…" : preparedBy.signature_file_id ? "Replace Signature" : "Upload Signature"}
               <input type="file" accept="image/*" className="hidden" disabled={uploadingSignature !== null} onChange={(e) => { void handleUploadSignature("prepared_by", e.target.files?.[0] ?? null); e.target.value = ""; }} />
             </label>
           </div>
           <div className="space-y-2">
-            <p className="text-xs font-medium text-slate-600 uppercase tracking-wide">Reviewed By (COO)</p>
+            <p className="text-xs font-medium text-neutral-600">Reviewed By (COO)</p>
             <TextField label="Name" value={reviewedBy.name} onChange={(e) => setReviewedBy((p) => ({ ...p, name: e.target.value }))} placeholder="e.g. Olalekan Owonikoko" />
             <TextField label="Title" value={reviewedBy.title} onChange={(e) => setReviewedBy((p) => ({ ...p, title: e.target.value }))} placeholder="e.g. Finance Manager / COO" />
             {reviewedBy.signature_url && (
-              <img src={reviewedBy.signature_url} alt="Signature" className="h-10 rounded border border-slate-200 bg-white p-1" />
+              <img src={reviewedBy.signature_url} alt="Signature" className="h-10 rounded border border-neutral-200 bg-white p-1" />
             )}
-            <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50">
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 transition hover:bg-neutral-50">
               <Icon name="draw" className="text-[16px]" />
               {uploadingSignature === "reviewed_by" ? "Uploading…" : reviewedBy.signature_file_id ? "Replace Signature" : "Upload Signature"}
               <input type="file" accept="image/*" className="hidden" disabled={uploadingSignature !== null} onChange={(e) => { void handleUploadSignature("reviewed_by", e.target.files?.[0] ?? null); e.target.value = ""; }} />
             </label>
           </div>
           <div className="space-y-2">
-            <p className="text-xs font-medium text-slate-600 uppercase tracking-wide">Approved By (ED)</p>
+            <p className="text-xs font-medium text-neutral-600">Approved By (ED)</p>
             <TextField label="Name" value={approvedBy.name} onChange={(e) => setApprovedBy((p) => ({ ...p, name: e.target.value }))} placeholder="e.g. Olusola Owonikoko" />
             <TextField label="Title" value={approvedBy.title} onChange={(e) => setApprovedBy((p) => ({ ...p, title: e.target.value }))} placeholder="e.g. Executive Director" />
             {approvedBy.signature_url && (
-              <img src={approvedBy.signature_url} alt="Signature" className="h-10 rounded border border-slate-200 bg-white p-1" />
+              <img src={approvedBy.signature_url} alt="Signature" className="h-10 rounded border border-neutral-200 bg-white p-1" />
             )}
-            <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50">
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 transition hover:bg-neutral-50">
               <Icon name="draw" className="text-[16px]" />
               {uploadingSignature === "approved_by" ? "Uploading…" : approvedBy.signature_file_id ? "Replace Signature" : "Upload Signature"}
               <input type="file" accept="image/*" className="hidden" disabled={uploadingSignature !== null} onChange={(e) => { void handleUploadSignature("approved_by", e.target.files?.[0] ?? null); e.target.value = ""; }} />
             </label>
           </div>
         </div>
-        <p className="text-xs text-slate-400">If no signature is uploaded, only the name and title are shown on generated documents.</p>
+        <p className="text-xs text-neutral-400">If no signature is uploaded, only the name and title are shown on generated documents.</p>
         <div className="flex justify-end">
           <Button variant="primary" onClick={() => void handleSaveSettings()} disabled={savingSettings}>
             {savingSettings ? "Saving..." : "Save Signatories"}

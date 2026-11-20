@@ -177,29 +177,29 @@ export function MediaPickerModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/45 px-4 py-6">
+    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-neutral-950/45 px-4 py-6">
       <button type="button" aria-label="Close media picker" className="absolute inset-0" onClick={onClose} />
       <section
         role="dialog"
         aria-modal="true"
         aria-labelledby="media-picker-title"
-        className="relative z-[91] flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] border border-white/70 bg-white shadow-card"
+        className="relative z-[91] flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-white/70 bg-white shadow-xs"
       >
-        <div className="border-b border-slate-100 px-5 py-5">
+        <div className="border-b border-neutral-100 px-5 py-5">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-[0.72rem] font-bold uppercase tracking-[0.18em] text-slate-500">Media Library</p>
-              <h2 id="media-picker-title" className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
+              <p className="text-[0.72rem] font-medium text-neutral-500">Media Library</p>
+              <h2 id="media-picker-title" className="mt-2 text-2xl font-semibold tracking-tight text-neutral-950">
                 {title}
               </h2>
-              <p className="mt-2 text-sm leading-6 text-slate-500">
+              <p className="mt-2 text-sm leading-6 text-neutral-500">
                 Search existing uploads, upload new files, and reselect previously uploaded assets.
               </p>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-700 transition hover:bg-slate-200"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-neutral-100 text-neutral-700 transition hover:bg-neutral-200"
             >
               <Icon name="close" />
             </button>
@@ -219,7 +219,7 @@ export function MediaPickerModal({
                 <button
                   type="button"
                   onClick={clearSearch}
-                  className="absolute bottom-0 right-2 flex h-11 w-7 items-center justify-center text-slate-400 hover:text-slate-700"
+                  className="absolute bottom-0 right-2 flex h-11 w-7 items-center justify-center text-neutral-400 hover:text-neutral-700"
                   aria-label="Clear search"
                 >
                   <Icon name="close" className="text-[16px]" />
@@ -262,7 +262,7 @@ export function MediaPickerModal({
               </div>
               <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-brand-100">
                 <div
-                  className="h-full rounded-full bg-brand-900 transition-all duration-200"
+                  className="h-full rounded-full bg-brand-900 transition-colors duration-200"
                   style={{
                     width: `${Math.max(
                       6,
@@ -289,33 +289,33 @@ export function MediaPickerModal({
                     type="button"
                     onClick={() => togglePick(item.id)}
                     className={`flex w-full items-center gap-4 rounded-[22px] border px-4 py-3 text-left transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10 ${
-                      isSelected ? "border-brand-300 bg-brand-50" : "border-slate-200 bg-white hover:bg-slate-50"
+                      isSelected ? "border-brand-300 bg-brand-50" : "border-neutral-200 bg-white hover:bg-neutral-50"
                     }`}
                   >
                     <span
                       className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
-                        isSelected ? "border-brand-900 bg-brand-900 text-white" : "border-slate-300 bg-white"
+                        isSelected ? "border-brand-900 bg-brand-900 text-white" : "border-neutral-300 bg-white"
                       }`}
                     >
                       {isSelected ? <Icon name="check" className="text-[14px]" /> : null}
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="truncate text-sm font-semibold text-slate-950">{item.file_name}</p>
+                        <p className="truncate text-sm font-semibold text-neutral-950">{item.file_name}</p>
                         {newlyUploadedIds.has(item.id) ? (
-                          <span className="rounded-full bg-green-100 px-2 py-0.5 text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-green-700">
+                          <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">
                             New
                           </span>
                         ) : null}
                         {item.usage?.attached ? (
-                          <span className="rounded-full bg-warning/10 px-2 py-0.5 text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-warning">
+                          <span className="rounded-full bg-warning/10 px-2 py-0.5 text-xs font-semibold text-warning">
                             Attached
                           </span>
                         ) : null}
                       </div>
-                      <p className="mt-1 truncate text-xs text-slate-500">{item.storage_path || item.mime_type || "-"}</p>
+                      <p className="mt-1 truncate text-xs text-neutral-500">{item.storage_path || item.mime_type || "-"}</p>
                     </div>
-                    <div className="hidden text-right text-xs text-slate-500 md:block">
+                    <div className="hidden text-right text-xs text-neutral-500 md:block">
                       <div>{item.mime_type || "-"}</div>
                       <div>{formatBytes(item.file_size)}</div>
                     </div>
@@ -325,14 +325,14 @@ export function MediaPickerModal({
                           href={preview}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                          className="inline-flex items-center gap-2 rounded-full border border-neutral-200 px-3 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50"
                           onClick={(event) => event.stopPropagation()}
                         >
                           <Icon name="visibility" className="text-[14px]" />
                           View
                         </a>
                       ) : (
-                        <span className="text-xs text-slate-400">-</span>
+                        <span className="text-xs text-neutral-400">-</span>
                       )}
                       {deleteFile ? (
                         <button
@@ -352,14 +352,14 @@ export function MediaPickerModal({
             </div>
           ) : (
             <div className="flex min-h-[240px] items-center justify-center">
-              <div className="max-w-md text-center text-sm text-slate-500">{busy ? "Loading files..." : emptyMessage}</div>
+              <div className="max-w-md text-center text-sm text-neutral-500">{busy ? "Loading files..." : emptyMessage}</div>
             </div>
           )}
         </div>
 
-        <div className="border-t border-slate-100 px-5 py-4">
+        <div className="border-t border-neutral-100 px-5 py-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="text-xs text-slate-500">
+            <div className="text-xs text-neutral-500">
               Selected: {selectedRows.length ? selectedRows.map((item) => item.file_name).join(", ") : "None"}
             </div>
             <div className="flex items-center gap-2">

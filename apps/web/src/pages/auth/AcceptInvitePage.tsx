@@ -23,17 +23,17 @@ export default function AcceptInvitePage() {
 
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-surface px-6 py-12">
-      <div className="pointer-events-none absolute -left-24 top-0 h-80 w-80 rounded-full bg-primary-fixed/30 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-24 right-0 h-80 w-80 rounded-full bg-secondary-fixed/40 blur-3xl" />
+      <div className="pointer-events-none absolute -left-24 top-0 h-80 w-80 rounded-full bg-primary-fixed/30 hidden" />
+      <div className="pointer-events-none absolute -bottom-24 right-0 h-80 w-80 rounded-full bg-secondary-fixed/40 hidden" />
 
-      <section className="grid w-full max-w-6xl overflow-hidden rounded-3xl border border-white/70 bg-white/90 shadow-card backdrop-blur-xl lg:grid-cols-[1fr_1.1fr]">
+      <section className="grid w-full max-w-6xl overflow-hidden rounded-2xl border border-white/70 bg-white/90 shadow-xs backdrop-blur-xl lg:grid-cols-[1fr_1.1fr]">
         <aside className="hidden bg-primary-fixed p-10 text-primary lg:block">
           <img
             src={brandLogo}
             alt="Stanforte Edge"
             className="h-11 w-auto object-contain"
           />
-          <h1 className="mt-8 font-headline text-5xl font-bold tracking-tight leading-tight">
+          <h1 className="mt-8 font-headline text-5xl font-medium tracking-tight leading-tight">
             Activate your staff portal account
           </h1>
           <p className="mt-4 max-w-md text-sm leading-7 text-on-surface-variant">
@@ -207,7 +207,7 @@ export default function AcceptInvitePage() {
             </Button>
           </form>
 
-          <div className="mt-5 text-sm text-slate-500">
+          <div className="mt-5 text-sm text-neutral-500">
             <Link className="font-semibold text-brand-900" to="/login">
               Already have access? Sign in
             </Link>

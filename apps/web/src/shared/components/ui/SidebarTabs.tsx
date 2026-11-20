@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 type NavItem = {
   id: string;
   label: string;
-  icon: string;
+  icon?: string;
 };
 
 type SidebarTabsProps = {
@@ -16,18 +16,18 @@ type SidebarTabsProps = {
 export function SidebarTabs({ items, activeTab, onTabChange, children }: SidebarTabsProps) {
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-1 border-b border-slate-200">
+      <div className="flex items-center gap-1 border-b border-neutral-900/[0.08]">
         {items.map((item) => (
           <button
             key={item.id}
+            type="button"
             onClick={() => onTabChange(item.id)}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold transition-colors border-b-2 -mb-px ${
+            className={`px-3.5 py-2.5 text-sm font-medium transition-colors duration-150 border-b-2 -mb-px ${
               activeTab === item.id
-                ? "border-brand-900 text-brand-900"
-                : "border-transparent text-slate-500 hover:text-slate-700"
+                ? "border-[#ff6900] text-neutral-900"
+                : "border-transparent text-neutral-500 hover:text-neutral-900"
             }`}
           >
-            <span className="material-symbols-outlined text-[18px]">{item.icon}</span>
             {item.label}
           </button>
         ))}

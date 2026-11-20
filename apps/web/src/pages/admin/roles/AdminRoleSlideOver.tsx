@@ -144,14 +144,14 @@ export default function AdminRoleSlideOver({ role, onClose, onSaved }: Props) {
         <SlideOverContent className="space-y-6 p-6">
           {/* Section 1: Basic Info */}
           <div className="space-y-4">
-            <div className="flex items-center gap-2 pb-2 border-b border-slate-100 text-xs font-bold text-slate-900 uppercase tracking-wider">
+            <div className="flex items-center gap-2 pb-2 border-b border-neutral-100 text-xs font-medium text-neutral-900">
               <Shield className="h-4 w-4 text-[#ff6900]" />
               Role Identity
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-medium text-neutral-700 mb-1">
                   Role Name <span className="text-rose-500">*</span>
                 </label>
                 <input
@@ -160,12 +160,12 @@ export default function AdminRoleSlideOver({ role, onClose, onSaved }: Props) {
                   onChange={(e) => handleNameChange(e.target.value)}
                   placeholder="e.g., Finance Controller"
                   required
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-medium text-neutral-700 mb-1">
                   Slug Identifier
                 </label>
                 <input
@@ -174,13 +174,13 @@ export default function AdminRoleSlideOver({ role, onClose, onSaved }: Props) {
                   onChange={(e) => setSlug(e.target.value)}
                   placeholder="e.g., finance_controller"
                   disabled={!!role}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-mono text-slate-800 placeholder-slate-400 disabled:bg-slate-50 disabled:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-mono text-neutral-800 placeholder-neutral-400 disabled:bg-neutral-50 disabled:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-medium text-neutral-700 mb-1">
                 Description / Purpose
               </label>
               <textarea
@@ -188,7 +188,7 @@ export default function AdminRoleSlideOver({ role, onClose, onSaved }: Props) {
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Scope of responsibility and authority for this role..."
                 rows={2}
-                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
               />
             </div>
 
@@ -198,9 +198,9 @@ export default function AdminRoleSlideOver({ role, onClose, onSaved }: Props) {
                   type="checkbox"
                   checked={isActive}
                   onChange={(e) => setIsActive(e.target.checked)}
-                  className="w-4 h-4 rounded text-[#ff6900] border-slate-300 focus:ring-[#ff6900]"
+                  className="w-4 h-4 rounded text-[#ff6900] border-neutral-300 focus:ring-[#ff6900]"
                 />
-                <span className="text-xs font-bold text-slate-700">
+                <span className="text-xs font-medium text-neutral-700">
                   {isActive ? "Active Role Assignment" : "Disabled / Inactive Role"}
                 </span>
               </label>
@@ -209,38 +209,38 @@ export default function AdminRoleSlideOver({ role, onClose, onSaved }: Props) {
 
           {/* Section 2: Permissions Catalog */}
           <div className="space-y-4 pt-2">
-            <div className="flex items-center gap-2 pb-2 border-b border-slate-100 text-xs font-bold text-slate-900 uppercase tracking-wider">
+            <div className="flex items-center gap-2 pb-2 border-b border-neutral-100 text-xs font-medium text-neutral-900">
               <Key className="h-4 w-4 text-amber-600" />
               Assigned Permissions ({selectedPermissions.length} selected)
             </div>
 
             {loadingPermissions ? (
-              <div className="py-6 text-center text-xs text-slate-400">Loading permissions...</div>
+              <div className="py-6 text-center text-xs text-neutral-400">Loading permissions...</div>
             ) : (
               <div className="space-y-4 max-h-72 overflow-y-auto pr-1">
                 {Object.entries(groupedPermissions).map(([module, perms]) => (
-                  <div key={module} className="bg-slate-50/70 border border-slate-100 rounded-xl p-3">
-                    <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
+                  <div key={module} className="bg-neutral-50/70 border border-neutral-100 rounded-xl p-3">
+                    <div className="text-xs font-medium text-neutral-500 mb-2">
                       {module}
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {perms.map((perm) => (
                         <label
                           key={perm.slug}
-                          className="flex items-start gap-2.5 p-2 rounded-lg bg-white border border-slate-100 hover:border-slate-200 cursor-pointer transition"
+                          className="flex items-start gap-2.5 p-2 rounded-lg bg-white border border-neutral-100 hover:border-neutral-200 cursor-pointer transition"
                         >
                           <input
                             type="checkbox"
                             checked={selectedPermissions.includes(perm.slug)}
                             onChange={() => togglePermission(perm.slug)}
-                            className="mt-0.5 w-4 h-4 rounded text-[#ff6900] border-slate-300 focus:ring-[#ff6900]"
+                            className="mt-0.5 w-4 h-4 rounded text-[#ff6900] border-neutral-300 focus:ring-[#ff6900]"
                           />
                           <div className="min-w-0">
-                            <span className="text-xs font-bold text-slate-800 block truncate">
+                            <span className="text-xs font-medium text-neutral-800 block truncate">
                               {perm.name}
                             </span>
                             {perm.description && (
-                              <span className="text-[10px] text-slate-400 line-clamp-1">
+                              <span className="text-xs text-neutral-400 line-clamp-1">
                                 {perm.description}
                               </span>
                             )}
@@ -257,7 +257,7 @@ export default function AdminRoleSlideOver({ role, onClose, onSaved }: Props) {
           {/* Delete impact warnings */}
           {role && deleteImpact && deleteImpact.affected_users > 0 && (
             <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 space-y-1.5">
-              <div className="flex items-center gap-2 font-bold text-amber-900">
+              <div className="flex items-center gap-2 font-medium text-amber-900">
                 <AlertTriangle className="h-4 w-4 text-amber-600" />
                 Active User Assignments Warning
               </div>
@@ -268,19 +268,19 @@ export default function AdminRoleSlideOver({ role, onClose, onSaved }: Props) {
           )}
         </SlideOverContent>
 
-        <SlideOverFooter className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3">
+        <SlideOverFooter className="p-4 bg-neutral-50 border-t border-neutral-100 flex items-center justify-end gap-3">
           <button
             type="button"
             onClick={onClose}
             disabled={saving}
-            className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 font-semibold text-xs hover:bg-white transition"
+            className="px-4 py-2 rounded-xl border border-neutral-200 text-neutral-700 font-semibold text-xs hover:bg-white transition"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={saving}
-            className="px-5 py-2 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white font-bold text-xs shadow-sm shadow-orange-500/20 transition flex items-center gap-2"
+            className="px-5 py-2 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white font-medium text-xs shadow-sm transition flex items-center gap-2"
           >
             {saving ? (
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />

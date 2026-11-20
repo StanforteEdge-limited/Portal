@@ -229,16 +229,16 @@ export class FinanceService {
 
   private jsonPathClause(column: any, value: JsonObject): SQL | undefined {
     const path = value.path as Array<string | number>;
-    const accessor = sql.raw(`#>>'{${path.map((segment) => String(segment)).join("','")}}'`);
+    const pgPath = `{${path.map((segment) => `"${String(segment).replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`).join(",")}}`; const expr = sql`(${column} #>> ${pgPath}::text[])`;
     if (value.string_contains != null) {
       const insensitive = value.mode === "insensitive" || value.mode === undefined;
       return insensitive
-        ? sql`${accessor}::text ILIKE ${`%${String(value.string_contains)}%`}`
-        : sql`${accessor}::text LIKE ${`%${String(value.string_contains)}%`}`;
+        ? sql`${expr} ILIKE ${`%${String(value.string_contains)}%`}`
+        : sql`${expr} LIKE ${`%${String(value.string_contains)}%`}`;
     }
-    if (value.string_starts_with != null) return sql`${accessor}::text ILIKE ${`${String(value.string_starts_with)}%`}`;
-    if (value.string_ends_with != null) return sql`${accessor}::text ILIKE ${`%${String(value.string_ends_with)}`}`;
-    if (value.equals != null) return sql`${accessor}::text = ${String(value.equals)}`;
+    if (value.string_starts_with != null) return sql`${expr} ILIKE ${`${String(value.string_starts_with)}%`}`;
+    if (value.string_ends_with != null) return sql`${expr} ILIKE ${`%${String(value.string_ends_with)}`}`;
+    if (value.equals != null) return sql`${expr} = ${String(value.equals)}`;
     return undefined;
   }
 

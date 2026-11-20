@@ -77,11 +77,11 @@ export default function DownloadPage() {
           >
             <div className="mb-6 flex items-center gap-3">
               <span className="flex h-2 w-2 rounded-full bg-emerald-500" />
-              <span className="text-sm font-semibold text-slate-900">
+              <span className="text-sm font-semibold text-neutral-900">
                 Version {APP_VERSION}
               </span>
               {BUILD_DATE ? (
-                <span className="text-sm text-slate-400">— Built {BUILD_DATE}</span>
+                <span className="text-sm text-neutral-400">— Built {BUILD_DATE}</span>
               ) : null}
             </div>
 
@@ -98,21 +98,21 @@ export default function DownloadPage() {
                     className={[
                       "flex items-center gap-3 rounded-2xl border px-5 py-4 transition",
                       href
-                        ? "cursor-pointer border-slate-200 bg-white hover:border-brand-900/30 hover:bg-slate-50"
-                        : "pointer-events-none cursor-not-allowed border-slate-100 bg-slate-50 opacity-50",
+                        ? "cursor-pointer border-neutral-200 bg-white hover:border-brand-900/30 hover:bg-neutral-50"
+                        : "pointer-events-none cursor-not-allowed border-neutral-100 bg-neutral-50 opacity-50",
                     ].join(" ")}
                   >
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-900/10 text-brand-900">
                       <Icon name={platform.icon} className="text-[20px]" />
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-slate-900">
+                      <p className="truncate text-sm font-semibold text-neutral-900">
                         {platform.label}
                       </p>
                       {!href ? (
-                        <p className="text-xs text-slate-400">Not yet available</p>
+                        <p className="text-xs text-neutral-400">Not yet available</p>
                       ) : (
-                        <p className="truncate text-xs text-slate-400">
+                        <p className="truncate text-xs text-neutral-400">
                           {platform.filename(APP_VERSION)}
                         </p>
                       )}
@@ -120,7 +120,7 @@ export default function DownloadPage() {
                     {href ? (
                       <Icon
                         name="download"
-                        className="shrink-0 text-[20px] text-slate-400"
+                        className="shrink-0 text-[20px] text-neutral-400"
                       />
                     ) : null}
                   </a>
@@ -134,35 +134,35 @@ export default function DownloadPage() {
             description="What changed in each release."
           >
             {entries.length === 0 ? (
-              <p className="text-sm text-slate-400">No changelog available.</p>
+              <p className="text-sm text-neutral-400">No changelog available.</p>
             ) : (
               <div className="space-y-4">
                 {entries.map((entry) => (
                   <div
                     key={entry.version}
-                    className="rounded-2xl border border-slate-100 bg-slate-50 px-5 py-4"
+                    className="rounded-2xl border border-neutral-100 bg-neutral-50 px-5 py-4"
                   >
                     <div className="mb-3 flex items-center justify-between gap-3">
-                      <span className="text-sm font-bold text-brand-900">
+                      <span className="text-sm font-medium text-brand-900">
                         v{entry.version}
                       </span>
-                      <span className="text-xs font-semibold uppercase tracking-widest text-slate-400">
+                      <span className="text-xs font-semibold text-neutral-400">
                         {entry.date}
                       </span>
                     </div>
                     {Object.entries(entry.sections).map(([section, items]) =>
                       items && items.length > 0 ? (
                         <div key={section} className="mb-2 last:mb-0">
-                          <p className="mb-1 text-xs font-bold uppercase tracking-wider text-slate-400">
+                          <p className="mb-1 text-xs font-medium text-neutral-400">
                             {section}
                           </p>
                           <ul className="space-y-1">
                             {items.map((item, i) => (
                               <li
                                 key={i}
-                                className="flex gap-2 text-sm text-slate-600"
+                                className="flex gap-2 text-sm text-neutral-600"
                               >
-                                <span className="shrink-0 text-slate-300">•</span>
+                                <span className="shrink-0 text-neutral-300">•</span>
                                 {item}
                               </li>
                             ))}
@@ -179,7 +179,7 @@ export default function DownloadPage() {
 
         <div className="space-y-6 lg:col-span-4">
           <SectionCard title="PWA (Web App)">
-            <p className="text-sm leading-6 text-slate-600">
+            <p className="text-sm leading-6 text-neutral-600">
               The portal is also available as a Progressive Web App — no
               installation required. Open it in any modern browser and add it to
               your home screen.

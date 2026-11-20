@@ -190,7 +190,7 @@ export default function DocumentSlideOver({ documentRecord, onClose, onSaved }: 
         {/* Document Title & Category */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="sm:col-span-2">
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+            <label className="block text-xs font-semibold text-neutral-700 mb-1.5">
               Document Title <span className="text-rose-500">*</span>
             </label>
             <input
@@ -198,17 +198,17 @@ export default function DocumentSlideOver({ documentRecord, onClose, onSaved }: 
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Q3 Software Development SOP & Standards"
-              className="w-full px-3.5 py-2 text-xs bg-white border border-slate-200 rounded-xl outline-none transition focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+              className="w-full px-3.5 py-2 text-xs bg-white border border-neutral-200 rounded-xl outline-none transition focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
               required
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Category</label>
+            <label className="block text-xs font-semibold text-neutral-700 mb-1.5">Category</label>
             <SelectBox
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full px-3.5 py-2 text-xs bg-white border border-slate-200 rounded-xl outline-none transition focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+              className="w-full px-3.5 py-2 text-xs bg-white border border-neutral-200 rounded-xl outline-none transition focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
             >
               <option value="general">General</option>
               <option value="wiki">Wiki / Guide</option>
@@ -226,15 +226,15 @@ export default function DocumentSlideOver({ documentRecord, onClose, onSaved }: 
               id="requireAcknowledgement"
               checked={requireAcknowledgement}
               onChange={(e) => setRequireAcknowledgement(e.target.checked)}
-              className="h-4 w-4 rounded border-slate-300 text-[#ff6900] focus:ring-[#ff6900]"
+              className="h-4 w-4 rounded border-neutral-300 text-[#ff6900] focus:ring-[#ff6900]"
             />
             <label
               htmlFor="requireAcknowledgement"
-              className="text-xs font-semibold text-slate-800 select-none cursor-pointer"
+              className="text-xs font-semibold text-neutral-800 select-none cursor-pointer"
             >
               Require Staff Read Acknowledgement
             </label>
-            <span className="text-[10px] text-slate-500 ml-auto hidden sm:inline">
+            <span className="text-xs text-neutral-500 ml-auto hidden sm:inline">
               Prompts employees to confirm comprehension
             </span>
           </div>
@@ -242,48 +242,48 @@ export default function DocumentSlideOver({ documentRecord, onClose, onSaved }: 
 
         {/* Content Body */}
         <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-            Content Body <span className="text-slate-400 font-normal">(Markdown or HTML supported)</span>
+          <label className="block text-xs font-semibold text-neutral-700 mb-1.5">
+            Content Body <span className="text-neutral-400 font-normal">(Markdown or HTML supported)</span>
           </label>
           <textarea
             value={contentHtml}
             onChange={(e) => setContentHtml(e.target.value)}
             placeholder="Write the full document text, instructions, and policies here..."
             rows={10}
-            className="w-full px-3.5 py-2.5 text-xs bg-white border border-slate-200 rounded-xl outline-none transition focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900] font-mono leading-relaxed"
+            className="w-full px-3.5 py-2.5 text-xs bg-white border border-neutral-200 rounded-xl outline-none transition focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900] font-mono leading-relaxed"
           />
         </div>
 
         {/* External Link */}
         <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-            External Document URL <span className="text-slate-400 font-normal">(Optional Google Doc / Cloud Link)</span>
+          <label className="block text-xs font-semibold text-neutral-700 mb-1.5">
+            External Document URL <span className="text-neutral-400 font-normal">(Optional Google Doc / Cloud Link)</span>
           </label>
           <div className="relative">
-            <ExternalLink className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+            <ExternalLink className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
             <input
               type="url"
               value={linkUrl}
               onChange={(e) => setLinkUrl(e.target.value)}
               placeholder="https://docs.google.com/document/d/..."
-              className="w-full pl-9 pr-3.5 py-2 text-xs bg-white border border-slate-200 rounded-xl outline-none transition focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+              className="w-full pl-9 pr-3.5 py-2 text-xs bg-white border border-neutral-200 rounded-xl outline-none transition focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
             />
           </div>
         </div>
 
         {/* File Attachment Upload */}
         <div className="space-y-1.5">
-          <label className="block text-xs font-semibold text-slate-700">Supporting File Attachment</label>
+          <label className="block text-xs font-semibold text-neutral-700">Supporting File Attachment</label>
 
           {attachedFile ? (
-            <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3">
+            <div className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-neutral-50/80 px-4 py-3">
               <div className="w-8 h-8 rounded-lg bg-orange-100 text-[#ff6900] flex items-center justify-center shrink-0">
                 <Paperclip className="w-4 h-4" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-slate-900 truncate">{attachedFile.file_name}</p>
+                <p className="text-xs font-medium text-neutral-900 truncate">{attachedFile.file_name}</p>
                 {attachedFile.file_size && (
-                  <p className="text-[10px] text-slate-400">{(attachedFile.file_size / 1024).toFixed(1)} KB</p>
+                  <p className="text-xs text-neutral-400">{(attachedFile.file_size / 1024).toFixed(1)} KB</p>
                 )}
               </div>
               {attachedFile.public_url && (
@@ -299,7 +299,7 @@ export default function DocumentSlideOver({ documentRecord, onClose, onSaved }: 
               <button
                 type="button"
                 onClick={() => setAttachedFile(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                className="p-1 rounded-lg text-neutral-400 hover:text-rose-600 hover:bg-rose-50 transition"
                 title="Remove attachment"
               >
                 <X className="w-4 h-4" />
@@ -318,7 +318,7 @@ export default function DocumentSlideOver({ documentRecord, onClose, onSaved }: 
                 type="button"
                 disabled={uploading}
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/60 px-4 py-4 text-xs font-semibold text-slate-600 transition hover:border-[#ff6900] hover:text-[#ff6900] hover:bg-orange-50/10 disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-neutral-200 bg-neutral-50/60 px-4 py-4 text-xs font-semibold text-neutral-600 transition hover:border-[#ff6900] hover:text-[#ff6900] hover:bg-orange-50/10 disabled:opacity-50"
               >
                 {uploading ? (
                   <>
@@ -327,7 +327,7 @@ export default function DocumentSlideOver({ documentRecord, onClose, onSaved }: 
                   </>
                 ) : (
                   <>
-                    <UploadCloud className="w-4 h-4 text-slate-400" />
+                    <UploadCloud className="w-4 h-4 text-neutral-400" />
                     <span>Click or drag to attach PDF, Word document, spreadsheet, or image</span>
                   </>
                 )}
@@ -342,7 +342,7 @@ export default function DocumentSlideOver({ documentRecord, onClose, onSaved }: 
           type="button"
           onClick={onClose}
           disabled={submitting}
-          className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 transition"
+          className="px-4 py-2 text-xs font-semibold text-neutral-600 hover:text-neutral-900 transition"
         >
           Cancel
         </button>
@@ -351,7 +351,7 @@ export default function DocumentSlideOver({ documentRecord, onClose, onSaved }: 
           type="button"
           onClick={() => void handleSave()}
           disabled={submitting || uploading}
-          className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] active:scale-95 text-white font-bold text-xs shadow-sm shadow-orange-500/20 transition disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] active:scale-[0.98] text-white font-medium text-xs shadow-sm transition disabled:opacity-50"
         >
           <Save className="w-3.5 h-3.5" />
           <span>{submitting ? "Saving..." : isEdit ? "Save Document" : "Publish Document"}</span>

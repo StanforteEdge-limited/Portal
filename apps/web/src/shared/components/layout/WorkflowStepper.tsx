@@ -16,7 +16,7 @@ type WorkflowStepperProps = {
 const statusStyles: Record<WorkflowStepStatus, string> = {
   complete: "border-success bg-success text-white",
   current: "border-brand-900 bg-brand-900 text-white",
-  upcoming: "border-slate-200 bg-white text-slate-500",
+  upcoming: "border-neutral-200 bg-white text-neutral-500",
 };
 
 const statusIcons: Record<WorkflowStepStatus, string> = {
@@ -40,8 +40,8 @@ export function WorkflowStepper({ steps }: WorkflowStepperProps) {
             <Icon name={statusIcons[step.status]} fill={step.status !== "upcoming"} className="text-[18px]" />
           </span>
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-slate-950">{step.label}</p>
-            {step.detail ? <div className="mt-1 text-sm leading-6 text-slate-500">{step.detail}</div> : null}
+            <p className="text-sm font-semibold text-neutral-950">{step.label}</p>
+            {step.detail ? <div className="mt-1 text-sm leading-6 text-neutral-500">{step.detail}</div> : null}
           </div>
         </li>
       ))}

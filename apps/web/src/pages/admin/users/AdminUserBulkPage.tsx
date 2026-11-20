@@ -113,16 +113,16 @@ export default function AdminUserBulkPage() {
           actions={
             <Link
               to="/admin/users"
-              className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition shadow-xs self-start sm:self-auto"
+              className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 text-xs font-medium transition shadow-xs self-start sm:self-auto"
             >
-              <ArrowLeft className="h-4 w-4 text-slate-400" />
+              <ArrowLeft className="h-4 w-4 text-neutral-400" />
               <span>Back to Staff Directory</span>
             </Link>
           }
         />
 
         {/* Bulk Dashboard */}
-        <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden p-6">
+        <div className="bg-white border border-neutral-200/80 rounded-2xl shadow-sm overflow-hidden p-6">
           <BulkImportDashboard
             title="CSV / Spreadsheet Importer"
             description="Download the template, paste rows or upload a CSV file to register staff members."

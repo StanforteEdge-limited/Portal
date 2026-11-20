@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "apps/api/**"
+      - "packages/contract/**"
       - "package.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
@@ -32,8 +33,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Generate Drizzle Client
-        run: pnpm --filter portal-api-fastify drizzle:generate
+      - name: Build Contracts
+        run: pnpm --filter @stanforte/contract build
+
+      - name: Run API Unit Tests
+        run: pnpm --filter portal-api-fastify test:unit
 
       - name: Build API
         run: pnpm run build:api
@@ -47,14 +51,12 @@ jobs:
           script: |
             set -e
             cd "${{ secrets.API_APP_DIR }}"
-            pwd
-            ls -la
-            ls -la .git
             git fetch origin
             git checkout main
             git pull origin main
             export DATABASE_URL="$(grep '^DATABASE_URL=' apps/api/.env | cut -d= -f2-)"
             pnpm install --frozen-lockfile
+            pnpm --filter @stanforte/contract build
             pnpm --filter portal-api-fastify build
             pnpm --filter portal-api-fastify drizzle:migrate:locked
             pm2 startOrReload apps/api/ecosystem.config.cjs --env production

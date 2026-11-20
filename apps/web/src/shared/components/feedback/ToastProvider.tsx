@@ -33,10 +33,10 @@ export type ToastContextValue = {
 const ToastContext = createContext<ToastContextValue | null>(null);
 
 const toneClasses: Record<"success" | "warning" | "danger" | "info", string> = {
-  success: "border-success/20 bg-white text-slate-900",
-  warning: "border-warning/20 bg-white text-slate-900",
-  danger: "border-danger/20 bg-white text-slate-900",
-  info: "border-brand-900/10 bg-white text-slate-900",
+  success: "border-success/20 bg-white text-neutral-900",
+  warning: "border-warning/20 bg-white text-neutral-900",
+  danger: "border-danger/20 bg-white text-neutral-900",
+  info: "border-brand-900/10 bg-white text-neutral-900",
 };
 
 const toneAccentClasses: Record<"success" | "warning" | "danger" | "info", string> = {
@@ -107,7 +107,7 @@ export function ToastProvider({ children }: PropsWithChildren) {
           <div
             key={toast.id}
             className={[
-              "pointer-events-auto overflow-hidden rounded-[24px] border shadow-card backdrop-blur-xl",
+              "pointer-events-auto overflow-hidden rounded-2xl border shadow-xs backdrop-blur-xl",
               toneClasses[toast.tone],
             ].join(" ")}
             role="status"
@@ -116,13 +116,13 @@ export function ToastProvider({ children }: PropsWithChildren) {
             <div className="flex items-start gap-3 px-4 py-4">
               <div className={["mt-1 h-2.5 w-2.5 shrink-0 rounded-full", toneAccentClasses[toast.tone]].join(" ")} />
               <div className="min-w-0 flex-1">
-                {toast.title ? <p className="text-sm font-semibold text-slate-950">{toast.title}</p> : null}
-                <p className={toast.title ? "mt-1 text-sm text-slate-600" : "text-sm text-slate-700"}>{toast.message}</p>
+                {toast.title ? <p className="text-sm font-semibold text-neutral-950">{toast.title}</p> : null}
+                <p className={toast.title ? "mt-1 text-sm text-neutral-600" : "text-sm text-neutral-700"}>{toast.message}</p>
               </div>
               <button
                 type="button"
                 onClick={() => dismissToast(toast.id)}
-                className="rounded-full px-2 py-1 text-xs font-semibold text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                className="rounded-full px-2 py-1 text-xs font-semibold text-neutral-500 transition hover:bg-neutral-100 hover:text-neutral-900"
               >
                 Dismiss
               </button>

@@ -129,14 +129,14 @@ export default function AdminProjectSlideOver({
         <SlideOverContent className="space-y-6 p-6">
           {/* Section 1: Basic Info */}
           <div className="space-y-4">
-            <div className="flex items-center gap-2 pb-2 border-b border-slate-100 text-xs font-bold text-slate-900 uppercase tracking-wider">
+            <div className="flex items-center gap-2 pb-2 border-b border-neutral-100 text-xs font-medium text-neutral-900">
               <Briefcase className="h-4 w-4 text-[#ff6900]" />
               Project Identity
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="sm:col-span-2">
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-medium text-neutral-700 mb-1">
                   Project Title <span className="text-rose-500">*</span>
                 </label>
                 <input
@@ -145,12 +145,12 @@ export default function AdminProjectSlideOver({
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g., Core Banking System Upgrade"
                   required
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-medium text-neutral-700 mb-1">
                   Project Code <span className="text-rose-500">*</span>
                 </label>
                 <input
@@ -159,13 +159,13 @@ export default function AdminProjectSlideOver({
                   onChange={(e) => setProjectCode(e.target.value)}
                   placeholder="e.g., PRJ-2026-001"
                   required
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-mono font-bold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-mono font-medium text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-medium text-neutral-700 mb-1">
                 Description & Objectives
               </label>
               <textarea
@@ -173,27 +173,27 @@ export default function AdminProjectSlideOver({
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Brief summary of deliverables and strategic goals..."
                 rows={3}
-                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
               />
             </div>
           </div>
 
           {/* Section 2: Organization & Owner */}
           <div className="space-y-4 pt-2">
-            <div className="flex items-center gap-2 pb-2 border-b border-slate-100 text-xs font-bold text-slate-900 uppercase tracking-wider">
-              <Building2 className="h-4 w-4 text-blue-600" />
+            <div className="flex items-center gap-2 pb-2 border-b border-neutral-100 text-xs font-medium text-neutral-900">
+              <Building2 className="h-4 w-4 text-neutral-700" />
               Ownership & Organization
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-medium text-neutral-700 mb-1">
                   Host Organization Entity
                 </label>
                 <SelectBox
                   value={organizationId}
                   onChange={(e) => setOrganizationId(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
                 >
                   <option value="">Select Organization</option>
                   {organizations.map((org) => (
@@ -205,13 +205,13 @@ export default function AdminProjectSlideOver({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-medium text-neutral-700 mb-1">
                   Project Owner / Lead
                 </label>
                 <SelectBox
                   value={ownerId}
                   onChange={(e) => setOwnerId(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
                 >
                   <option value="">Select Owner</option>
                   {users.map((u) => {
@@ -231,13 +231,13 @@ export default function AdminProjectSlideOver({
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-medium text-neutral-700 mb-1">
                   Governance Status
                 </label>
                 <SelectBox
                   value={status}
                   onChange={(e) => setStatus(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
                 >
                   {projectStatusOptions.map((opt) => (
                     <option key={opt.value} value={opt.value}>
@@ -248,45 +248,45 @@ export default function AdminProjectSlideOver({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-medium text-neutral-700 mb-1">
                   Start Date
                 </label>
                 <DateInput
                   
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-medium text-neutral-700 mb-1">
                   Target End Date
                 </label>
                 <DateInput
                   
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
                 />
               </div>
             </div>
           </div>
         </SlideOverContent>
 
-        <SlideOverFooter className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3">
+        <SlideOverFooter className="p-4 bg-neutral-50 border-t border-neutral-100 flex items-center justify-end gap-3">
           <button
             type="button"
             onClick={onClose}
             disabled={saving}
-            className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 font-semibold text-xs hover:bg-white transition"
+            className="px-4 py-2 rounded-xl border border-neutral-200 text-neutral-700 font-semibold text-xs hover:bg-white transition"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={saving}
-            className="px-5 py-2 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white font-bold text-xs shadow-sm shadow-orange-500/20 transition flex items-center gap-2"
+            className="px-5 py-2 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white font-medium text-xs shadow-sm transition flex items-center gap-2"
           >
             {saving ? (
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />

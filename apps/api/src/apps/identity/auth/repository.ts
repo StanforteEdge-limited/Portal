@@ -598,7 +598,7 @@ export class AuthService {
       });
       const payload = ticket.getPayload();
       const email = payload?.email?.trim().toLowerCase();
-      if (!email) return `${appUrl}/login?error=google_no_email`;
+      if (!email || payload?.email_verified !== true) return `${appUrl}/login?error=google_no_email`;
 
       const [profile] = await this.db.client
         .select()

@@ -202,9 +202,9 @@ export default function HrAttendancePage() {
   );
 
   const rawItems: StaffDailyRow[] = (attendanceData as any)?.items || [];
-  const pagedRows: StaffDailyRow[] = rawItems.length > 0 ? rawItems : fallbackStaffRows;
+  const pagedRows: StaffDailyRow[] = rawItems;
   const attTotalPages = (attendanceData as any)?.meta?.pages || 1;
-  const attTotalCount = (attendanceData as any)?.meta?.total || pagedRows.length;
+  const attTotalCount = (attendanceData as any)?.meta?.total ?? pagedRows.length;
   const attSafePage = attPage; // Use directly since server handles out-of-bounds
 
   const pagedCorrections: AdminCorrectionRow[] = (correctionsData as any)?.items || [];
@@ -281,8 +281,8 @@ export default function HrAttendancePage() {
             }
           }}
         >
-          <p className="font-semibold text-brand-700">{row.user_name}</p>
-          <p className="text-xs text-slate-500">{row.email}</p>
+          <p className="font-medium text-neutral-900">{row.user_name}</p>
+          <p className="text-xs text-neutral-500">{row.email}</p>
         </div>
       )
     },
@@ -349,8 +349,8 @@ export default function HrAttendancePage() {
             }
           }}
         >
-          <p className="font-semibold text-brand-700">{c.user_name}</p>
-          <p className="text-xs text-slate-500">{c.email}</p>
+          <p className="font-medium text-neutral-900">{c.user_name}</p>
+          <p className="text-xs text-neutral-500">{c.email}</p>
         </div>
       )
     },
@@ -408,60 +408,47 @@ export default function HrAttendancePage() {
               type="button"
               onClick={handleExportCsv}
               disabled={exportingCsv}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:bg-slate-50 transition shadow-xs"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-neutral-200 bg-white text-xs font-medium text-neutral-700 hover:bg-neutral-50 transition shadow-xs"
             >
-              <Download className="h-4 w-4 text-slate-400" />
+              <Download className="h-4 w-4 text-neutral-400" />
               <span>{exportingCsv ? "Exporting..." : "Export CSV"}</span>
             </button>
           }
         />
 
-        {/* 4 KPI Metric Cards */}
+        {/* 4 Compact Numbers-Only KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                <Clock className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="text-[11px] font-semibold text-slate-500">Total Workforce</div>
-                <div className="text-xl font-black text-slate-900 mt-0.5">{stats?.total_staff || 48}</div>
-              </div>
-            </div>
-            <div className="text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
-              Staff
-            </div>
-          </div>
+          <article className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
+            <p className="text-xs text-neutral-500">Total workforce</p>
+            <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+              {stats?.total_staff ?? 0}
+            </p>
+            <p className="text-xs text-neutral-500">Tracked staff members</p>
+          </article>
 
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-              <UserCheck className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="text-[11px] font-semibold text-slate-500">Present / Clocked In</div>
-              <div className="text-xl font-black text-emerald-600 mt-0.5">{stats?.clocked_in || 43}</div>
-            </div>
-          </div>
+          <article className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
+            <p className="text-xs text-neutral-500">Present today</p>
+            <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+              {stats?.clocked_in ?? 0}
+            </p>
+            <p className="text-xs text-neutral-500">Clocked in for active shift</p>
+          </article>
 
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-              <AlertTriangle className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="text-[11px] font-semibold text-slate-500">Late Arrivals</div>
-              <div className="text-xl font-black text-amber-600 mt-0.5">{stats?.late || 2}</div>
-            </div>
-          </div>
+          <article className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
+            <p className="text-xs text-neutral-500">Late arrivals</p>
+            <p className="text-[28px] leading-none font-medium text-[#c2410c] font-headline tabular-nums">
+              {stats?.late ?? 0}
+            </p>
+            <p className="text-xs text-neutral-500">Past shift grace window</p>
+          </article>
 
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
-              <UserX className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="text-[11px] font-semibold text-slate-500">Absent / On Leave</div>
-              <div className="text-xl font-black text-rose-600 mt-0.5">{stats?.absent || 3}</div>
-            </div>
-          </div>
+          <article className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
+            <p className="text-xs text-neutral-500">Absent or on leave</p>
+            <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+              {stats?.absent ?? 0}
+            </p>
+            <p className="text-xs text-neutral-500">Not checked in today</p>
+          </article>
         </div>
 
         {/* Attendance Trend: last 30 days */}
@@ -492,14 +479,14 @@ export default function HrAttendancePage() {
                         title={`Absent: ${day.absent}`}
                       />
                     </div>
-                    <span className="text-[9px] text-slate-400 rotate-45 origin-left">
+                    <span className="text-xs text-neutral-400 rotate-45 origin-left">
                       {new Date(day.date).getDate()}
                     </span>
                   </div>
                 );
               })}
             </div>
-            <div className="mt-2 flex gap-4 text-xs text-slate-500">
+            <div className="mt-2 flex gap-4 text-xs text-neutral-500">
               <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 bg-success/80 rounded-sm" /> Present</span>
               <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 bg-warning/80 rounded-sm" /> Late</span>
               <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 bg-danger/80 rounded-sm" /> Absent</span>
@@ -510,14 +497,8 @@ export default function HrAttendancePage() {
         <SidebarTabs items={tabItems} activeTab={activeTab} onTabChange={(id) => setActiveTab(id as ActiveTab)}>
           {activeTab === "attendance" && (
             <SectionCard
-              title="Staff Attendance"
+              title="Staff attendance"
               description="Records for the selected date range."
-              action={
-                <Button variant="secondary" size="sm" onClick={handleExportCsv} className="gap-2" disabled={exportingCsv}>
-                  <span className="material-symbols-outlined text-[18px]">download</span>
-                  {exportingCsv ? "Exporting..." : "Export CSV"}
-                </Button>
-              }
             >
               <div className="mb-4 flex flex-wrap items-end gap-3">
                 <TextField

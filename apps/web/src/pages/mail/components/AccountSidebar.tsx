@@ -34,7 +34,7 @@ export function AccountSidebar({
 
   return (
     <aside style={{ width: 220, borderRight: '1px solid #e5e7eb', height: '100%', overflowY: 'auto', flexShrink: 0 }}>
-      <div style={{ padding: '12px 12px 6px', fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+      <div style={{ padding: '12px 12px 6px', fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: '', letterSpacing: '0.05em' }}>
         Accounts
       </div>
 
@@ -73,7 +73,7 @@ export function AccountSidebar({
         </div>
       ))}
 
-      <div style={{ padding: '16px 12px 6px', fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', borderTop: '1px solid #f3f4f6', marginTop: 8 }}>
+      <div style={{ padding: '16px 12px 6px', fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: '', letterSpacing: '0.05em', borderTop: '1px solid #f3f4f6', marginTop: 8 }}>
         Folders
       </div>
 

@@ -23,10 +23,10 @@ export function StatusForYouCard() {
 
   return (
     <section className="section-card bg-brand-900 p-5 text-white">
-      <p className="text-[0.72rem] font-bold uppercase tracking-[0.18em] text-white/70">
+      <p className="text-[0.72rem] font-medium text-white/70">
         Status For You
       </p>
-      <h3 className="mt-3 text-sm font-semibold uppercase tracking-[0.08em] text-white/70">
+      <h3 className="mt-3 text-sm font-semibold text-white/70">
         {viewerStatus.label}
       </h3>
       <p className="mt-2 text-sm leading-6 text-white/85">
@@ -34,7 +34,7 @@ export function StatusForYouCard() {
       </p>
       {financeActionsVisible && financeProgress.label ? (
         <div className="mt-4 rounded-[18px] bg-white/10 px-4 py-3">
-          <div className="text-[0.72rem] font-bold uppercase tracking-[0.18em] text-white/60">
+          <div className="text-[0.72rem] font-medium text-white/60">
             Finance Progress
           </div>
           <div className="mt-1 text-sm font-semibold text-white">

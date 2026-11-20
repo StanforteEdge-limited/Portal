@@ -197,8 +197,8 @@ export function AdminOrganizationSlideOver({ org, onClose, onSaved }: Props) {
             ))}
           </SelectField>
 
-          <div className="border-t border-slate-100 my-4 pt-4">
-            <h4 className="text-sm font-semibold text-slate-800 mb-3">Branding</h4>
+          <div className="border-t border-neutral-100 my-4 pt-4">
+            <h4 className="text-sm font-semibold text-neutral-800 mb-3">Branding</h4>
             <div className="space-y-4">
               <SelectField
                 label="Color Theme"
@@ -219,10 +219,10 @@ export function AdminOrganizationSlideOver({ org, onClose, onSaved }: Props) {
                     <img
                       src={form.logo_url}
                       alt="Organization logo"
-                      className="h-12 w-12 rounded-xl border border-slate-200 bg-white object-contain p-1"
+                      className="h-12 w-12 rounded-xl border border-neutral-200 bg-white object-contain p-1"
                     />
                   ) : (
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-surface-container-low text-slate-400">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-dashed border-neutral-200 bg-surface-container-low text-neutral-400">
                       <Icon name="image" />
                     </div>
                   )}
@@ -264,8 +264,8 @@ export function AdminOrganizationSlideOver({ org, onClose, onSaved }: Props) {
               />
             </div>
           </div>
-            <div className="border-t border-slate-100 my-4 pt-4">
-              <h4 className="text-sm font-semibold text-slate-800 mb-3">Corporate Metadata</h4>
+            <div className="border-t border-neutral-100 my-4 pt-4">
+              <h4 className="text-sm font-semibold text-neutral-800 mb-3">Corporate Metadata</h4>
             <div className="space-y-4">
               <TextField
                 label="Contact Phone"

@@ -109,7 +109,7 @@ export default function FinanceReceivablesPage() {
         <SectionCard title="Invoice Information">
           <DataTable
             columns={[
-              { header: "Field", className: "w-40 font-medium text-slate-500", cell: (r) => r.field },
+              { header: "Field", className: "w-40 font-medium text-neutral-500", cell: (r) => r.field },
               { header: "Value", cell: (r) => r.value },
             ]}
             data={[
@@ -182,7 +182,7 @@ export default function FinanceReceivablesPage() {
       </SectionCard>
 
       <SectionCard title="Customer Invoices" description="Aging and follow-up ready list.">
-        {loading ? <p className="text-sm text-slate-500">Loading invoices...</p> : null}
+        {loading ? <p className="text-sm text-neutral-500">Loading invoices...</p> : null}
         {error ? <p className="text-sm text-danger">{error}</p> : null}
         {rows.length ? (
           <DataTable

@@ -197,7 +197,7 @@ export function PaymentRequestBody() {
           }
         >
           {lineItems.length ? (
-            <div className="rounded-[22px] border border-slate-200 bg-white">
+            <div className="rounded-[22px] border border-neutral-200 bg-white">
               <Table caption="Request items">
                 <TableHead>
                   <TableHeaderRow>
@@ -213,7 +213,7 @@ export function PaymentRequestBody() {
                       <TableCell>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <p className="text-sm font-semibold text-slate-950">
+                            <p className="text-sm font-semibold text-neutral-950">
                               {item.description || "Untitled item"}
                             </p>
                             {(item.files?.length ?? 0) > 0 ? (
@@ -225,18 +225,18 @@ export function PaymentRequestBody() {
                               </span>
                             ) : null}
                           </div>
-                          <p className="mt-1 text-xs leading-5 text-slate-500">
+                          <p className="mt-1 text-xs leading-5 text-neutral-500">
                             {item.notes || ""}
                           </p>
                         </div>
                       </TableCell>
-                      <TableCell className="text-sm font-semibold text-slate-700">
+                      <TableCell className="text-sm font-semibold text-neutral-700">
                         {item.quantity ?? 1}
                       </TableCell>
-                      <TableCell className="text-sm font-semibold text-slate-700">
+                      <TableCell className="text-sm font-semibold text-neutral-700">
                         {formatCurrency(item.amount, request.currency)}
                       </TableCell>
-                      <TableCell className="text-sm font-semibold text-slate-700">
+                      <TableCell className="text-sm font-semibold text-neutral-700">
                         {formatCurrency(
                           (item.amount ?? 0) * (item.quantity ?? 1),
                           request.currency,
@@ -265,7 +265,7 @@ export function PaymentRequestBody() {
           }
         >
           {paymentVouchers.length ? (
-            <div className="overflow-x-auto rounded-[22px] border border-slate-200 bg-white">
+            <div className="overflow-x-auto rounded-[22px] border border-neutral-200 bg-white">
               <Table caption="Payment vouchers">
                 <TableHead>
                   <TableHeaderRow>
@@ -298,14 +298,14 @@ export function PaymentRequestBody() {
                             <span>{voucher.voucher_number}</span>
                           </span>
                         </button>
-                        <div className="mt-1 text-xs text-slate-500">
+                        <div className="mt-1 text-xs text-neutral-500">
                           {formatDisplayDate(voucher.disbursed_at)}
                         </div>
                       </TableCell>
-                      <TableCell className="text-sm font-semibold text-slate-700">
+                      <TableCell className="text-sm font-semibold text-neutral-700">
                         {formatCurrency(voucher.amount, request.currency)}
                       </TableCell>
-                      <TableCell className="text-sm font-semibold text-slate-700">
+                      <TableCell className="text-sm font-semibold text-neutral-700">
                         {Number(voucher.retired_amount || 0) > 0 ? (
                           <button
                             type="button"
@@ -322,13 +322,13 @@ export function PaymentRequestBody() {
                             />
                             <span>
                               {formatCurrency(voucher.retired_amount, request.currency)}
-                              <span className="ml-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                              <span className="ml-2 text-xs font-semibold text-neutral-500">
                                 {formatRequestStatus(voucher.retirement_status)}
                               </span>
                             </span>
                           </button>
                         ) : (
-                          <span className="text-slate-400">-</span>
+                          <span className="text-neutral-400">-</span>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
@@ -376,7 +376,7 @@ export function PaymentRequestBody() {
       <div className="space-y-6 lg:hidden">
         <SectionCard title="Request Items">
         {lineItems.length ? (
-          <div className="rounded-[22px] border border-slate-200 bg-white">
+          <div className="rounded-[22px] border border-neutral-200 bg-white">
             <Table caption="Request items">
               <TableHead>
                 <TableHeaderRow>
@@ -391,7 +391,7 @@ export function PaymentRequestBody() {
                     <TableCell>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className="text-sm font-semibold text-slate-950">
+                          <p className="text-sm font-semibold text-neutral-950">
                             {item.description || "Untitled item"}
                           </p>
                           {(item.files?.length ?? 0) > 0 ? (
@@ -402,16 +402,16 @@ export function PaymentRequestBody() {
                           ) : null}
                         </div>
                         {item.notes ? (
-                          <p className="mt-1 text-xs leading-5 text-slate-500">
+                          <p className="mt-1 text-xs leading-5 text-neutral-500">
                             {item.notes}
                           </p>
                         ) : null}
                       </div>
                     </TableCell>
-                    <TableCell className="text-sm font-semibold text-slate-700">
+                    <TableCell className="text-sm font-semibold text-neutral-700">
                       {item.quantity ?? 1}
                     </TableCell>
-                    <TableCell className="text-sm font-semibold text-slate-700">
+                    <TableCell className="text-sm font-semibold text-neutral-700">
                       {formatCurrency(
                         (item.amount ?? 0) * (item.quantity ?? 1),
                         request.currency,
@@ -432,7 +432,7 @@ export function PaymentRequestBody() {
 
         {paymentVouchers.length ? (
           <SectionCard title="Payment Vouchers">
-          <div className="rounded-[22px] border border-slate-200 bg-white">
+          <div className="rounded-[22px] border border-neutral-200 bg-white">
             <Table caption="Payment vouchers">
               <TableHead>
                 <TableHeaderRow>
@@ -453,10 +453,10 @@ export function PaymentRequestBody() {
                         {voucher.voucher_number}
                       </button>
                     </TableCell>
-                    <TableCell className="text-sm text-slate-700">
+                    <TableCell className="text-sm text-neutral-700">
                       {formatCurrency(voucher.amount, request.currency)}
                     </TableCell>
-                    <TableCell className="text-sm text-slate-700">
+                    <TableCell className="text-sm text-neutral-700">
                       {Number(voucher.retired_amount || 0) > 0 ? (
                         <button
                           type="button"
@@ -479,7 +479,7 @@ export function PaymentRequestBody() {
       </div>
 
       {finance.showDisburseDialog ? (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/45 px-4">
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-neutral-950/45 px-4">
           <button
             type="button"
             aria-label="Close disbursement dialog"
@@ -490,23 +490,23 @@ export function PaymentRequestBody() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="disburse-request-title"
-            className="relative z-[81] flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-[28px] border border-white/70 bg-white shadow-card"
+            className="relative z-[81] flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-white/70 bg-white shadow-xs"
           >
-            <div className="border-b border-slate-100 px-6 py-5">
+            <div className="border-b border-neutral-100 px-6 py-5">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-[0.72rem] font-bold uppercase tracking-[0.18em] text-slate-500">
+                  <p className="text-[0.72rem] font-medium text-neutral-500">
                     Finance Action
                   </p>
                   <h2
                     id="disburse-request-title"
-                    className="mt-2 text-2xl font-semibold tracking-tight text-slate-950"
+                    className="mt-2 text-2xl font-semibold tracking-tight text-neutral-950"
                   >
                     {finance.disburseMode === "edit"
                       ? "Edit Payment Voucher"
                       : "Disburse Request"}
                   </h2>
-                  <p className="mt-2 text-sm leading-6 text-slate-500">
+                  <p className="mt-2 text-sm leading-6 text-neutral-500">
                     {finance.disburseMode === "edit"
                       ? "Update the existing payment voucher without creating a new disbursement."
                       : "Capture the disbursement record, finance account, transaction reference, and supporting evidence."}
@@ -515,7 +515,7 @@ export function PaymentRequestBody() {
                 <button
                   type="button"
                   onClick={() => finance.closeDisburseDialog()}
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-700 transition hover:bg-slate-200"
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-neutral-100 text-neutral-700 transition hover:bg-neutral-200"
                 >
                   <Icon name="close" />
                 </button>
@@ -624,13 +624,13 @@ export function PaymentRequestBody() {
                 />
               </div>
 
-              <div className="mt-4 rounded-[22px] border border-slate-200 bg-slate-50 p-4">
+              <div className="mt-4 rounded-[22px] border border-neutral-200 bg-neutral-50 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p className="text-sm font-semibold text-slate-950">
+                    <p className="text-sm font-semibold text-neutral-950">
                       Evidence Upload
                     </p>
-                    <p className="mt-1 text-sm text-slate-500">
+                    <p className="mt-1 text-sm text-neutral-500">
                       Attach transfer proof, voucher support, or any
                       disbursement evidence.
                     </p>
@@ -649,7 +649,7 @@ export function PaymentRequestBody() {
                     {finance.disburseFiles.map((file) => (
                       <div
                         key={file.id}
-                        className="flex items-center gap-2 rounded-2xl bg-white px-3 py-2 text-sm text-slate-700"
+                        className="flex items-center gap-2 rounded-2xl bg-white px-3 py-2 text-sm text-neutral-700"
                       >
                         <Icon
                           name="attach_file"
@@ -660,14 +660,14 @@ export function PaymentRequestBody() {
                     ))}
                   </div>
                 ) : (
-                  <div className="mt-3 text-xs text-slate-500">
+                  <div className="mt-3 text-xs text-neutral-500">
                     You can select existing uploads or add new evidence here.
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="border-t border-slate-100 px-6 py-4">
+            <div className="border-t border-neutral-100 px-6 py-4">
               <div className="flex flex-wrap justify-end gap-3">
                 <Button
                   variant="secondary"
@@ -700,7 +700,7 @@ export function PaymentRequestBody() {
       ) : null}
 
       {finance.showVoucherPreviewDialog && finance.previewVoucher ? (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/45 px-4 py-6">
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-neutral-950/45 px-4 py-6">
           <button
             type="button"
             aria-label="Close payment voucher preview"
@@ -711,28 +711,28 @@ export function PaymentRequestBody() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="voucher-preview-title"
-            className="relative z-[81] flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-[28px] border border-white/70 bg-white shadow-card"
+            className="relative z-[81] flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-white/70 bg-white shadow-xs"
           >
-            <div className="border-b border-slate-100 px-6 py-5">
+            <div className="border-b border-neutral-100 px-6 py-5">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-[0.72rem] font-bold uppercase tracking-[0.18em] text-slate-500">
+                  <p className="text-[0.72rem] font-medium text-neutral-500">
                     Payment Voucher
                   </p>
                   <h2
                     id="voucher-preview-title"
-                    className="mt-2 text-2xl font-semibold tracking-tight text-slate-950"
+                    className="mt-2 text-2xl font-semibold tracking-tight text-neutral-950"
                   >
                     {finance.previewVoucher.voucher_number}
                   </h2>
-                  <p className="mt-2 text-sm leading-6 text-slate-500">
+                  <p className="mt-2 text-sm leading-6 text-neutral-500">
                     Read-only voucher details for the requester view.
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => finance.closeVoucherPreview()}
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-700 transition hover:bg-slate-200"
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-neutral-100 text-neutral-700 transition hover:bg-neutral-200"
                 >
                   <Icon name="close" />
                 </button>
@@ -740,19 +740,19 @@ export function PaymentRequestBody() {
             </div>
             <div className="flex-1 overflow-y-auto space-y-4 px-6 py-5">
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
-                  <div className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
+                <div className="rounded-2xl border border-neutral-100 bg-neutral-50 p-4">
+                  <div className="text-xs font-medium text-neutral-500">
                     Amount
                   </div>
-                  <div className="mt-1 text-lg font-semibold text-slate-950">
+                  <div className="mt-1 text-lg font-semibold text-neutral-950">
                     {formatCurrency(finance.previewVoucher.amount, request?.currency)}
                   </div>
                 </div>
-                <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
-                  <div className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
+                <div className="rounded-2xl border border-neutral-100 bg-neutral-50 p-4">
+                  <div className="text-xs font-medium text-neutral-500">
                     Retirement
                   </div>
-                  <div className="mt-1 text-lg font-semibold text-slate-950">
+                  <div className="mt-1 text-lg font-semibold text-neutral-950">
                     {formatCurrency(
                       finance.previewVoucher.retired_amount || 0,
                       request?.currency,
@@ -760,29 +760,29 @@ export function PaymentRequestBody() {
                   </div>
                 </div>
               </div>
-              <div className="space-y-2 rounded-[22px] border border-slate-200 bg-white p-4">
-                <div className="text-sm text-slate-700">
-                  <span className="font-semibold text-slate-950">Method:</span>{" "}
+              <div className="space-y-2 rounded-[22px] border border-neutral-200 bg-white p-4">
+                <div className="text-sm text-neutral-700">
+                  <span className="font-semibold text-neutral-950">Method:</span>{" "}
                   {finance.previewVoucher.method || "-"}
                 </div>
-                <div className="text-sm text-slate-700">
-                  <span className="font-semibold text-slate-950">Disbursed:</span>{" "}
+                <div className="text-sm text-neutral-700">
+                  <span className="font-semibold text-neutral-950">Disbursed:</span>{" "}
                   {formatDisplayDate(finance.previewVoucher.disbursed_at)}
                 </div>
-                <div className="text-sm text-slate-700">
-                  <span className="font-semibold text-slate-950">
+                <div className="text-sm text-neutral-700">
+                  <span className="font-semibold text-neutral-950">
                     Retirement status:
                   </span>{" "}
                   {formatRequestStatus(finance.previewVoucher.retirement_status)}
                 </div>
-                <div className="text-sm text-slate-700">
-                  <span className="font-semibold text-slate-950">Note:</span>{" "}
+                <div className="text-sm text-neutral-700">
+                  <span className="font-semibold text-neutral-950">Note:</span>{" "}
                   {finance.previewVoucher.note || "-"}
                 </div>
               </div>
               {finance.previewVoucher.evidence_files?.length ? (
-                <div className="rounded-[22px] border border-slate-200 bg-slate-50 p-4">
-                  <div className="text-sm font-semibold text-slate-950">
+                <div className="rounded-[22px] border border-neutral-200 bg-neutral-50 p-4">
+                  <div className="text-sm font-semibold text-neutral-950">
                     Evidence files
                   </div>
                   <div className="mt-3 space-y-2">
@@ -790,7 +790,7 @@ export function PaymentRequestBody() {
                       <button
                         type="button"
                         key={file.id}
-                        className="flex w-full items-center justify-between gap-2 rounded-2xl bg-white px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
+                        className="flex w-full items-center justify-between gap-2 rounded-2xl bg-white px-3 py-2 text-left text-sm text-neutral-700 transition hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
                         onClick={() =>
                           finance.openVoucherEvidence({
                             name: file.file_name,
@@ -810,8 +810,8 @@ export function PaymentRequestBody() {
                 </div>
               ) : null}
               {finance.previewVoucher.retirement_files?.length ? (
-                <div className="rounded-[22px] border border-slate-200 bg-slate-50 p-4">
-                  <div className="text-sm font-semibold text-slate-950">
+                <div className="rounded-[22px] border border-neutral-200 bg-neutral-50 p-4">
+                  <div className="text-sm font-semibold text-neutral-950">
                     Retirement files
                   </div>
                   <div className="mt-3 space-y-2">
@@ -819,7 +819,7 @@ export function PaymentRequestBody() {
                       <button
                         type="button"
                         key={file.id}
-                        className="flex w-full items-center justify-between gap-2 rounded-2xl bg-white px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
+                        className="flex w-full items-center justify-between gap-2 rounded-2xl bg-white px-3 py-2 text-left text-sm text-neutral-700 transition hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
                         onClick={() =>
                           finance.openVoucherEvidence({
                             name: file.file_name,
@@ -839,7 +839,7 @@ export function PaymentRequestBody() {
                 </div>
               ) : null}
             </div>
-            <div className="border-t border-slate-100 px-6 py-4">
+            <div className="border-t border-neutral-100 px-6 py-4">
               <div className="flex flex-wrap justify-end gap-3">
                 <Button
                   variant="secondary"
@@ -865,7 +865,7 @@ export function PaymentRequestBody() {
       ) : null}
 
       {finance.voucherFilePreview ? (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/55 px-4 py-6">
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-neutral-950/55 px-4 py-6">
           <button
             type="button"
             aria-label="Close file preview"
@@ -876,16 +876,16 @@ export function PaymentRequestBody() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="voucher-file-preview-title"
-            className="relative z-[91] flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-[28px] border border-white/70 bg-white shadow-card"
+            className="relative z-[91] flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-white/70 bg-white shadow-xs"
           >
-            <div className="flex items-start justify-between border-b border-slate-100 px-6 py-5">
+            <div className="flex items-start justify-between border-b border-neutral-100 px-6 py-5">
               <div className="min-w-0">
-                <p className="text-[0.72rem] font-bold uppercase tracking-[0.18em] text-slate-500">
+                <p className="text-[0.72rem] font-medium text-neutral-500">
                   File Preview
                 </p>
                 <h2
                   id="voucher-file-preview-title"
-                  className="mt-2 truncate text-lg font-semibold text-slate-950"
+                  className="mt-2 truncate text-lg font-semibold text-neutral-950"
                 >
                   {finance.voucherFilePreview.name}
                 </h2>
@@ -893,27 +893,27 @@ export function PaymentRequestBody() {
               <button
                 type="button"
                 onClick={() => finance.setVoucherFilePreview(null)}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-700 transition hover:bg-slate-200"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-neutral-100 text-neutral-700 transition hover:bg-neutral-200"
               >
                 <Icon name="close" />
               </button>
             </div>
-            <div className="flex-1 overflow-auto bg-slate-100 p-4">
+            <div className="flex-1 overflow-auto bg-neutral-100 p-4">
               {finance.voucherFilePreview.mime_type?.startsWith("image/") ? (
                 <img
                   src={finance.voucherFilePreview.url}
                   alt={finance.voucherFilePreview.name}
-                  className="mx-auto max-h-[70vh] rounded-2xl border border-slate-200 bg-white object-contain"
+                  className="mx-auto max-h-[70vh] rounded-2xl border border-neutral-200 bg-white object-contain"
                 />
               ) : (
                 <iframe
                   src={finance.voucherFilePreview.url}
                   title={finance.voucherFilePreview.name}
-                  className="h-[70vh] w-full rounded-2xl border border-slate-200 bg-white"
+                  className="h-[70vh] w-full rounded-2xl border border-neutral-200 bg-white"
                 />
               )}
             </div>
-            <div className="border-t border-slate-100 px-6 py-4">
+            <div className="border-t border-neutral-100 px-6 py-4">
               <div className="flex flex-wrap justify-end gap-3">
                 <a
                   href={finance.voucherFilePreview.url}
@@ -1029,7 +1029,7 @@ export function PaymentRequestBody() {
       />
 
       {finance.showRetireDialog ? (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/45 px-4 py-6">
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-neutral-950/45 px-4 py-6">
           <button
             type="button"
             aria-label="Close retirement dialog"
@@ -1040,21 +1040,21 @@ export function PaymentRequestBody() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="retire-request-title"
-            className="relative z-[81] flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-[28px] border border-white/70 bg-white shadow-card"
+            className="relative z-[81] flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-white/70 bg-white shadow-xs"
           >
-            <div className="border-b border-slate-100 px-6 py-5">
+            <div className="border-b border-neutral-100 px-6 py-5">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-[0.72rem] font-bold uppercase tracking-[0.18em] text-slate-500">
+                  <p className="text-[0.72rem] font-medium text-neutral-500">
                     Requester Action
                   </p>
                   <h2
                     id="retire-request-title"
-                    className="mt-2 text-2xl font-semibold tracking-tight text-slate-950"
+                    className="mt-2 text-2xl font-semibold tracking-tight text-neutral-950"
                   >
                     Submit Retirement
                   </h2>
-                  <p className="mt-2 text-sm leading-6 text-slate-500">
+                  <p className="mt-2 text-sm leading-6 text-neutral-500">
                     Attach receipts and confirm how the disbursed amount was
                     used.
                   </p>
@@ -1062,7 +1062,7 @@ export function PaymentRequestBody() {
                 <button
                   type="button"
                   onClick={() => finance.closeRetireDialog()}
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-700 transition hover:bg-slate-200"
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-neutral-100 text-neutral-700 transition hover:bg-neutral-200"
                 >
                   <Icon name="close" />
                 </button>
@@ -1219,13 +1219,13 @@ export function PaymentRequestBody() {
                 rows={4}
               />
 
-              <div className="rounded-[22px] border border-slate-200 bg-slate-50 p-4">
+              <div className="rounded-[22px] border border-neutral-200 bg-neutral-50 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p className="text-sm font-semibold text-slate-950">
+                    <p className="text-sm font-semibold text-neutral-950">
                       Retirement Files
                     </p>
-                    <p className="mt-1 text-sm text-slate-500">
+                    <p className="mt-1 text-sm text-neutral-500">
                       Attach receipts, invoices, and proof of expenditure.
                     </p>
                   </div>
@@ -1239,11 +1239,11 @@ export function PaymentRequestBody() {
                   </Button>
                 </div>
                 {finance.retireForm.retirement_file_ids.length ? (
-                  <div className="mt-3 text-xs text-slate-500">
+                  <div className="mt-3 text-xs text-neutral-500">
                     {finance.retireForm.retirement_file_ids.length} file(s) selected
                   </div>
                 ) : (
-                  <div className="mt-3 text-xs text-slate-500">
+                  <div className="mt-3 text-xs text-neutral-500">
                     No retirement files selected yet.
                   </div>
                 )}
@@ -1296,19 +1296,19 @@ export function PaymentRequestBody() {
                         rows={4}
                       />
                       <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="rounded-[18px] border border-brand-200 bg-white px-4 py-3 text-sm text-slate-700">
-                          <div className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
+                        <div className="rounded-[18px] border border-brand-200 bg-white px-4 py-3 text-sm text-neutral-700">
+                          <div className="text-xs font-medium text-neutral-500">
                             Prepared by
                           </div>
-                          <div className="mt-1 font-semibold text-slate-950">
+                          <div className="mt-1 font-semibold text-neutral-950">
                             {formatPersonName(user)}
                           </div>
                         </div>
-                        <div className="rounded-[18px] border border-brand-200 bg-white px-4 py-3 text-sm text-slate-700">
-                          <div className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
+                        <div className="rounded-[18px] border border-brand-200 bg-white px-4 py-3 text-sm text-neutral-700">
+                          <div className="text-xs font-medium text-neutral-500">
                             Certificate status
                           </div>
-                          <div className="mt-1 font-semibold text-slate-950">
+                          <div className="mt-1 font-semibold text-neutral-950">
                             {finance.retireForm.retirement_file_ids.length
                               ? "Attached to retirement"
                               : "Not yet attached"}
@@ -1422,7 +1422,7 @@ export function PaymentRequestBody() {
               </div>
             </div>
 
-            <div className="border-t border-slate-100 px-6 py-4">
+            <div className="border-t border-neutral-100 px-6 py-4">
               <div className="flex flex-wrap justify-end gap-3">
                 <Button
                   variant="secondary"

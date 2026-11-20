@@ -78,7 +78,7 @@ export default function EmployeeAttendanceTab({ employeeId }: Props) {
         <StatCard label="Worked Time" value={formatDuration(stats.workedMins)} icon="timer" />
       </div>
 
-      <div className="flex flex-wrap items-end justify-between gap-3 bg-slate-50 p-4 rounded-3xl border border-slate-100">
+      <div className="flex flex-wrap items-end justify-between gap-3 bg-neutral-50 p-4 rounded-2xl border border-neutral-100">
         <div className="flex flex-wrap items-end gap-3">
           <TextField label="From" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
           <TextField label="To" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
@@ -86,7 +86,7 @@ export default function EmployeeAttendanceTab({ employeeId }: Props) {
         <button
           onClick={handleExportCsv}
           disabled={exportingCsv}
-          className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:opacity-50"
+          className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-neutral-700 shadow-sm ring-1 ring-inset ring-neutral-300 hover:bg-neutral-50 disabled:opacity-50"
         >
           <span className="material-symbols-outlined text-[18px]">download</span>
           {exportingCsv ? "Exporting..." : "Export CSV"}
@@ -94,12 +94,12 @@ export default function EmployeeAttendanceTab({ employeeId }: Props) {
       </div>
 
       {loading ? (
-        <div className="p-8 text-center text-slate-500">Loading history...</div>
+        <div className="p-8 text-center text-neutral-500">Loading history...</div>
       ) : (
-        <div className="overflow-x-auto rounded-[22px] border border-slate-200">
+        <div className="overflow-x-auto rounded-[22px] border border-neutral-200">
           <DataTable
             columns={[
-              { header: "Date", className: "font-medium text-slate-900", cell: (row) => formatDate(row.work_date) },
+              { header: "Date", className: "font-medium text-neutral-900", cell: (row) => formatDate(row.work_date) },
               { header: "Clock In", cell: (row) => formatTime(row.first_in_at) },
               { header: "Clock Out", cell: (row) => <TimeWithNextDay time={row.last_out_at} referenceDate={row.first_in_at} /> },
               { header: "Worked", cell: (row) => formatDuration(row.worked_minutes) },

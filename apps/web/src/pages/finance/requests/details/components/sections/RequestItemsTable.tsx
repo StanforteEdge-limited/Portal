@@ -28,7 +28,7 @@ export function RequestItemsTable() {
       }
     >
       {lineItems.length ? (
-        <div className="rounded-[22px] border border-slate-200 bg-white">
+        <div className="rounded-[22px] border border-neutral-200 bg-white">
           <Table caption="Request items">
             <TableHead>
               <TableHeaderRow>
@@ -46,7 +46,7 @@ export function RequestItemsTable() {
                   <TableCell>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="text-sm font-semibold text-slate-950">
+                        <p className="text-sm font-semibold text-neutral-950">
                           {item.description || "Untitled item"}
                         </p>
                         {(item.files?.length ?? 0) > 0 ? (
@@ -58,18 +58,18 @@ export function RequestItemsTable() {
                           </span>
                         ) : null}
                       </div>
-                      <p className="mt-1 text-xs leading-5 text-slate-500">
+                      <p className="mt-1 text-xs leading-5 text-neutral-500">
                         {item.notes || ""}
                       </p>
                     </div>
                   </TableCell>
-                  <TableCell className="w-14 text-center text-sm font-semibold text-slate-700">
+                  <TableCell className="w-14 text-center text-sm font-semibold text-neutral-700">
                     {item.quantity ?? 1}
                   </TableCell>
-                  <TableCell className="text-sm font-semibold text-slate-700">
+                  <TableCell className="text-sm font-semibold text-neutral-700">
                     {formatCurrency(item.amount, request?.currency)}
                   </TableCell>
-                  <TableCell className="text-sm font-semibold text-slate-700">
+                  <TableCell className="text-sm font-semibold text-neutral-700">
                     {formatCurrency(
                       (item.amount ?? 0) * (item.quantity ?? 1),
                       request?.currency,

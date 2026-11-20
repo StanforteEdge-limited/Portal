@@ -52,12 +52,12 @@ export default function CorrectionReviewSlideOver({ correction, onClose, onRevie
       <SlideOverContent>
         <SectionCard title="Staff Identity">
           <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-full bg-brand-50 flex items-center justify-center text-brand-900 font-bold">
+            <div className="h-12 w-12 rounded-full bg-brand-50 flex items-center justify-center text-brand-900 font-medium">
               {correction.user_name.charAt(0)}
             </div>
             <div>
-              <p className="font-bold text-slate-900">{correction.user_name}</p>
-              <p className="text-sm text-slate-500">{correction.email}</p>
+              <p className="font-medium text-neutral-900">{correction.user_name}</p>
+              <p className="text-sm text-neutral-500">{correction.email}</p>
             </div>
           </div>
         </SectionCard>
@@ -65,23 +65,23 @@ export default function CorrectionReviewSlideOver({ correction, onClose, onRevie
         <SectionCard title="Request Details">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase">Work Date</p>
-              <p className="text-sm font-medium text-slate-900">{formatDate(correction.work_date)}</p>
+              <p className="text-xs font-semibold text-neutral-500">Work Date</p>
+              <p className="text-sm font-medium text-neutral-900">{formatDate(correction.work_date)}</p>
             </div>
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase">Request Type</p>
-              <p className="text-sm font-medium text-slate-900 capitalize">{correction.request_type.replace(/_/g, ' ')}</p>
+              <p className="text-xs font-semibold text-neutral-500">Request Type</p>
+              <p className="text-sm font-medium text-neutral-900 capitalize">{correction.request_type.replace(/_/g, ' ')}</p>
             </div>
             <div className="col-span-2">
-              <p className="text-xs font-semibold text-slate-500 uppercase">Reason</p>
-              <p className="text-sm text-slate-700 bg-slate-50 p-3 rounded-2xl border border-slate-100 mt-1 italic">
+              <p className="text-xs font-semibold text-neutral-500">Reason</p>
+              <p className="text-sm text-neutral-700 bg-neutral-50 p-3 rounded-2xl border border-neutral-100 mt-1 italic">
                 "{correction.reason}"
               </p>
             </div>
             {correction.proposed_at && (
               <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase">Proposed Time</p>
-                <p className="text-sm font-medium text-slate-900">{formatTime(correction.proposed_at)}</p>
+                <p className="text-xs font-semibold text-neutral-500">Proposed Time</p>
+                <p className="text-sm font-medium text-neutral-900">{formatTime(correction.proposed_at)}</p>
               </div>
             )}
           </div>

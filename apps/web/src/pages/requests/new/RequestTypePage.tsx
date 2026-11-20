@@ -127,9 +127,9 @@ export default function RequestTypePage() {
           actions={
             <Link
               to="/requests"
-              className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:bg-slate-50 transition shadow-xs self-start sm:self-auto"
+              className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-neutral-200 bg-white text-xs font-medium text-neutral-700 hover:bg-neutral-50 transition shadow-xs self-start sm:self-auto"
             >
-              <Clock className="h-4 w-4 text-slate-400" />
+              <Clock className="h-4 w-4 text-neutral-400" />
               <span>My Submitted Requests</span>
             </Link>
           }
@@ -137,59 +137,59 @@ export default function RequestTypePage() {
 
         {/* 4 KPI Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between">
+          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
                 <Layers className="h-5 w-5" />
               </div>
               <div>
-                <div className="text-[11px] font-semibold text-slate-500">Categories</div>
-                <div className="text-xl font-black text-slate-900 mt-0.5">
+                <div className="text-xs font-semibold text-neutral-500">Categories</div>
+                <div className="text-xl font-semibold text-neutral-900 mt-0.5">
                   {categories?.length || 0}
                 </div>
               </div>
             </div>
-            <div className="text-[11px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
+            <div className="text-xs font-medium text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
               Standard
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
               <FileText className="h-5 w-5" />
             </div>
             <div>
-              <div className="text-[11px] font-semibold text-slate-500">Available Subtypes</div>
-              <div className="text-xl font-black text-slate-900 mt-0.5">
+              <div className="text-xs font-semibold text-neutral-500">Available Subtypes</div>
+              <div className="text-xl font-semibold text-neutral-900 mt-0.5">
                 {requestTypes?.length || 0}
               </div>
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
+          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
               <CheckCircle2 className="h-5 w-5" />
             </div>
             <div>
-              <div className="text-[11px] font-semibold text-slate-500">Approval Chains</div>
-              <div className="text-xl font-black text-emerald-600 mt-0.5">Multi-tier</div>
+              <div className="text-xs font-semibold text-neutral-500">Approval Chains</div>
+              <div className="text-xl font-semibold text-emerald-600 mt-0.5">Multi-tier</div>
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
               <ShieldCheck className="h-5 w-5" />
             </div>
             <div>
-              <div className="text-[11px] font-semibold text-slate-500">Draft Auto-save</div>
-              <div className="text-xl font-black text-purple-700 mt-0.5">Enabled</div>
+              <div className="text-xs font-semibold text-neutral-500">Draft Auto-save</div>
+              <div className="text-xl font-semibold text-neutral-700 mt-0.5">Enabled</div>
             </div>
           </div>
         </div>
 
         {/* Step 1: Request Categories Carousel / Grid */}
         <div className="space-y-3">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+          <h2 className="text-xs font-medium text-neutral-500">
             Step 1: Select Request Category
           </h2>
 
@@ -203,10 +203,10 @@ export default function RequestTypePage() {
                   key={card.key}
                   type="button"
                   onClick={() => handleCategoryClick(card.key)}
-                  className={`p-5 rounded-2xl border text-left transition-all duration-200 flex flex-col justify-between group ${
+                  className={`p-5 rounded-2xl border text-left transition-colors duration-200 flex flex-col justify-between group ${
                     active
                       ? "bg-[#0a1128] text-white border-[#0a1128] shadow-lg shadow-navy-900/20 scale-[1.01]"
-                      : "bg-white text-slate-900 border-slate-200/80 hover:border-[#ff6900]/50 hover:shadow-md"
+                      : "bg-white text-neutral-900 border-neutral-200/80 hover:border-[#ff6900]/50 hover:shadow-md"
                   }`}
                 >
                   <div>
@@ -221,32 +221,32 @@ export default function RequestTypePage() {
                         <FolderPlus className="h-5 w-5" />
                       </div>
                       <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                           active
                             ? "bg-white/10 text-orange-400 border border-white/10"
-                            : "bg-slate-100 text-slate-600"
+                            : "bg-neutral-100 text-neutral-600"
                         }`}
                       >
                         {count} {count === 1 ? "workflow" : "workflows"}
                       </span>
                     </div>
 
-                    <h3 className="font-extrabold text-sm mb-1">{card.name}</h3>
+                    <h3 className="font-semibold text-sm mb-1">{card.name}</h3>
                     <p
                       className={`text-xs line-clamp-2 ${
-                        active ? "text-slate-300" : "text-slate-500"
+                        active ? "text-neutral-300" : "text-neutral-500"
                       }`}
                     >
                       {card.description}
                     </p>
                   </div>
 
-                  <div className="pt-4 mt-3 border-t border-slate-100/10 flex items-center justify-between text-xs font-bold">
+                  <div className="pt-4 mt-3 border-t border-neutral-100/10 flex items-center justify-between text-xs font-medium">
                     <span className={active ? "text-orange-400" : "text-[#ff6900]"}>
                       {active ? "Selected Category" : "Choose Category"}
                     </span>
                     <ArrowRight
-                      className={`h-3.5 w-3.5 transition-transform group-hover:translate-x-1 ${
+                      className={`h-3.5 w-3.5 transition-transform  ${
                         active ? "text-orange-400" : "text-[#ff6900]"
                       }`}
                     />
@@ -260,27 +260,27 @@ export default function RequestTypePage() {
         {/* Step 2: Request Subtypes List & Guidance Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           <div className="lg:col-span-8 space-y-4">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            <h2 className="text-xs font-medium text-neutral-500">
               Step 2: Choose Workflow Subtype
             </h2>
 
             {!categoryIdParam ? (
-              <div className="p-12 text-center bg-white rounded-2xl border border-slate-200/80 shadow-sm">
-                <Layers className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-                <p className="text-xs font-bold text-slate-700">Choose a Category First</p>
-                <p className="text-[11px] text-slate-400 mt-0.5">
+              <div className="p-12 text-center bg-white rounded-2xl border border-neutral-200/80 shadow-sm">
+                <Layers className="h-8 w-8 text-neutral-300 mx-auto mb-2" />
+                <p className="text-xs font-medium text-neutral-700">Choose a Category First</p>
+                <p className="text-xs text-neutral-400 mt-0.5">
                   Click on one of the category cards above to display its corresponding workflow forms.
                 </p>
               </div>
             ) : loading ? (
-              <div className="p-12 text-center bg-white rounded-2xl border border-slate-200/80 text-xs font-medium text-slate-400">
+              <div className="p-12 text-center bg-white rounded-2xl border border-neutral-200/80 text-xs font-medium text-neutral-400">
                 Loading request forms...
               </div>
             ) : selectedTypes.length === 0 ? (
-              <div className="p-12 text-center bg-white rounded-2xl border border-slate-200/80 shadow-sm">
-                <FileText className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-                <p className="text-xs font-bold text-slate-700">No Request Types Available</p>
-                <p className="text-[11px] text-slate-400 mt-0.5">
+              <div className="p-12 text-center bg-white rounded-2xl border border-neutral-200/80 shadow-sm">
+                <FileText className="h-8 w-8 text-neutral-300 mx-auto mb-2" />
+                <p className="text-xs font-medium text-neutral-700">No Request Types Available</p>
+                <p className="text-xs text-neutral-400 mt-0.5">
                   This category currently has no active form templates configured.
                 </p>
               </div>
@@ -290,26 +290,26 @@ export default function RequestTypePage() {
                   <Link
                     key={type.id}
                     to={formLink(type.id)}
-                    className="p-5 rounded-2xl bg-white border border-slate-200/80 hover:border-[#ff6900]/50 hover:shadow-md transition-all duration-200 flex flex-col justify-between group cursor-pointer"
+                    className="p-5 rounded-2xl bg-white border border-neutral-200/80 hover:border-[#ff6900]/50 hover:shadow-md transition-colors duration-200 flex flex-col justify-between group cursor-pointer"
                   >
                     <div>
                       <div className="flex items-center gap-2 mb-2">
                         <span className="w-2 h-2 rounded-full bg-[#ff6900]" />
-                        <h3 className="font-extrabold text-slate-900 group-hover:text-[#ff6900] transition-colors text-sm">
+                        <h3 className="font-semibold text-neutral-900 group-hover:text-[#ff6900] transition-colors text-sm">
                           {type.name}
                         </h3>
                       </div>
-                      <p className="text-xs text-slate-500 line-clamp-3 leading-relaxed">
+                      <p className="text-xs text-neutral-500 line-clamp-3 leading-relaxed">
                         {type.description ||
                           "Launch this workflow with verified fields and automated stage routing."}
                       </p>
                     </div>
 
-                    <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between text-xs">
-                      <span className="text-[11px] font-medium text-slate-400">
+                    <div className="pt-4 mt-4 border-t border-neutral-100 flex items-center justify-between text-xs">
+                      <span className="text-xs font-medium text-neutral-400">
                         Code: {(type as any).code || "STD"}
                       </span>
-                      <span className="font-bold text-[#ff6900] flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                      <span className="font-medium text-[#ff6900] flex items-center gap-1 transition-transform">
                         <span>Open Form</span>
                         <ArrowRight className="h-3 w-3" />
                       </span>
@@ -322,48 +322,48 @@ export default function RequestTypePage() {
 
           {/* Right 4 Columns: Process SLA & Protocol Card */}
           <div className="lg:col-span-4 space-y-4">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            <h2 className="text-xs font-medium text-neutral-500">
               Submission Guidelines
             </h2>
 
-            <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-4">
-              <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
+            <div className="p-5 rounded-2xl bg-white border border-neutral-200/80 shadow-sm space-y-4">
+              <div className="flex items-center gap-2.5 pb-3 border-b border-neutral-100">
                 <HelpCircle className="h-4 w-4 text-[#ff6900]" />
-                <h3 className="text-xs font-bold text-slate-900">Standard Request Protocol</h3>
+                <h3 className="text-xs font-medium text-neutral-900">Standard Request Protocol</h3>
               </div>
 
-              <div className="space-y-3 text-xs text-slate-600">
+              <div className="space-y-3 text-xs text-neutral-600">
                 <div className="flex items-start gap-2.5">
-                  <div className="w-5 h-5 rounded-full bg-slate-100 text-slate-700 font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">
+                  <div className="w-5 h-5 rounded-full bg-neutral-100 text-neutral-700 font-medium text-xs flex items-center justify-center shrink-0 mt-0.5">
                     1
                   </div>
                   <div>
-                    <p className="font-bold text-slate-800">Select Category & Subtype</p>
-                    <p className="text-[11px] text-slate-400">
+                    <p className="font-medium text-neutral-800">Select Category & Subtype</p>
+                    <p className="text-xs text-neutral-400">
                       Match the budget line item or leave category.
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-2.5">
-                  <div className="w-5 h-5 rounded-full bg-slate-100 text-slate-700 font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">
+                  <div className="w-5 h-5 rounded-full bg-neutral-100 text-neutral-700 font-medium text-xs flex items-center justify-center shrink-0 mt-0.5">
                     2
                   </div>
                   <div>
-                    <p className="font-bold text-slate-800">Attach Quotes & Justifications</p>
-                    <p className="text-[11px] text-slate-400">
+                    <p className="font-medium text-neutral-800">Attach Quotes & Justifications</p>
+                    <p className="text-xs text-neutral-400">
                       Required for financial or procurement requests.
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-2.5">
-                  <div className="w-5 h-5 rounded-full bg-slate-100 text-slate-700 font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">
+                  <div className="w-5 h-5 rounded-full bg-neutral-100 text-neutral-700 font-medium text-xs flex items-center justify-center shrink-0 mt-0.5">
                     3
                   </div>
                   <div>
-                    <p className="font-bold text-slate-800">Manager & Audit Sign-off</p>
-                    <p className="text-[11px] text-slate-400">
+                    <p className="font-medium text-neutral-800">Manager & Audit Sign-off</p>
+                    <p className="text-xs text-neutral-400">
                       Automated routing with notifications and timeline tracking.
                     </p>
                   </div>

@@ -19,6 +19,13 @@ async function bootstrap() {
 
   process.on('SIGTERM', () => void shutdown('SIGTERM'));
   process.on('SIGINT', () => void shutdown('SIGINT'));
+  process.on('unhandledRejection', (reason) => {
+    logger.error('Unhandled promise rejection', reason);
+  });
+  process.on('uncaughtException', (error) => {
+    logger.error('Uncaught exception', error);
+    void shutdown('uncaughtException');
+  });
 
   await server.listen({ port: config.port, host: config.host });
   logger.log(`API listening on ${config.host}:${config.port}`);

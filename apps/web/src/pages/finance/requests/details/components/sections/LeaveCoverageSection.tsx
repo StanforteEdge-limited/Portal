@@ -32,7 +32,7 @@ export function LeaveCoverageSection() {
           tone="neutral"
         />
       </div>
-      <div className="mt-4 rounded-[18px] border border-slate-100 bg-slate-50 px-4 py-4 text-sm leading-6 text-slate-600">
+      <div className="mt-4 rounded-[18px] border border-neutral-100 bg-neutral-50 px-4 py-4 text-sm leading-6 text-neutral-600">
         {String(
           requestData.handover_notes || "No handover notes captured.",
         )}

@@ -165,12 +165,12 @@ export default function FinancePayrollComponentsPage() {
         }
       >
         {loading ? (
-          <div className="text-sm text-slate-500">Loading...</div>
+          <div className="text-sm text-neutral-500">Loading...</div>
         ) : components.length ? (
           <DataTable
             columns={[
-              { header: "Code", cell: (c: any) => <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-mono">{c.code}</code> },
-              { header: "Name", cell: (c: any) => <p className="font-semibold text-slate-900">{c.name}</p> },
+              { header: "Code", cell: (c: any) => <code className="rounded bg-neutral-100 px-1.5 py-0.5 text-xs font-mono">{c.code}</code> },
+              { header: "Name", cell: (c: any) => <p className="font-semibold text-neutral-900">{c.name}</p> },
               { header: "Type", cell: (c: any) => <Chip variant={COMPONENT_TYPE_TONE[c.component_type] ?? "neutral"}>{c.component_type.replace("_", " ")}</Chip> },
               { header: "Calculation", cell: (c: any) => <span className="capitalize">{c.calculation_type.replace("_", " ")}</span> },
               { header: "Taxable", cell: (c: any) => c.is_taxable ? "Yes" : "No" },

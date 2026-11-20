@@ -111,7 +111,7 @@ export default function FinanceAssetsPage() {
       </SectionCard>
 
       <SectionCard title="Assets" description="Register of tracked finance assets.">
-        {loading ? <p className="text-sm text-slate-500">Loading assets...</p> : null}
+        {loading ? <p className="text-sm text-neutral-500">Loading assets...</p> : null}
         {error ? <p className="text-sm text-danger">{error}</p> : null}
         {assets.length ? (
           <Table caption="Assets">
@@ -133,7 +133,7 @@ export default function FinanceAssetsPage() {
                     <TableCell>
                       <button
                         type="button"
-                        className="font-semibold text-slate-900 hover:text-brand-700 hover:underline"
+                        className="font-semibold text-neutral-900 hover:text-brand-700 hover:underline"
                         onClick={() => navigate(`/finance/assets/${asset.id}`)}
                       >
                         {asset.asset_name || asset.asset_description || asset.asset_code || asset.id.slice(0, 8)}
@@ -175,7 +175,7 @@ export default function FinanceAssetsPage() {
                   <TableCell>
                     <button
                       type="button"
-                      className="font-semibold text-slate-900 hover:text-brand-700 hover:underline"
+                      className="font-semibold text-neutral-900 hover:text-brand-700 hover:underline"
                       onClick={() => navigate(`/finance/assets/${asset.id}`)}
                     >
                       {asset.asset_name || asset.asset_description || asset.asset_code || asset.id.slice(0, 8)}

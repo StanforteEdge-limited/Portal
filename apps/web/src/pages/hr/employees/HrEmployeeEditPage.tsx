@@ -173,7 +173,7 @@ export default function HrEmployeeEditPage() {
                 user={{ name: userName, role: profile?.employee_profile?.job_title || "HR Staff" }}
                 mobileNav={buildAppMobileNav("Employees")}
             >
-                <div className="rounded-2xl bg-slate-50 px-4 py-6 text-sm text-slate-500">Loading employee...</div>
+                <div className="rounded-2xl bg-neutral-50 px-4 py-6 text-sm text-neutral-500">Loading employee...</div>
             </AppShell>
         );
     }

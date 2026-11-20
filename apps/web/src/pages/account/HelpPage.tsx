@@ -95,17 +95,17 @@ export default function HelpPage() {
                 <a
                   key={item.title}
                   href={item.href}
-                  className="rounded-[22px] border border-slate-100 bg-slate-50 p-5 transition hover:border-brand-900/30 hover:bg-white"
+                  className="rounded-[22px] border border-neutral-100 bg-neutral-50 p-5 transition hover:border-brand-900/30 hover:bg-white"
                 >
                   <div className="flex items-start gap-3">
                     <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-900/10 text-brand-900">
                       <Icon name={item.icon} className="text-[20px]" />
                     </span>
                     <div>
-                      <p className="text-sm font-semibold text-slate-950">
+                      <p className="text-sm font-semibold text-neutral-950">
                         {item.title}
                       </p>
-                      <p className="mt-2 text-sm leading-6 text-slate-500">
+                      <p className="mt-2 text-sm leading-6 text-neutral-500">
                         {item.description}
                       </p>
                     </div>
@@ -118,7 +118,7 @@ export default function HelpPage() {
 
         <div className="space-y-6 lg:col-span-4">
           <SectionCard title="Need human support?">
-            <p className="text-sm leading-6 text-slate-600">
+            <p className="text-sm leading-6 text-neutral-600">
               Use the help center for operational guidance. Each major workspace section can later link back here with contextual guides.
             </p>
             <Button className="mt-4 w-full justify-center">Contact Support</Button>

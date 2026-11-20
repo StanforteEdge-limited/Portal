@@ -20,17 +20,17 @@ interface TaskTableViewProps {
 }
 
 const STATUS_SELECT_STYLES: Record<TaskStatus, { bg: string; label: string }> = {
-  planned: { bg: "bg-slate-100 text-slate-700 border-slate-200", label: "Planned" },
-  in_progress: { bg: "bg-blue-50 text-blue-700 border-blue-200", label: "In Progress" },
+  planned: { bg: "bg-neutral-100 text-neutral-700 border-neutral-200", label: "Planned" },
+  in_progress: { bg: "bg-neutral-100 text-neutral-700 border-neutral-200", label: "In Progress" },
   blocked: { bg: "bg-amber-50 text-amber-800 border-amber-200", label: "Under Review" },
   completed: { bg: "bg-emerald-50 text-emerald-800 border-emerald-200", label: "Completed" },
 };
 
 const PRIORITY_BADGES: Record<TaskPriority, { text: string; bg: string }> = {
-  low: { text: "Low", bg: "bg-slate-100 text-slate-600 border-slate-200" },
-  medium: { text: "Medium", bg: "bg-blue-50 text-blue-700 border-blue-200" },
-  high: { text: "High", bg: "bg-orange-50 text-[#ff6900] border-orange-200 font-bold" },
-  critical: { text: "Critical", bg: "bg-rose-50 text-rose-700 border-rose-200 font-extrabold" },
+  low: { text: "Low", bg: "bg-neutral-100 text-neutral-600 border-neutral-200" },
+  medium: { text: "Medium", bg: "bg-neutral-100 text-neutral-700 border-neutral-200" },
+  high: { text: "High", bg: "bg-orange-50 text-[#ff6900] border-orange-200 font-medium" },
+  critical: { text: "Critical", bg: "bg-rose-50 text-rose-700 border-rose-200 font-semibold" },
 };
 
 export function TaskTableView({
@@ -41,19 +41,19 @@ export function TaskTableView({
 }: TaskTableViewProps) {
   if (tasks.length === 0) {
     return (
-      <div className="p-12 text-center bg-white rounded-2xl border border-slate-200/80 shadow-sm">
-        <p className="text-xs font-bold text-slate-700">No tasks match your criteria</p>
-        <p className="text-[11px] text-slate-400 mt-1">Adjust filters or create a new task to get started.</p>
+      <div className="p-12 text-center bg-white rounded-2xl border border-neutral-200/80 shadow-sm">
+        <p className="text-xs font-medium text-neutral-700">No tasks match your criteria</p>
+        <p className="text-xs text-neutral-400 mt-1">Adjust filters or create a new task to get started.</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden">
+    <div className="bg-white border border-neutral-200/80 rounded-2xl shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse text-xs">
           <thead>
-            <tr className="border-b border-slate-100 bg-slate-50/70 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+            <tr className="border-b border-neutral-100 bg-neutral-50/70 text-xs font-medium text-neutral-500">
               <th className="py-3 px-4">Task Deliverable</th>
               <th className="py-3 px-4">Status</th>
               <th className="py-3 px-4">Priority</th>
@@ -63,7 +63,7 @@ export function TaskTableView({
               <th className="py-3 px-4 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-neutral-100">
             {tasks.map((task) => {
               const priority = PRIORITY_BADGES[task.priority] || PRIORITY_BADGES.medium;
               const statusStyle = STATUS_SELECT_STYLES[task.status] || STATUS_SELECT_STYLES.planned;
@@ -76,16 +76,16 @@ export function TaskTableView({
                 <tr
                   key={task.id}
                   onClick={() => onSelectTask(task)}
-                  className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
+                  className="hover:bg-neutral-50/80 transition-colors cursor-pointer group"
                 >
                   {/* Task Deliverable */}
                   <td className="py-3.5 px-4 min-w-[260px] max-w-[340px]">
-                    <div className="font-bold text-slate-900 group-hover:text-[#ff6900] transition-colors leading-snug">
+                    <div className="font-medium text-neutral-900 group-hover:text-[#ff6900] transition-colors leading-snug">
                       {task.title}
                     </div>
                     {task.project_name && (
-                      <div className="text-[10px] text-slate-400 mt-0.5">
-                        Project: <span className="font-semibold text-slate-600">{task.project_name}</span>
+                      <div className="text-xs text-neutral-400 mt-0.5">
+                        Project: <span className="font-semibold text-neutral-600">{task.project_name}</span>
                       </div>
                     )}
                   </td>
@@ -95,7 +95,7 @@ export function TaskTableView({
                     <SelectBox
                       value={task.status}
                       onChange={(e) => onUpdateStatus(task.id, e.target.value as TaskStatus)}
-                      className={`text-[11px] font-bold rounded-lg border px-2.5 py-1 outline-none cursor-pointer transition ${statusStyle.bg}`}
+                      className={`text-xs font-medium rounded-lg border px-2.5 py-1 outline-none cursor-pointer transition ${statusStyle.bg}`}
                     >
                       <option value="planned">● Planned</option>
                       <option value="in_progress">● In Progress</option>
@@ -106,7 +106,7 @@ export function TaskTableView({
 
                   {/* Priority */}
                   <td className="py-3.5 px-4 whitespace-nowrap">
-                    <span className={`px-2 py-0.5 rounded-md text-[10px] border ${priority.bg}`}>
+                    <span className={`px-2 py-0.5 rounded-md text-xs border ${priority.bg}`}>
                       {priority.text}
                     </span>
                   </td>
@@ -119,13 +119,13 @@ export function TaskTableView({
                           <div
                             key={idx}
                             title={`${a.name} (${a.role || "Team"})`}
-                            className="w-6 h-6 rounded-full bg-slate-800 text-white font-extrabold text-[9px] flex items-center justify-center border-2 border-white shadow-xs shrink-0"
+                            className="w-6 h-6 rounded-full bg-neutral-800 text-white font-semibold text-xs flex items-center justify-center border-2 border-white shadow-xs shrink-0"
                           >
                             {a.avatar || a.name.slice(0, 2).toUpperCase()}
                           </div>
                         ))
                       ) : (
-                        <span className="text-[11px] text-slate-400 italic">Unassigned</span>
+                        <span className="text-xs text-neutral-400 italic">Unassigned</span>
                       )}
                     </div>
                   </td>
@@ -136,27 +136,27 @@ export function TaskTableView({
                       <span
                         className={`inline-flex items-center gap-1 font-semibold ${
                           isOverdue
-                            ? "text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full text-[11px]"
-                            : "text-slate-600"
+                            ? "text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full text-xs"
+                            : "text-neutral-600"
                         }`}
                       >
                         <Calendar className="h-3 w-3" />
                         <span>{task.due_date}</span>
                       </span>
                     ) : (
-                      <span className="text-slate-400 text-[11px]">No date</span>
+                      <span className="text-neutral-400 text-xs">No date</span>
                     )}
                   </td>
 
                   {/* Updates */}
                   <td className="py-3.5 px-4 whitespace-nowrap">
                     {task.updates?.length > 0 ? (
-                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold text-[10px]">
-                        <MessageSquare className="h-3 w-3 text-slate-400" />
+                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-700 font-medium text-xs">
+                        <MessageSquare className="h-3 w-3 text-neutral-400" />
                         <span>{task.updates.length} updates</span>
                       </span>
                     ) : (
-                      <span className="text-[10px] text-slate-400">—</span>
+                      <span className="text-xs text-neutral-400">—</span>
                     )}
                   </td>
 
@@ -169,7 +169,7 @@ export function TaskTableView({
                       <button
                         type="button"
                         onClick={() => onSelectTask(task)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition"
+                        className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-900 hover:bg-neutral-100 transition"
                         title="View details & updates"
                       >
                         <ExternalLink className="h-3.5 w-3.5" />
@@ -178,7 +178,7 @@ export function TaskTableView({
                         <button
                           type="button"
                           onClick={() => onDeleteTask(task.id)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                          className="p-1.5 rounded-lg text-neutral-400 hover:text-rose-600 hover:bg-rose-50 transition"
                           title="Delete task"
                         >
                           <Trash2 className="h-3.5 w-3.5" />

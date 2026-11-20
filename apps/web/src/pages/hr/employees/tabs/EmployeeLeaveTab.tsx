@@ -102,11 +102,11 @@ export default function EmployeeLeaveTab({ employeeId }: Props) {
   return (
     <div className="space-y-8">
       <div>
-        <h3 className="mb-4 text-base font-semibold text-slate-900">Leave Balances ({year})</h3>
-        <div className="overflow-x-auto rounded-[22px] border border-slate-200">
+        <h3 className="mb-4 text-base font-semibold text-neutral-900">Leave Balances ({year})</h3>
+        <div className="overflow-x-auto rounded-[22px] border border-neutral-200">
           <DataTable
             columns={[
-              { header: "Leave Type", className: "font-medium text-slate-900", cell: (row) => humanize(row.leave_type_key) },
+              { header: "Leave Type", className: "font-medium text-neutral-900", cell: (row) => humanize(row.leave_type_key) },
               { header: "Entitled", cell: (row) => `${row.entitled} days` },
               { header: "Used", cell: (row) => `${row.used} days` },
               { header: "Adjustments", cell: (row) => row.adjustments !== 0 ? `${row.adjustments > 0 ? '+' : ''}${row.adjustments} days` : "-" },
@@ -128,8 +128,8 @@ export default function EmployeeLeaveTab({ employeeId }: Props) {
       </div>
 
       <div>
-        <h3 className="mb-4 text-base font-semibold text-slate-900">Leave History</h3>
-        <div className="overflow-x-auto rounded-[22px] border border-slate-200">
+        <h3 className="mb-4 text-base font-semibold text-neutral-900">Leave History</h3>
+        <div className="overflow-x-auto rounded-[22px] border border-neutral-200">
           <DataTable
             columns={historyColumns}
             data={historyLeaveRequests}

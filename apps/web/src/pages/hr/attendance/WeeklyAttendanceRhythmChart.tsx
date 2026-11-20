@@ -70,26 +70,26 @@ export function WeeklyAttendanceRhythmChart({
   ) || 96;
 
   return (
-    <div className={`bg-white rounded-2xl border border-slate-100 shadow-2xs p-6 ${className}`}>
+    <div className={`bg-white rounded-2xl border border-neutral-100 shadow-2xs p-6 ${className}`}>
       {/* Header and Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6">
         <div>
-          <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight font-headline">
+          <h2 className="text-base sm:text-lg font-medium text-neutral-900 tracking-tight font-headline">
             {title}
           </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-neutral-400 mt-0.5">
             {subtitle}
           </p>
         </div>
 
         <div className="flex items-center gap-5">
           <div className="text-right">
-            <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+            <div className="text-xs font-medium text-neutral-400">
               Attendance Rate
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="text-lg font-black text-slate-900">{averageRate}%</span>
-              <span className="text-xs font-bold text-emerald-600 flex items-center gap-0.5">
+              <span className="text-lg font-semibold text-neutral-900">{averageRate}%</span>
+              <span className="text-xs font-medium text-emerald-600 flex items-center gap-0.5">
                 <TrendingUp className="h-3 w-3" /> 2%
               </span>
             </div>
@@ -98,10 +98,10 @@ export function WeeklyAttendanceRhythmChart({
           <div className="relative">
             <button
               type="button"
-              className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 flex items-center gap-1.5 shadow-2xs transition"
+              className="px-3 py-1.5 rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50 text-xs font-semibold text-neutral-700 flex items-center gap-1.5 shadow-2xs transition"
             >
               <span>{selectedRange}</span>
-              <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+              <ChevronDown className="h-3.5 w-3.5 text-neutral-400" />
             </button>
           </div>
         </div>
@@ -112,18 +112,18 @@ export function WeeklyAttendanceRhythmChart({
         {daysOfWeek.map((item) => (
           <div key={item.name} className="group relative flex flex-col items-center gap-2">
             {/* Tooltip on hover */}
-            <div className="opacity-0 group-hover:opacity-100 pointer-events-none absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-semibold px-2 py-1 rounded-md whitespace-nowrap shadow-md transition-all z-20">
+            <div className="opacity-0 group-hover:opacity-100 pointer-events-none absolute -top-10 left-1/2 -translate-x-1/2 bg-neutral-900 text-white text-xs font-semibold px-2 py-1 rounded-md whitespace-nowrap shadow-md transition-colors z-20">
               {item.name}: {item.rate}% ({item.hours})
             </div>
 
             {/* Vertical Bar track */}
-            <div className="w-full bg-slate-100/80 rounded-xl h-28 sm:h-36 flex flex-col justify-end p-1 transition-all">
+            <div className="w-full bg-neutral-100/80 rounded-xl h-28 sm:h-36 flex flex-col justify-end p-1 transition-colors">
               <div
-                className={`w-full rounded-lg transition-all duration-500 ${
+                className={`w-full rounded-lg transition-colors duration-500 ${
                   item.isToday
-                    ? "bg-[#ff6900] shadow-sm shadow-orange-500/25"
+                    ? "bg-[#ff6900] shadow-sm "
                     : item.isWeekend
-                    ? "bg-slate-300/80"
+                    ? "bg-neutral-300/80"
                     : "bg-emerald-500 hover:bg-emerald-600"
                 }`}
                 style={{ height: item.height }}
@@ -132,8 +132,8 @@ export function WeeklyAttendanceRhythmChart({
 
             {/* Day label */}
             <span
-              className={`text-xs font-bold transition-colors ${
-                item.isToday ? "text-[#ff6900]" : "text-slate-700"
+              className={`text-xs font-medium transition-colors ${
+                item.isToday ? "text-[#ff6900]" : "text-neutral-700"
               }`}
             >
               {item.name}
@@ -141,8 +141,8 @@ export function WeeklyAttendanceRhythmChart({
 
             {/* Percentage */}
             <span
-              className={`text-[11px] font-semibold transition-colors ${
-                item.isToday ? "text-[#ff6900]" : "text-slate-400"
+              className={`text-xs font-semibold transition-colors ${
+                item.isToday ? "text-[#ff6900]" : "text-neutral-400"
               }`}
             >
               {item.rate}%

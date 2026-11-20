@@ -133,8 +133,8 @@ private templateScopeCondition(table: typeof roleTable | typeof permissionTable,
     return paginatedResponse(items, { page: 1, per_page: Math.max(1, items.length), total: items.length });
   }
 
-  async createRole(dto: CreateRole) {
-    const tid = this.tenantContext.currentTenantId();
+  async createRole(dto: CreateRole, tenant?: TenantContext) {
+    const tid = tenant?.tenantId ?? this.tenantContext.currentTenantId();
     const slug = this.normalizeSlug(dto.slug ?? dto.name);
     await this.ensureRoleSlugAvailable(slug);
 
@@ -168,9 +168,9 @@ private templateScopeCondition(table: typeof roleTable | typeof permissionTable,
     return this.getRoleById(created.id, tid);
   }
 
-  async updateRole(roleId: string, dto: UpdateRole) {
+  async updateRole(roleId: string, dto: UpdateRole, tenant?: TenantContext) {
     const id = parseBigIntId(roleId, 'role id');
-    const tid = this.tenantContext.currentTenantId();
+    const tid = tenant?.tenantId ?? this.tenantContext.currentTenantId();
     const roleCond = this.templateScopeCondition(roleTable, tid);
     const [existing] = await this.db.client
       .select()
@@ -178,6 +178,9 @@ private templateScopeCondition(table: typeof roleTable | typeof permissionTable,
       .where(and(eq(roleTable.id, id), roleCond))
       .limit(1);
     if (!existing) throw new NotFoundException('Role not found');
+    if (existing.isSystem || existing.tenantId === null) {
+      throw new ForbiddenException('System roles cannot be modified');
+    }
 
     const slug = dto.slug ? this.normalizeSlug(dto.slug) : undefined;
     if (slug && slug !== existing.slug) {
@@ -345,9 +348,9 @@ private templateScopeCondition(table: typeof roleTable | typeof permissionTable,
     };
   }
 
-  async setRolePermissions(roleId: string, dto: SetRolePermissions) {
+  async setRolePermissions(roleId: string, dto: SetRolePermissions, tenant?: TenantContext) {
     const id = parseBigIntId(roleId, 'role id');
-    const tid = this.tenantContext.currentTenantId();
+    const tid = tenant?.tenantId ?? this.tenantContext.currentTenantId();
     const roleCond = this.templateScopeCondition(roleTable, tid);
     const [role] = await this.db.client
       .select()
@@ -355,6 +358,9 @@ private templateScopeCondition(table: typeof roleTable | typeof permissionTable,
       .where(and(eq(roleTable.id, id), roleCond))
       .limit(1);
     if (!role) throw new NotFoundException('Role not found');
+    if (role.isSystem || role.tenantId === null) {
+      throw new ForbiddenException('System role permissions cannot be modified');
+    }
 
     const permissionIds = this.parseIds(dto.permission_ids, 'permission id');
     await this.ensurePermissionsExist(permissionIds, tid);

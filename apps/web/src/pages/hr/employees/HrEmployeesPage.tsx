@@ -117,7 +117,7 @@ export default function HrEmployeesPage() {
           >
             {employee.first_name} {employee.last_name}
           </Link>
-          <div className="mt-1 text-xs text-slate-500">
+          <div className="mt-1 text-xs text-neutral-500">
             {employee.email}
           </div>
         </div>
@@ -126,12 +126,12 @@ export default function HrEmployeesPage() {
     {
       header: "Employee Code",
       cell: (employee) => employee.employee_code || "-",
-      className: "text-sm text-slate-700"
+      className: "text-sm text-neutral-700"
     },
     {
       header: "Job Title",
       cell: (employee) => employee.job_title || "-",
-      className: "text-sm text-slate-700"
+      className: "text-sm text-neutral-700"
     },
     {
       header: "Organization",
@@ -139,7 +139,7 @@ export default function HrEmployeesPage() {
         const org = employee.primary_organization ? orgMap.get(employee.primary_organization.id) : null;
         return org ? org.name : (employee.primary_organization?.name || "-");
       },
-      className: "text-sm text-slate-700"
+      className: "text-sm text-neutral-700"
     },
     {
       header: "Type",
@@ -162,7 +162,7 @@ export default function HrEmployeesPage() {
     {
       header: "Hire Date",
       cell: (employee) => formatDate(employee.hire_date ?? undefined),
-      className: "text-sm text-slate-700"
+      className: "text-sm text-neutral-700"
     },
     {
       header: "Actions",
@@ -187,7 +187,7 @@ export default function HrEmployeesPage() {
             canManage ? (
               <Link
                 to="/hr/employees/new"
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-bold shadow-md shadow-orange-500/20 transition transform hover:-translate-y-0.5"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-medium shadow-md transition transform"
               >
                 <Plus className="h-4 w-4" />
                 <span>Add Employee</span>
@@ -198,52 +198,52 @@ export default function HrEmployeesPage() {
 
         {/* 4 KPI Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-2xs hover:border-slate-200/80 transition-all flex items-center justify-between">
+          <div className="p-4 rounded-2xl bg-white border border-neutral-100 shadow-2xs hover:border-neutral-200/80 transition-colors flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
                 <Users className="h-5 w-5" />
               </div>
               <div>
-                <div className="text-[11px] font-semibold text-slate-500">Total Headcount</div>
-                <div className="text-xl font-black text-slate-900 mt-0.5">{summary?.total ?? totalEmployees}</div>
+                <div className="text-xs font-semibold text-neutral-500">Total Headcount</div>
+                <div className="text-xl font-semibold text-neutral-900 mt-0.5">{summary?.total ?? totalEmployees}</div>
               </div>
             </div>
-            <div className="text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+            <div className="text-xs font-medium text-neutral-700 bg-neutral-100 px-2 py-0.5 rounded-full">
               Enrolled
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-2xs hover:border-slate-200/80 transition-all flex items-center gap-3">
+          <div className="p-4 rounded-2xl bg-white border border-neutral-100 shadow-2xs hover:border-neutral-200/80 transition-colors flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
               <UserCheck className="h-5 w-5" />
             </div>
             <div>
-              <div className="text-[11px] font-semibold text-slate-500">Full-Time Personnel</div>
-              <div className="text-xl font-black text-emerald-600 mt-0.5">
+              <div className="text-xs font-semibold text-neutral-500">Full-Time Personnel</div>
+              <div className="text-xl font-semibold text-emerald-600 mt-0.5">
                 {summary?.by_employment_type?.full_time ?? 0}
               </div>
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-2xs hover:border-slate-200/80 transition-all flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+          <div className="p-4 rounded-2xl bg-white border border-neutral-100 shadow-2xs hover:border-neutral-200/80 transition-colors flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
               <Briefcase className="h-5 w-5" />
             </div>
             <div>
-              <div className="text-[11px] font-semibold text-slate-500">Contract Staff</div>
-              <div className="text-xl font-black text-purple-700 mt-0.5">
+              <div className="text-xs font-semibold text-neutral-500">Contract Staff</div>
+              <div className="text-xl font-semibold text-neutral-700 mt-0.5">
                 {summary?.by_employment_type?.contract ?? 0}
               </div>
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-2xs hover:border-slate-200/80 transition-all flex items-center gap-3">
+          <div className="p-4 rounded-2xl bg-white border border-neutral-100 shadow-2xs hover:border-neutral-200/80 transition-colors flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
               <GraduationCap className="h-5 w-5" />
             </div>
             <div>
-              <div className="text-[11px] font-semibold text-slate-500">Interns & Trainees</div>
-              <div className="text-xl font-black text-amber-600 mt-0.5">
+              <div className="text-xs font-semibold text-neutral-500">Interns & Trainees</div>
+              <div className="text-xl font-semibold text-amber-600 mt-0.5">
                 {(summary?.by_employment_type?.intern ?? 0) + (summary?.by_employment_type?.consultant ?? 0)}
               </div>
             </div>
@@ -254,13 +254,13 @@ export default function HrEmployeesPage() {
       <section className="section-card p-4 sm:p-5 mb-6" aria-label="Employee filters">
         <div className="flex flex-wrap items-start gap-3">
           <label className="grid gap-1.5 text-sm flex-1 min-w-[200px]">
-            <span className="font-semibold text-slate-700">Search</span>
+            <span className="font-semibold text-neutral-700">Search</span>
             <input
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Name or email"
-              className="rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+              className="rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-neutral-700 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
             />
           </label>
 

@@ -32,11 +32,11 @@ export const RbacRoutes: FastifyPluginAsync = async (fastify) => {
   );
 
   fastify.post('/roles', { preHandler: guard, schema: { body: CreateRoleSchema } }, async (request) =>
-    rbac().createRole(requestBody<CreateRole>(request)),
+    rbac().createRole(requestBody<CreateRole>(request), currentTenant(request)),
   );
 
   fastify.post('/roles/:id', { preHandler: guard, schema: { params: RbacIdParamsSchema, body: UpdateRoleSchema } }, async (request) =>
-    rbac().updateRole(requestParams<RbacIdParams>(request).id, requestBody<UpdateRole>(request)),
+    rbac().updateRole(requestParams<RbacIdParams>(request).id, requestBody<UpdateRole>(request), currentTenant(request)),
   );
 
   fastify.delete('/roles/:id', { preHandler: guard, schema: { params: RbacIdParamsSchema } }, async (request) => {
@@ -53,7 +53,7 @@ export const RbacRoutes: FastifyPluginAsync = async (fastify) => {
     '/roles/:id/permissions',
     { preHandler: guard, schema: { params: RbacIdParamsSchema, body: SetRolePermissionsSchema } },
     async (request) =>
-      rbac().setRolePermissions(requestParams<RbacIdParams>(request).id, requestBody<SetRolePermissions>(request)),
+      rbac().setRolePermissions(requestParams<RbacIdParams>(request).id, requestBody<SetRolePermissions>(request), currentTenant(request)),
   );
 
   fastify.get('/permissions', { preHandler: guard }, async (request) => {

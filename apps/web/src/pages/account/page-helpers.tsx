@@ -23,12 +23,12 @@ export function AccountShellPage({
       <div className="space-y-6">
         <div>
           {breadcrumbs && breadcrumbs.length > 0 && (
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1">
+            <div className="flex items-center gap-2 text-xs font-semibold text-neutral-500 mb-1">
               {breadcrumbs.map((b, i) => (
                 <span key={b.label} className="flex items-center gap-2">
-                  {i > 0 && <ChevronRight className="h-3 w-3 text-slate-400" />}
+                  {i > 0 && <ChevronRight className="h-3 w-3 text-neutral-400" />}
                   {b.path ? (
-                    <Link to={b.path} className="hover:text-slate-800 transition">
+                    <Link to={b.path} className="hover:text-neutral-800 transition">
                       {b.label}
                     </Link>
                   ) : (
@@ -40,11 +40,11 @@ export function AccountShellPage({
               ))}
             </div>
           )}
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight font-headline">
+          <h1 className="text-2xl font-semibold text-neutral-900 tracking-tight font-headline">
             {title}
           </h1>
           {description && (
-            <p className="text-xs text-slate-500 mt-0.5">{description}</p>
+            <p className="text-xs text-neutral-500 mt-0.5">{description}</p>
           )}
         </div>
 

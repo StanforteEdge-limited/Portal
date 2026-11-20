@@ -30,7 +30,7 @@ export default function FeaturesPage() {
       id: "workforce",
       category: "Workforce & People Operations",
       icon: Users,
-      iconColor: "text-blue-600 bg-blue-50",
+      iconColor: "text-neutral-700 bg-neutral-100",
       description: "Centralize employee information, contracts, and organizational reporting lines.",
       items: [
         {
@@ -105,7 +105,7 @@ export default function FeaturesPage() {
       id: "approvals",
       category: "Approvals, Procurement & Financial Controls",
       icon: FileCheck,
-      iconColor: "text-purple-600 bg-purple-50",
+      iconColor: "text-neutral-700 bg-neutral-100",
       description: "Enforce institutional financial discipline and transparent sign-off workflows.",
       items: [
         {
@@ -157,14 +157,14 @@ export default function FeaturesPage() {
     <PublicLayout activePath="/features">
       {/* Header */}
       <section className="pt-16 pb-12 px-6 text-center max-w-4xl mx-auto space-y-4">
-        <div className="text-xs font-bold uppercase tracking-widest text-[#ff6900]">
+        <div className="text-xs font-medium text-[#ff6900]">
           Platform Capabilities
         </div>
-        <h1 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight font-headline">
+        <h1 className="text-3xl sm:text-5xl font-semibold text-neutral-900 tracking-tight font-headline">
           Comprehensive Tools for <br className="hidden sm:inline" />
           <span className="text-[#ff6900]">Modern Operations</span>
         </h1>
-        <p className="text-base text-slate-600 max-w-2xl mx-auto leading-relaxed">
+        <p className="text-base text-neutral-600 max-w-2xl mx-auto leading-relaxed">
           Every capability in Stanforte Edge is built to streamline institutional workflows, improve administrative accountability, and eliminate operational bottlenecks.
         </p>
       </section>
@@ -174,29 +174,29 @@ export default function FeaturesPage() {
         {suites.map((suite, idx) => {
           const Icon = suite.icon;
           return (
-            <div key={idx} id={suite.id} className="border-t border-slate-100 pt-10 scroll-mt-24">
+            <div key={idx} id={suite.id} className="border-t border-neutral-100 pt-10 scroll-mt-24">
               <div className="max-w-2xl mb-8 space-y-2">
                 <div className="flex items-center gap-3">
                   <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${suite.iconColor}`}>
                     <Icon className="h-5 w-5" />
                   </div>
-                  <h2 className="text-xl font-bold text-slate-900 font-headline">
+                  <h2 className="text-xl font-medium text-neutral-900 font-headline">
                     {suite.category}
                   </h2>
                 </div>
-                <p className="text-sm text-slate-600">
+                <p className="text-sm text-neutral-600">
                   {suite.description}
                 </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {suite.items.map((item, itemIdx) => (
-                  <div key={itemIdx} className="p-6 rounded-2xl border border-slate-200/80 bg-white shadow-sm hover:border-slate-300 transition-all space-y-2">
-                    <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <div key={itemIdx} className="p-6 rounded-2xl border border-neutral-200/80 bg-white shadow-sm hover:border-neutral-300 transition-colors space-y-2">
+                    <h3 className="text-sm font-medium text-neutral-900 flex items-center gap-2">
                       <CheckCircle2 className="h-4 w-4 text-[#ff6900] shrink-0" />
                       {item.title}
                     </h3>
-                    <p className="text-xs text-slate-600 leading-relaxed pl-6">
+                    <p className="text-xs text-neutral-600 leading-relaxed pl-6">
                       {item.description}
                     </p>
                   </div>
@@ -208,24 +208,24 @@ export default function FeaturesPage() {
       </section>
 
       {/* Conversion Banner */}
-      <section className="border-t border-slate-100 bg-slate-50/60 py-16 px-6 text-center">
+      <section className="border-t border-neutral-100 bg-neutral-50/60 py-16 px-6 text-center">
         <div className="max-w-3xl mx-auto space-y-4">
-          <h2 className="text-2xl font-black text-slate-900 font-headline">
+          <h2 className="text-2xl font-semibold text-neutral-900 font-headline">
             Ready to evaluate Stanforte Edge for your organization?
           </h2>
-          <p className="text-sm text-slate-600 max-w-xl mx-auto">
+          <p className="text-sm text-neutral-600 max-w-xl mx-auto">
             Get started with our free tier or request a guided consultation with our solution architecture team.
           </p>
           <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
             <Link
               to="/register"
-              className="px-7 py-3 rounded-full font-bold text-xs bg-[#ff6900] hover:bg-[#ea580c] text-white shadow-md shadow-orange-500/25 transition-all transform hover:-translate-y-0.5 flex items-center gap-2"
+              className="px-7 py-3 rounded-full font-medium text-xs bg-[#ff6900] hover:bg-[#ea580c] text-white shadow-md transition-colors transform flex items-center gap-2"
             >
               Start Free Workspace <ArrowRight className="h-4 w-4" />
             </Link>
             <a
               href="mailto:demo@stanforteedge.com"
-              className="px-7 py-3 rounded-full font-semibold text-xs border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 transition-all"
+              className="px-7 py-3 rounded-full font-semibold text-xs border border-neutral-300 bg-white hover:bg-neutral-50 text-neutral-800 transition-colors"
             >
               Schedule Consultation
             </a>

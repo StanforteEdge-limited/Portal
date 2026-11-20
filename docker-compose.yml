@@ -21,7 +21,7 @@ services:
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
     volumes:
       - portal-redis:/data
     healthcheck:
@@ -51,16 +51,16 @@ services:
     restart: unless-stopped
     init: true
     environment:
-      NODE_ENV: production
+      NODE_ENV: ${NODE_ENV:-development}
       DATABASE_URL: postgresql://${POSTGRES_USER:-stanforte}:${POSTGRES_PASSWORD:-stanforte-dev}@postgres:5432/${POSTGRES_DB:-stanforte}?schema=public
       REDIS_HOST: redis
       REDIS_PORT: "6379"
-      REDIS_PASSWORD: ""
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
       CACHE_TTL_SECONDS: "300"
       PORT: "3000"
-      JWT_SECRET: ${JWT_SECRET:-D06BB4071445202E0C4557CDF9A1CD41729F84EA3CFDEB4C81F8B613DE9B9B82}
+      JWT_SECRET: ${JWT_SECRET:-change-me}
       JWT_EXPIRES_IN: 15m
-      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-62A6E88613570318A90FF88EC92BECB5F3D39A4A6D933CFC263D2177D9F2C8C1}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-change-me-too}
       JWT_REFRESH_EXPIRES_IN: 30d
       CORS_ORIGINS: http://localhost:3000,http://localhost:5173,http://localhost:8025
       APP_BASE_URL: http://localhost:3000
@@ -71,7 +71,7 @@ services:
       MAIL_FROM: no-reply@stanforteedge.com
       MAIL_SUPPORT_EMAIL: support@stanforteedge.com
       MAIL_MESSAGE_ID_DOMAIN: stanforteedge.com
-      MAIL_ENCRYPTION_KEY: ${MAIL_ENCRYPTION_KEY:-586B9AB2AAB9A0F8BB77E18F3A1E33156031AC69B8C38819FA5DD1523C65372B}
+      MAIL_ENCRYPTION_KEY: ${MAIL_ENCRYPTION_KEY:-dev-mail-encryption-key-change-in-production}
       SMTP_HOST: mailpit
       SMTP_PORT: "1025"
       SMTP_USER: ""

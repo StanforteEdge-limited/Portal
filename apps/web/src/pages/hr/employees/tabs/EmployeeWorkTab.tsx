@@ -25,11 +25,11 @@ export default function EmployeeWorkTab({ employee }: { employee: import("@stanf
         <DetailField label="Exit Date" value={formatDate(employee.exit_date)} />
         <DetailField label="Manager" value={employeeManagerName(employee)} />
       </div>
-      <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
-        <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-slate-500">
+      <div className="rounded-2xl border border-neutral-200 bg-white px-4 py-4">
+        <p className="text-xs font-medium text-neutral-500">
           Job Description
         </p>
-        <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
+        <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-neutral-700">
           {employee.job_description || "-"}
         </p>
       </div>

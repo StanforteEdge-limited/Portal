@@ -34,6 +34,12 @@ export class DbService {
 
   readonly client: AppDb = drizzle({ client: this.pool, relations });
 
+  constructor() {
+    this.pool.on('error', (error) => {
+      this.logger.error('Unexpected PostgreSQL pool client error', error);
+    });
+  }
+
   async connect() {
     try {
       await this.pool.query('SELECT 1');

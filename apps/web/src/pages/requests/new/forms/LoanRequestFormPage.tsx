@@ -79,7 +79,7 @@ export const LoanRequestFormPage = forwardRef<RequestFormHandle, Props>(({
   useEffect(() => {
     onSummary(
       <section className="section-card bg-brand-900 p-5 text-white">
-        <p className="text-[0.72rem] font-bold uppercase tracking-[0.16em] text-white/70">
+        <p className="text-[0.72rem] font-medium text-white/70">
           {selectedCategory?.name || "Loan Request"}
         </p>
         <p className="mt-3 text-4xl font-semibold tracking-tight">
@@ -90,15 +90,15 @@ export const LoanRequestFormPage = forwardRef<RequestFormHandle, Props>(({
         </p>
         <div className="mt-4 space-y-2">
           <div className="rounded-[18px] border border-white/10 bg-white/10 px-4 py-3">
-            <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-white/70">Repayment Period</p>
+            <p className="text-xs font-medium text-white/70">Repayment Period</p>
             <p className="mt-2 text-lg font-semibold">{months} Month{months === 1 ? "" : "s"}</p>
           </div>
           <div className="rounded-[18px] border border-white/10 bg-white/10 px-4 py-3">
-            <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-white/70">Monthly Recovery</p>
+            <p className="text-xs font-medium text-white/70">Monthly Recovery</p>
             <p className="mt-2 text-lg font-semibold">{formatCurrency(monthlyRepayment || 0)}</p>
           </div>
           <div className="rounded-[18px] border border-white/10 bg-white/10 px-4 py-3">
-            <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-white/70">Deduction Schedule</p>
+            <p className="text-xs font-medium text-white/70">Deduction Schedule</p>
             <p className="mt-2 text-sm leading-6 text-white/85">
               Deductions will begin automatically on the recovery date after disbursement.
             </p>
@@ -215,12 +215,12 @@ export const LoanRequestFormPage = forwardRef<RequestFormHandle, Props>(({
               {principalHit && ` Max principal: ${formatCurrency(maxPrincipal)}.`}
               {repaymentHit && ` Max duration: ${maxRepaymentMonths} months.`}
             </p>
-            <label className="mt-4 flex items-center gap-2 text-sm text-slate-700">
+            <label className="mt-4 flex items-center gap-2 text-sm text-neutral-700">
               <input
                 type="checkbox"
                 checked={form.is_special_request}
                 onChange={(e) => setForm(prev => ({ ...prev, is_special_request: e.target.checked }))}
-                className="rounded border-slate-300 text-brand-600 focus:ring-brand-600"
+                className="rounded border-neutral-300 text-brand-600 focus:ring-brand-600"
               />
               Submit as a Special Request
             </label>

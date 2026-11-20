@@ -91,10 +91,10 @@ function MultiSelectCell({ options, selectedValues, onChange }: MultiSelectCellP
         ref={triggerRef}
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full text-left text-sm border border-slate-200 rounded-md p-1 bg-white flex justify-between items-center min-h-[30px]"
+        className="w-full text-left text-sm border border-neutral-200 rounded-md p-1 bg-white flex justify-between items-center min-h-[30px]"
       >
         <span className="truncate pr-2">{displayText}</span>
-        <span className="text-xs text-slate-400">▼</span>
+        <span className="text-xs text-neutral-400">▼</span>
       </button>
 
       {isOpen &&
@@ -108,22 +108,22 @@ function MultiSelectCell({ options, selectedValues, onChange }: MultiSelectCellP
               width: `${coords.width}px`,
               zIndex: 99999,
             }}
-            className="max-h-48 overflow-y-auto bg-white border border-slate-200 rounded-md shadow-lg p-2 space-y-1"
+            className="max-h-48 overflow-y-auto bg-white border border-neutral-200 rounded-md shadow-lg p-2 space-y-1"
           >
             {options.map((opt) => {
               const isChecked = selectedValues.includes(opt.value);
               return (
                 <label
                   key={opt.value}
-                  className="flex items-center gap-2 p-1 hover:bg-slate-50 rounded cursor-pointer text-sm"
+                  className="flex items-center gap-2 p-1 hover:bg-neutral-50 rounded cursor-pointer text-sm"
                 >
                   <input
                     type="checkbox"
                     checked={isChecked}
                     onChange={() => handleToggle(opt.value)}
-                    className="h-3.5 w-3.5 text-brand-900 border-slate-300 rounded focus:ring-brand-900"
+                    className="h-3.5 w-3.5 text-brand-900 border-neutral-300 rounded focus:ring-brand-900"
                   />
-                  <span className="text-slate-700">{opt.label}</span>
+                  <span className="text-neutral-700">{opt.label}</span>
                 </label>
               );
             })}
@@ -387,8 +387,8 @@ export function BulkImportDashboard<T extends Record<string, any>>({
             <Icon name="arrow_back" className="text-xl" />
           </Button>
           <div>
-            <h2 className="text-xl font-bold text-slate-900">{title}</h2>
-            <p className="text-sm text-slate-500 mt-1">
+            <h2 className="text-xl font-medium text-neutral-900">{title}</h2>
+            <p className="text-sm text-neutral-500 mt-1">
               {description}{" "}
               <a
                 href="#"
@@ -424,7 +424,7 @@ export function BulkImportDashboard<T extends Record<string, any>>({
       <SectionCard>
         {rows.length > 0 ? (
           <div className="space-y-4">
-            <div className="overflow-x-auto border border-slate-100 rounded-lg">
+            <div className="overflow-x-auto border border-neutral-100 rounded-lg">
               <DataTable
                 columns={[
                   ...columns.map(col => ({
@@ -439,7 +439,7 @@ export function BulkImportDashboard<T extends Record<string, any>>({
                           onChange={(e) =>
                             handleCellChange(rowIndex, col.key, e.target.value)
                           }
-                          className="w-full text-sm border-slate-200 rounded-md focus:border-primary focus:ring-1 focus:ring-primary p-1 bg-white"
+                          className="w-full text-sm border-neutral-200 rounded-md focus:border-primary focus:ring-1 focus:ring-primary p-1 bg-white"
                         >
                           {col.options?.map((opt) => (
                             <option key={opt.value} value={opt.value}>
@@ -455,7 +455,7 @@ export function BulkImportDashboard<T extends Record<string, any>>({
                             onChange={(e) =>
                               handleCellChange(rowIndex, col.key, e.target.checked)
                             }
-                            className="h-4 w-4 text-brand-900 border-slate-300 rounded focus:ring-brand-900 cursor-pointer"
+                            className="h-4 w-4 text-brand-900 border-neutral-300 rounded focus:ring-brand-900 cursor-pointer"
                           />
                         </div>
                       ) : col.type === "multiselect" ? (
@@ -482,7 +482,7 @@ export function BulkImportDashboard<T extends Record<string, any>>({
                               handleCellChange(rowIndex, col.key, e.target.value)
                             }
                             placeholder={col.placeholder || ""}
-                            className="w-full text-sm border-slate-200 rounded-md focus:border-primary focus:ring-1 focus:ring-primary p-1"
+                            className="w-full text-sm border-neutral-200 rounded-md focus:border-primary focus:ring-1 focus:ring-primary p-1"
                           />
                           {errors[rowIndex] && col.required && !String(row[col.key] ?? "").trim() && (
                             <div className="text-xs text-danger mt-1">{errors[rowIndex]}</div>
@@ -523,7 +523,7 @@ export function BulkImportDashboard<T extends Record<string, any>>({
               <div className="p-3 bg-danger/10 border border-danger/20 text-danger text-sm rounded-lg flex items-start gap-2">
                 <Icon name="error" className="shrink-0 mt-0.5" />
                 <div>
-                  <div className="font-bold">Errors found in validation or batch processing:</div>
+                  <div className="font-medium">Errors found in validation or batch processing:</div>
                   <ul className="list-disc pl-5 mt-1 space-y-1">
                     {Object.entries(errors).map(([idx, err]) => (
                       <li key={idx}>
@@ -546,9 +546,9 @@ export function BulkImportDashboard<T extends Record<string, any>>({
           </div>
         ) : (
           <div className="py-20 text-center flex flex-col items-center justify-center">
-            <Icon name="grid_on" className="text-slate-300 text-5xl mb-4" />
-            <h3 className="font-bold text-slate-800 text-lg">Staging Dashboard Empty</h3>
-            <p className="text-slate-400 text-sm max-w-sm mx-auto mt-2 mb-6">
+            <Icon name="grid_on" className="text-neutral-300 text-5xl mb-4" />
+            <h3 className="font-medium text-neutral-800 text-lg">Staging Dashboard Empty</h3>
+            <p className="text-neutral-400 text-sm max-w-sm mx-auto mt-2 mb-6">
               Import a CSV template file or add rows manually to start staging records.
             </p>
             <div className="flex gap-3">

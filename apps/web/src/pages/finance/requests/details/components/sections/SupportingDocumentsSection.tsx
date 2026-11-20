@@ -12,16 +12,16 @@ export function SupportingDocumentsSection() {
           {documents.map((doc: any) => (
             <article
               key={doc.id}
-              className="flex items-start gap-3 rounded-[18px] border border-slate-100 bg-slate-50 px-4 py-4"
+              className="flex items-start gap-3 rounded-[18px] border border-neutral-100 bg-neutral-50 px-4 py-4"
             >
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-900/10 text-brand-900">
                 <Icon name="description" className="text-[20px]" />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-slate-950">
+                <p className="truncate text-sm font-semibold text-neutral-950">
                   {doc.file_name}
                 </p>
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-xs text-neutral-500">
                   {doc.mime_type || "Document"}
                 </p>
               </div>

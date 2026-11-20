@@ -2,6 +2,7 @@ module.exports = {
   apps: [
     {
       name: 'stanforte-portal-api',
+      cwd: __dirname,
       script: 'dist/server.js',
       node_args: '-r ./path-alias-register.cjs',
       instances: 1,

@@ -466,19 +466,19 @@ export default function HrPayrollWorkersPage() {
           }
         >
           {loading ? (
-            <div className="text-sm text-slate-500">Loading workers...</div>
+            <div className="text-sm text-neutral-500">Loading workers...</div>
           ) : workers.length ? (
             <DataTable
               columns={[
                 { header: "Name", cell: (w: any) => (
                   <>
-                    <p className="font-semibold text-slate-900">{w.full_name ?? w.name}</p>
-                    {w.staff_code ? <p className="text-xs text-slate-500">{w.staff_code}</p> : null}
+                    <p className="font-semibold text-neutral-900">{w.full_name ?? w.name}</p>
+                    {w.staff_code ? <p className="text-xs text-neutral-500">{w.staff_code}</p> : null}
                   </>
                 ) },
                 { header: "Email", cell: (w: any) => w.email ?? "-" },
                 { header: "Type", className: "capitalize", cell: (w: any) => w.worker_type },
-                { header: "Pay Basis", className: "text-slate-600", cell: (w: any) => formatPayBasis(w.pay_basis) },
+                { header: "Pay Basis", className: "text-neutral-600", cell: (w: any) => formatPayBasis(w.pay_basis) },
                 { header: "Currency", cell: (w: any) => w.currency ?? "NGN" },
                 { header: "Bank", cell: (w: any) => w.bank_name ? `${w.bank_name}${w.bank_account_number ? ` ···${String(w.bank_account_number).slice(-4)}` : ""}` : "-" },
                 { header: "Status", cell: (w: any) => (
@@ -521,7 +521,7 @@ export default function HrPayrollWorkersPage() {
           onClose={() => setShowSlideOver(false)}
         />
         <SlideOverContent>
-          <div className="mb-6 flex gap-2 border-b border-slate-200 pb-3">
+          <div className="mb-6 flex gap-2 border-b border-neutral-200 pb-3">
             {[
               { id: "identity" as const, label: "Identity" },
               { id: "pay" as const, label: "Pay Profile" },
@@ -534,15 +534,15 @@ export default function HrPayrollWorkersPage() {
                 onClick={() => setEditorStep(s.id)}
                 className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
                   editorStep === s.id
-                    ? "bg-blue-50 text-blue-700"
-                    : "text-slate-500 hover:text-slate-700"
+                    ? "bg-neutral-100 text-neutral-700"
+                    : "text-neutral-500 hover:text-neutral-700"
                 }`}
               >
                 <span
-                  className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
+                  className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium ${
                     editorStep === s.id
-                      ? "bg-blue-600 text-white"
-                      : "bg-slate-200 text-slate-600"
+                      ? "bg-neutral-900 text-white"
+                      : "bg-neutral-200 text-neutral-600"
                   }`}
                 >
                   {i + 1}
@@ -564,18 +564,18 @@ export default function HrPayrollWorkersPage() {
                     helpText={searching ? "Searching..." : ""}
                   />
                   {searchResults.length > 0 && (
-                    <div className="absolute z-50 mt-1 w-full rounded-md border border-slate-200 bg-white shadow-lg">
+                    <div className="absolute z-50 mt-1 w-full rounded-md border border-neutral-200 bg-white shadow-lg">
                       {searchResults.map((emp: any) => (
                         <button
                           key={emp.id}
                           type="button"
-                          className="flex w-full flex-col gap-0.5 border-b border-slate-100 px-4 py-3 text-left last:border-0 hover:bg-slate-50"
+                          className="flex w-full flex-col gap-0.5 border-b border-neutral-100 px-4 py-3 text-left last:border-0 hover:bg-neutral-50"
                           onClick={() => selectEmployee(emp)}
                         >
-                          <span className="text-sm font-medium text-slate-900">
+                          <span className="text-sm font-medium text-neutral-900">
                             {emp.full_name ?? emp.name ?? `${emp.first_name} ${emp.last_name}`}
                           </span>
-                          <span className="text-xs text-slate-500">{emp.email} {emp.staff_code ? `· ${emp.staff_code}` : ""}</span>
+                          <span className="text-xs text-neutral-500">{emp.email} {emp.staff_code ? `· ${emp.staff_code}` : ""}</span>
                         </button>
                       ))}
                     </div>
@@ -614,14 +614,14 @@ export default function HrPayrollWorkersPage() {
                 <TextField label="End Date" type="date" value={form.end_date ?? ""} onChange={setField("end_date")} />
               </div>
 
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 pt-2">Bank Details</p>
+              <p className="text-xs font-semibold text-neutral-500 pt-2">Bank Details</p>
               <TextField label="Bank Name" value={form.bank_name ?? ""} onChange={setField("bank_name")} placeholder="e.g. First Bank" />
               <div className="grid grid-cols-2 gap-4">
                 <TextField label="Account Name" value={form.bank_account_name ?? ""} onChange={setField("bank_account_name")} />
                 <TextField label="Account Number" value={form.bank_account_number ?? ""} onChange={setField("bank_account_number")} />
               </div>
 
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 pt-2">Tax & Pension</p>
+              <p className="text-xs font-semibold text-neutral-500 pt-2">Tax & Pension</p>
               <div className="grid grid-cols-2 gap-4">
                 <TextField label="Tax ID (TIN)" value={form.tax_identifier ?? ""} onChange={setField("tax_identifier")} />
                 <TextField label="Pension ID (PFA)" value={form.pension_identifier ?? ""} onChange={setField("pension_identifier")} />
@@ -631,8 +631,8 @@ export default function HrPayrollWorkersPage() {
 
           {editorStep === "pay" ? (
             <div className="grid gap-4">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Pay Profile</p>
-              <div className="rounded-lg border border-slate-200 p-4 grid gap-4">
+              <p className="text-xs font-semibold text-neutral-500">Pay Profile</p>
+              <div className="rounded-lg border border-neutral-200 p-4 grid gap-4">
                 <div className="grid grid-cols-2 gap-4">
                   <TextField
                     label={
@@ -669,13 +669,13 @@ export default function HrPayrollWorkersPage() {
                 ) : null}
               </div>
 
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 pt-2">Recurring Components</p>
-              <div className="rounded-lg border border-slate-200 p-4 grid gap-3">
+              <p className="text-xs font-semibold text-neutral-500 pt-2">Recurring Components</p>
+              <div className="rounded-lg border border-neutral-200 p-4 grid gap-3">
                 {profileComponents.length === 0 ? (
-                  <p className="text-sm text-slate-500">No recurring components yet.</p>
+                  <p className="text-sm text-neutral-500">No recurring components yet.</p>
                 ) : (
                   profileComponents.map((pc, idx) => (
-                    <div key={pc._key} className="grid grid-cols-12 gap-3 rounded border border-slate-100 bg-slate-50 p-3">
+                    <div key={pc._key} className="grid grid-cols-12 gap-3 rounded border border-neutral-100 bg-neutral-50 p-3">
                       <div className="col-span-12 md:col-span-5">
                         <SelectField
                           label="Component"
@@ -692,7 +692,7 @@ export default function HrPayrollWorkersPage() {
                           ))}
                         </SelectField>
                         {pc.component_id ? (
-                          <p className="mt-1 text-xs text-slate-500">
+                          <p className="mt-1 text-xs text-neutral-500">
                             {(() => {
                               const c = components.find((x) => x.id === pc.component_id);
                               if (!c) return "";
@@ -777,8 +777,8 @@ export default function HrPayrollWorkersPage() {
           {/* Step 3: Allocation */}
           {editorStep === "allocation" ? (
             <div className="grid gap-4">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Cost Allocation</p>
-              <div className="rounded-lg border border-slate-200 p-4 grid gap-4">
+              <p className="text-xs font-semibold text-neutral-500">Cost Allocation</p>
+              <div className="rounded-lg border border-neutral-200 p-4 grid gap-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <SelectField label="Allocation Mode" value={allocationMode} onChange={(e) => setAllocationMode(e.target.value)}>
@@ -786,7 +786,7 @@ export default function HrPayrollWorkersPage() {
                       <option value="timesheet">Timesheet Driven</option>
                       <option value="hybrid">Hybrid Fixed + Timesheet</option>
                     </SelectField>
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="mt-1 text-xs text-neutral-500">
                       {allocationMode === "fixed"
                         ? "Uses the worker allocation rows directly."
                         : allocationMode === "timesheet"
@@ -805,8 +805,8 @@ export default function HrPayrollWorkersPage() {
                 </div>
               </div>
 
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Default Fund & Grant</p>
-              <div className="rounded-lg border border-slate-200 p-4 grid grid-cols-2 gap-4">
+              <p className="text-xs font-semibold text-neutral-500">Default Fund & Grant</p>
+              <div className="rounded-lg border border-neutral-200 p-4 grid grid-cols-2 gap-4">
                 <SelectField label="Default Fund" value={defaultFundId} onChange={(e) => setDefaultFundId(e.target.value)}>
                   <option value="">No default fund</option>
                   {funds.map((f: any) => (
@@ -821,10 +821,10 @@ export default function HrPayrollWorkersPage() {
                 </SelectField>
               </div>
 
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Allocation Breakdown</p>
-              <div className="rounded-lg border border-slate-200 p-4 grid gap-3">
+              <p className="text-xs font-semibold text-neutral-500">Allocation Breakdown</p>
+              <div className="rounded-lg border border-neutral-200 p-4 grid gap-3">
                 {allocations.map((row) => (
-                  <div key={row._key} className="grid grid-cols-12 gap-3 rounded border border-slate-100 bg-slate-50 p-3">
+                  <div key={row._key} className="grid grid-cols-12 gap-3 rounded border border-neutral-100 bg-neutral-50 p-3">
                     <div className="col-span-12 md:col-span-2">
                       <SelectField label="Organization" value={row.org_id} onChange={(e) => {
                         const updated = [...allocations];
@@ -896,7 +896,7 @@ export default function HrPayrollWorkersPage() {
                   </div>
                 ))}
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-500">
+                  <span className="text-xs text-neutral-500">
                     Total: {allocations.reduce((sum, r) => sum + Number(r.percent || 0), 0)}%
                   </span>
                   <Button variant="secondary" size="sm" onClick={() =>
@@ -912,9 +912,9 @@ export default function HrPayrollWorkersPage() {
           {/* Step 4: Compliance */}
           {editorStep === "compliance" ? (
             <div className="grid gap-4">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Statutory Overrides</p>
-              <p className="text-xs text-slate-500">Only change these when a worker should not use the global payroll settings.</p>
-              <div className="rounded-lg border border-slate-200 p-4 grid gap-4">
+              <p className="text-xs font-semibold text-neutral-500">Statutory Overrides</p>
+              <p className="text-xs text-neutral-500">Only change these when a worker should not use the global payroll settings.</p>
+              <div className="rounded-lg border border-neutral-200 p-4 grid gap-4">
                 <div className="flex flex-wrap gap-6">
                   <label className="flex items-center gap-2 text-sm">
                     <input type="checkbox" checked={applyTax} onChange={(e) => setApplyTax(e.target.checked)} />

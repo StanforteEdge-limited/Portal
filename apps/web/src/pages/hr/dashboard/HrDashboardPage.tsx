@@ -139,15 +139,15 @@ export default function HrDashboardPage() {
                 <Link
                   key={item.path}
                   to={item.path}
-                  className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 transition hover:bg-slate-100"
+                  className="flex items-center gap-3 rounded-2xl border border-neutral-100 bg-neutral-50 px-4 py-3 transition hover:bg-neutral-100"
                 >
                   <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${item.tone === "warning" ? "bg-warning/10 text-warning" : "bg-brand-900/10 text-brand-900"}`}>
                     <Icon name={item.icon} className="text-[18px]" />
                   </span>
-                  <span className="text-sm text-slate-700">
-                    <span className="font-bold">{item.count}</span> {item.label}
+                  <span className="text-sm text-neutral-700">
+                    <span className="font-medium">{item.count}</span> {item.label}
                   </span>
-                  <Icon name="chevron_right" className="ml-auto text-[18px] text-slate-400" />
+                  <Icon name="chevron_right" className="ml-auto text-[18px] text-neutral-400" />
                 </Link>
               ))}
             </div>

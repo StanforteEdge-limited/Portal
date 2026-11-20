@@ -149,7 +149,7 @@ export default function FinanceLedgerPage() {
     {
       header: "Amount",
       cell: (row) => formatCurrency(Number(row.amount || 0), row.currency || "NGN"),
-      className: "text-right font-medium text-slate-900"
+      className: "text-right font-medium text-neutral-900"
     }
   ], []);
 

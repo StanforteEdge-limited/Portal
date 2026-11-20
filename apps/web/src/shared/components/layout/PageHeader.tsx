@@ -9,7 +9,6 @@ export type PageHeaderProps = {
   badgeColor?: string;
   actions?: ReactNode;
   className?: string;
-  // Kept for backward compatibility if older legacy callers pass them
   breadcrumbs?: any[];
   eyebrow?: string;
 };
@@ -17,41 +16,28 @@ export type PageHeaderProps = {
 export function PageHeader({
   title,
   description,
-  icon: Icon,
-  iconColor = "bg-orange-50 text-[#ff6900]",
   actions,
   className = "",
 }: PageHeaderProps) {
   return (
-    <div
-      className={`bg-white rounded-2xl p-5 sm:p-6 border border-slate-100 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 ${className}`}
+    <header
+      className={`flex flex-col md:flex-row md:items-end justify-between gap-4 pb-5 mb-6 border-b border-neutral-900/[0.08] ${className}`}
     >
-      <div className="flex items-center gap-4">
-        {Icon && (
-          <div
-            className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-2xs ${iconColor}`}
-          >
-            <Icon className="h-6 w-6" />
-          </div>
-        )}
-        <div className="min-w-0">
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight font-headline">
-            {title}
-          </h1>
-          {description && (
-            <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-2xl leading-relaxed">
-              {description}
-            </p>
-          )}
-        </div>
+      <div className="min-w-0 space-y-1">
+        <h1 className="text-2xl sm:text-[28px] leading-tight font-medium text-neutral-900 tracking-tight font-headline">
+          {title}
+        </h1>
+        {description ? (
+          <p className="text-sm text-neutral-500 max-w-2xl leading-relaxed">{description}</p>
+        ) : null}
       </div>
 
-      {actions && (
-        <div className="flex flex-wrap items-center gap-2.5 shrink-0 self-start md:self-auto">
+      {actions ? (
+        <div className="flex flex-wrap items-center gap-2 shrink-0 self-start md:self-auto">
           {actions}
         </div>
-      )}
-    </div>
+      ) : null}
+    </header>
   );
 }
 

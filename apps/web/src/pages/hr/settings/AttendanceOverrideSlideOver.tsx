@@ -168,10 +168,10 @@ export default function AttendanceOverrideSlideOver({ policy, onClose, onSaved }
                 <button
                   key={day.value}
                   onClick={() => toggleDay(day.value)}
-                  className={`px-3 py-2 rounded-xl border text-xs font-semibold transition-all ${
+                  className={`px-3 py-2 rounded-xl border text-xs font-semibold transition-colors ${
                     onsiteDays.includes(day.value) 
                       ? "bg-brand-900 text-white border-brand-900" 
-                      : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
+                      : "bg-white text-neutral-500 border-neutral-200 hover:border-neutral-300"
                   }`}
                 >
                   {day.label}
@@ -186,31 +186,31 @@ export default function AttendanceOverrideSlideOver({ policy, onClose, onSaved }
               id="policy-active"
               checked={isActive} 
               onChange={(e) => setIsActive(e.target.checked)}
-              className="h-4 w-4 rounded border-slate-300 text-brand-900"
+              className="h-4 w-4 rounded border-neutral-300 text-brand-900"
             />
-            <label htmlFor="policy-active" className="text-sm font-medium text-slate-700">Policy is Active</label>
+            <label htmlFor="policy-active" className="text-sm font-medium text-neutral-700">Policy is Active</label>
           </div>
 
-          <div className="mt-6 rounded-2xl border border-slate-200 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Mode Enforcement</p>
+          <div className="mt-6 rounded-2xl border border-neutral-200 p-4">
+            <p className="text-xs font-semibold text-neutral-500">Mode Enforcement</p>
             <div className="mt-3 space-y-3">
               <label className="flex items-start gap-3">
                 <input
                   type="checkbox"
                   checked={enforceClockInMode}
                   onChange={(e) => setEnforceClockInMode(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-900"
+                  className="mt-0.5 h-4 w-4 rounded border-neutral-300 text-brand-900"
                 />
-                <span className="text-sm text-slate-700">Require clock-in mode to match expected mode</span>
+                <span className="text-sm text-neutral-700">Require clock-in mode to match expected mode</span>
               </label>
               <label className="flex items-start gap-3">
                 <input
                   type="checkbox"
                   checked={enforceClockOutModeMatch}
                   onChange={(e) => setEnforceClockOutModeMatch(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-900"
+                  className="mt-0.5 h-4 w-4 rounded border-neutral-300 text-brand-900"
                 />
-                <span className="text-sm text-slate-700">Require clock-out mode to match clock-in mode</span>
+                <span className="text-sm text-neutral-700">Require clock-out mode to match clock-in mode</span>
               </label>
             </div>
           </div>

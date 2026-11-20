@@ -81,7 +81,7 @@ export const ProcurementRequestFormPage = forwardRef<RequestFormHandle, Props>((
   useEffect(() => {
     onSummary(
       <section className="section-card bg-brand-900 p-5 text-white">
-        <p className="text-[0.72rem] font-bold uppercase tracking-[0.16em] text-white/70">
+        <p className="text-[0.72rem] font-medium text-white/70">
           {selectedCategory?.name || "Procurement Request"}
         </p>
         <p className="mt-3 text-4xl font-semibold tracking-tight">&mdash;</p>
@@ -237,7 +237,7 @@ export const ProcurementRequestFormPage = forwardRef<RequestFormHandle, Props>((
               {supportingFileNames.map((name, index) => (
                 <li
                   key={`${name}-${index}`}
-                  className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700"
+                  className="flex items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-700"
                 >
                   <Icon name="attach_file" className="text-[16px] text-brand-900" />
                   <span className="truncate">{name}</span>

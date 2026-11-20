@@ -171,8 +171,8 @@ export default function FinanceItemsPage() {
       header: "Name",
       cell: (item: any) => (
         <div>
-          <p className="font-medium text-slate-900">{item.name}</p>
-          {item.description ? <p className="text-xs text-slate-500">{item.description}</p> : null}
+          <p className="font-medium text-neutral-900">{item.name}</p>
+          {item.description ? <p className="text-xs text-neutral-500">{item.description}</p> : null}
         </div>
       )
     },
@@ -191,7 +191,7 @@ export default function FinanceItemsPage() {
     {
       header: "Unit Price",
       cell: (item: any) => formatCurrency(Number(item.unitPrice ?? item.unit_price ?? 0), item.currency || "NGN"),
-      className: "text-right text-slate-900 font-medium"
+      className: "text-right text-neutral-900 font-medium"
     },
     {
       header: "Status",
@@ -239,7 +239,7 @@ export default function FinanceItemsPage() {
         <section className="section-card p-4 sm:p-5">
           <div className="flex flex-wrap items-end gap-3">
             <label className="grid gap-1.5 text-sm flex-1 min-w-[180px]">
-              <span className="font-semibold text-slate-700">Search</span>
+              <span className="font-semibold text-neutral-700">Search</span>
               <input
                 type="search"
                 value={search}
@@ -248,7 +248,7 @@ export default function FinanceItemsPage() {
                   setPage(1);
                 }}
                 placeholder="Search by name or code"
-                className="rounded-2xl border border-slate-200 bg-white px-4 py-[0.6rem] text-sm font-semibold text-slate-700 focus:outline-none focus:ring-4 focus:ring-brand-900/10"
+                className="rounded-2xl border border-neutral-200 bg-white px-4 py-[0.6rem] text-sm font-semibold text-neutral-700 focus:outline-none focus:ring-4 focus:ring-brand-900/10"
               />
             </label>
             <SelectField label="Type" value={itemType} onChange={(event) => { setItemType(event.target.value); setPage(1); }}>
@@ -313,22 +313,22 @@ export default function FinanceItemsPage() {
       </div>
 
       {showModal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/40 p-4">
           <div className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-              <h3 className="text-lg font-semibold text-slate-900">{editing ? "Edit Item" : "New Item"}</h3>
+            <div className="flex items-center justify-between border-b border-neutral-200 px-6 py-4">
+              <h3 className="text-lg font-semibold text-neutral-900">{editing ? "Edit Item" : "New Item"}</h3>
               <Button variant="ghost" size="sm" onClick={() => setShowModal(false)}>
                 <Icon name="close" />
               </Button>
             </div>
             <div className="grid gap-4 p-6 md:grid-cols-2">
               <label className="grid gap-1.5 text-sm md:col-span-2">
-                <span className="font-semibold text-slate-700">Name</span>
-                <input className="rounded-2xl border border-slate-200 px-4 py-2.5" value={form.name} onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))} />
+                <span className="font-semibold text-neutral-700">Name</span>
+                <input className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={form.name} onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))} />
               </label>
               <label className="grid gap-1.5 text-sm">
-                <span className="font-semibold text-slate-700">Code</span>
-                <input className="rounded-2xl border border-slate-200 px-4 py-2.5" value={form.code} onChange={(event) => setForm((prev) => ({ ...prev, code: event.target.value }))} />
+                <span className="font-semibold text-neutral-700">Code</span>
+                <input className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={form.code} onChange={(event) => setForm((prev) => ({ ...prev, code: event.target.value }))} />
               </label>
               <SelectField label="Type" value={form.item_type} onChange={(event) => setForm((prev) => ({ ...prev, item_type: event.target.value as ItemType }))}>
                 <option value="service">Service</option>
@@ -336,20 +336,20 @@ export default function FinanceItemsPage() {
                 <option value="other">Other</option>
               </SelectField>
               <label className="grid gap-1.5 text-sm">
-                <span className="font-semibold text-slate-700">Unit</span>
-                <input className="rounded-2xl border border-slate-200 px-4 py-2.5" value={form.unit} onChange={(event) => setForm((prev) => ({ ...prev, unit: event.target.value }))} placeholder="pcs, hr, kg" />
+                <span className="font-semibold text-neutral-700">Unit</span>
+                <input className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={form.unit} onChange={(event) => setForm((prev) => ({ ...prev, unit: event.target.value }))} placeholder="pcs, hr, kg" />
               </label>
               <label className="grid gap-1.5 text-sm">
-                <span className="font-semibold text-slate-700">Currency</span>
-                <input className="rounded-2xl border border-slate-200 px-4 py-2.5" value={form.currency} onChange={(event) => setForm((prev) => ({ ...prev, currency: event.target.value }))} />
+                <span className="font-semibold text-neutral-700">Currency</span>
+                <input className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={form.currency} onChange={(event) => setForm((prev) => ({ ...prev, currency: event.target.value }))} />
               </label>
               <label className="grid gap-1.5 text-sm">
-                <span className="font-semibold text-slate-700">Unit Price</span>
-                <input type="number" className="rounded-2xl border border-slate-200 px-4 py-2.5" value={form.unit_price} onChange={(event) => setForm((prev) => ({ ...prev, unit_price: event.target.value }))} />
+                <span className="font-semibold text-neutral-700">Unit Price</span>
+                <input type="number" className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={form.unit_price} onChange={(event) => setForm((prev) => ({ ...prev, unit_price: event.target.value }))} />
               </label>
               <label className="grid gap-1.5 text-sm">
-                <span className="font-semibold text-slate-700">Cost Price</span>
-                <input type="number" className="rounded-2xl border border-slate-200 px-4 py-2.5" value={form.cost_price} onChange={(event) => setForm((prev) => ({ ...prev, cost_price: event.target.value }))} />
+                <span className="font-semibold text-neutral-700">Cost Price</span>
+                <input type="number" className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={form.cost_price} onChange={(event) => setForm((prev) => ({ ...prev, cost_price: event.target.value }))} />
               </label>
               <SelectField label="Chart Account" value={form.chart_account_id} onChange={(event) => setForm((prev) => ({ ...prev, chart_account_id: event.target.value }))}>
                 <option value="">Select chart account</option>
@@ -359,14 +359,14 @@ export default function FinanceItemsPage() {
               </SelectField>
               <label className="flex items-center gap-2 text-sm pt-8">
                 <input type="checkbox" checked={form.is_active} onChange={(event) => setForm((prev) => ({ ...prev, is_active: event.target.checked }))} />
-                <span className="font-semibold text-slate-700">Active</span>
+                <span className="font-semibold text-neutral-700">Active</span>
               </label>
               <label className="grid gap-1.5 text-sm md:col-span-2">
-                <span className="font-semibold text-slate-700">Description</span>
-                <textarea className="rounded-2xl border border-slate-200 px-4 py-2.5" rows={3} value={form.description} onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))} />
+                <span className="font-semibold text-neutral-700">Description</span>
+                <textarea className="rounded-2xl border border-neutral-200 px-4 py-2.5" rows={3} value={form.description} onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))} />
               </label>
             </div>
-            <div className="flex justify-end gap-2 border-t border-slate-200 px-6 py-4">
+            <div className="flex justify-end gap-2 border-t border-neutral-200 px-6 py-4">
               <Button variant="secondary" onClick={() => setShowModal(false)}>Cancel</Button>
               <Button onClick={() => void saveItem()}>{editing ? "Update" : "Create"}</Button>
             </div>

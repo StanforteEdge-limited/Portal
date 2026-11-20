@@ -22,14 +22,20 @@ RUN pnpm install --frozen-lockfile
 COPY packages/contract packages/contract
 COPY apps/api apps/api
 
-RUN pnpm --filter @stanforte/contract build && pnpm --dir apps/api build
+RUN pnpm --filter @stanforte/contract build && pnpm --dir apps/api build \
+    && chown -R node:node /app
 
 ENV NODE_ENV=production \
+    NODE_OPTIONS="" \
     PDF_BROWSER_PATH=/usr/bin/chromium-browser
 
 WORKDIR /app/apps/api
+USER node
 EXPOSE 3000
 
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD wget -q -O /dev/null http://127.0.0.1:3000/v1/health/healthz || exit 1
+
 # Apply pending migrations under a Postgres advisory lock (single replica wins),
-# then boot the compiled app
-CMD ["sh", "-c", "pnpm drizzle:migrate:locked && node -r ./path-alias-register.cjs dist/server.js"]
+# then exec the compiled app so SIGTERM propagates cleanly
+CMD ["sh", "-c", "pnpm drizzle:migrate:locked && exec node -r ./path-alias-register.cjs dist/server.js"]

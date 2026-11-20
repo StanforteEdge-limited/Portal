@@ -70,7 +70,7 @@ export function PaginationControls({
       )}
 
       {showStatus ? (
-        <p className="text-xs text-slate-500 font-medium">
+        <p className="text-xs text-neutral-500 font-medium">
           Page {safePage} of {safeTotalPages} • Showing {rangeStart}–{rangeEnd} of {totalCount} {itemLabel}
           {totalCount === 1 ? "" : "s"}
         </p>
@@ -104,7 +104,7 @@ export function PaginationControls({
           const showGap = typeof previous === "number" && pageNumber - previous > 1;
           return (
             <span key={`page-chip-${pageNumber}`} className="inline-flex items-center gap-1.5">
-              {showGap ? <span className="px-1 text-xs text-slate-400">...</span> : null}
+              {showGap ? <span className="px-1 text-xs text-neutral-400">...</span> : null}
               <Button
                 variant={pageNumber === safePage ? "primary" : "secondary"}
                 size="sm"

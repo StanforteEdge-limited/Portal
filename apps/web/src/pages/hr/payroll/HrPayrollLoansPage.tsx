@@ -327,7 +327,7 @@ export default function HrPayrollLoansPage() {
           <StatCard label="Outstanding Balance" value={formatCurrency(totalOutstanding)} tone="warning" icon="account_balance" />
         </div>
 
-        <div className="flex flex-wrap items-center gap-4 rounded-xl border border-slate-200 bg-white p-4">
+        <div className="flex flex-wrap items-center gap-4 rounded-xl border border-neutral-200 bg-white p-4">
           <div className="flex-1 min-w-[200px]">
             <SelectField label="Loan Type" value={filterType} onChange={(e) => setFilterType(e.target.value)}>
               <option value="">All Types</option>
@@ -350,24 +350,24 @@ export default function HrPayrollLoansPage() {
           description="Employee and consultant loan recovery ledger."
         >
           {loading ? (
-            <div className="text-sm text-slate-500 py-4">Loading loans ledger...</div>
+            <div className="text-sm text-neutral-500 py-4">Loading loans ledger...</div>
           ) : loans.length ? (
             <DataTable
               columns={[
-                { header: "Worker", cell: (l: PayrollLoan) => <p className="font-semibold text-slate-900">{l.worker?.full_name || "Unknown Worker"}</p> },
+                { header: "Worker", cell: (l: PayrollLoan) => <p className="font-semibold text-neutral-900">{l.worker?.full_name || "Unknown Worker"}</p> },
                 { header: "Request", cell: (l: PayrollLoan) => l.request_id ? (
-                  <a href={`/requests/details?id=${l.request_id}`} className="text-xs text-blue-600 hover:underline flex items-center gap-0.5">
+                  <a href={`/requests/details?id=${l.request_id}`} className="text-xs text-neutral-700 hover:underline flex items-center gap-0.5">
                     <Icon name="link" className="text-[12px]" /> #{l.request_id}
                   </a>
-                ) : <span className="text-xs text-slate-400">—</span> },
-                { header: "Title", cell: (l: PayrollLoan) => <p className="font-medium text-slate-800">{l.title}</p> },
+                ) : <span className="text-xs text-neutral-400">—</span> },
+                { header: "Title", cell: (l: PayrollLoan) => <p className="font-medium text-neutral-800">{l.title}</p> },
                 { header: "Type", className: "capitalize", cell: (l: PayrollLoan) => (
                   <Chip variant={l.loan_type === "loan" ? "pending" : "neutral"}>
                     {l.loan_type === "loan" ? "Loan" : "Advance"}
                   </Chip>
                 ) },
                 { header: "Principal", cell: (l: PayrollLoan) => formatCurrency(l.principal_amount) },
-                { header: "Outstanding", className: "font-semibold text-slate-900", cell: (l: PayrollLoan) => formatCurrency(l.outstanding_amount ?? 0) },
+                { header: "Outstanding", className: "font-semibold text-neutral-900", cell: (l: PayrollLoan) => formatCurrency(l.outstanding_amount ?? 0) },
                 { header: "Monthly Repayment", cell: (l: PayrollLoan) => formatCurrency(l.monthly_recovery_amount ?? 0) },
                 { header: "Start Month", cell: (l: PayrollLoan) => l.start_recovery_date ? new Date(l.start_recovery_date).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "-" },
                 { header: "Status", cell: (l: PayrollLoan) => (
@@ -379,7 +379,7 @@ export default function HrPayrollLoansPage() {
                   <div className="relative flex justify-end" ref={openMenuId === l.id ? menuRef : undefined}>
                     <button
                       type="button"
-                      className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-900/20"
+                      className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-500 transition-colors hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-900/20"
                       onClick={() => setOpenMenuId(openMenuId === l.id ? null : l.id)}
                       aria-haspopup="menu"
                       aria-expanded={openMenuId === l.id}
@@ -392,33 +392,33 @@ export default function HrPayrollLoansPage() {
                       <div
                         role="menu"
                         aria-label="Loan actions"
-                        className="absolute right-0 top-[calc(100%+4px)] z-50 w-52 rounded-2xl border border-slate-200 bg-white py-2 shadow-card"
+                        className="absolute right-0 top-[calc(100%+4px)] z-50 w-52 rounded-2xl border border-neutral-200 bg-white py-2 shadow-xs"
                       >
                         <button
                           type="button"
                           role="menuitem"
-                          className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                          className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-neutral-700 transition hover:bg-neutral-50"
                           onClick={() => { closeMenu(); setViewingLoan(l); }}
                         >
-                          <Icon name="history" className="text-[18px] text-slate-500" />
+                          <Icon name="history" className="text-[18px] text-neutral-500" />
                           View Repayments
                         </button>
                         <button
                           type="button"
                           role="menuitem"
-                          className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                          className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-neutral-700 transition hover:bg-neutral-50"
                           onClick={() => { closeMenu(); setRepayingLoan(l); setManualRepaymentAmount(""); setManualRepaymentNotes(""); }}
                         >
-                          <Icon name="payments" className="text-[18px] text-slate-500" />
+                          <Icon name="payments" className="text-[18px] text-neutral-500" />
                           Log Repayment
                         </button>
                         <button
                           type="button"
                           role="menuitem"
-                          className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                          className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-neutral-700 transition hover:bg-neutral-50"
                           onClick={() => { closeMenu(); openEdit(l); }}
                         >
-                          <Icon name="edit" className="text-[18px] text-slate-500" />
+                          <Icon name="edit" className="text-[18px] text-neutral-500" />
                           Edit Loan
                         </button>
                         {l.status === "active" && (
@@ -445,11 +445,11 @@ export default function HrPayrollLoansPage() {
                         )}
                         {l.status !== "closed" && (
                           <>
-                            <div className="my-1 border-t border-slate-100" />
+                            <div className="my-1 border-t border-neutral-100" />
                             <button
                               type="button"
                               role="menuitem"
-                              className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-slate-500 transition hover:bg-slate-50"
+                              className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-neutral-500 transition hover:bg-neutral-50"
                               onClick={() => { closeMenu(); void handleStatusChange(l, "closed"); }}
                             >
                               <Icon name="check_circle" className="text-[18px]" />
@@ -596,41 +596,41 @@ export default function HrPayrollLoansPage() {
         <SlideOverContent>
           {viewingLoan && (
             <div className="grid gap-6">
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Loan Summary</p>
-                <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-sm text-slate-700">
-                  <p className="font-medium text-slate-500">Title:</p>
-                  <p className="font-semibold text-slate-900 text-right">{viewingLoan.title}</p>
+              <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4">
+                <p className="text-xs font-semibold text-neutral-500 mb-2">Loan Summary</p>
+                <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-sm text-neutral-700">
+                  <p className="font-medium text-neutral-500">Title:</p>
+                  <p className="font-semibold text-neutral-900 text-right">{viewingLoan.title}</p>
                   
-                  <p className="font-medium text-slate-500">Principal Amount:</p>
-                  <p className="font-semibold text-slate-900 text-right">{formatCurrency(viewingLoan.principal_amount)}</p>
+                  <p className="font-medium text-neutral-500">Principal Amount:</p>
+                  <p className="font-semibold text-neutral-900 text-right">{formatCurrency(viewingLoan.principal_amount)}</p>
 
-                  <p className="font-medium text-slate-500">Outstanding Balance:</p>
-                  <p className="font-semibold text-slate-900 text-right text-orange-600">{formatCurrency(viewingLoan.outstanding_amount)}</p>
+                  <p className="font-medium text-neutral-500">Outstanding Balance:</p>
+                  <p className="font-semibold text-neutral-900 text-right text-orange-600">{formatCurrency(viewingLoan.outstanding_amount)}</p>
 
-                  <p className="font-medium text-slate-500">Monthly Deduction:</p>
-                  <p className="font-semibold text-slate-900 text-right">{formatCurrency(viewingLoan.monthly_recovery_amount ?? 0)}</p>
+                  <p className="font-medium text-neutral-500">Monthly Deduction:</p>
+                  <p className="font-semibold text-neutral-900 text-right">{formatCurrency(viewingLoan.monthly_recovery_amount ?? 0)}</p>
 
-                  <p className="font-medium text-slate-500">Recovery Start Date:</p>
-                  <p className="font-semibold text-slate-900 text-right">
+                  <p className="font-medium text-neutral-500">Recovery Start Date:</p>
+                  <p className="font-semibold text-neutral-900 text-right">
                     {new Date(viewingLoan.start_recovery_date).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
                   </p>
                 </div>
               </div>
 
               <div>
-                <h4 className="text-sm font-semibold text-slate-900 mb-3">Repayment History</h4>
+                <h4 className="text-sm font-semibold text-neutral-900 mb-3">Repayment History</h4>
                 {viewingLoan.repayments && viewingLoan.repayments.length > 0 ? (
                   <DataTable
                     columns={[
                       { header: "Date", cell: (rep: any) => new Date(rep.created_at).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" }) },
-                      { header: "Amount Recovered", className: "font-semibold text-slate-900", cell: (rep: any) => formatCurrency(rep.amount) },
+                      { header: "Amount Recovered", className: "font-semibold text-neutral-900", cell: (rep: any) => formatCurrency(rep.amount) },
                       { header: "Status", cell: (rep: any) => <Chip variant="success">{rep.status}</Chip> },
                     ]}
                     data={viewingLoan.repayments}
                   />
                 ) : (
-                  <p className="text-sm text-slate-500 bg-slate-50 border border-dashed border-slate-200 rounded-lg p-6 text-center">
+                  <p className="text-sm text-neutral-500 bg-neutral-50 border border-dashed border-neutral-200 rounded-lg p-6 text-center">
                     No recovery repayments recorded yet. Recovery will start in the first payroll run on or after the start month.
                   </p>
                 )}

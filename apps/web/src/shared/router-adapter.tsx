@@ -1,10 +1,9 @@
-import React, { useMemo, useCallback } from "react";
+import React, { useMemo, useCallback, useEffect, useRef } from "react";
 import {
   useNavigate as useTanStackNavigate,
   useLocation as useTanStackLocation,
   useParams as useTanStackParams,
   Link as TanStackLink,
-  Navigate as TanStackNavigate,
   Outlet as TanStackOutlet,
 } from "@tanstack/react-router";
 
@@ -20,9 +19,9 @@ export function useNavigate() {
       if (typeof to === "number") {
         window.history.go(to);
       } else if (typeof to === "string") {
-        navigate({ to: to as any, replace: options?.replace });
+        navigate({ to: to as any, replace: options?.replace, state: options?.state as any });
       } else if (to && typeof to === "object") {
-        navigate({ to: (to.pathname || "/") as any, replace: options?.replace });
+        navigate({ to: (to.pathname || "/") as any, replace: options?.replace, state: (options?.state ?? to.state) as any });
       }
     },
     [navigate]
@@ -31,13 +30,21 @@ export function useNavigate() {
 
 export function useLocation() {
   const loc = useTanStackLocation();
-  return {
-    pathname: loc.pathname,
-    search: loc.searchStr || window.location.search || "",
-    hash: loc.hash || window.location.hash || "",
-    state: (loc as any).state || null,
-    key: "default",
-  };
+  const pathname = loc.pathname;
+  const search = loc.searchStr || (typeof window !== "undefined" ? window.location.search : "") || "";
+  const hash = loc.hash || (typeof window !== "undefined" ? window.location.hash : "") || "";
+  const state = (loc as any).state || null;
+
+  return useMemo(
+    () => ({
+      pathname,
+      search,
+      hash,
+      state,
+      key: "default",
+    }),
+    [pathname, search, hash, state]
+  );
 }
 
 export function useParams<T extends Record<string, string | undefined> = Record<string, string | undefined>>(): T {
@@ -116,8 +123,16 @@ export const NavLink = React.forwardRef<HTMLAnchorElement, any>(function NavLink
   );
 });
 
-export function Navigate({ to, replace }: { to: string; replace?: boolean }) {
-  return <TanStackNavigate to={to as any} replace={replace} />;
+export function Navigate({ to, replace, state }: { to: string; replace?: boolean; state?: any }) {
+  const navigate = useTanStackNavigate();
+  const stateRef = useRef(state);
+  stateRef.current = state;
+
+  useEffect(() => {
+    navigate({ to: to as any, replace, state: stateRef.current as any });
+  }, [navigate, to, replace]);
+
+  return null;
 }
 
 export const Outlet = TanStackOutlet;

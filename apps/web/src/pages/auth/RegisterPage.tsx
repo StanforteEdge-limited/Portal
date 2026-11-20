@@ -133,10 +133,10 @@ export default function RegisterPage() {
         {/* Center: Create Your Account & 3 Bullet Items with Orange Checks */}
         <div className="relative z-10 my-auto py-10 max-w-md space-y-8">
           <div className="space-y-3">
-            <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-white font-headline leading-tight">
+            <h1 className="text-4xl sm:text-5xl font-semibold tracking-tight text-white font-headline leading-tight">
               Create Your Account
             </h1>
-            <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
+            <p className="text-sm sm:text-base text-neutral-300 leading-relaxed">
               Get started with Stanforte Edge in just a few steps. Each organization receives a dedicated workspace domain.
             </p>
           </div>
@@ -144,32 +144,32 @@ export default function RegisterPage() {
           {/* 3 Bullet Items with Solid Orange Checks */}
           <div className="space-y-4 pt-2">
             <div className="flex items-center gap-3.5">
-              <div className="w-6 h-6 rounded-full bg-[#ff6900] text-white flex items-center justify-center shrink-0 shadow-sm shadow-orange-500/30">
+              <div className="w-6 h-6 rounded-full bg-[#ff6900] text-white flex items-center justify-center shrink-0 shadow-sm">
                 <CheckCircle2 className="h-4 w-4" />
               </div>
-              <span className="text-sm font-semibold text-slate-100">Manage your workforce & branches</span>
+              <span className="text-sm font-semibold text-neutral-100">Manage your workforce & branches</span>
             </div>
 
             <div className="flex items-center gap-3.5">
-              <div className="w-6 h-6 rounded-full bg-[#ff6900] text-white flex items-center justify-center shrink-0 shadow-sm shadow-orange-500/30">
+              <div className="w-6 h-6 rounded-full bg-[#ff6900] text-white flex items-center justify-center shrink-0 shadow-sm">
                 <CheckCircle2 className="h-4 w-4" />
               </div>
-              <span className="text-sm font-semibold text-slate-100">Automate payroll with statutory accuracy</span>
+              <span className="text-sm font-semibold text-neutral-100">Automate payroll with statutory accuracy</span>
             </div>
 
             <div className="flex items-center gap-3.5">
-              <div className="w-6 h-6 rounded-full bg-[#ff6900] text-white flex items-center justify-center shrink-0 shadow-sm shadow-orange-500/30">
+              <div className="w-6 h-6 rounded-full bg-[#ff6900] text-white flex items-center justify-center shrink-0 shadow-sm">
                 <CheckCircle2 className="h-4 w-4" />
               </div>
-              <span className="text-sm font-semibold text-slate-100">Streamline multi-tier approvals</span>
+              <span className="text-sm font-semibold text-neutral-100">Streamline multi-tier approvals</span>
             </div>
           </div>
         </div>
 
         {/* Bottom Tagline */}
-        <div className="relative z-10 pt-6 border-t border-white/10 flex items-center justify-between text-xs text-slate-400">
+        <div className="relative z-10 pt-6 border-t border-white/10 flex items-center justify-between text-xs text-neutral-400">
           <span>Built for Modern Businesses</span>
-          <span className="font-mono text-[11px] text-[#ff6900]">Dedicated Multi-Tenant OS</span>
+          <span className="font-mono text-xs text-[#ff6900]">Dedicated Multi-Tenant OS</span>
         </div>
       </div>
 
@@ -178,30 +178,30 @@ export default function RegisterPage() {
         <div className="max-w-md w-full mx-auto space-y-6">
           {/* Register as Segmented Tabs */}
           <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-700">Register as</label>
-            <div className="grid grid-cols-2 gap-2 p-1.5 bg-slate-100 rounded-2xl">
+            <label className="text-xs font-medium text-neutral-700">Register as</label>
+            <div className="grid grid-cols-2 gap-2 p-1.5 bg-neutral-100 rounded-2xl">
               <button
                 type="button"
                 onClick={() => setAccountType("organization")}
-                className={`py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
+                className={`py-2.5 px-4 rounded-xl text-xs font-medium flex items-center justify-center gap-2 transition-colors ${
                   accountType === "organization"
-                    ? "bg-white text-slate-900 shadow-sm border border-slate-200"
-                    : "text-slate-600 hover:text-slate-900"
+                    ? "bg-white text-neutral-900 shadow-sm border border-neutral-200"
+                    : "text-neutral-600 hover:text-neutral-900"
                 }`}
               >
-                <Building2 className="h-4 w-4 text-slate-700" />
+                <Building2 className="h-4 w-4 text-neutral-700" />
                 <span>Organization</span>
               </button>
               <button
                 type="button"
                 onClick={() => setAccountType("individual")}
-                className={`py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
+                className={`py-2.5 px-4 rounded-xl text-xs font-medium flex items-center justify-center gap-2 transition-colors ${
                   accountType === "individual"
-                    ? "bg-white text-slate-900 shadow-sm border border-slate-200"
-                    : "text-slate-600 hover:text-slate-900"
+                    ? "bg-white text-neutral-900 shadow-sm border border-neutral-200"
+                    : "text-neutral-600 hover:text-neutral-900"
                 }`}
               >
-                <User className="h-4 w-4 text-slate-700" />
+                <User className="h-4 w-4 text-neutral-700" />
                 <span>Individual</span>
               </button>
             </div>
@@ -221,18 +221,18 @@ export default function RegisterPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Organization / Full Name */}
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-700">
+              <label className="text-xs font-medium text-neutral-700">
                 {accountType === "organization" ? "Organization Name" : "Full Name"}
               </label>
               <div className="relative">
-                <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => handleNameChange(e.target.value)}
                   placeholder={accountType === "organization" ? "e.g. Acme Nigeria Ltd" : "e.g. Daniel Owonikoko"}
                   required
-                  className="w-full pl-11 pr-4 py-3 text-xs sm:text-sm bg-white border border-slate-200 rounded-2xl outline-none transition focus:border-[#ff6900] focus:ring-4 focus:ring-orange-500/10 placeholder:text-slate-400"
+                  className="w-full pl-11 pr-4 py-3 text-xs sm:text-sm bg-white border border-neutral-200 rounded-2xl outline-none transition focus:border-[#ff6900] focus:ring-4 focus:ring-orange-500/10 placeholder:text-neutral-400"
                 />
               </div>
             </div>
@@ -241,10 +241,10 @@ export default function RegisterPage() {
             {accountType === "organization" && (
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-slate-700">
+                  <label className="text-xs font-medium text-neutral-700">
                     Workspace Subdomain URL
                   </label>
-                  <span className="text-[11px] text-slate-400">Unique enterprise address</span>
+                  <span className="text-xs text-neutral-400">Unique enterprise address</span>
                 </div>
                 <div className="relative flex items-center">
                   <Globe className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-[#ff6900]" />
@@ -254,15 +254,15 @@ export default function RegisterPage() {
                     onChange={(e) => handleSlugChange(e.target.value)}
                     placeholder="acme"
                     required
-                    className="w-full pl-11 pr-32 py-3 text-xs sm:text-sm bg-white border border-slate-200 rounded-2xl outline-none transition focus:border-[#ff6900] focus:ring-4 focus:ring-orange-500/10 font-medium text-slate-900 placeholder:text-slate-400"
+                    className="w-full pl-11 pr-32 py-3 text-xs sm:text-sm bg-white border border-neutral-200 rounded-2xl outline-none transition focus:border-[#ff6900] focus:ring-4 focus:ring-orange-500/10 font-medium text-neutral-900 placeholder:text-neutral-400"
                   />
-                  <div className="absolute right-4 text-xs font-semibold text-slate-400 pointer-events-none select-none">
+                  <div className="absolute right-4 text-xs font-semibold text-neutral-400 pointer-events-none select-none">
                     .{baseDomain}
                   </div>
                 </div>
-                <p className="text-[11px] text-slate-500 pt-0.5">
+                <p className="text-xs text-neutral-500 pt-0.5">
                   Your team will sign in at:{" "}
-                  <span className="font-semibold text-slate-800">
+                  <span className="font-semibold text-neutral-800">
                     https://{workspaceSlug || "your-slug"}.{baseDomain}
                   </span>
                 </p>
@@ -271,9 +271,9 @@ export default function RegisterPage() {
 
             {/* Business Email */}
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-700">Business Email</label>
+              <label className="text-xs font-medium text-neutral-700">Business Email</label>
               <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
                 <input
                   type="email"
                   value={email}
@@ -281,16 +281,16 @@ export default function RegisterPage() {
                   placeholder="you@company.com"
                   required
                   autoComplete="email"
-                  className="w-full pl-11 pr-4 py-3 text-xs sm:text-sm bg-white border border-slate-200 rounded-2xl outline-none transition focus:border-[#ff6900] focus:ring-4 focus:ring-orange-500/10 placeholder:text-slate-400"
+                  className="w-full pl-11 pr-4 py-3 text-xs sm:text-sm bg-white border border-neutral-200 rounded-2xl outline-none transition focus:border-[#ff6900] focus:ring-4 focus:ring-orange-500/10 placeholder:text-neutral-400"
                 />
               </div>
             </div>
 
             {/* Phone Number with Nigerian Flag */}
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-700">Phone Number</label>
+              <label className="text-xs font-medium text-neutral-700">Phone Number</label>
               <div className="relative flex items-center">
-                <div className="absolute left-3.5 flex items-center gap-1.5 text-xs text-slate-700 font-semibold pointer-events-none select-none">
+                <div className="absolute left-3.5 flex items-center gap-1.5 text-xs text-neutral-700 font-semibold pointer-events-none select-none">
                   <span>🇳🇬</span>
                   <span>+234</span>
                 </div>
@@ -299,16 +299,16 @@ export default function RegisterPage() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="801 234 5678"
-                  className="w-full pl-20 pr-4 py-3 text-xs sm:text-sm bg-white border border-slate-200 rounded-2xl outline-none transition focus:border-[#ff6900] focus:ring-4 focus:ring-orange-500/10 font-mono placeholder:text-slate-400"
+                  className="w-full pl-20 pr-4 py-3 text-xs sm:text-sm bg-white border border-neutral-200 rounded-2xl outline-none transition focus:border-[#ff6900] focus:ring-4 focus:ring-orange-500/10 font-mono placeholder:text-neutral-400"
                 />
               </div>
             </div>
 
             {/* Password */}
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-700">Password</label>
+              <label className="text-xs font-medium text-neutral-700">Password</label>
               <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
                 <input
                   type={showPassword ? "text" : "password"}
                   value={password}
@@ -316,12 +316,12 @@ export default function RegisterPage() {
                   placeholder="Create a strong password"
                   required
                   autoComplete="new-password"
-                  className="w-full pl-11 pr-11 py-3 text-xs sm:text-sm bg-white border border-slate-200 rounded-2xl outline-none transition focus:border-[#ff6900] focus:ring-4 focus:ring-orange-500/10 placeholder:text-slate-400"
+                  className="w-full pl-11 pr-11 py-3 text-xs sm:text-sm bg-white border border-neutral-200 rounded-2xl outline-none transition focus:border-[#ff6900] focus:ring-4 focus:ring-orange-500/10 placeholder:text-neutral-400"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-700 transition-colors"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -330,21 +330,21 @@ export default function RegisterPage() {
 
             {/* Terms of Service Checkbox */}
             <div className="pt-1">
-              <label className="flex items-start gap-2.5 cursor-pointer text-xs text-slate-600 leading-normal select-none">
+              <label className="flex items-start gap-2.5 cursor-pointer text-xs text-neutral-600 leading-normal select-none">
                 <input
                   type="checkbox"
                   checked={agreed}
                   onChange={(e) => setAgreed(e.target.checked)}
                   required
-                  className="mt-0.5 w-4 h-4 rounded border-slate-300 text-[#ff6900] focus:ring-[#ff6900]"
+                  className="mt-0.5 w-4 h-4 rounded border-neutral-300 text-[#ff6900] focus:ring-[#ff6900]"
                 />
                 <span>
                   I agree to the{" "}
-                  <a href="#" className="font-bold text-[#ff6900] hover:underline">
+                  <a href="#" className="font-medium text-[#ff6900] hover:underline">
                     Terms of Service
                   </a>{" "}
                   and{" "}
-                  <a href="#" className="font-bold text-[#ff6900] hover:underline">
+                  <a href="#" className="font-medium text-[#ff6900] hover:underline">
                     Privacy Policy
                   </a>
                 </span>
@@ -355,16 +355,16 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3.5 rounded-2xl font-bold text-sm bg-[#ff6900] hover:bg-[#ea580c] text-white shadow-lg shadow-orange-500/25 transition-all transform hover:-translate-y-0.5 disabled:opacity-50 mt-2"
+              className="w-full py-3.5 rounded-2xl font-medium text-sm bg-[#ff6900] hover:bg-[#ea580c] text-white shadow-lg transition-colors transform disabled:opacity-50 mt-2"
             >
               {loading ? "Creating Account..." : "Create Account"}
             </button>
           </form>
 
           {/* Sign In Footer */}
-          <div className="text-center text-xs text-slate-500 pt-2">
+          <div className="text-center text-xs text-neutral-500 pt-2">
             Already have an account?{" "}
-            <Link to="/login" className="font-extrabold text-[#ff6900] hover:underline">
+            <Link to="/login" className="font-semibold text-[#ff6900] hover:underline">
               Sign In
             </Link>
           </div>

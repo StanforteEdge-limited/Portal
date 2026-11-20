@@ -14,17 +14,17 @@ export default function EmployeeOrgsOverviewTab({ employee }: { employee: Employ
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-slate-900">Organizations</h3>
+        <h3 className="text-sm font-semibold text-neutral-900">Organizations</h3>
         {organizations.length ? organizations.map((organization: any) => (
           <div
             key={String(organization.id || organization.organization_id || organization.name)}
-            className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3"
+            className="flex items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3"
           >
             <div>
-              <p className="text-sm font-semibold text-slate-900">
+              <p className="text-sm font-semibold text-neutral-900">
                 {organization.name || organization.organization?.name || "-"}
               </p>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-neutral-500">
                 {organization.code || organization.organization?.code || ""}
               </p>
             </div>
@@ -33,23 +33,23 @@ export default function EmployeeOrgsOverviewTab({ employee }: { employee: Employ
             ) : null}
           </div>
         )) : (
-          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
+          <div className="rounded-2xl border border-dashed border-neutral-200 bg-neutral-50 px-4 py-6 text-sm text-neutral-500">
             No organization assignments.
           </div>
         )}
       </div>
       <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-slate-900">Teams</h3>
+        <h3 className="text-sm font-semibold text-neutral-900">Teams</h3>
         {teams.length ? teams.map((team: any) => (
           <div
             key={String(team.id || team.team_id || team.name)}
-            className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3"
+            className="flex items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3"
           >
             <div>
-              <p className="text-sm font-semibold text-slate-900">
+              <p className="text-sm font-semibold text-neutral-900">
                 {team.name || team.team?.name || "-"}
               </p>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-neutral-500">
                 {humanize(team.role || "member")}
               </p>
             </div>
@@ -58,7 +58,7 @@ export default function EmployeeOrgsOverviewTab({ employee }: { employee: Employ
             ) : null}
           </div>
         )) : (
-          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
+          <div className="rounded-2xl border border-dashed border-neutral-200 bg-neutral-50 px-4 py-6 text-sm text-neutral-500">
             No team assignments.
           </div>
         )}

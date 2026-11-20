@@ -13,7 +13,7 @@ export function Toolbar({ title, chips = [], actionLabel }: ToolbarProps) {
     <div className="shell-panel flex flex-col gap-4 px-4 py-4 sm:px-5 lg:flex-row lg:items-center lg:justify-between">
       <div className="flex flex-wrap items-center gap-2">
         {title ? (
-          <p className="mr-2 font-headline text-sm font-semibold text-slate-950">
+          <p className="mr-2 font-headline text-sm font-semibold text-neutral-950">
             {title}
           </p>
         ) : null}

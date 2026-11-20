@@ -131,29 +131,29 @@ export default function FinancePaymentVouchersPage() {
     switch (s) {
       case "verified":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
             Confirmed
           </span>
         );
       case "retired":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
             Retired (Pending Audit)
           </span>
         );
       case "partial":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-neutral-100 text-neutral-700 border border-neutral-200">
+            <span className="w-1.5 h-1.5 rounded-full bg-neutral-900" />
             Partial
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
-            <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-neutral-100 text-neutral-700 border border-neutral-200">
+            <span className="w-1.5 h-1.5 rounded-full bg-neutral-400" />
             Pending Retirement
           </span>
         );
@@ -174,17 +174,17 @@ export default function FinancePaymentVouchersPage() {
         {/* Header Row */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
-              <Link to="/finance" className="hover:text-slate-600 transition">
+            <div className="flex items-center gap-2 text-xs font-semibold text-neutral-400 mb-1">
+              <Link to="/finance" className="hover:text-neutral-600 transition">
                 Finance & Treasury
               </Link>
               <span>/</span>
-              <span className="text-[#ff6900] font-bold">Payment Vouchers</span>
+              <span className="text-[#ff6900] font-medium">Payment Vouchers</span>
             </div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight font-headline">
+            <h1 className="text-2xl font-semibold text-neutral-900 tracking-tight font-headline">
               Payment Vouchers
             </h1>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-neutral-500 mt-1">
               Disbursement register, retirement verification, and deduction reconciliations.
             </p>
           </div>
@@ -194,7 +194,7 @@ export default function FinancePaymentVouchersPage() {
               type="button"
               onClick={fetchVouchers}
               disabled={loading}
-              className="px-3.5 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-sm transition flex items-center gap-2 disabled:opacity-50"
+              className="px-3.5 py-2 text-xs font-medium text-neutral-700 bg-white border border-neutral-200 rounded-xl hover:bg-neutral-50 shadow-sm transition flex items-center gap-2 disabled:opacity-50"
               title="Refresh register"
             >
               <RotateCcw className={`h-3.5 w-3.5 ${loading ? "animate-spin text-[#ff6900]" : ""}`} />
@@ -203,9 +203,9 @@ export default function FinancePaymentVouchersPage() {
 
             <Link
               to="/finance/requests"
-              className="px-4 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-sm transition flex items-center gap-2"
+              className="px-4 py-2 text-xs font-medium text-neutral-700 bg-white border border-neutral-200 rounded-xl hover:bg-neutral-50 shadow-sm transition flex items-center gap-2"
             >
-              <FileText className="h-3.5 w-3.5 text-blue-600" />
+              <FileText className="h-3.5 w-3.5 text-neutral-700" />
               <span>Finance Requests Queue</span>
             </Link>
           </div>
@@ -214,33 +214,33 @@ export default function FinancePaymentVouchersPage() {
         {/* 4 Executive KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Card 1: Total Vouchers */}
-          <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between hover:border-slate-300 transition">
+          <div className="p-5 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center justify-between hover:border-neutral-300 transition">
             <div className="space-y-1">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+              <span className="text-xs font-medium text-neutral-400 block">
                 Total Vouchers
               </span>
-              <div className="text-2xl font-black text-slate-900 tracking-tight font-headline">
+              <div className="text-2xl font-semibold text-neutral-900 tracking-tight font-headline">
                 {total}
               </div>
-              <div className="text-[11px] font-medium text-slate-500">
+              <div className="text-xs font-medium text-neutral-500">
                 {formatCurrency(metrics.totalAmount, "NGN")} disbursed
               </div>
             </div>
-            <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+            <div className="w-12 h-12 rounded-2xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
               <Receipt className="h-6 w-6" />
             </div>
           </div>
 
           {/* Card 2: Pending Retirement */}
-          <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between hover:border-slate-300 transition">
+          <div className="p-5 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center justify-between hover:border-neutral-300 transition">
             <div className="space-y-1">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+              <span className="text-xs font-medium text-neutral-400 block">
                 Pending Retirement
               </span>
-              <div className="text-2xl font-black text-amber-600 tracking-tight font-headline">
+              <div className="text-2xl font-semibold text-amber-600 tracking-tight font-headline">
                 {metrics.pendingRetirement}
               </div>
-              <div className="text-[11px] font-medium text-slate-500">
+              <div className="text-xs font-medium text-neutral-500">
                 Awaiting receipts & verification
               </div>
             </div>
@@ -250,15 +250,15 @@ export default function FinancePaymentVouchersPage() {
           </div>
 
           {/* Card 3: Confirmed / Verified */}
-          <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between hover:border-slate-300 transition">
+          <div className="p-5 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center justify-between hover:border-neutral-300 transition">
             <div className="space-y-1">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+              <span className="text-xs font-medium text-neutral-400 block">
                 Confirmed & Verified
               </span>
-              <div className="text-2xl font-black text-emerald-600 tracking-tight font-headline">
+              <div className="text-2xl font-semibold text-emerald-600 tracking-tight font-headline">
                 {metrics.confirmedCount}
               </div>
-              <div className="text-[11px] font-medium text-slate-500">
+              <div className="text-xs font-medium text-neutral-500">
                 Audit sign-off completed
               </div>
             </div>
@@ -268,28 +268,28 @@ export default function FinancePaymentVouchersPage() {
           </div>
 
           {/* Card 4: Retirement Progress */}
-          <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between hover:border-slate-300 transition">
+          <div className="p-5 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center justify-between hover:border-neutral-300 transition">
             <div className="space-y-1">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+              <span className="text-xs font-medium text-neutral-400 block">
                 Retirement Rate
               </span>
-              <div className="text-2xl font-black text-purple-600 tracking-tight font-headline">
+              <div className="text-2xl font-semibold text-neutral-700 tracking-tight font-headline">
                 {metrics.retiredPct}%
               </div>
-              <div className="text-[11px] font-medium text-slate-500">
+              <div className="text-xs font-medium text-neutral-500">
                 {formatCurrency(metrics.retiredAmount, "NGN")} documented
               </div>
             </div>
-            <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+            <div className="w-12 h-12 rounded-2xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
               <TrendingUp className="h-6 w-6" />
             </div>
           </div>
         </div>
 
         {/* Filter Bar & Status Tabs */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
+        <div className="bg-white p-5 rounded-2xl border border-neutral-200/80 shadow-sm space-y-4">
           {/* Status Tabs */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none border-b border-slate-100">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none border-b border-neutral-100">
             {statusTabs.map((tab) => {
               const active = filters.retirement_status === tab.value;
               return (
@@ -297,10 +297,10 @@ export default function FinancePaymentVouchersPage() {
                   key={tab.label}
                   type="button"
                   onClick={() => updateFilter("retirement_status", tab.value)}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition ${
                     active
-                      ? "bg-[#ff6900] text-white shadow-sm shadow-orange-500/20"
-                      : "text-slate-600 hover:bg-slate-100"
+                      ? "bg-[#ff6900] text-white shadow-sm "
+                      : "text-neutral-600 hover:bg-neutral-100"
                   }`}
                 >
                   {tab.label}
@@ -313,13 +313,13 @@ export default function FinancePaymentVouchersPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-center">
             {/* Search Input */}
             <div className="lg:col-span-4 relative">
-              <Search className="h-4 w-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search className="h-4 w-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
               <input
                 type="text"
                 placeholder="Search voucher # (e.g. PV-2026-001)..."
                 value={filters.voucher_number}
                 onChange={(e) => updateFilter("voucher_number", e.target.value)}
-                className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-[#ff6900] transition"
+                className="w-full pl-9 pr-4 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:bg-white focus:border-[#ff6900] transition"
               />
             </div>
 
@@ -328,7 +328,7 @@ export default function FinancePaymentVouchersPage() {
               <SelectBox
                 value={filters.method}
                 onChange={(e) => updateFilter("method", e.target.value)}
-                className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-[#ff6900] transition"
+                className="w-full px-3.5 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:bg-white focus:border-[#ff6900] transition"
               >
                 <option value="">All Payment Methods</option>
                 <option value="bank_transfer">Bank Transfer</option>
@@ -343,7 +343,7 @@ export default function FinancePaymentVouchersPage() {
                 
                 value={filters.from}
                 onChange={(e) => updateFilter("from", e.target.value)}
-                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-[#ff6900] transition text-slate-600"
+                className="w-full px-3 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:bg-white focus:border-[#ff6900] transition text-neutral-600"
                 placeholder="From date"
                 title="Disbursed from"
               />
@@ -355,7 +355,7 @@ export default function FinancePaymentVouchersPage() {
                 
                 value={filters.to}
                 onChange={(e) => updateFilter("to", e.target.value)}
-                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-[#ff6900] transition text-slate-600"
+                className="w-full px-3 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:bg-white focus:border-[#ff6900] transition text-neutral-600"
                 placeholder="To date"
                 title="Disbursed to"
               />
@@ -367,7 +367,7 @@ export default function FinancePaymentVouchersPage() {
                 <button
                   type="button"
                   onClick={clearFilters}
-                  className="px-3 py-2 text-xs font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition flex items-center gap-1.5"
+                  className="px-3 py-2 text-xs font-medium text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 rounded-xl transition flex items-center gap-1.5"
                   title="Clear all filters"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
@@ -379,11 +379,11 @@ export default function FinancePaymentVouchersPage() {
         </div>
 
         {/* Payment Vouchers Table */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl border border-neutral-200/80 shadow-sm overflow-hidden">
           {loading ? (
             <div className="p-16 text-center space-y-3">
               <div className="w-8 h-8 border-3 border-[#ff6900] border-t-transparent rounded-full animate-spin mx-auto" />
-              <p className="text-xs font-semibold text-slate-500">
+              <p className="text-xs font-semibold text-neutral-500">
                 Loading payment vouchers from treasury...
               </p>
             </div>
@@ -392,27 +392,27 @@ export default function FinancePaymentVouchersPage() {
               <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
                 <AlertCircle className="h-6 w-6" />
               </div>
-              <h3 className="text-sm font-bold text-slate-900 font-headline">
+              <h3 className="text-sm font-medium text-neutral-900 font-headline">
                 Unable to load vouchers
               </h3>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto">{error}</p>
+              <p className="text-xs text-neutral-500 max-w-sm mx-auto">{error}</p>
               <button
                 type="button"
                 onClick={fetchVouchers}
-                className="px-4 py-1.5 rounded-xl bg-slate-900 text-white text-xs font-bold"
+                className="px-4 py-1.5 rounded-xl bg-neutral-900 text-white text-xs font-medium"
               >
                 Retry
               </button>
             </div>
           ) : rows.length === 0 ? (
             <div className="p-16 text-center space-y-3">
-              <div className="w-14 h-14 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+              <div className="w-14 h-14 rounded-2xl bg-neutral-100 text-neutral-400 flex items-center justify-center mx-auto">
                 <Receipt className="h-7 w-7" />
               </div>
-              <h3 className="text-base font-bold text-slate-900 font-headline">
+              <h3 className="text-base font-medium text-neutral-900 font-headline">
                 No payment vouchers found
               </h3>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+              <p className="text-xs text-neutral-500 max-w-sm mx-auto">
                 {hasFilters
                   ? "No vouchers match your current search and filter criteria. Try adjusting your filters."
                   : "Disbursed finance requisitions will automatically generate verified payment vouchers here."}
@@ -421,7 +421,7 @@ export default function FinancePaymentVouchersPage() {
                 <button
                   type="button"
                   onClick={clearFilters}
-                  className="px-4 py-2 rounded-xl bg-[#ff6900] text-white text-xs font-bold shadow-md shadow-orange-500/20"
+                  className="px-4 py-2 rounded-xl bg-[#ff6900] text-white text-xs font-medium shadow-md"
                 >
                   Clear Filters
                 </button>
@@ -431,7 +431,7 @@ export default function FinancePaymentVouchersPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-100 bg-slate-50/75 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <tr className="border-b border-neutral-100 bg-neutral-50/75 text-xs font-medium text-neutral-500">
                     <th className="py-3.5 px-4 pl-6">Voucher & Source</th>
                     <th className="py-3.5 px-4">Request & Requester</th>
                     <th className="py-3.5 px-4">Disbursed Amount</th>
@@ -440,24 +440,24 @@ export default function FinancePaymentVouchersPage() {
                     <th className="py-3.5 px-4 pr-6 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 text-xs">
+                <tbody className="divide-y divide-neutral-100 text-xs">
                   {rows.map((row) => (
                     <tr
                       key={row.id}
-                      className="hover:bg-slate-50/60 transition group cursor-pointer"
+                      className="hover:bg-neutral-50/60 transition group cursor-pointer"
                       onClick={() => setSelectedVoucher(row)}
                     >
                       {/* Column 1: Voucher & Source */}
                       <td className="py-4 px-4 pl-6">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl bg-orange-50 text-[#ff6900] font-bold flex items-center justify-center shrink-0 border border-orange-100 shadow-sm">
+                          <div className="w-9 h-9 rounded-xl bg-orange-50 text-[#ff6900] font-medium flex items-center justify-center shrink-0 border border-orange-100 shadow-sm">
                             <Receipt className="h-4 w-4" />
                           </div>
                           <div>
-                            <span className="font-bold text-slate-900 group-hover:text-[#ff6900] transition block font-headline">
+                            <span className="font-medium text-neutral-900 group-hover:text-[#ff6900] transition block font-headline">
                               {row.voucher_number}
                             </span>
-                            <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-slate-500">
+                            <div className="flex items-center gap-1.5 mt-0.5 text-xs text-neutral-500">
                               <span className="capitalize font-medium">
                                 {(row.method || "bank_transfer").replace(/_/g, " ")}
                               </span>
@@ -478,32 +478,32 @@ export default function FinancePaymentVouchersPage() {
                       <td className="py-4 px-4" onClick={(e) => e.stopPropagation()}>
                         <Link
                           to={`/finance/requests/${row.request_id}`}
-                          className="font-bold text-slate-900 hover:text-[#ff6900] hover:underline transition font-headline block"
+                          className="font-medium text-neutral-900 hover:text-[#ff6900] hover:underline transition font-headline block"
                         >
                           {row.request_number}
                         </Link>
-                        <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-slate-500">
-                          <User className="h-3 w-3 text-slate-400" />
+                        <div className="flex items-center gap-1.5 mt-0.5 text-xs text-neutral-500">
+                          <User className="h-3 w-3 text-neutral-400" />
                           <span>{row.request_creator_name || "Staff"}</span>
                         </div>
                       </td>
 
                       {/* Column 3: Disbursed Amount */}
                       <td className="py-4 px-4">
-                        <div className="font-bold text-slate-900 font-headline text-sm">
+                        <div className="font-medium text-neutral-900 font-headline text-sm">
                           {formatCurrency(row.amount, "NGN")}
                         </div>
-                        <div className="text-[11px] text-slate-500 mt-0.5">
+                        <div className="text-xs text-neutral-500 mt-0.5">
                           Retired: <span className="font-semibold text-emerald-700">{formatCurrency(row.retired_amount || 0, "NGN")}</span>
                         </div>
                       </td>
 
                       {/* Column 4: Disbursed Date */}
                       <td className="py-4 px-4">
-                        <div className="font-semibold text-slate-800">
+                        <div className="font-semibold text-neutral-800">
                           {formatDisplayDate(row.disbursed_at)}
                         </div>
-                        <div className="text-[11px] text-slate-400 mt-0.5">
+                        <div className="text-xs text-neutral-400 mt-0.5">
                           {row.request_status ? `Req: ${row.request_status}` : "Disbursed"}
                         </div>
                       </td>
@@ -519,7 +519,7 @@ export default function FinancePaymentVouchersPage() {
                           <button
                             type="button"
                             onClick={() => setDeductionsPV(row)}
-                            className="px-2.5 py-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200/60 transition"
+                            className="px-2.5 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200/60 transition"
                             title="Manage Tax & WHT Deductions"
                           >
                             Deductions
@@ -528,14 +528,14 @@ export default function FinancePaymentVouchersPage() {
                           <button
                             type="button"
                             onClick={() => setSelectedVoucher(row)}
-                            className="px-2.5 py-1 text-[11px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition"
+                            className="px-2.5 py-1 text-xs font-medium text-neutral-600 bg-neutral-100 hover:bg-neutral-200 rounded-lg transition"
                           >
                             View
                           </button>
 
                           <Link
                             to={`/finance/requests/${row.request_id}`}
-                            className="p-1.5 text-slate-400 hover:text-[#ff6900] transition"
+                            className="p-1.5 text-neutral-400 hover:text-[#ff6900] transition"
                             title="Open Request"
                           >
                             <ExternalLink className="h-3.5 w-3.5" />
@@ -551,25 +551,25 @@ export default function FinancePaymentVouchersPage() {
 
           {/* Pagination Controls */}
           {total > 0 && (
-            <div className="p-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs bg-slate-50/50">
-              <div className="text-slate-500 font-medium">
-                Showing <span className="font-bold text-slate-800">{(page - 1) * perPage + 1}</span> to{" "}
-                <span className="font-bold text-slate-800">
+            <div className="p-4 border-t border-neutral-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs bg-neutral-50/50">
+              <div className="text-neutral-500 font-medium">
+                Showing <span className="font-medium text-neutral-800">{(page - 1) * perPage + 1}</span> to{" "}
+                <span className="font-medium text-neutral-800">
                   {Math.min(page * perPage, total)}
                 </span>{" "}
-                of <span className="font-bold text-slate-800">{total}</span> payment vouchers
+                of <span className="font-medium text-neutral-800">{total}</span> payment vouchers
               </div>
 
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-slate-400 font-medium">Per page:</span>
+                  <span className="text-neutral-400 font-medium">Per page:</span>
                   <SelectBox
                     value={perPage}
                     onChange={(e) => {
                       setPerPage(Number(e.target.value));
                       setPage(1);
                     }}
-                    className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-[#ff6900]"
+                    className="px-2 py-1 bg-white border border-neutral-200 rounded-lg text-xs outline-none focus:border-[#ff6900]"
                   >
                     <option value={10}>10</option>
                     <option value={20}>20</option>
@@ -583,13 +583,13 @@ export default function FinancePaymentVouchersPage() {
                     type="button"
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page <= 1}
-                    className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition"
+                    className="p-1.5 rounded-lg border border-neutral-200 text-neutral-600 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition"
                     title="Previous Page"
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </button>
 
-                  <span className="px-2 text-slate-700 font-bold">
+                  <span className="px-2 text-neutral-700 font-medium">
                     {page} / {totalPages}
                   </span>
 
@@ -597,7 +597,7 @@ export default function FinancePaymentVouchersPage() {
                     type="button"
                     onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                     disabled={page >= totalPages}
-                    className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition"
+                    className="p-1.5 rounded-lg border border-neutral-200 text-neutral-600 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition"
                     title="Next Page"
                   >
                     <ChevronRight className="h-4 w-4" />

@@ -49,11 +49,11 @@ function ActionCard({ title, description, action, disabled, employee, onSuccess 
     const tone = action === 'activate' ? 'success' : action === 'suspend' ? 'warning' : 'danger';
 
     return (
-        <div className={`rounded-2xl border-2 ${isCurrentStatus ? 'border-slate-200 bg-slate-50' : `border-${tone}/20 bg-white`} p-5`}>
+        <div className={`rounded-2xl border-2 ${isCurrentStatus ? 'border-neutral-200 bg-neutral-50' : `border-${tone}/20 bg-white`} p-5`}>
             <div className="flex items-start justify-between gap-3">
                 <div>
-                    <h4 className="text-sm font-semibold text-slate-950">{title}</h4>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
+                    <h4 className="text-sm font-semibold text-neutral-950">{title}</h4>
+                    <p className="mt-2 text-sm leading-6 text-neutral-600">{description}</p>
                 </div>
                 {isCurrentStatus && <Chip variant="neutral">Current</Chip>}
             </div>

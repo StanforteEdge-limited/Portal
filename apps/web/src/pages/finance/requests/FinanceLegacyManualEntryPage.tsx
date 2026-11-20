@@ -1289,7 +1289,7 @@ function FinanceManualEntryPage() {
               onChange={(e) => setForm((p) => ({ ...p, request_id: e.target.value.replace(/[^\d]/g, "") }))}
               placeholder="25"
             />
-            <div className="mt-1 text-xs text-slate-500">
+            <div className="mt-1 text-xs text-neutral-500">
               {checkingNumber
                 ? "Checking number..."
                 : numberExists.exists
@@ -1310,7 +1310,7 @@ function FinanceManualEntryPage() {
           <div className="col-span-12 md:col-span-4"><label>Grant / Donor Line</label><SelectField label="" value={form.grant_id} onChange={(e) => setForm((p) => ({ ...p, grant_id: e.target.value }))}><option value="">No specific grant</option>{filteredGrantOptions.map((x) => <option key={x.id} value={x.id}>{x.code ? `${x.code} - ` : ""}{x.name}</option>)}</SelectField></div>
           <div className="col-span-12 md:col-span-4"><label>Category</label><SelectField label="" value={form.category_id} onChange={(e) => setForm((p) => ({ ...p, category_id: e.target.value }))}><option value="">Select</option>{categoryOptions.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</SelectField></div>
           <div className="col-span-12 md:col-span-8"><label>Purpose</label><TextAreaField label="" rows={2} value={form.purpose} onChange={(e) => setForm((p) => ({ ...p, purpose: e.target.value }))} /></div>
-          <div className="col-span-12"><label>Submission Note <span className="text-xs font-normal text-slate-400">(requester comment)</span></label><TextAreaField label="" rows={2} value={form.submission_comment} onChange={(e) => setForm((p) => ({ ...p, submission_comment: e.target.value }))} placeholder="Please make payment for the listed items." /></div>
+          <div className="col-span-12"><label>Submission Note <span className="text-xs font-normal text-neutral-400">(requester comment)</span></label><TextAreaField label="" rows={2} value={form.submission_comment} onChange={(e) => setForm((p) => ({ ...p, submission_comment: e.target.value }))} placeholder="Please make payment for the listed items." /></div>
         </div>
 
         <div>
@@ -1323,9 +1323,9 @@ function FinanceManualEntryPage() {
               <div className="col-span-12 md:col-span-3">
                 <div className="flex flex-wrap gap-1 mb-1">
                   {item.file_ids.map((f) => (
-                    <span key={f.id} className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 rounded text-xs text-slate-700">
+                    <span key={f.id} className="inline-flex items-center gap-1 px-2 py-0.5 bg-neutral-100 rounded text-xs text-neutral-700">
                       {f.name || f.id}
-                      <button type="button" className="ml-1 text-slate-400 hover:text-red-500" onClick={() => setItems((p) => p.map((row, i) => i === idx ? { ...row, file_ids: row.file_ids.filter((x) => x.id !== f.id) } : row))}>×</button>
+                      <button type="button" className="ml-1 text-neutral-400 hover:text-red-500" onClick={() => setItems((p) => p.map((row, i) => i === idx ? { ...row, file_ids: row.file_ids.filter((x) => x.id !== f.id) } : row))}>×</button>
                     </span>
                   ))}
                 </div>
@@ -1354,7 +1354,7 @@ function FinanceManualEntryPage() {
                   }}
                   onBlur={() => void checkVoucherNumberAtIndex(idx)}
                 />
-                <div className="mt-1 text-xs text-slate-500">
+                <div className="mt-1 text-xs text-neutral-500">
                   {checkingVoucherIndex === idx
                     ? "Checking voucher..."
                     : voucherExistsByIndex[idx] || " "}
@@ -1369,9 +1369,9 @@ function FinanceManualEntryPage() {
               <div className="col-span-12 md:col-span-3"><label>PV Evidence</label>
                 <div className="flex flex-wrap gap-1 mb-1">
                   {row.evidence_file_ids.map((f) => (
-                    <span key={f.id} className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 rounded text-xs text-slate-700">
+                    <span key={f.id} className="inline-flex items-center gap-1 px-2 py-0.5 bg-neutral-100 rounded text-xs text-neutral-700">
                       {f.name || f.id}
-                      <button type="button" className="ml-1 text-slate-400 hover:text-red-500" onClick={() => setDisbursements((p) => p.map((x, i) => i === idx ? { ...x, evidence_file_ids: x.evidence_file_ids.filter((e) => e.id !== f.id) } : x))}>×</button>
+                      <button type="button" className="ml-1 text-neutral-400 hover:text-red-500" onClick={() => setDisbursements((p) => p.map((x, i) => i === idx ? { ...x, evidence_file_ids: x.evidence_file_ids.filter((e) => e.id !== f.id) } : x))}>×</button>
                     </span>
                   ))}
                 </div>
@@ -1383,7 +1383,7 @@ function FinanceManualEntryPage() {
               {/* Per-PV Statutory Deduction */}
               <div className="col-span-12">
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Statutory Deduction</label>
+                  <label className="text-xs font-medium text-neutral-600">Statutory Deduction</label>
                   <Button variant="secondary" onClick={() => {
                     const alreadyOpen = deductionsOpenByIndex[idx];
                     setDeductionsOpenByIndex((p) => ({ ...p, [idx]: !alreadyOpen }));
@@ -1395,11 +1395,11 @@ function FinanceManualEntryPage() {
                   </Button>
                 </div>
                 {deductionsOpenByIndex[idx] && (
-                  <div className="border rounded p-3 bg-slate-50 space-y-2">
+                  <div className="border rounded p-3 bg-neutral-50 space-y-2">
                     {(row.deductions || []).map((ded, di) => (
                       <div key={di} className="grid grid-cols-12 gap-2 items-end">
                         <div className="col-span-12 md:col-span-4">
-                          <label className="text-xs text-slate-500">Deduction Type</label>
+                          <label className="text-xs text-neutral-500">Deduction Type</label>
                           <SelectField label="" value={ded.deduction_type_id} onChange={(e) => {
                             const type = deductionTypeOptions.find((t) => t.id === e.target.value);
                             const rate = type?.rate ?? ded.rate;
@@ -1411,7 +1411,7 @@ function FinanceManualEntryPage() {
                           </SelectField>
                         </div>
                         <div className="col-span-6 md:col-span-3">
-                          <label className="text-xs text-slate-500">Invoice Gross</label>
+                          <label className="text-xs text-neutral-500">Invoice Gross</label>
                           <TextField label="" type="number" value={ded.gross_amount || ""} onChange={(e) => {
                             const gross = Number(e.target.value || 0);
                             const deductionAmount = Math.round(gross * ded.rate * 100) / 100;
@@ -1419,7 +1419,7 @@ function FinanceManualEntryPage() {
                           }} placeholder="Invoice total before deduction" />
                         </div>
                         <div className="col-span-4 md:col-span-2">
-                          <label className="text-xs text-slate-500">Rate</label>
+                          <label className="text-xs text-neutral-500">Rate</label>
                           <TextField label="" type="number" step="0.001" min="0" max="1" value={ded.rate} onChange={(e) => {
                             const rate = Number(e.target.value || 0);
                             const deductionAmount = Math.round(ded.gross_amount * rate * 100) / 100;
@@ -1427,7 +1427,7 @@ function FinanceManualEntryPage() {
                           }} />
                         </div>
                         <div className="col-span-4 md:col-span-2">
-                          <label className="text-xs text-slate-500">Withheld</label>
+                          <label className="text-xs text-neutral-500">Withheld</label>
                           <TextField label="" type="number" value={ded.deduction_amount || ""} onChange={(e) => setDisbursements((p) => p.map((x, i) => i !== idx ? x : { ...x, deductions: (x.deductions || []).map((d, j) => j !== di ? d : { ...d, deduction_amount: Number(e.target.value || 0) }) }))} />
                         </div>
                         <div className="col-span-4 md:col-span-1 flex items-end">
@@ -1439,9 +1439,9 @@ function FinanceManualEntryPage() {
                     {(row.deductions || []).filter((d) => d.deduction_amount > 0).length > 0 && (() => {
                       const totalDeducted = (row.deductions || []).reduce((s, d) => s + d.deduction_amount, 0);
                       return (
-                        <div className="rounded bg-slate-100 px-3 py-2 text-xs space-y-0.5 mt-2">
+                        <div className="rounded bg-neutral-100 px-3 py-2 text-xs space-y-0.5 mt-2">
                           <div className="flex justify-between text-red-600 font-medium"><span>Total Withheld</span><span>− {formatCurrency(totalDeducted, form.currency)}</span></div>
-                          <div className="flex justify-between text-slate-600 border-t pt-1"><span>Net Paid (PV Amount)</span><span>{formatCurrency(Number(row.amount), form.currency)}</span></div>
+                          <div className="flex justify-between text-neutral-600 border-t pt-1"><span>Net Paid (PV Amount)</span><span>{formatCurrency(Number(row.amount), form.currency)}</span></div>
                         </div>
                       );
                     })()}
@@ -1454,9 +1454,9 @@ function FinanceManualEntryPage() {
               <div className="col-span-12 md:col-span-5"><label>Retirement Files</label>
                 <div className="flex flex-wrap gap-1 mb-1">
                   {row.retirement_file_ids.map((f) => (
-                    <span key={f.id} className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 rounded text-xs text-slate-700">
+                    <span key={f.id} className="inline-flex items-center gap-1 px-2 py-0.5 bg-neutral-100 rounded text-xs text-neutral-700">
                       {f.name || f.id}
-                      <button type="button" className="ml-1 text-slate-400 hover:text-red-500" onClick={() => setDisbursements((p) => p.map((x, i) => i === idx ? { ...x, retirement_file_ids: x.retirement_file_ids.filter((r) => r.id !== f.id) } : x))}>×</button>
+                      <button type="button" className="ml-1 text-neutral-400 hover:text-red-500" onClick={() => setDisbursements((p) => p.map((x, i) => i === idx ? { ...x, retirement_file_ids: x.retirement_file_ids.filter((r) => r.id !== f.id) } : x))}>×</button>
                     </span>
                   ))}
                 </div>
@@ -1481,18 +1481,18 @@ function FinanceManualEntryPage() {
               )}
 
               {/* Certificate of Honor */}
-              <div className="col-span-12 border border-blue-200 bg-blue-50 rounded-lg overflow-hidden">
+              <div className="col-span-12 border border-neutral-200 bg-neutral-100 rounded-lg overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-2">
                   <div>
                     <p className="text-sm font-semibold text-blue-900">Certificate of Honor</p>
-                    <p className="text-xs text-blue-700">Use when receipts are unavailable — generate and attach to retirement files.</p>
+                    <p className="text-xs text-neutral-700">Use when receipts are unavailable — generate and attach to retirement files.</p>
                   </div>
                   <Button variant="secondary" onClick={() => setCertOpenByIndex((prev) => ({ ...prev, [idx]: !prev[idx] }))}>
                     {certOpenByIndex[idx] ? "Hide" : "Add Certificate"}
                   </Button>
                 </div>
                 {certOpenByIndex[idx] && (
-                  <div className="border-t border-blue-200 p-4 space-y-3">
+                  <div className="border-t border-neutral-200 p-4 space-y-3">
                     <TextField label="Staff Name (on certificate)" value={row.certificate_staff_name || ""} onChange={(e) => setDisbursements((p) => p.map((x, i) => i === idx ? { ...x, certificate_staff_name: e.target.value } : x))} helpText="Defaults to request owner. Override if needed." />
                     <TextField label="Amount (on certificate)" value={row.certificate_amount || ""} onChange={(e) => setDisbursements((p) => p.map((x, i) => i === idx ? { ...x, certificate_amount: e.target.value } : x))} helpText={`Shortfall: ${formatCertificateCurrency(Math.max(0, Number(row.amount || 0) - Number(row.retired_amount || 0)), form.currency)}. Leave blank to use this shortfall.`} />
                     <TextAreaField label="Declaration" rows={3} value={row.certificate_declaration || ""} onChange={(e) => setDisbursements((p) => p.map((x, i) => i === idx ? { ...x, certificate_declaration: e.target.value } : x))} helpText="Statement to be printed in the certificate." />
@@ -1547,7 +1547,7 @@ function FinanceManualEntryPage() {
                     {(certAssetsByIndex[idx] ?? []).length > 0 && (
                       <div className="mt-2 space-y-1">
                         {(certAssetsByIndex[idx] ?? []).map((cert) => (
-                          <a key={cert.id} href={cert.previewUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-blue-600 underline">
+                          <a key={cert.id} href={cert.previewUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-neutral-700 underline">
                             <Icon name="FileText" className="w-3 h-3" />{cert.file_name}
                           </a>
                         ))}
@@ -1564,9 +1564,9 @@ function FinanceManualEntryPage() {
 
         {requestDeductions.length > 0 && (
           <div className="mt-4">
-            <h4 className="font-medium text-slate-700 mb-2">Statutory Deductions on this Request</h4>
+            <h4 className="font-medium text-neutral-700 mb-2">Statutory Deductions on this Request</h4>
             <table className="w-full text-sm border rounded overflow-hidden">
-              <thead className="bg-slate-50 text-slate-600">
+              <thead className="bg-neutral-50 text-neutral-600">
                 <tr>
                   <th className="px-3 py-2 text-left">Type</th>
                   <th className="px-3 py-2 text-right">Gross</th>
@@ -1578,7 +1578,7 @@ function FinanceManualEntryPage() {
               <tbody>
                 {requestDeductions.map((d) => (
                   <tr key={d.id} className="border-t">
-                    <td className="px-3 py-2">{d.deduction_type_name} <span className="text-xs text-slate-400">({d.deduction_type_code})</span></td>
+                    <td className="px-3 py-2">{d.deduction_type_name} <span className="text-xs text-neutral-400">({d.deduction_type_code})</span></td>
                     <td className="px-3 py-2 text-right">{Number(d.gross_amount).toLocaleString()}</td>
                     <td className="px-3 py-2 text-right">{Number(d.amount).toLocaleString()}</td>
                     <td className="px-3 py-2">
@@ -1586,7 +1586,7 @@ function FinanceManualEntryPage() {
                         {d.status}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-slate-500">{d.remittance_ref ?? "—"}</td>
+                    <td className="px-3 py-2 text-neutral-500">{d.remittance_ref ?? "—"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1691,7 +1691,7 @@ function FinanceManualEntryPage() {
             Full Package ZIP
           </Button>
         </div>
-        {requestId ? <div className="text-slate-600 text-sm">Saved Request ID: {requestId}. For PV attachment ZIP, enter a voucher id below if needed.</div> : null}
+        {requestId ? <div className="text-neutral-600 text-sm">Saved Request ID: {requestId}. For PV attachment ZIP, enter a voucher id below if needed.</div> : null}
         {requestId ? (
           <div className="max-w-md">
             <label>Voucher ID (for PV ZIP download)</label>
@@ -1704,7 +1704,7 @@ function FinanceManualEntryPage() {
       <SlideOver open={showImportDialog} onClose={() => setShowImportDialog(false)} size="xl">
         <div className="p-5 flex flex-col h-full bg-white">
           <h2 className="mr-auto text-base font-medium mb-4">Batch Manual Import</h2>
-          <div className="mb-4 text-sm text-slate-500">
+          <div className="mb-4 text-sm text-neutral-500">
             Review each row before import. Existing request IDs default to <strong>Update</strong>. New ones default to <strong>Create</strong>. Conflict rows should be set to <strong>Skip</strong>.
           </div>
           <div className="max-h-[60vh] overflow-auto border rounded-md">

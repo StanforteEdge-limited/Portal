@@ -90,7 +90,7 @@ export default function FinanceAccountDetailPage() {
         }
       />
 
-      {accountLoading ? <p className="text-sm text-slate-500">Loading account...</p> : null}
+      {accountLoading ? <p className="text-sm text-neutral-500">Loading account...</p> : null}
       {accountError ? <p className="text-sm text-danger">{accountError}</p> : null}
 
       {account ? (
@@ -103,7 +103,7 @@ export default function FinanceAccountDetailPage() {
           </div>
 
           <SectionCard title="Account Info">
-            <div className="grid gap-4 md:grid-cols-2 text-sm text-slate-700">
+            <div className="grid gap-4 md:grid-cols-2 text-sm text-neutral-700">
               <div><span className="font-semibold">Code:</span> {(account as any).code || "-"}</div>
               <div><span className="font-semibold">Type:</span> {(account as any).account_type || "-"}</div>
               <div><span className="font-semibold">Bank:</span> {(account as any).bank_name || "-"}</div>
@@ -119,7 +119,7 @@ export default function FinanceAccountDetailPage() {
           </SectionCard>
 
           <SectionCard title="Ledger Activity" description="Recent account transactions.">
-            {ledgerLoading ? <p className="text-sm text-slate-500">Loading ledger...</p> : null}
+            {ledgerLoading ? <p className="text-sm text-neutral-500">Loading ledger...</p> : null}
             {ledgerError ? <p className="text-sm text-danger">{ledgerError}</p> : null}
 
             {rows.length ? (

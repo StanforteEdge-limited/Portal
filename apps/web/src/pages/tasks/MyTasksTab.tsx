@@ -33,7 +33,7 @@ function TaskCard({ item, onClick }: { item: WorkItem; onClick: () => void }) {
   return (
     <button
       type="button"
-      className="w-full rounded-lg border border-gray-200 bg-white p-3 text-left hover:border-blue-200 hover:bg-blue-50/30 transition-colors"
+      className="w-full rounded-lg border border-gray-200 bg-white p-3 text-left hover:border-neutral-200 hover:bg-neutral-100 transition-colors"
       onClick={onClick}
     >
       <div className="flex items-start justify-between gap-2">
@@ -48,7 +48,7 @@ function TaskCard({ item, onClick }: { item: WorkItem; onClick: () => void }) {
           <Chip variant={item.priority === "high" || item.priority === "critical" ? "danger" : "neutral"}>
             {String(item.priority)}
           </Chip>
-          <ArrowRight className="h-4 w-4 text-slate-400" />
+          <ArrowRight className="h-4 w-4 text-neutral-400" />
         </div>
       </div>
     </button>
@@ -125,7 +125,7 @@ export default function MyTasksTab({ onLogToday }: Props) {
 
           return (
             <div key={status}>
-              <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mt-4 mb-2">
+              <div className="text-xs font-semibold text-gray-400 mt-4 mb-2">
                 ● {STATUS_LABEL[status]}
               </div>
               <div className="space-y-2">

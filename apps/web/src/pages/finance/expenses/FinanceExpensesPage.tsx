@@ -186,8 +186,8 @@ export default function FinanceExpensesPage() {
       header: "Reference",
       cell: (entry: any) => (
         <div>
-          <p className="font-medium text-slate-900">{entry.expenseNumber ?? entry.expense_number ?? "-"}</p>
-          <p className="text-xs text-slate-500">{entry.reference ?? "-"}</p>
+          <p className="font-medium text-neutral-900">{entry.expenseNumber ?? entry.expense_number ?? "-"}</p>
+          <p className="text-xs text-neutral-500">{entry.reference ?? "-"}</p>
         </div>
       )
     },
@@ -202,7 +202,7 @@ export default function FinanceExpensesPage() {
     {
       header: "Amount",
       cell: (entry: any) => formatCurrency(Number(entry.totalAmount ?? entry.total_amount ?? entry.amount ?? 0), entry.currency || "NGN"),
-      className: "text-right text-slate-900"
+      className: "text-right text-neutral-900"
     },
     {
       header: "Status",
@@ -254,7 +254,7 @@ export default function FinanceExpensesPage() {
         <section className="section-card p-4 sm:p-5">
           <div className="flex flex-wrap items-end gap-3">
             <label className="grid gap-1.5 text-sm flex-1 min-w-[180px]">
-              <span className="font-semibold text-slate-700">Search</span>
+              <span className="font-semibold text-neutral-700">Search</span>
               <input
                 type="search"
                 value={search}
@@ -263,7 +263,7 @@ export default function FinanceExpensesPage() {
                   setPage(1);
                 }}
                 placeholder="Search expenses"
-                className="rounded-2xl border border-slate-200 bg-white px-4 py-[0.6rem] text-sm font-semibold text-slate-700 focus:outline-none focus:ring-4 focus:ring-brand-900/10"
+                className="rounded-2xl border border-neutral-200 bg-white px-4 py-[0.6rem] text-sm font-semibold text-neutral-700 focus:outline-none focus:ring-4 focus:ring-brand-900/10"
               />
             </label>
             <SelectField label="Status" value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }}>
@@ -275,8 +275,8 @@ export default function FinanceExpensesPage() {
               <option value="void">Void</option>
             </SelectField>
             <label className="grid gap-1.5 text-sm min-w-[180px]">
-              <span className="font-semibold text-slate-700">Category</span>
-              <input className="rounded-2xl border border-slate-200 bg-white px-4 py-[0.6rem] text-sm font-semibold text-slate-700 focus:outline-none focus:ring-4 focus:ring-brand-900/10" value={category} onChange={(event) => { setCategory(event.target.value); setPage(1); }} placeholder="e.g. transport" />
+              <span className="font-semibold text-neutral-700">Category</span>
+              <input className="rounded-2xl border border-neutral-200 bg-white px-4 py-[0.6rem] text-sm font-semibold text-neutral-700 focus:outline-none focus:ring-4 focus:ring-brand-900/10" value={category} onChange={(event) => { setCategory(event.target.value); setPage(1); }} placeholder="e.g. transport" />
             </label>
             <Button variant="secondary" size="sm" onClick={() => void refetch()}>
               <Icon name="refresh" className="text-[16px]" />
@@ -329,18 +329,18 @@ export default function FinanceExpensesPage() {
       </div>
 
       {showModal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/40 p-4">
           <div className="w-full max-w-3xl rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-              <h3 className="text-lg font-semibold text-slate-900">{editing ? "Edit Expense" : "New Expense"}</h3>
+            <div className="flex items-center justify-between border-b border-neutral-200 px-6 py-4">
+              <h3 className="text-lg font-semibold text-neutral-900">{editing ? "Edit Expense" : "New Expense"}</h3>
               <Button variant="ghost" size="sm" onClick={() => setShowModal(false)}>
                 <Icon name="close" />
               </Button>
             </div>
             <div className="grid gap-4 p-6 md:grid-cols-2">
               <label className="grid gap-1.5 text-sm">
-                <span className="font-semibold text-slate-700">Expense Date</span>
-                <DateInput  className="rounded-2xl border border-slate-200 px-4 py-2.5" value={form.expense_date} onChange={(event) => setForm((prev) => ({ ...prev, expense_date: event.target.value }))} />
+                <span className="font-semibold text-neutral-700">Expense Date</span>
+                <DateInput  className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={form.expense_date} onChange={(event) => setForm((prev) => ({ ...prev, expense_date: event.target.value }))} />
               </label>
               <SelectField label="Status" value={form.status} onChange={(event) => setForm((prev) => ({ ...prev, status: event.target.value }))}>
                 <option value="draft">Draft</option>
@@ -368,35 +368,35 @@ export default function FinanceExpensesPage() {
                 ))}
               </SelectField>
               <label className="grid gap-1.5 text-sm">
-                <span className="font-semibold text-slate-700">Category</span>
-                <input className="rounded-2xl border border-slate-200 px-4 py-2.5" value={form.category} onChange={(event) => setForm((prev) => ({ ...prev, category: event.target.value }))} placeholder="e.g. transport" />
+                <span className="font-semibold text-neutral-700">Category</span>
+                <input className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={form.category} onChange={(event) => setForm((prev) => ({ ...prev, category: event.target.value }))} placeholder="e.g. transport" />
               </label>
               <label className="grid gap-1.5 text-sm">
-                <span className="font-semibold text-slate-700">Amount</span>
-                <input type="number" className="rounded-2xl border border-slate-200 px-4 py-2.5" value={form.amount} onChange={(event) => setForm((prev) => ({ ...prev, amount: event.target.value }))} />
+                <span className="font-semibold text-neutral-700">Amount</span>
+                <input type="number" className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={form.amount} onChange={(event) => setForm((prev) => ({ ...prev, amount: event.target.value }))} />
               </label>
               <label className="grid gap-1.5 text-sm">
-                <span className="font-semibold text-slate-700">Tax Amount</span>
-                <input type="number" className="rounded-2xl border border-slate-200 px-4 py-2.5" value={form.tax_amount} onChange={(event) => setForm((prev) => ({ ...prev, tax_amount: event.target.value }))} />
+                <span className="font-semibold text-neutral-700">Tax Amount</span>
+                <input type="number" className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={form.tax_amount} onChange={(event) => setForm((prev) => ({ ...prev, tax_amount: event.target.value }))} />
               </label>
               <label className="grid gap-1.5 text-sm">
-                <span className="font-semibold text-slate-700">Currency</span>
-                <input className="rounded-2xl border border-slate-200 px-4 py-2.5" value={form.currency} onChange={(event) => setForm((prev) => ({ ...prev, currency: event.target.value }))} />
+                <span className="font-semibold text-neutral-700">Currency</span>
+                <input className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={form.currency} onChange={(event) => setForm((prev) => ({ ...prev, currency: event.target.value }))} />
               </label>
               <label className="grid gap-1.5 text-sm">
-                <span className="font-semibold text-slate-700">Reference</span>
-                <input className="rounded-2xl border border-slate-200 px-4 py-2.5" value={form.reference} onChange={(event) => setForm((prev) => ({ ...prev, reference: event.target.value }))} />
+                <span className="font-semibold text-neutral-700">Reference</span>
+                <input className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={form.reference} onChange={(event) => setForm((prev) => ({ ...prev, reference: event.target.value }))} />
               </label>
               <label className="grid gap-1.5 text-sm md:col-span-2">
-                <span className="font-semibold text-slate-700">Description</span>
-                <textarea className="rounded-2xl border border-slate-200 px-4 py-2.5" rows={3} value={form.description} onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))} />
+                <span className="font-semibold text-neutral-700">Description</span>
+                <textarea className="rounded-2xl border border-neutral-200 px-4 py-2.5" rows={3} value={form.description} onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))} />
               </label>
               <label className="grid gap-1.5 text-sm md:col-span-2">
-                <span className="font-semibold text-slate-700">Notes</span>
-                <textarea className="rounded-2xl border border-slate-200 px-4 py-2.5" rows={2} value={form.notes} onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))} />
+                <span className="font-semibold text-neutral-700">Notes</span>
+                <textarea className="rounded-2xl border border-neutral-200 px-4 py-2.5" rows={2} value={form.notes} onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))} />
               </label>
             </div>
-            <div className="flex justify-end gap-2 border-t border-slate-200 px-6 py-4">
+            <div className="flex justify-end gap-2 border-t border-neutral-200 px-6 py-4">
               <Button variant="secondary" onClick={() => setShowModal(false)}>Cancel</Button>
               <Button onClick={() => void saveExpense()}>{editing ? "Update" : "Create"}</Button>
             </div>

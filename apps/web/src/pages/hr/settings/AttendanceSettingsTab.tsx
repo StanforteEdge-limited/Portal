@@ -115,13 +115,13 @@ export default function AttendanceSettingsTab({ onEditPolicy }: Props) {
     );
   };
 
-  if (loading) return <div className="p-8 text-center text-slate-500 text-sm">Loading attendance settings...</div>;
+  if (loading) return <div className="p-8 text-center text-neutral-500 text-sm">Loading attendance settings...</div>;
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
       <div>
-        <h3 className="text-lg font-bold text-slate-900">Global Attendance Policy</h3>
-        <p className="text-sm text-slate-500 mt-1">These settings apply to everyone by default.</p>
+        <h3 className="text-lg font-medium text-neutral-900">Global Attendance Policy</h3>
+        <p className="text-sm text-neutral-500 mt-1">These settings apply to everyone by default.</p>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
           <TextField label="Start Time" type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
@@ -130,23 +130,23 @@ export default function AttendanceSettingsTab({ onEditPolicy }: Props) {
         </div>
 
         <div className="mt-6">
-          <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Default Onsite Days</label>
+          <label className="text-xs font-medium text-neutral-700">Default Onsite Days</label>
           <div className="flex gap-2 mt-2">
             {WEEKDAYS.map((day) => (
               <button
                 key={day.value}
                 onClick={() => toggleDay(day.value)}
-                className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all duration-200 ${
+                className={`w-10 h-10 rounded-full flex items-center justify-center font-medium transition-colors duration-200 ${
                   onsiteDays.includes(day.value)
                     ? "bg-primary text-white shadow-md shadow-primary/20 scale-110"
-                    : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                    : "bg-neutral-100 text-neutral-400 hover:bg-neutral-200"
                 }`}
               >
                 {day.label}
               </button>
             ))}
           </div>
-          <p className="text-[11px] text-slate-400 mt-2 italic">Selected days are onsite, others are remote.</p>
+          <p className="text-xs text-neutral-400 mt-2 italic">Selected days are onsite, others are remote.</p>
         </div>
 
         <div className="mt-8 flex justify-end">
@@ -155,36 +155,36 @@ export default function AttendanceSettingsTab({ onEditPolicy }: Props) {
           </Button>
         </div>
 
-        <div className="mt-6 rounded-2xl border border-slate-200 p-4">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-700">Mode Enforcement</p>
+        <div className="mt-6 rounded-2xl border border-neutral-200 p-4">
+          <p className="text-xs font-medium text-neutral-700">Mode Enforcement</p>
           <div className="mt-3 space-y-3">
             <label className="flex items-start gap-3">
               <input
                 type="checkbox"
                 checked={enforceClockInMode}
                 onChange={(e) => setEnforceClockInMode(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-slate-300"
+                className="mt-0.5 h-4 w-4 rounded border-neutral-300"
               />
-              <span className="text-sm text-slate-700">Require clock-in mode to match expected mode</span>
+              <span className="text-sm text-neutral-700">Require clock-in mode to match expected mode</span>
             </label>
             <label className="flex items-start gap-3">
               <input
                 type="checkbox"
                 checked={enforceClockOutModeMatch}
                 onChange={(e) => setEnforceClockOutModeMatch(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-slate-300"
+                className="mt-0.5 h-4 w-4 rounded border-neutral-300"
               />
-              <span className="text-sm text-slate-700">Require clock-out mode to match clock-in mode</span>
+              <span className="text-sm text-neutral-700">Require clock-out mode to match clock-in mode</span>
             </label>
           </div>
         </div>
       </div>
 
-      <div className="pt-8 border-t border-slate-100">
+      <div className="pt-8 border-t border-neutral-100">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-lg font-bold text-slate-900">Policy Overrides</h3>
-            <p className="text-sm text-slate-500 mt-1">Exceptions for specific organizations, teams, or staff.</p>
+            <h3 className="text-lg font-medium text-neutral-900">Policy Overrides</h3>
+            <p className="text-sm text-neutral-500 mt-1">Exceptions for specific organizations, teams, or staff.</p>
           </div>
           <Button variant="ghost" size="sm" onClick={() => onEditPolicy(true)}>
             <Icon name="add" className="mr-1" />
@@ -194,7 +194,7 @@ export default function AttendanceSettingsTab({ onEditPolicy }: Props) {
 
         <DataTable
           columns={[
-            { header: "Target", className: "font-medium text-slate-900", cell: (row: any) => row.scope_id || "-" },
+            { header: "Target", className: "font-medium text-neutral-900", cell: (row: any) => row.scope_id || "-" },
             { header: "Scope", cell: (row: any) => <Chip variant="neutral">{row.scope_type}</Chip> },
             { header: "Priority", cell: (row: any) => row.priority },
             { header: "Status", cell: (row: any) => (

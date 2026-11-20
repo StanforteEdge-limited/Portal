@@ -83,7 +83,7 @@ export function createHttpClient(config: {
       let rawMessage = (payload as any)?.message;
       
       if (Array.isArray(rawMessage)) {
-        rawMessage = rawMessage.join("\\n");
+        rawMessage = rawMessage.join("\n");
       }
 
       const errorMessage =
@@ -144,7 +144,7 @@ export function createHttpClient(config: {
 
     if (response.status === 401 && auth && retryOnUnauthorized) {
       const accessToken = await refreshAccessToken();
-      if (accessToken || !session) {
+      if (accessToken) {
         return httpRequest<T>(path, {
           ...options,
           retryOnUnauthorized: false,

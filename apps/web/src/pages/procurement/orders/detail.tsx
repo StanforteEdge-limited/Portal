@@ -66,12 +66,12 @@ export default function PoDetail() {
 
   if (loading) return (
     <AppShell navigation={buildAppNavigation()} activeLabel="procurement-orders" user={{ name: userName, role: 'Procurement' }} mobileNav={buildAppMobileNav('Dashboard')}>
-      <div className="p-12 text-center text-slate-500">Loading PO...</div>
+      <div className="p-12 text-center text-neutral-500">Loading PO...</div>
     </AppShell>
   );
   if (!po) return (
     <AppShell navigation={buildAppNavigation()} activeLabel="procurement-orders" user={{ name: userName, role: 'Procurement' }} mobileNav={buildAppMobileNav('Dashboard')}>
-      <div className="p-12 text-center text-slate-500">PO not found</div>
+      <div className="p-12 text-center text-neutral-500">PO not found</div>
     </AppShell>
   );
 
@@ -81,11 +81,11 @@ export default function PoDetail() {
   const vendorAttachments = attachments.filter((attachment: any) => attachment.visibility === 'vendor');
 
   const statusColor: Record<string, string> = {
-    draft: 'bg-slate-100 text-slate-700 border-slate-200',
+    draft: 'bg-neutral-100 text-neutral-700 border-neutral-200',
     pending_approval: 'bg-amber-100 text-amber-700 border-amber-200',
     approved: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-    acknowledged: 'bg-blue-100 text-blue-700 border-blue-200',
-    received: 'bg-violet-100 text-violet-700 border-violet-200',
+    acknowledged: 'bg-neutral-100 text-neutral-700 border-neutral-200',
+    received: 'bg-neutral-100 text-neutral-700 border-neutral-200',
     cancelled: 'bg-rose-100 text-rose-700 border-rose-200',
   };
 
@@ -114,12 +114,12 @@ export default function PoDetail() {
     <AppShell navigation={buildAppNavigation()} activeLabel="procurement-orders" user={{ name: userName, role: 'Procurement' }} mobileNav={buildAppMobileNav('Dashboard')}>
       <div className="p-6 max-w-5xl mx-auto space-y-6">
         <div className="flex items-center gap-3">
-        <Link to="/procurement/orders" className="text-slate-400 hover:text-slate-600 transition-colors">
+        <Link to="/procurement/orders" className="text-neutral-400 hover:text-neutral-600 transition-colors">
           <span className="material-symbols-outlined">arrow_back</span>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Purchase Order {po.poNumber}</h1>
-          <p className="text-sm text-slate-500">Issued to {po.vendor?.name}</p>
+          <h1 className="text-2xl font-medium tracking-tight text-neutral-900">Purchase Order {po.poNumber}</h1>
+          <p className="text-sm text-neutral-500">Issued to {po.vendor?.name}</p>
         </div>
         <div className="ml-auto">
           <div className="flex items-center gap-2">
@@ -143,18 +143,18 @@ export default function PoDetail() {
           <SectionCard title="Source Context" description="Approved request and procurement case that produced this PO.">
             <div className="grid gap-4 md:grid-cols-3 text-sm">
               <div>
-                <span className="block text-xs font-semibold uppercase text-slate-400">Request</span>
-                <p className="mt-1 font-semibold text-slate-900">{String(linkedRequest?.id ?? '—')}</p>
-                <p className="text-xs text-slate-500">{linkedRequest?.data?.title || linkedRequest?.requestType?.name || '—'}</p>
+                <span className="block text-xs font-semibold text-neutral-400">Request</span>
+                <p className="mt-1 font-semibold text-neutral-900">{String(linkedRequest?.id ?? '—')}</p>
+                <p className="text-xs text-neutral-500">{linkedRequest?.data?.title || linkedRequest?.requestType?.name || '—'}</p>
               </div>
               <div>
-                <span className="block text-xs font-semibold uppercase text-slate-400">Procurement Case</span>
-                <p className="mt-1 font-semibold text-slate-900">{linkedCase?.id || '—'}</p>
-                <p className="text-xs text-slate-500">{linkedCase?.status ? String(linkedCase.status).replace(/_/g, ' ') : '—'}</p>
+                <span className="block text-xs font-semibold text-neutral-400">Procurement Case</span>
+                <p className="mt-1 font-semibold text-neutral-900">{linkedCase?.id || '—'}</p>
+                <p className="text-xs text-neutral-500">{linkedCase?.status ? String(linkedCase.status).replace(/_/g, ' ') : '—'}</p>
               </div>
               <div>
-                <span className="block text-xs font-semibold uppercase text-slate-400">GRN Readiness</span>
-                <p className="mt-1 font-semibold text-slate-900">
+                <span className="block text-xs font-semibold text-neutral-400">GRN Readiness</span>
+                <p className="mt-1 font-semibold text-neutral-900">
                   {po.grns?.length ? `${po.grns.length} GRN record(s)` : 'Awaiting delivery'}
                 </p>
               </div>
@@ -163,9 +163,9 @@ export default function PoDetail() {
 
           <SectionCard title="PO Items" description="List of negotiated goods or services">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm text-slate-600">
+              <table className="w-full text-sm text-neutral-600">
                 <thead>
-                  <tr className="border-b border-slate-100 text-slate-400 text-xs font-semibold uppercase">
+                  <tr className="border-b border-neutral-100 text-neutral-400 text-xs font-semibold">
                     <th className="text-left pb-3">Description</th>
                     <th className="text-center pb-3">Qty</th>
                     <th className="text-center pb-3">Unit</th>
@@ -173,22 +173,22 @@ export default function PoDetail() {
                     <th className="text-right pb-3">Total</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-50">
+                <tbody className="divide-y divide-neutral-50">
                   {po.items?.map((it: any, i: number) => (
                     <tr key={i}>
-                      <td className="py-3 font-medium text-slate-900">{it.description}</td>
+                      <td className="py-3 font-medium text-neutral-900">{it.description}</td>
                       <td className="py-3 text-center">{it.qty}</td>
                       <td className="py-3 text-center capitalize">{it.unit}</td>
                       <td className="py-3 text-right">{formatCurrency(it.unitCost)}</td>
-                      <td className="py-3 text-right font-semibold text-slate-900">{formatCurrency(it.qty * it.unitCost)}</td>
+                      <td className="py-3 text-right font-semibold text-neutral-900">{formatCurrency(it.qty * it.unitCost)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              <div className="flex justify-end pt-4 border-t border-slate-100">
+              <div className="flex justify-end pt-4 border-t border-neutral-100">
                 <div className="text-right">
-                  <span className="text-xs text-slate-400 font-semibold uppercase">PO Total</span>
-                  <div className="text-xl font-bold text-slate-900">{formatCurrency(Number(po.totalAmount))}</div>
+                  <span className="text-xs text-neutral-400 font-semibold">PO Total</span>
+                  <div className="text-xl font-medium text-neutral-900">{formatCurrency(Number(po.totalAmount))}</div>
                 </div>
               </div>
             </div>
@@ -197,7 +197,7 @@ export default function PoDetail() {
           <SectionCard title="PO Documents" description="Attach internal procurement files and vendor-shareable files for this order.">
             <div className="space-y-4">
               <div className="flex flex-wrap gap-3">
-                <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:border-slate-300">
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-700 hover:border-neutral-300">
                   <input
                     type="file"
                     className="hidden"
@@ -226,15 +226,15 @@ export default function PoDetail() {
               </div>
 
               {attachments.length === 0 ? (
-                <p className="text-sm text-slate-500">No purchase order documents attached yet.</p>
+                <p className="text-sm text-neutral-500">No purchase order documents attached yet.</p>
               ) : (
                 <div className="space-y-3">
                   {attachments.map((attachment: any) => (
-                    <div key={attachment.id} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm">
+                    <div key={attachment.id} className="flex items-center justify-between rounded-xl border border-neutral-100 bg-neutral-50 px-4 py-3 text-sm">
                       <div>
-                        <p className="font-medium text-slate-900">{attachment.label || attachment.file?.file_name}</p>
-                        <p className="mt-1 text-xs text-slate-500">
-                          <span className={`rounded-full px-2 py-0.5 font-semibold ${attachment.visibility === 'vendor' ? 'bg-brand-100 text-brand-700' : 'bg-slate-200 text-slate-700'}`}>
+                        <p className="font-medium text-neutral-900">{attachment.label || attachment.file?.file_name}</p>
+                        <p className="mt-1 text-xs text-neutral-500">
+                          <span className={`rounded-full px-2 py-0.5 font-semibold ${attachment.visibility === 'vendor' ? 'bg-brand-100 text-brand-700' : 'bg-neutral-200 text-neutral-700'}`}>
                             {attachment.visibility === 'vendor' ? 'Vendor-shareable' : 'Internal only'}
                           </span>
                         </p>
@@ -261,13 +261,13 @@ export default function PoDetail() {
               <div className="space-y-4">
                 {grnItems.map((item, idx) => (
                   <div key={idx} className="grid grid-cols-12 gap-3 items-center">
-                    <div className="col-span-6 text-sm font-medium text-slate-950">{item.description}</div>
-                    <div className="col-span-3 text-center text-xs text-slate-500">Ordered: {item.qtyOrdered}</div>
+                    <div className="col-span-6 text-sm font-medium text-neutral-950">{item.description}</div>
+                    <div className="col-span-3 text-center text-xs text-neutral-500">Ordered: {item.qtyOrdered}</div>
                     <div className="col-span-3">
-                      <label className="block text-xs font-semibold text-slate-400 mb-0.5">Qty Received</label>
+                      <label className="block text-xs font-semibold text-neutral-400 mb-0.5">Qty Received</label>
                       <input
                         type="number"
-                        className="w-full rounded-xl border border-slate-200 px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                        className="w-full rounded-xl border border-neutral-200 px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                         value={item.qtyReceived}
                         onChange={e => updateGrnItemQty(idx, Number(e.target.value))}
                       />
@@ -277,9 +277,9 @@ export default function PoDetail() {
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1">Overall Condition</label>
+                    <label className="block text-sm font-semibold text-neutral-700 mb-1">Overall Condition</label>
                     <SelectBox
-                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                      className="w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                       value={grnCondition}
                       onChange={e => setGrnCondition(e.target.value as any)}
                     >
@@ -289,18 +289,18 @@ export default function PoDetail() {
                     </SelectBox>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1">Receiving Notes</label>
+                    <label className="block text-sm font-semibold text-neutral-700 mb-1">Receiving Notes</label>
                     <input
                       type="text"
                       placeholder="Add delivery observations..."
-                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                      className="w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                       value={grnNotes}
                       onChange={e => setGrnNotes(e.target.value)}
                     />
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <div className="flex justify-end gap-2 pt-3 border-t border-neutral-100">
                   <Button variant="secondary" onClick={() => setRaisingGrn(false)}>Cancel</Button>
                   <Button onClick={handleRaiseGrn}>Submit GRN</Button>
                 </div>
@@ -316,16 +316,16 @@ export default function PoDetail() {
 
           {po.grns && po.grns.length > 0 && (
             <SectionCard title="Associated GRNs" description="Goods Received Notes registered for this PO">
-              <div className="divide-y divide-slate-100">
+              <div className="divide-y divide-neutral-100">
                 {po.grns.map((grn: any) => (
                   <div key={grn.id} className="py-3 flex justify-between items-center text-sm">
                     <div>
-                      <div className="font-semibold text-slate-900">{grn.grnNumber}</div>
-                      <div className="text-xs text-slate-500">Received on {new Date(grn.receivedDate).toLocaleDateString()}</div>
+                      <div className="font-semibold text-neutral-900">{grn.grnNumber}</div>
+                      <div className="text-xs text-neutral-500">Received on {new Date(grn.receivedDate).toLocaleDateString()}</div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className={`inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-semibold uppercase border ${
-                        grn.status === 'confirmed' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-700'
+                      <span className={`inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-semibold  border ${
+                        grn.status === 'confirmed' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-neutral-100 text-neutral-700'
                       }`}>
                         {grn.status}
                       </span>
@@ -352,34 +352,34 @@ export default function PoDetail() {
           <SectionCard title="PO Summary" description="Core attributes">
             <div className="space-y-4 text-sm">
               <div>
-                <span className="text-xs text-slate-400 font-semibold uppercase block">Vendor Files</span>
-                <span className="font-semibold text-slate-900">{vendorAttachments.length}</span>
+                <span className="text-xs text-neutral-400 font-semibold block">Vendor Files</span>
+                <span className="font-semibold text-neutral-900">{vendorAttachments.length}</span>
               </div>
               <div>
-                <span className="text-xs text-slate-400 font-semibold uppercase block">Vendor Acknowledged</span>
-                <span className="font-semibold text-slate-900">
+                <span className="text-xs text-neutral-400 font-semibold block">Vendor Acknowledged</span>
+                <span className="font-semibold text-neutral-900">
                   {po.vendorAcknowledgedAt ? new Date(po.vendorAcknowledgedAt).toLocaleString() : 'Not Yet'}
                 </span>
               </div>
               {po.vendorAcknowledgeNote && (
                 <div>
-                  <span className="text-xs text-slate-400 font-semibold uppercase block">Acknowledge Note</span>
-                  <span className="text-slate-600 italic">"{po.vendorAcknowledgeNote}"</span>
+                  <span className="text-xs text-neutral-400 font-semibold block">Acknowledge Note</span>
+                  <span className="text-neutral-600 italic">"{po.vendorAcknowledgeNote}"</span>
                 </div>
               )}
               <div>
-                <span className="text-xs text-slate-400 font-semibold uppercase block">Delivery Address</span>
-                <span className="font-semibold text-slate-900">{po.deliveryAddress || '—'}</span>
+                <span className="text-xs text-neutral-400 font-semibold block">Delivery Address</span>
+                <span className="font-semibold text-neutral-900">{po.deliveryAddress || '—'}</span>
               </div>
               <div>
-                <span className="text-xs text-slate-400 font-semibold uppercase block">Expected Delivery Date</span>
-                <span className="font-semibold text-slate-900">
+                <span className="text-xs text-neutral-400 font-semibold block">Expected Delivery Date</span>
+                <span className="font-semibold text-neutral-900">
                   {po.deliveryDate ? new Date(po.deliveryDate).toLocaleDateString() : '—'}
                 </span>
               </div>
               <div>
-                <span className="text-xs text-slate-400 font-semibold uppercase block">Payment Terms</span>
-                <span className="font-semibold text-slate-900">{po.paymentTerms || '—'}</span>
+                <span className="text-xs text-neutral-400 font-semibold block">Payment Terms</span>
+                <span className="font-semibold text-neutral-900">{po.paymentTerms || '—'}</span>
               </div>
             </div>
           </SectionCard>

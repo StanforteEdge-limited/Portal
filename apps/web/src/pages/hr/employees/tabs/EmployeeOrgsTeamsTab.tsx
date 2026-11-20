@@ -119,12 +119,12 @@ export default function EmployeeOrgsTeamsTab({ employee, onSaved }: { employee: 
         <div className="grid gap-6 lg:grid-cols-2">
             {/* Organizations */}
             <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-slate-950">Organizations</h3>
+                <h3 className="text-sm font-semibold text-neutral-950">Organizations</h3>
                 <div className="space-y-2">
                     {organizations.map((org) => (
-                        <div key={org.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                        <div key={org.id} className="flex items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3">
                             <div className="flex items-center gap-2">
-                                <p className="text-sm font-semibold text-slate-950">{org.name}</p>
+                                <p className="text-sm font-semibold text-neutral-950">{org.name}</p>
                                 {org.is_primary && <Chip variant="success">Primary</Chip>}
                             </div>
                             <div className="flex items-center gap-2">
@@ -150,7 +150,7 @@ export default function EmployeeOrgsTeamsTab({ employee, onSaved }: { employee: 
                         </div>
                     ))}
                     {organizations.length === 0 && (
-                        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
+                        <div className="rounded-2xl border border-dashed border-neutral-200 bg-neutral-50 px-4 py-6 text-sm text-neutral-500">
                             No organizations assigned.
                         </div>
                     )}
@@ -184,12 +184,12 @@ export default function EmployeeOrgsTeamsTab({ employee, onSaved }: { employee: 
 
             {/* Teams */}
             <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-slate-950">Teams</h3>
+                <h3 className="text-sm font-semibold text-neutral-950">Teams</h3>
                 <div className="space-y-2">
                     {teams.map((team) => (
-                        <div key={team.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                        <div key={team.id} className="flex items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3">
                             <div>
-                                <p className="text-sm font-semibold text-slate-950">{team.name}</p>
+                                <p className="text-sm font-semibold text-neutral-950">{team.name}</p>
                                 {team.role && (
                                     <Chip variant={
                                         team.role === 'lead' ? 'warning' :
@@ -211,7 +211,7 @@ export default function EmployeeOrgsTeamsTab({ employee, onSaved }: { employee: 
                         </div>
                     ))}
                     {teams.length === 0 && (
-                        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
+                        <div className="rounded-2xl border border-dashed border-neutral-200 bg-neutral-50 px-4 py-6 text-sm text-neutral-500">
                             No teams assigned.
                         </div>
                     )}

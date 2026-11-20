@@ -434,7 +434,7 @@ export function RequestFormPage() {
         </div>
       ))}
       {tagTaxonomies.map(taxonomy => (
-        <div key={taxonomy.key} className="mt-5 border-t border-slate-100 pt-5">
+        <div key={taxonomy.key} className="mt-5 border-t border-neutral-100 pt-5">
           <TagPicker
             taxonomyKey={taxonomy.key}
             value={tagsByKey[taxonomy.key] || []}
@@ -444,7 +444,7 @@ export function RequestFormPage() {
           />
         </div>
       ))}
-      <div className="mt-5 border-t border-slate-100 pt-5">
+      <div className="mt-5 border-t border-neutral-100 pt-5">
         <TextAreaField
           label="Purpose"
           value={form.purpose}
@@ -465,7 +465,7 @@ export function RequestFormPage() {
           />
           <Link
             to={`/requests/new${urlTeamId || urlOrgId ? `?${new URLSearchParams({ ...(urlTeamId ? { team_id: urlTeamId } : {}), ...(urlOrgId ? { organization_id: urlOrgId } : {}) }).toString()}` : ""}`}
-            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
+            className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-5 py-3 text-sm font-semibold text-neutral-900 transition hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
           >
             Back to New Request
           </Link>
@@ -488,7 +488,7 @@ export function RequestFormPage() {
           actions={
             <Link
               to={`/requests/new${urlTeamId || urlOrgId ? `?${new URLSearchParams({ ...(urlTeamId ? { team_id: urlTeamId } : {}), ...(urlOrgId ? { organization_id: urlOrgId } : {}) }).toString()}` : ""}`}
-              className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
+              className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-5 py-3 text-sm font-semibold text-neutral-900 transition hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
             >
               <Icon name="arrow_back" className="text-[18px]" />
               Change Type
@@ -499,13 +499,13 @@ export function RequestFormPage() {
 
       {/* Mobile header */}
       <div className="pt-1 lg:hidden">
-        <p className="text-[0.72rem] font-bold uppercase tracking-[0.18em] text-slate-500">
+        <p className="text-[0.72rem] font-medium text-neutral-500">
           {editId ? "Edit Request" : "New Request"}
         </p>
         <h1 className="page-title mt-2 text-[clamp(1.7rem,7vw,2.2rem)]">
           {selectedType?.name || "Request form"}
         </h1>
-        <p className="mt-3 max-w-xl text-sm leading-6 text-slate-500">
+        <p className="mt-3 max-w-xl text-sm leading-6 text-neutral-500">
           {selectedCategory?.description || "Fill in the request details below."}
         </p>
       </div>

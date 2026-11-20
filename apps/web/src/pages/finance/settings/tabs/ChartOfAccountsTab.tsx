@@ -13,10 +13,10 @@ export default function ChartOfAccountsTab() {
 
   return (
     <div className="space-y-4">
-      <h3 className="font-headline text-lg font-semibold text-slate-950">Chart of Accounts</h3>
-      <p className="text-sm text-slate-500">Primary GL account structure.</p>
+      <h3 className="font-headline text-lg font-semibold text-neutral-950">Chart of Accounts</h3>
+      <p className="text-sm text-neutral-500">Primary GL account structure.</p>
 
-      {loading ? <p className="text-sm text-slate-500">Loading accounts...</p> : null}
+      {loading ? <p className="text-sm text-neutral-500">Loading accounts...</p> : null}
       {error ? <p className="text-sm text-danger">{error}</p> : null}
 
       {accounts.length ? (

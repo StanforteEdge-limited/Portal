@@ -294,12 +294,12 @@ export default function FinanceRequestsPage() {
     {
       header: "Team",
       cell: (entry: any) => entry.team_name || "-",
-      className: "text-sm text-slate-700"
+      className: "text-sm text-neutral-700"
     },
     {
       header: "Staff",
       cell: (entry: any) => formatPersonName(entry.creator),
-      className: "capitalize text-sm text-slate-700"
+      className: "capitalize text-sm text-neutral-700"
     },
     {
       header: "Due Date",
@@ -313,7 +313,7 @@ export default function FinanceRequestsPage() {
           )?.due_date || "",
         ),
       ),
-      className: "text-sm text-slate-700"
+      className: "text-sm text-neutral-700"
     },
     {
       header: "Total",
@@ -321,7 +321,7 @@ export default function FinanceRequestsPage() {
         requestTotal(entry),
         entry.currency || "NGN",
       ),
-      className: "text-sm text-slate-700"
+      className: "text-sm text-neutral-700"
     },
     {
       header: "Status",
@@ -363,7 +363,7 @@ export default function FinanceRequestsPage() {
             {showVouchers ? (
               <Link
                 to="/finance/payment-vouchers"
-                className="text-sm hidden font-semibold text-slate-600 transition hover:underline"
+                className="text-sm hidden font-semibold text-neutral-600 transition hover:underline"
               >
                 Vouchers
               </Link>
@@ -510,7 +510,7 @@ export default function FinanceRequestsPage() {
               onChange={(event) => setStaffFilter(event.target.value)}
               placeholder="Search by staff or request no"
             />
-            <div className="flex justify-end  h-stretch flex-col self-stretch">
+            <div className="flex justify-end h-stretch flex-col self-stretch">
               <label className="block">
       <span className="field-label">More</span>
     </label>
@@ -540,7 +540,7 @@ export default function FinanceRequestsPage() {
           </div>
 
           {moreFiltersOpen ? (
-            <div className="mb-4 flex flex-wrap gap-3 rounded-[22px] border border-slate-200 bg-slate-50 p-4">
+            <div className="mb-4 flex flex-wrap gap-3 rounded-[22px] border border-neutral-200 bg-neutral-50 p-4">
               <SelectField
                 label="Project"
                 value={selectedProject}
@@ -622,12 +622,12 @@ export default function FinanceRequestsPage() {
                 ].map((step) => (
                   <div
                     key={step}
-                    className="rounded-[18px] border border-slate-200 bg-slate-50 px-4 py-4"
+                    className="rounded-[18px] border border-neutral-200 bg-neutral-50 px-4 py-4"
                   >
-                    <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-slate-400">
+                    <p className="text-xs font-medium text-neutral-400">
                       Step
                     </p>
-                    <p className="mt-2 text-sm font-semibold text-slate-950">
+                    <p className="mt-2 text-sm font-semibold text-neutral-950">
                       {step}
                     </p>
                   </div>
@@ -638,7 +638,7 @@ export default function FinanceRequestsPage() {
             <section className="section-card bg-brand-900 p-5 text-white">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-[0.72rem] font-bold uppercase tracking-[0.18em] text-white/70">
+                  <p className="text-[0.72rem] font-medium text-white/70">
                     Finance Tools
                   </p>
                   <h3 className="mt-3 text-xl font-semibold tracking-tight">
@@ -653,7 +653,7 @@ export default function FinanceRequestsPage() {
               </div>
               <div className="mt-5 flex flex-wrap gap-3">
                 <Link to="/finance/payment-vouchers" className="inline-flex">
-                  <Button className="bg-white text-brand-900 hover:bg-slate-100">
+                  <Button className="bg-white text-brand-900 hover:bg-neutral-100">
                     Open Vouchers
                   </Button>
                 </Link>

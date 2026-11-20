@@ -137,7 +137,7 @@ export default function FinanceReportDetailPage() {
       </div>
 
       <SectionCard title="Snapshot" description="Flattened output from finance report endpoint.">
-        {loading ? <p className="text-sm text-slate-500">Loading report...</p> : null}
+        {loading ? <p className="text-sm text-neutral-500">Loading report...</p> : null}
         {error ? <p className="text-sm text-danger">{error}</p> : null}
 
         {rows.length ? (
@@ -159,7 +159,7 @@ export default function FinanceReportDetailPage() {
                   : String(row.value ?? "-");
                 return (
                   <TableRow key={row.key}>
-                    <TableCell className="font-medium text-slate-700">{row.key}</TableCell>
+                    <TableCell className="font-medium text-neutral-700">{row.key}</TableCell>
                     <TableCell>{value}</TableCell>
                   </TableRow>
                 );

@@ -56,13 +56,13 @@ export default function AdminGroupTypeSlideOver({ type, onClose, onSaved }: Prop
 
       <form onSubmit={handleSubmit} className="flex-1 flex flex-col justify-between overflow-y-auto">
         <SlideOverContent className="space-y-4 p-6">
-          <div className="flex items-center gap-2 pb-2 border-b border-slate-100 text-xs font-bold text-slate-900 uppercase tracking-wider">
+          <div className="flex items-center gap-2 pb-2 border-b border-neutral-100 text-xs font-medium text-neutral-900">
             <FolderTree className="h-4 w-4 text-[#ff6900]" />
             Type Attributes
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
+            <label className="block text-xs font-medium text-neutral-700 mb-1">
               Type Name <span className="text-rose-500">*</span>
             </label>
             <input
@@ -71,12 +71,12 @@ export default function AdminGroupTypeSlideOver({ type, onClose, onSaved }: Prop
               onChange={(e) => handleNameChange(e.target.value)}
               placeholder="e.g., Department, Tribe, Squad"
               required
-              className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+              className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
+            <label className="block text-xs font-medium text-neutral-700 mb-1">
               Slug Identifier
             </label>
             <input
@@ -85,17 +85,17 @@ export default function AdminGroupTypeSlideOver({ type, onClose, onSaved }: Prop
               onChange={(e) => setSlug(e.target.value)}
               placeholder="e.g., department"
               disabled={!!type?.id}
-              className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-mono text-slate-800 placeholder-slate-400 disabled:bg-slate-50 disabled:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+              className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-mono text-neutral-800 placeholder-neutral-400 disabled:bg-neutral-50 disabled:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
             />
             {!type?.id && (
-              <p className="text-[11px] text-slate-400 mt-1">
+              <p className="text-xs text-neutral-400 mt-1">
                 Auto-generated system identifier used for taxonomy queries.
               </p>
             )}
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
+            <label className="block text-xs font-medium text-neutral-700 mb-1">
               Description
             </label>
             <textarea
@@ -103,22 +103,22 @@ export default function AdminGroupTypeSlideOver({ type, onClose, onSaved }: Prop
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Explain the functional purpose of this group type..."
               rows={3}
-              className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+              className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
             />
           </div>
         </SlideOverContent>
 
-        <SlideOverFooter className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3">
+        <SlideOverFooter className="p-4 bg-neutral-50 border-t border-neutral-100 flex items-center justify-end gap-3">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 font-semibold text-xs hover:bg-white transition"
+            className="px-4 py-2 rounded-xl border border-neutral-200 text-neutral-700 font-semibold text-xs hover:bg-white transition"
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="px-5 py-2 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white font-bold text-xs shadow-sm shadow-orange-500/20 transition flex items-center gap-2"
+            className="px-5 py-2 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white font-medium text-xs shadow-sm transition flex items-center gap-2"
           >
             <Check className="h-4 w-4" />
             <span>{type?.id ? "Update Type" : "Create Type"}</span>

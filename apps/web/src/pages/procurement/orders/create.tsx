@@ -89,7 +89,7 @@ export default function CreatePo() {
 
   if (!pr) return (
     <AppShell navigation={buildAppNavigation()} activeLabel="procurement-orders" user={{ name: userName, role: 'Procurement' }} mobileNav={buildAppMobileNav('Dashboard')}>
-      <div className="p-12 text-center text-slate-500">Loading Requisition details...</div>
+      <div className="p-12 text-center text-neutral-500">Loading Requisition details...</div>
     </AppShell>
   );
 
@@ -97,8 +97,8 @@ export default function CreatePo() {
     <AppShell navigation={buildAppNavigation()} activeLabel="procurement-orders" user={{ name: userName, role: 'Procurement' }} mobileNav={buildAppMobileNav('Dashboard')}>
       <div className="p-6 max-w-4xl mx-auto space-y-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Generate Purchase Order</h1>
-          <p className="text-sm text-slate-500">Generate PO for approved requisition: <span className="font-mono">{pr.requisitionNumber}</span></p>
+          <h1 className="text-2xl font-medium tracking-tight text-neutral-900">Generate Purchase Order</h1>
+          <p className="text-sm text-neutral-500">Generate PO for approved requisition: <span className="font-mono">{pr.requisitionNumber}</span></p>
         </div>
 
       <div className="grid gap-6 md:grid-cols-3">
@@ -106,9 +106,9 @@ export default function CreatePo() {
           <SectionCard title="Vendor Selection" description="Select the vendor and specify delivery details">
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Vendor</label>
+                <label className="block text-sm font-semibold text-neutral-700 mb-1">Vendor</label>
                 <SelectBox
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                   value={selectedVendorId}
                   onChange={e => setSelectedVendorId(e.target.value)}
                 >
@@ -121,20 +121,20 @@ export default function CreatePo() {
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1">Expected Delivery Date</label>
+                  <label className="block text-sm font-semibold text-neutral-700 mb-1">Expected Delivery Date</label>
                   <DateInput
                     
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    className="w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                     value={deliveryDate}
                     onChange={e => setDeliveryDate(e.target.value)}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1">Payment Terms</label>
+                  <label className="block text-sm font-semibold text-neutral-700 mb-1">Payment Terms</label>
                   <input
                     type="text"
                     placeholder="e.g. Net 30"
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    className="w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                     value={paymentTerms}
                     onChange={e => setPaymentTerms(e.target.value)}
                   />
@@ -142,11 +142,11 @@ export default function CreatePo() {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Delivery Address</label>
+                <label className="block text-sm font-semibold text-neutral-700 mb-1">Delivery Address</label>
                 <input
                   type="text"
                   placeholder="e.g. 12 Townhall Crescent, Lagos"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                   value={deliveryAddress}
                   onChange={e => setDeliveryAddress(e.target.value)}
                 />
@@ -158,13 +158,13 @@ export default function CreatePo() {
             <div className="space-y-4">
               {items.map((it, idx) => (
                 <div key={idx} className="grid grid-cols-12 gap-3 items-center">
-                  <div className="col-span-6 font-medium text-slate-900 text-sm">{it.description}</div>
-                  <div className="col-span-2 text-center text-slate-500 text-sm">{it.qty} {it.unit}</div>
+                  <div className="col-span-6 font-medium text-neutral-900 text-sm">{it.description}</div>
+                  <div className="col-span-2 text-center text-neutral-500 text-sm">{it.qty} {it.unit}</div>
                   <div className="col-span-4">
-                    <label className="block text-xs text-slate-400 font-semibold mb-0.5">Unit Cost (₦)</label>
+                    <label className="block text-xs text-neutral-400 font-semibold mb-0.5">Unit Cost (₦)</label>
                     <input
                       type="number"
-                      className="w-full rounded-xl border border-slate-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                      className="w-full rounded-xl border border-neutral-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                       value={it.unitCost}
                       onChange={e => updateItemCost(idx, Number(e.target.value))}
                     />
@@ -172,8 +172,8 @@ export default function CreatePo() {
                 </div>
               ))}
 
-              <div className="flex justify-end pt-3 border-t border-slate-100">
-                <div className="text-lg font-bold text-slate-900">PO Total: {formatCurrency(total)}</div>
+              <div className="flex justify-end pt-3 border-t border-neutral-100">
+                <div className="text-lg font-medium text-neutral-900">PO Total: {formatCurrency(total)}</div>
               </div>
             </div>
           </SectionCard>
@@ -183,21 +183,21 @@ export default function CreatePo() {
           <SectionCard title="Requisition Info" description="Reference attributes">
             <div className="space-y-3 text-sm">
               <div>
-                <span className="text-xs text-slate-400 font-semibold uppercase block">Requisition</span>
-                <span className="font-semibold text-slate-900">{pr.title}</span>
+                <span className="text-xs text-neutral-400 font-semibold block">Requisition</span>
+                <span className="font-semibold text-neutral-900">{pr.title}</span>
               </div>
               <div>
-                <span className="text-xs text-slate-400 font-semibold uppercase block">Est. Original Total</span>
-                <span className="font-semibold text-slate-900">{formatCurrency(Number(pr.estimatedTotal))}</span>
+                <span className="text-xs text-neutral-400 font-semibold block">Est. Original Total</span>
+                <span className="font-semibold text-neutral-900">{formatCurrency(Number(pr.estimatedTotal))}</span>
               </div>
               <div>
-               <span className="text-xs text-slate-400 font-semibold uppercase block">Payment Pattern</span>
-                <span className="font-semibold text-slate-900 capitalize">{pr.paymentPattern}</span>
+               <span className="text-xs text-neutral-400 font-semibold block">Payment Pattern</span>
+                <span className="font-semibold text-neutral-900 capitalize">{pr.paymentPattern}</span>
               </div>
               {pr.procurementCase ? (
                 <div>
-                  <span className="text-xs text-slate-400 font-semibold uppercase block">Procurement Case</span>
-                  <span className="font-semibold text-slate-900">{pr.procurementCase.id}</span>
+                  <span className="text-xs text-neutral-400 font-semibold block">Procurement Case</span>
+                  <span className="font-semibold text-neutral-900">{pr.procurementCase.id}</span>
                 </div>
               ) : null}
             </div>

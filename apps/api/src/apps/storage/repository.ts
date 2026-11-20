@@ -16,7 +16,8 @@ import { requestItem } from '$apps/hr/requests/model';
 import { financePaymentVoucher } from '$apps/finance/accounting/model';
 import { subscriptionPlan, tenantSubscription } from '$apps/platform/billing/model';
 import { extname } from 'node:path';
-import { BadRequestException, NotFoundException } from '$core/errors';
+import { BadRequestException, ForbiddenException, NotFoundException } from '$core/errors';
+import { config } from '$config/index';
 import { Logger } from '$core/logger';
 
 export class StorageService {
@@ -50,12 +51,18 @@ export class StorageService {
 
   private fileAssetConditions(): SQL[] {
     const tenantId = this.tenantContext.currentTenantId();
-    return tenantId ? [eq(fileAsset.tenantId, tenantId)] : [];
+    if (!tenantId) {
+      throw new BadRequestException('Tenant context is required');
+    }
+    return [eq(fileAsset.tenantId, tenantId)];
   }
 
   private storageFolderConditions(): SQL[] {
     const tenantId = this.tenantContext.currentTenantId();
-    return tenantId ? [eq(storageFolder.tenantId, tenantId)] : [];
+    if (!tenantId) {
+      throw new BadRequestException('Tenant context is required');
+    }
+    return [eq(storageFolder.tenantId, tenantId)];
   }
 
   async list(query: Record<string, any>) {
@@ -178,18 +185,24 @@ export class StorageService {
   }
 
   private async ensureOrganizationExists(organizationId: bigint) {
-    const conditions: SQL[] = [eq(organization.id, organizationId)];
     const tenantId = this.tenantContext.currentTenantId();
-    if (tenantId) {
-      conditions.push(
-        exists(
-          this.db.client
-            .select({ id: tenantOrganization.organizationId })
-            .from(tenantOrganization)
-            .where(eq(tenantOrganization.tenantId, tenantId))
-        )
-      );
+    if (!tenantId) {
+      throw new BadRequestException('Tenant context is required');
     }
+    const conditions: SQL[] = [
+      eq(organization.id, organizationId),
+      exists(
+        this.db.client
+          .select({ id: tenantOrganization.organizationId })
+          .from(tenantOrganization)
+          .where(
+            and(
+              eq(tenantOrganization.tenantId, tenantId),
+              eq(tenantOrganization.organizationId, organization.id)
+            )
+          )
+      ),
+    ];
     const [org] = await this.db.client
       .select({ id: organization.id })
       .from(organization)
@@ -230,19 +243,21 @@ export class StorageService {
       }
     }
 
-    const [firstTenant] = await this.db.client
-      .select({ id: tenant.id })
-      .from(tenant)
-      .where(eq(tenant.status, 'active'))
-      .limit(1);
-    if (firstTenant?.id) return firstTenant.id;
-
     throw new BadRequestException('Tenant context is required to upload files');
   }
 
   async attach(userId: string, dto: AttachFile) {
     if (!dto.storage_path && !dto.file_url) {
       throw new BadRequestException('storage_path or file_url is required');
+    }
+
+    const tenantId = await this.currentRequiredTenantId(userId);
+    const expectedPrefix = `tenants/${tenantId.toString()}/`;
+    if (dto.storage_path) {
+      const normalizedPath = dto.storage_path.replace(/^\/+/, '');
+      if (normalizedPath.includes('..') || !normalizedPath.startsWith(expectedPrefix)) {
+        throw new ForbiddenException('storage_path must belong to the active tenant');
+      }
     }
 
     if (dto.organization_id) {
@@ -254,7 +269,6 @@ export class StorageService {
     }
 
     const folderId = await this.resolveFolderId(dto.folder_id);
-    const tenantId = await this.currentRequiredTenantId(userId);
 
     const [created] = await this.db.client
       .insert(fileAsset)
@@ -360,8 +374,11 @@ export class StorageService {
       await this.ensureQuota(payload.file_size);
     }
     const tenantId = this.tenantIdValue();
+    if (!tenantId) {
+      throw new BadRequestException('Tenant context is required to upload files');
+    }
     const result = await this.objectStorage.presignedUpload({
-      tenantId: tenantId || 'anonymous',
+      tenantId,
       fileName: payload.file_name,
       contentType: payload.mime_type,
       expiresInSeconds: payload.expires_in_seconds
@@ -411,10 +428,16 @@ export class StorageService {
   private async removeLocalFile(storagePath: string): Promise<void> {
     try {
       const { rmSync } = await import('node:fs');
-      const { resolve } = await import('node:path');
+      const { resolve, sep } = await import('node:path');
       if (!storagePath) return;
       if (storagePath.startsWith('http') || storagePath.startsWith('tenants/')) return;
-      rmSync(resolve(process.cwd(), storagePath.replace(/^\/+/, '')), { force: true });
+      const uploadsRoot = resolve(config.uploadsRoot);
+      const targetPath = resolve(uploadsRoot, storagePath.replace(/^\/+/, ''));
+      if (targetPath !== uploadsRoot && !targetPath.startsWith(`${uploadsRoot}${sep}`)) {
+        this.logger.warn(`Blocked local file deletion outside uploads root: ${storagePath}`);
+        return;
+      }
+      rmSync(targetPath, { force: true });
     } catch (error) {
       this.logger.warn(`Failed to remove local file ${storagePath}: ${(error as Error)?.message}`);
     }

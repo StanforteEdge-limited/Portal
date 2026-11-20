@@ -41,11 +41,11 @@ export default function PoIndex() {
   ).length;
 
   const statusColor: Record<string, string> = {
-    draft: "bg-slate-100 text-slate-700 border-slate-200",
+    draft: "bg-neutral-100 text-neutral-700 border-neutral-200",
     pending_approval: "bg-amber-50 text-amber-700 border-amber-200",
     approved: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    acknowledged: "bg-blue-50 text-blue-700 border-blue-200",
-    received: "bg-purple-50 text-purple-700 border-purple-200",
+    acknowledged: "bg-neutral-100 text-neutral-700 border-neutral-200",
+    received: "bg-neutral-100 text-neutral-700 border-neutral-200",
     cancelled: "bg-rose-50 text-rose-700 border-rose-200",
   };
 
@@ -61,7 +61,7 @@ export default function PoIndex() {
           actions={
             <Link
               to="/procurement/orders/create"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-bold shadow-md shadow-orange-500/20 transition transform hover:-translate-y-0.5"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-medium shadow-md transition transform"
             >
               <Plus className="h-4 w-4" />
               <span>Create Purchase Order</span>
@@ -71,48 +71,48 @@ export default function PoIndex() {
 
         {/* 4 KPI Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-2xs hover:border-slate-200/80 transition-all flex items-center justify-between">
+          <div className="p-4 rounded-2xl bg-white border border-neutral-100 shadow-2xs hover:border-neutral-200/80 transition-colors flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
                 <ShoppingCart className="h-5 w-5" />
               </div>
               <div>
-                <div className="text-[11px] font-semibold text-slate-500">Total Orders</div>
-                <div className="text-xl font-black text-slate-900 mt-0.5">{pos.length}</div>
+                <div className="text-xs font-semibold text-neutral-500">Total Orders</div>
+                <div className="text-xl font-semibold text-neutral-900 mt-0.5">{pos.length}</div>
               </div>
             </div>
-            <div className="text-[11px] font-bold text-[#ff6900] bg-orange-50 px-2 py-0.5 rounded-full">
+            <div className="text-xs font-medium text-[#ff6900] bg-orange-50 px-2 py-0.5 rounded-full">
               POs
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-2xs hover:border-slate-200/80 transition-all flex items-center gap-3">
+          <div className="p-4 rounded-2xl bg-white border border-neutral-100 shadow-2xs hover:border-neutral-200/80 transition-colors flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
               <CheckCircle2 className="h-5 w-5" />
             </div>
             <div>
-              <div className="text-[11px] font-semibold text-slate-500">Approved & Issued</div>
-              <div className="text-xl font-black text-emerald-600 mt-0.5">{approvedCount}</div>
+              <div className="text-xs font-semibold text-neutral-500">Approved & Issued</div>
+              <div className="text-xl font-semibold text-emerald-600 mt-0.5">{approvedCount}</div>
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-2xs hover:border-slate-200/80 transition-all flex items-center gap-3">
+          <div className="p-4 rounded-2xl bg-white border border-neutral-100 shadow-2xs hover:border-neutral-200/80 transition-colors flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
               <Clock className="h-5 w-5" />
             </div>
             <div>
-              <div className="text-[11px] font-semibold text-slate-500">Pending Review</div>
-              <div className="text-xl font-black text-amber-600 mt-0.5">{pendingCount}</div>
+              <div className="text-xs font-semibold text-neutral-500">Pending Review</div>
+              <div className="text-xl font-semibold text-amber-600 mt-0.5">{pendingCount}</div>
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-2xs hover:border-slate-200/80 transition-all flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+          <div className="p-4 rounded-2xl bg-white border border-neutral-100 shadow-2xs hover:border-neutral-200/80 transition-colors flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
               <DollarSign className="h-5 w-5" />
             </div>
             <div>
-              <div className="text-[11px] font-semibold text-slate-500">Total Commitment</div>
-              <div className="text-lg font-black text-blue-700 mt-0.5 font-mono">
+              <div className="text-xs font-semibold text-neutral-500">Total Commitment</div>
+              <div className="text-lg font-semibold text-neutral-700 mt-0.5 font-mono">
                 {formatCurrency(totalAmount)}
               </div>
             </div>
@@ -120,22 +120,22 @@ export default function PoIndex() {
         </div>
 
         {/* Purchase Orders Table */}
-        <div className="rounded-2xl bg-white border border-slate-100 shadow-2xs overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+        <div className="rounded-2xl bg-white border border-neutral-100 shadow-2xs overflow-hidden">
+          <div className="px-5 py-3.5 border-b border-neutral-100 flex items-center justify-between">
+            <h3 className="text-xs font-medium text-neutral-400">
               All Purchase Orders ({pos.length})
             </h3>
           </div>
 
           {loading ? (
-            <div className="p-12 text-center text-xs font-medium text-slate-400">
+            <div className="p-12 text-center text-xs font-medium text-neutral-400">
               Loading purchase orders...
             </div>
           ) : pos.length === 0 ? (
             <div className="p-12 text-center">
-              <ShoppingCart className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-              <p className="text-xs font-bold text-slate-700">No purchase orders found</p>
-              <p className="text-[11px] text-slate-400 mt-0.5">
+              <ShoppingCart className="h-8 w-8 text-neutral-300 mx-auto mb-2" />
+              <p className="text-xs font-medium text-neutral-700">No purchase orders found</p>
+              <p className="text-xs text-neutral-400 mt-0.5">
                 Generate a purchase order from an approved requisition.
               </p>
             </div>
@@ -143,7 +143,7 @@ export default function PoIndex() {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="bg-slate-50/70 border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  <tr className="bg-neutral-50/70 border-b border-neutral-100 text-xs font-medium text-neutral-400">
                     <th className="py-3 px-5">PO Number</th>
                     <th className="py-3 px-4">Requisition & Title</th>
                     <th className="py-3 px-4">Vendor</th>
@@ -152,36 +152,36 @@ export default function PoIndex() {
                     <th className="py-3 px-5 text-right">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 text-slate-700">
+                <tbody className="divide-y divide-neutral-100 text-neutral-700">
                   {pos.map((po) => (
                     <tr
                       key={po.id}
-                      className="hover:bg-slate-50/80 transition-colors group cursor-pointer"
+                      className="hover:bg-neutral-50/80 transition-colors group cursor-pointer"
                     >
-                      <td className="py-3.5 px-5 font-mono font-bold text-slate-900">
+                      <td className="py-3.5 px-5 font-mono font-medium text-neutral-900">
                         {po.poNumber}
                       </td>
 
                       <td className="py-3.5 px-4">
                         <div className="min-w-0">
-                          <p className="font-bold text-slate-900 group-hover:text-[#ff6900] transition-colors truncate">
+                          <p className="font-medium text-neutral-900 group-hover:text-[#ff6900] transition-colors truncate">
                             {po.requisition ? `${po.requisition.requisitionNumber} - ${po.requisition.title}` : "Direct PO"}
                           </p>
                         </div>
                       </td>
 
-                      <td className="py-3.5 px-4 font-medium text-slate-800">
+                      <td className="py-3.5 px-4 font-medium text-neutral-800">
                         {po.vendor?.name || "Unassigned Vendor"}
                       </td>
 
-                      <td className="py-3.5 px-4 font-mono font-bold text-slate-900">
+                      <td className="py-3.5 px-4 font-mono font-medium text-neutral-900">
                         {formatCurrency(Number(po.totalAmount))}
                       </td>
 
                       <td className="py-3.5 px-4">
                         <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold capitalize border ${
-                            statusColor[po.status] ?? "bg-slate-100 text-slate-700 border-slate-200"
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize border ${
+                            statusColor[po.status] ?? "bg-neutral-100 text-neutral-700 border-neutral-200"
                           }`}
                         >
                           {po.status?.replace(/_/g, " ")}
@@ -191,7 +191,7 @@ export default function PoIndex() {
                       <td className="py-3.5 px-5 text-right">
                         <Link
                           to={`/procurement/orders/${po.id}`}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700 group-hover:text-white group-hover:bg-[#ff6900] border border-slate-200 group-hover:border-[#ff6900] transition shadow-sm"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-neutral-700 group-hover:text-white group-hover:bg-[#ff6900] border border-neutral-200 group-hover:border-[#ff6900] transition shadow-sm"
                         >
                           <span>Details</span>
                           <ArrowRight className="h-3 w-3" />

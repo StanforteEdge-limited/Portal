@@ -70,24 +70,24 @@ export function Calendar({
   return (
     <div className={cn("p-3 bg-white rounded-2xl select-none font-sans", className)}>
       {/* Month & Year Navigation Header */}
-      <div className="flex items-center justify-between pb-3 mb-2 border-b border-slate-100">
+      <div className="flex items-center justify-between pb-3 mb-2 border-b border-neutral-100">
         <button
           type="button"
           onClick={prevMonth}
-          className="w-7 h-7 rounded-xl flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition cursor-pointer"
+          className="w-7 h-7 rounded-xl flex items-center justify-center text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 transition cursor-pointer"
           title="Previous Month"
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
 
-        <span className="text-xs font-bold text-slate-900">
+        <span className="text-xs font-medium text-neutral-900">
           {monthNames[month]} {year}
         </span>
 
         <button
           type="button"
           onClick={nextMonth}
-          className="w-7 h-7 rounded-xl flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition cursor-pointer"
+          className="w-7 h-7 rounded-xl flex items-center justify-center text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 transition cursor-pointer"
           title="Next Month"
         >
           <ChevronRight className="h-4 w-4" />
@@ -97,7 +97,7 @@ export function Calendar({
       {/* Days of Week Header */}
       <div className="grid grid-cols-7 gap-1 text-center mb-1.5">
         {weekDayNames.map((day) => (
-          <span key={day} className="text-[10px] font-bold text-slate-400 uppercase tracking-wider py-1">
+          <span key={day} className="text-xs font-medium text-neutral-400 py-1">
             {day}
           </span>
         ))}
@@ -122,12 +122,12 @@ export function Calendar({
               type="button"
               onClick={() => handleSelectDay(day)}
               className={cn(
-                "h-8 w-8 mx-auto rounded-xl text-xs font-bold flex items-center justify-center transition cursor-pointer",
+                "h-8 w-8 mx-auto rounded-xl text-xs font-medium flex items-center justify-center transition cursor-pointer",
                 isSelected
-                  ? "bg-[#ff6900] text-white shadow-sm shadow-orange-500/30"
+                  ? "bg-[#ff6900] text-white shadow-sm "
                   : isCurrentDay
-                  ? "bg-orange-50 text-[#ff6900] font-black border border-orange-200/60"
-                  : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+                  ? "bg-orange-50 text-[#ff6900] font-semibold border border-orange-200/60"
+                  : "text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900"
               )}
             >
               {day}

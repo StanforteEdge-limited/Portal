@@ -10,7 +10,7 @@ export default function EmployeeOverviewTab({ employee }: { employee: import("@s
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-sm font-semibold text-slate-900">Personal Details</h3>
+        <h3 className="text-sm font-semibold text-neutral-900">Personal Details</h3>
         <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           <DetailField label="First Name" value={employee.first_name || "-"} />
           <DetailField label="Last Name" value={employee.last_name || "-"} />
@@ -21,7 +21,7 @@ export default function EmployeeOverviewTab({ employee }: { employee: import("@s
         </div>
       </div>
       <div>
-        <h3 className="text-sm font-semibold text-slate-900">Current Assignment</h3>
+        <h3 className="text-sm font-semibold text-neutral-900">Current Assignment</h3>
         <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           <DetailField label="Job Title" value={employee.job_title || "-"} />
           <DetailField label="Primary Organization" value={employee.primary_organization?.name || "-"} />

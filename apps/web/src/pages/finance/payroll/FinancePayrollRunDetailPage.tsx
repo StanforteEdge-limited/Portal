@@ -115,7 +115,7 @@ export default function FinancePayrollRunDetailPage() {
         user={{ name: userName, role: "Finance Staff" }}
         mobileNav={buildAppMobileNav("Finance")}
       >
-        <div className="p-8 text-sm text-slate-500">Loading...</div>
+        <div className="p-8 text-sm text-neutral-500">Loading...</div>
       </AppShell>
     );
   }
@@ -311,7 +311,7 @@ export default function FinancePayrollRunDetailPage() {
           {items.length ? (
             <DataTable
               columns={[
-                { header: "Employee", cell: (item: any) => <p className="font-semibold text-slate-900">{item.worker?.fullName ?? item.worker_name ?? "-"}</p> },
+                { header: "Employee", cell: (item: any) => <p className="font-semibold text-neutral-900">{item.worker?.fullName ?? item.worker_name ?? "-"}</p> },
                 { header: "Gross Pay", cell: (item: any) => formatCurrency(item.grossPay ?? item.gross_pay ?? 0, run.currency) },
                 { header: "Deductions", cell: (item: any) => formatCurrency(item.totalDeductions ?? item.total_deductions ?? 0, run.currency) },
                 { header: "Net Pay", cell: (item: any) => <span className="font-semibold">{formatCurrency(item.netPay ?? item.net_pay ?? 0, run.currency)}</span> },

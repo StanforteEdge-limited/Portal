@@ -1,5 +1,5 @@
-import { Worker, type Queue } from 'bullmq';
-import { redisConnection } from '$core/queues';
+import { type Queue, type Worker } from 'bullmq';
+import { createWorker, QUEUE_NAMES } from '$core/queues';
 import type { MailService, SendMailInput } from '$core/mail';
 
 export type QueuedMailInput = SendMailInput & {
@@ -46,8 +46,8 @@ export class MailQueueWorker {
   start() {
     if (this.worker) return;
 
-    this.worker = new Worker(
-      'mail',
+    this.worker = createWorker(
+      QUEUE_NAMES.mail,
       async (job) => {
         const result = await this.mail.send(job.data as QueuedMailInput);
         if (!result.sent) {
@@ -56,17 +56,9 @@ export class MailQueueWorker {
         return result;
       },
       {
-        connection: redisConnection(),
         concurrency: Math.max(1, Number(process.env.MAIL_WORKER_CONCURRENCY || 5)),
       },
     );
-
-    this.worker.on('completed', (job) => {
-      console.info(`[MailQueueWorker] completed job ${job.id}`);
-    });
-    this.worker.on('failed', (job, error) => {
-      console.error(`[MailQueueWorker] failed job ${job?.id ?? 'unknown'}: ${error.message}`);
-    });
   }
 
   async close() {

@@ -45,7 +45,7 @@ export default function StaffAttendanceSlideOver({
       />
       <SlideOverContent>
         {loading ? (
-          <div className="text-sm text-slate-500">Loading...</div>
+          <div className="text-sm text-neutral-500">Loading...</div>
         ) : error ? (
           <div className="text-sm text-danger">{error}</div>
         ) : (

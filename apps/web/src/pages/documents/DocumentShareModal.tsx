@@ -192,19 +192,19 @@ export default function DocumentShareModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-slate-200/90 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-950/60 backdrop-blur-xs animate-in fade-in duration-200">
+      <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-neutral-200/90 overflow-hidden">
         {/* Header */}
-        <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+        <div className="px-6 py-5 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0 shadow-xs">
               <Share2 className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-base font-black text-slate-900 tracking-tight font-headline">
+              <h2 className="text-base font-semibold text-neutral-900 tracking-tight font-headline">
                 Share Document
               </h2>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-neutral-500">
                 Send to colleagues with email and in-app chat notifications
               </p>
             </div>
@@ -212,7 +212,7 @@ export default function DocumentShareModal({
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center transition"
+            className="w-8 h-8 rounded-xl text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 flex items-center justify-center transition"
           >
             <X className="h-4 w-4" />
           </button>
@@ -220,25 +220,25 @@ export default function DocumentShareModal({
 
         <form onSubmit={handleShareSubmit} className="p-6 space-y-5">
           {/* Document Preview Card */}
-          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-[#ff6900] shrink-0 shadow-xs">
+          <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200/80 flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-white border border-neutral-200 flex items-center justify-center text-[#ff6900] shrink-0 shadow-xs">
               <FileText className="h-5 w-5" />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">
+                <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-neutral-200 text-neutral-700">
                   {document.category}
                 </span>
-                <span className="text-[10px] text-slate-400 font-bold">
+                <span className="text-xs text-neutral-400 font-medium">
                   {document.version}
                 </span>
               </div>
-              <h4 className="text-xs font-bold text-slate-900 mt-1 truncate">
+              <h4 className="text-xs font-medium text-neutral-900 mt-1 truncate">
                 {document.title}
               </h4>
               {document.file && (
-                <div className="flex items-center gap-1.5 text-[11px] text-slate-500 mt-0.5">
-                  <Paperclip className="h-3 w-3 text-slate-400" />
+                <div className="flex items-center gap-1.5 text-xs text-neutral-500 mt-0.5">
+                  <Paperclip className="h-3 w-3 text-neutral-400" />
                   <span className="truncate">{document.file.file_name}</span>
                   {document.file.file_size && (
                     <span>
@@ -253,13 +253,13 @@ export default function DocumentShareModal({
           {/* Recipient Selection */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-bold text-slate-700">
+              <label className="text-xs font-medium text-neutral-700">
                 Recipient Colleague
               </label>
               <button
                 type="button"
                 onClick={() => setUseCustomEmail(!useCustomEmail)}
-                className="text-[11px] font-bold text-[#ff6900] hover:underline inline-flex items-center gap-1"
+                className="text-xs font-medium text-[#ff6900] hover:underline inline-flex items-center gap-1"
               >
                 {useCustomEmail ? (
                   <>
@@ -274,13 +274,13 @@ export default function DocumentShareModal({
 
             {useCustomEmail ? (
               <div className="relative">
-                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
                 <input
                   type="email"
                   value={customEmail}
                   onChange={(e) => setCustomEmail(e.target.value)}
                   placeholder="colleague@stanforteedge.com"
-                  className="w-full pl-10 pr-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none transition focus:bg-white focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+                  className="w-full pl-10 pr-3.5 py-2.5 text-xs bg-neutral-50 border border-neutral-200 rounded-xl outline-none transition focus:bg-white focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
                   required
                 />
               </div>
@@ -289,7 +289,7 @@ export default function DocumentShareModal({
                 <SelectBox
                   value={selectedColleagueId}
                   onChange={(e) => setSelectedColleagueId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none transition font-medium text-slate-800 focus:bg-white focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+                  className="w-full px-3.5 py-2.5 text-xs bg-neutral-50 border border-neutral-200 rounded-xl outline-none transition font-medium text-neutral-800 focus:bg-white focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
                 >
                   {SAMPLE_TEAM_MEMBERS.map((member) => (
                     <option key={member.id} value={member.id}>
@@ -301,14 +301,14 @@ export default function DocumentShareModal({
                 {/* Selected Colleague Preview Badge */}
                 {selectedColleague && (
                   <div className="flex items-center gap-3 p-2.5 rounded-xl bg-orange-50/50 border border-orange-100">
-                    <div className="w-8 h-8 rounded-full bg-[#ff6900] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+                    <div className="w-8 h-8 rounded-full bg-[#ff6900] text-white flex items-center justify-center font-medium text-xs shrink-0 shadow-xs">
                       {selectedColleague.avatar || "U"}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-xs font-bold text-slate-900 leading-tight">
+                      <p className="text-xs font-medium text-neutral-900 leading-tight">
                         {selectedColleague.name}
                       </p>
-                      <p className="text-[11px] text-slate-500 truncate">
+                      <p className="text-xs text-neutral-500 truncate">
                         {selectedColleague.email} • {selectedColleague.role}
                       </p>
                     </div>
@@ -320,44 +320,44 @@ export default function DocumentShareModal({
 
           {/* Personal Note */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">
-              Personal Note <span className="text-slate-400 font-normal">(optional)</span>
+            <label className="block text-xs font-medium text-neutral-700 mb-1.5">
+              Personal Note <span className="text-neutral-400 font-normal">(optional)</span>
             </label>
             <textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="e.g. Please review section 3 before the end of the sprint..."
               rows={3}
-              className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none transition resize-none focus:bg-white focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+              className="w-full px-3.5 py-2.5 text-xs bg-neutral-50 border border-neutral-200 rounded-xl outline-none transition resize-none focus:bg-white focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
             />
           </div>
 
           {/* Delivery Channels */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-2">
+            <label className="block text-xs font-medium text-neutral-700 mb-2">
               Notification Channels
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* Chat & In-App Notification */}
               <label
-                className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-start gap-3 select-none ${
+                className={`p-3.5 rounded-2xl border transition-colors cursor-pointer flex items-start gap-3 select-none ${
                   notifyChat
-                    ? "bg-orange-50/40 border-orange-200 text-slate-900"
-                    : "bg-slate-50 border-slate-200 text-slate-500 opacity-70"
+                    ? "bg-orange-50/40 border-orange-200 text-neutral-900"
+                    : "bg-neutral-50 border-neutral-200 text-neutral-500 opacity-70"
                 }`}
               >
                 <input
                   type="checkbox"
                   checked={notifyChat}
                   onChange={(e) => setNotifyChat(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#ff6900] focus:ring-[#ff6900]"
+                  className="mt-0.5 h-4 w-4 rounded border-neutral-300 text-[#ff6900] focus:ring-[#ff6900]"
                 />
                 <div>
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-neutral-900">
                     <MessageSquare className="h-3.5 w-3.5 text-[#ff6900]" />
                     <span>In-App Chat</span>
                   </div>
-                  <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">
+                  <p className="text-xs text-neutral-500 mt-0.5 leading-tight">
                     Direct message in Stanforte Chat with card link
                   </p>
                 </div>
@@ -365,24 +365,24 @@ export default function DocumentShareModal({
 
               {/* Email Notification */}
               <label
-                className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-start gap-3 select-none ${
+                className={`p-3.5 rounded-2xl border transition-colors cursor-pointer flex items-start gap-3 select-none ${
                   notifyEmail
-                    ? "bg-blue-50/40 border-blue-200 text-slate-900"
-                    : "bg-slate-50 border-slate-200 text-slate-500 opacity-70"
+                    ? "bg-neutral-100 border-neutral-200 text-neutral-900"
+                    : "bg-neutral-50 border-neutral-200 text-neutral-500 opacity-70"
                 }`}
               >
                 <input
                   type="checkbox"
                   checked={notifyEmail}
                   onChange={(e) => setNotifyEmail(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-600"
+                  className="mt-0.5 h-4 w-4 rounded border-neutral-300 text-neutral-700 focus:ring-neutral-300"
                 />
                 <div>
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
-                    <Mail className="h-3.5 w-3.5 text-blue-600" />
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-neutral-900">
+                    <Mail className="h-3.5 w-3.5 text-neutral-700" />
                     <span>Email Notification</span>
                   </div>
-                  <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">
+                  <p className="text-xs text-neutral-500 mt-0.5 leading-tight">
                     Instant delivery to recipient's email inbox
                   </p>
                 </div>
@@ -391,19 +391,19 @@ export default function DocumentShareModal({
           </div>
 
           {/* Footer Actions */}
-          <div className="pt-2 flex items-center justify-end gap-3 border-t border-slate-100">
+          <div className="pt-2 flex items-center justify-end gap-3 border-t border-neutral-100">
             <button
               type="button"
               onClick={onClose}
               disabled={sharing}
-              className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition"
+              className="px-4 py-2.5 rounded-xl border border-neutral-200 text-xs font-semibold text-neutral-600 hover:bg-neutral-50 transition"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={sharing}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] active:scale-95 text-white text-xs font-bold shadow-md shadow-orange-500/20 transition disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] active:scale-[0.98] text-white text-xs font-medium shadow-md transition disabled:opacity-50"
             >
               {sharing ? (
                 <>

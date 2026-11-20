@@ -238,157 +238,127 @@ export function ApprovalsPage() {
     <PortalLayout activeNav="Approvals">
       <div className="space-y-6">
         {/* Header Row */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-medium text-slate-500 mb-1">
-              <Link to="/dashboard" className="hover:text-slate-800 transition">Dashboard</Link>
-              <ChevronRight className="h-3 w-3" />
-              <span className="text-slate-800 font-semibold">Approvals</span>
-            </div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight font-headline">
-              Approval Queue
+        <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-5 border-b border-neutral-900/[0.08]">
+          <div className="space-y-1">
+            <h1 className="text-2xl sm:text-[28px] leading-tight font-medium text-neutral-900 tracking-tight font-headline">
+              Approval queue
             </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-sm text-neutral-500">
               Review, verify, and decide on requests awaiting your authorization.
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={() => refetch()}
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-sm transition"
+              className="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg bg-white border border-neutral-900/[0.10] hover:bg-neutral-50 text-neutral-900 text-sm font-medium transition-colors"
             >
-              <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin text-[#ff6900]" : ""}`} />
+              <RefreshCw className={`h-4 w-4 text-neutral-500 ${loading ? "animate-spin text-[#ff6900]" : ""}`} strokeWidth={1.5} />
               <span>Refresh</span>
             </button>
             <Link
               to="/requests/new"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#ff6900] hover:bg-[#e05d00] text-white text-xs font-bold shadow-sm shadow-orange-500/20 transition active:scale-95"
+              className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#ff6900] hover:bg-[#ea580c] text-white text-sm font-medium transition-colors active:scale-[0.98]"
             >
-              <FileCheck className="h-4 w-4" />
-              <span>New Request</span>
+              <FileCheck className="h-4 w-4" strokeWidth={1.5} />
+              <span>New request</span>
             </Link>
           </div>
-        </div>
+        </header>
 
-        {/* 4 Metric Cards */}
+        {/* 4 Compact Numbers-Only KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-2xs hover:border-slate-200/80 transition-all flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-                <Clock className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="text-[11px] font-semibold text-slate-500">Awaiting Decision</div>
-                <div className="text-xl font-black text-amber-600 mt-0.5">{awaiting}</div>
-              </div>
-            </div>
-            {awaiting > 0 && <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />}
-          </div>
+          <article className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
+            <p className="text-xs text-neutral-500">Awaiting decision</p>
+            <p className="text-[28px] leading-none font-medium text-[#c2410c] font-headline tabular-nums">
+              {awaiting}
+            </p>
+            <p className="text-xs text-neutral-500">Requires your review</p>
+          </article>
 
-          <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-2xs hover:border-slate-200/80 transition-all flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                <CheckCircle2 className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="text-[11px] font-semibold text-slate-500">Approved</div>
-                <div className="text-xl font-black text-slate-900 mt-0.5">{approved}</div>
-              </div>
-            </div>
-            <div className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full">
-              Completed
-            </div>
-          </div>
+          <article className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
+            <p className="text-xs text-neutral-500">Approved</p>
+            <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+              {approved}
+            </p>
+            <p className="text-xs text-neutral-500">Completed sign-offs</p>
+          </article>
 
-          <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-2xs hover:border-slate-200/80 transition-all flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
-                <XCircle className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="text-[11px] font-semibold text-slate-500">Rejected / Returned</div>
-                <div className="text-xl font-black text-slate-900 mt-0.5">{rejected}</div>
-              </div>
-            </div>
-            <div className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
-              Actioned
-            </div>
-          </div>
+          <article className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
+            <p className="text-xs text-neutral-500">Rejected or returned</p>
+            <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+              {rejected}
+            </p>
+            <p className="text-xs text-neutral-500">Actioned items</p>
+          </article>
 
-          <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-2xs hover:border-slate-200/80 transition-all flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                <CreditCard className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="text-[11px] font-semibold text-slate-500">Value Under Review</div>
-                <div className="text-lg font-black text-slate-900 mt-0.5">
-                  {formatCurrency(totalPendingAmount, "NGN")}
-                </div>
-              </div>
-            </div>
-            <div className="text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
-              Exposure
-            </div>
-          </div>
+          <article className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
+            <p className="text-xs text-neutral-500">Value under review</p>
+            <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+              {formatCurrency(totalPendingAmount, "NGN")}
+            </p>
+            <p className="text-xs text-neutral-500">Pending financial exposure</p>
+          </article>
         </div>
 
-        {/* Filter and Search Bar */}
-        <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-2xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+        {/* Single-Row Filter and Search Bar */}
+        <div className="p-3.5 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+          <div className="md:col-span-5 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400 pointer-events-none" strokeWidth={1.5} />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by request #, submitter name, department..."
-              className="w-full pl-10 pr-4 py-2 rounded-xl bg-white border border-slate-200 text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900] shadow-2xs"
+              placeholder="Search request #, submitter, or department"
+              className="w-full h-9 pl-9 pr-3 rounded-lg bg-white border border-neutral-900/[0.12] text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-[#ff6900]"
             />
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="md:col-span-2">
             <SelectBox
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20"
+              className="w-full h-9 px-3 rounded-lg bg-white border border-neutral-900/[0.12] text-xs font-medium text-neutral-700"
             >
               {statusOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </SelectBox>
+          </div>
 
+          <div className="md:col-span-3">
             <SelectBox
               value={selectedRequestTypeId}
               onChange={(e) => setSelectedRequestTypeId(e.target.value)}
-              className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20"
+              className="w-full h-9 px-3 rounded-lg bg-white border border-neutral-900/[0.12] text-xs font-medium text-neutral-700"
             >
               {requestTypeOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </SelectBox>
+          </div>
 
+          <div className="md:col-span-2">
             <DateInput
-              
               value={filterDate}
               onChange={(e) => setFilterDate(e.target.value)}
-              className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 focus:outline-none"
+              className="w-full h-9 px-3 rounded-lg bg-white border border-neutral-900/[0.12] text-xs font-medium text-neutral-700"
             />
           </div>
         </div>
 
         {/* Requests Table */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
-          <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+        <div className="bg-white rounded-2xl border border-neutral-200/80 shadow-sm overflow-hidden">
+          <div className="p-5 border-b border-neutral-100 flex items-center justify-between">
             <div>
-              <h2 className="text-base font-bold text-slate-900">Requests In Queue</h2>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <h2 className="text-base font-medium text-neutral-900">Requests In Queue</h2>
+              <p className="text-xs text-neutral-500 mt-0.5">
                 Showing {sortedRows.length} requests matching active filters.
               </p>
             </div>
             {filteredRows.length > 0 && (
-              <span className="text-xs font-semibold text-slate-500">
+              <span className="text-xs font-semibold text-neutral-500">
                 Page {safePage} of {totalPages}
               </span>
             )}
@@ -403,7 +373,7 @@ export function ApprovalsPage() {
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50/75 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-100">
+              <thead className="bg-neutral-50/75 text-neutral-500 font-medium border-b border-neutral-100">
                 <tr>
                   <th className="py-3.5 px-5">Request No</th>
                   <th className="py-3.5 px-4">Submitter</th>
@@ -415,61 +385,61 @@ export function ApprovalsPage() {
                   <th className="py-3.5 px-5 text-right">Decision</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-700">
+              <tbody className="divide-y divide-neutral-100 text-neutral-700">
                 {loading ? (
                   <tr>
-                    <td colSpan={8} className="py-8 text-center text-slate-400">
+                    <td colSpan={8} className="py-8 text-center text-neutral-400">
                       Loading approvals...
                     </td>
                   </tr>
                 ) : pagedRows.length > 0 ? (
                   pagedRows.map((row) => (
-                    <tr key={row.requestId} className="hover:bg-slate-50/60 transition">
-                      <td className="py-3.5 px-5 font-bold text-slate-900">
+                    <tr key={row.requestId} className="hover:bg-neutral-50/60 transition">
+                      <td className="py-3.5 px-5 font-medium text-neutral-900">
                         <Link
                           to={`/requests/approvals/${row.requestId}`}
                           className="hover:text-[#ff6900] transition"
                         >
                           {row.requestNo}
                         </Link>
-                        <div className="text-[11px] font-normal text-slate-400 mt-0.5">
+                        <div className="text-xs font-normal text-neutral-400 mt-0.5">
                           {row.submitted}
                         </div>
                       </td>
                       <td className="py-3.5 px-4">
-                        <div className="font-semibold text-slate-800">{row.staff}</div>
+                        <div className="font-semibold text-neutral-800">{row.staff}</div>
                       </td>
                       <td className="py-3.5 px-4">
-                        <span className="font-semibold text-slate-700">{row.type}</span>
+                        <span className="font-semibold text-neutral-700">{row.type}</span>
                         {row.categoryLabel && (
-                          <span className="text-[10px] text-slate-400 block">{row.categoryLabel}</span>
+                          <span className="text-xs text-neutral-400 block">{row.categoryLabel}</span>
                         )}
                       </td>
-                      <td className="py-3.5 px-4 text-slate-600">
+                      <td className="py-3.5 px-4 text-neutral-600">
                         <span className="font-medium">{row.teamName || "-"}</span>
                       </td>
-                      <td className="py-3.5 px-4 font-bold text-slate-900">
+                      <td className="py-3.5 px-4 font-medium text-neutral-900">
                         {row.totalAmount > 0 ? formatCurrency(row.totalAmount, row.currency) : "—"}
                       </td>
                       <td className="py-3.5 px-4">
                         {row.pendingStep ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 font-semibold text-[11px] border border-amber-200/60">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 font-semibold text-xs border border-amber-200/60">
                             {row.pendingStep}
                           </span>
                         ) : (
-                          <span className="text-slate-400">—</span>
+                          <span className="text-neutral-400">—</span>
                         )}
                       </td>
                       <td className="py-3.5 px-4">
                         <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-semibold text-[11px] ${
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-semibold text-xs ${
                             row.tone === "success"
                               ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
                               : row.tone === "danger"
                               ? "bg-rose-50 text-rose-700 border border-rose-100"
                               : row.tone === "warning" || row.tone === "pending"
                               ? "bg-amber-50 text-amber-700 border border-amber-100"
-                              : "bg-slate-50 text-slate-700 border border-slate-200"
+                              : "bg-neutral-50 text-neutral-700 border border-neutral-200"
                           }`}
                         >
                           <span
@@ -480,7 +450,7 @@ export function ApprovalsPage() {
                                 ? "bg-rose-500"
                                 : row.tone === "warning" || row.tone === "pending"
                                 ? "bg-amber-500"
-                                : "bg-slate-400"
+                                : "bg-neutral-400"
                             }`}
                           />
                           {row.status.toUpperCase()}
@@ -489,7 +459,7 @@ export function ApprovalsPage() {
                       <td className="py-3.5 px-5 text-right">
                         <Link
                           to={`/requests/approvals/${row.requestId}`}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0a1128] hover:bg-[#162044] text-white text-[11px] font-bold transition shadow-sm"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0a1128] hover:bg-[#162044] text-white text-xs font-medium transition shadow-sm"
                         >
                           <span>Review</span>
                           <ArrowRight className="h-3 w-3" />
@@ -500,11 +470,11 @@ export function ApprovalsPage() {
                 ) : (
                   <tr>
                     <td colSpan={8} className="py-10 text-center">
-                      <div className="w-12 h-12 rounded-2xl bg-slate-50 text-slate-400 flex items-center justify-center mx-auto mb-2">
+                      <div className="w-12 h-12 rounded-2xl bg-neutral-50 text-neutral-400 flex items-center justify-center mx-auto mb-2">
                         <FileCheck className="h-6 w-6" />
                       </div>
-                      <p className="font-semibold text-slate-700 text-sm">No approvals found</p>
-                      <p className="text-xs text-slate-400 mt-0.5">
+                      <p className="font-semibold text-neutral-700 text-sm">No approvals found</p>
+                      <p className="text-xs text-neutral-400 mt-0.5">
                         Your queue is completely clear. No requests currently require your action.
                       </p>
                     </td>
@@ -516,23 +486,23 @@ export function ApprovalsPage() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="p-4 border-t border-slate-100 flex items-center justify-between">
+            <div className="p-4 border-t border-neutral-100 flex items-center justify-between">
               <button
                 type="button"
                 disabled={safePage <= 1}
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition"
+                className="px-3 py-1.5 rounded-xl border border-neutral-200 bg-white text-xs font-semibold text-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-neutral-50 transition"
               >
                 Previous
               </button>
-              <span className="text-xs font-semibold text-slate-600">
+              <span className="text-xs font-semibold text-neutral-600">
                 Page {safePage} of {totalPages}
               </span>
               <button
                 type="button"
                 disabled={safePage >= totalPages}
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition"
+                className="px-3 py-1.5 rounded-xl border border-neutral-200 bg-white text-xs font-semibold text-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-neutral-50 transition"
               >
                 Next
               </button>

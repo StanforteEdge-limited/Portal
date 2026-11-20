@@ -25,12 +25,12 @@ export function OtherRequestDetail() {
         {lineItems.length ? (
           <ul className="space-y-2">
             {lineItems.map((item) => (
-              <li key={item.id} className="rounded-[18px] border border-slate-100 bg-slate-50 px-4 py-3">
-                <p className="text-sm font-semibold text-slate-950">
+              <li key={item.id} className="rounded-[18px] border border-neutral-100 bg-neutral-50 px-4 py-3">
+                <p className="text-sm font-semibold text-neutral-950">
                   {item.description || "Untitled item"}
                 </p>
                 {item.notes ? (
-                  <p className="mt-1 text-xs text-slate-500">{item.notes}</p>
+                  <p className="mt-1 text-xs text-neutral-500">{item.notes}</p>
                 ) : null}
               </li>
             ))}

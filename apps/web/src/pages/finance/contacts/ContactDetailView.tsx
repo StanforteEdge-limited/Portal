@@ -33,7 +33,7 @@ export function ContactDetailView({ contactId, contactType, onEdit, transactions
   if (!c) {
     return (
       <div className="flex items-center justify-center py-20">
-        <p className="text-slate-500">Loading details...</p>
+        <p className="text-neutral-500">Loading details...</p>
       </div>
     );
   }
@@ -77,7 +77,7 @@ export function ContactDetailView({ contactId, contactType, onEdit, transactions
         <StatCard label="Status" value={c.is_active ? "Active" : "Inactive"} tone={c.is_active ? "success" : "neutral"} />
       </div>
 
-      <div className="flex gap-2 border-b border-slate-200">
+      <div className="flex gap-2 border-b border-neutral-200">
         {tabs.map((tab) => (
           <button
             key={tab.key}
@@ -85,7 +85,7 @@ export function ContactDetailView({ contactId, contactType, onEdit, transactions
             className={`px-4 py-2 font-medium border-b-2 -mb-px transition-colors ${
               activeTab === tab.key
                 ? "border-brand-900 text-brand-900"
-                : "border-transparent text-slate-500 hover:text-slate-700"
+                : "border-transparent text-neutral-500 hover:text-neutral-700"
             }`}
           >
             {tab.label}
@@ -97,7 +97,7 @@ export function ContactDetailView({ contactId, contactType, onEdit, transactions
         <SectionCard>
           <DataTable
             columns={[
-              { header: "", className: "w-40 font-medium text-slate-500", cell: (r) => r.field },
+              { header: "", className: "w-40 font-medium text-neutral-500", cell: (r) => r.field },
               { header: "", className: "font-medium", cell: (r) => r.value }
             ]}
             data={[
@@ -131,13 +131,13 @@ export function ContactDetailView({ contactId, contactType, onEdit, transactions
               data={c.contact_persons}
             />
           ) : (
-            <p className="text-sm text-slate-500">No contact persons.</p>
+            <p className="text-sm text-neutral-500">No contact persons.</p>
           )}
         </SectionCard>
       ) : activeTab === "transactions" ? (
-        transactionsTab ?? <SectionCard><p className="text-sm text-slate-500">No transactions to display.</p></SectionCard>
+        transactionsTab ?? <SectionCard><p className="text-sm text-neutral-500">No transactions to display.</p></SectionCard>
       ) : (
-        whtTab ?? <SectionCard><p className="text-sm text-slate-500">No withholding data to display.</p></SectionCard>
+        whtTab ?? <SectionCard><p className="text-sm text-neutral-500">No withholding data to display.</p></SectionCard>
       )}
     </>
   );

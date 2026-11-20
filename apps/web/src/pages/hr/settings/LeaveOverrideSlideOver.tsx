@@ -133,13 +133,13 @@ export default function LeaveOverrideSlideOver({ policy, onClose, onSaved }: Pro
         </SectionCard>
 
         <SectionCard title="Annual Day Entitlements">
-          <p className="mb-4 text-xs text-slate-500">
+          <p className="mb-4 text-xs text-neutral-500">
             Set the number of allowed days per year for each leave type.
           </p>
           <div className="space-y-4">
             {requestTypes.map(type => (
-              <div key={type.id} className="flex items-center justify-between gap-4 p-3 bg-slate-50 rounded-2xl">
-                <span className="text-sm font-medium text-slate-700">{type.name}</span>
+              <div key={type.id} className="flex items-center justify-between gap-4 p-3 bg-neutral-50 rounded-2xl">
+                <span className="text-sm font-medium text-neutral-700">{type.name}</span>
                 <div className="w-24">
                   <TextField 
                     label="" 
@@ -151,7 +151,7 @@ export default function LeaveOverrideSlideOver({ policy, onClose, onSaved }: Pro
                 </div>
               </div>
             ))}
-            {requestTypes.length === 0 && <p className="text-sm text-slate-400 italic">Loading leave types...</p>}
+            {requestTypes.length === 0 && <p className="text-sm text-neutral-400 italic">Loading leave types...</p>}
           </div>
 
           <div className="mt-8 flex items-center gap-3">
@@ -160,9 +160,9 @@ export default function LeaveOverrideSlideOver({ policy, onClose, onSaved }: Pro
               id="leave-active"
               checked={isActive} 
               onChange={(e) => setIsActive(e.target.checked)}
-              className="h-4 w-4 rounded border-slate-300 text-brand-900"
+              className="h-4 w-4 rounded border-neutral-300 text-brand-900"
             />
-            <label htmlFor="leave-active" className="text-sm font-medium text-slate-700">Override is Active</label>
+            <label htmlFor="leave-active" className="text-sm font-medium text-neutral-700">Override is Active</label>
           </div>
         </SectionCard>
       </SlideOverContent>

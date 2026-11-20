@@ -24,21 +24,21 @@ export default function PartiesTab() {
 
   return (
     <div className="space-y-4">
-      <h3 className="font-headline text-lg font-semibold text-slate-950">Parties</h3>
-      <p className="text-sm text-slate-500">Customers and vendors used in AR/AP workflows.</p>
+      <h3 className="font-headline text-lg font-semibold text-neutral-950">Parties</h3>
+      <p className="text-sm text-neutral-500">Customers and vendors used in AR/AP workflows.</p>
 
       <div className="grid gap-4 md:grid-cols-2">
         <StatCard label="Customers" value={String(customers.length)} tone="neutral" />
         <StatCard label="Vendors" value={String(vendors.length)} tone="neutral" />
       </div>
 
-      <div className="flex gap-2 border-b border-slate-200">
+      <div className="flex gap-2 border-b border-neutral-200">
         <button
           onClick={() => setShowCustomers(true)}
           className={`px-4 py-2 font-medium border-b-2 -mb-px transition-colors ${
             showCustomers
               ? "border-brand-900 text-brand-900"
-              : "border-transparent text-slate-500 hover:text-slate-700"
+              : "border-transparent text-neutral-500 hover:text-neutral-700"
           }`}
         >
           Customers ({customers.length})
@@ -48,7 +48,7 @@ export default function PartiesTab() {
           className={`px-4 py-2 font-medium border-b-2 -mb-px transition-colors ${
             !showCustomers
               ? "border-brand-900 text-brand-900"
-              : "border-transparent text-slate-500 hover:text-slate-700"
+              : "border-transparent text-neutral-500 hover:text-neutral-700"
           }`}
         >
           Vendors ({vendors.length})

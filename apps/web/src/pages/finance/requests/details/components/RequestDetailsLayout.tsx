@@ -22,7 +22,7 @@ export function RequestDetailsLayout() {
 
   if (loading) {
     return (
-      <div className="mt-6 rounded-2xl bg-slate-50 px-4 py-6 text-sm text-slate-500">
+      <div className="mt-6 rounded-2xl bg-neutral-50 px-4 py-6 text-sm text-neutral-500">
         Loading request details...
       </div>
     );
@@ -43,20 +43,20 @@ export function RequestDetailsLayout() {
         <button
           type="button"
           onClick={() => navigate(parentPath)}
-          className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
+          className="inline-flex items-center gap-2 text-xs font-semibold text-neutral-500 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
         >
           <Icon name="arrow_back" className="text-[16px]" />
           Back to {parentLabel}
         </button>
         <div className="mt-3 flex items-start justify-between gap-4">
           <div>
-            <p className="text-[0.72rem] font-bold uppercase tracking-[0.18em] text-slate-500">
+            <p className="text-[0.72rem] font-medium text-neutral-500">
               {parentLabel}
             </p>
             <h1 className="page-title mt-2 text-[clamp(1.7rem,7vw,2.2rem)]">
               {request.request_number || "Request details"}
             </h1>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">
+            <p className="mt-2 max-w-xl text-sm leading-6 text-neutral-500">
               {`${request.request_type?.name || requestCategoryFromRecord(request)} • ${formatPersonName(request.creator)} • ${formatDisplayDate(request.created_at)}`}
             </p>
           </div>

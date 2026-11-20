@@ -16,7 +16,7 @@ function describe(error: unknown, request: FastifyRequest): ErrorBody {
   }
 
   const fastifyError = error as FastifyError;
-  if (fastifyError && typeof fastifyError.statusCode === 'number' && fastifyError.statusCode >= 400) {
+  if (fastifyError && typeof fastifyError.statusCode === 'number' && fastifyError.statusCode >= 400 && fastifyError.statusCode < 500) {
     const details = (fastifyError as any).validation
       ? { validation: (fastifyError as any).validation }
       : (fastifyError as any).code

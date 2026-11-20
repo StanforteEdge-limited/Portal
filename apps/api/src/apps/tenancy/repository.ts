@@ -348,11 +348,20 @@ export class TenancyService {
       exported[tableName] = rows;
     }
 
-    exported['sta_profiles'] = await this.queryRaw<Record<string, unknown>>(
+    const rawProfiles = await this.queryRaw<Record<string, unknown>>(
       sql`SELECT p.* FROM sta_profiles p
           JOIN sta_tenant_memberships m ON m.profile_id = p.id
           WHERE m.tenant_id = ${context.tenantId}`,
     );
+    exported['sta_profiles'] = rawProfiles.map((row) => {
+      const sanitized = { ...row };
+      delete sanitized.password_hash;
+      delete sanitized.passwordHash;
+      delete sanitized.password_reset_token;
+      delete sanitized.email_verification_token;
+      delete sanitized.mfa_secret;
+      return sanitized;
+    });
     exported['sta_tenants'] = await this.queryRaw<Record<string, unknown>>(
       sql`SELECT * FROM sta_tenants WHERE id = ${context.tenantId}`,
     );

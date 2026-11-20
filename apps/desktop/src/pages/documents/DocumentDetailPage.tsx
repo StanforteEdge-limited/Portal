@@ -1,4 +1,5 @@
 import { useState } from "react";
+import DOMPurify from "dompurify";
 import { AppShell, Button, Icon, PageHeader, SectionCard, useToast, TextField } from "@/shared";
 import { buildAppNavigation, buildAppMobileNav } from "@/shared/navigation";
 import { useAuth } from "@/shared/context/AuthProvider";
@@ -104,7 +105,7 @@ export default function DocumentDetailPage() {
             {documentRecord.content_html ? (
               <div
                 className="prose max-w-none text-slate-700 leading-7 text-sm"
-                dangerouslySetInnerHTML={{ __html: documentRecord.content_html }}
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(documentRecord.content_html) }}
               />
             ) : (
               <p className="text-slate-400 text-sm">No written content provided.</p>

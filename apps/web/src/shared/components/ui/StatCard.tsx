@@ -1,5 +1,4 @@
 import { Chip } from "./Chip";
-import { Icon } from "./Icon";
 import { hasAnyPermission } from "@stanforte/shared";
 import { useAuth } from "@/shared/context/AuthProvider";
 
@@ -9,6 +8,7 @@ type StatCardProps = {
   delta?: string;
   tone?: "neutral" | "success" | "warning" | "pending" | "danger";
   hint?: string;
+  /** Retained for caller compatibility; stat cards render numbers without decorative icon tiles. */
   icon?: string;
   requiredPermissions?: string[];
 };
@@ -19,7 +19,6 @@ export function StatCard({
   delta,
   tone = "neutral",
   hint,
-  icon,
   requiredPermissions,
 }: StatCardProps) {
   const { user } = useAuth();
@@ -27,33 +26,19 @@ export function StatCard({
     return null;
   }
 
-  const toneBg =
-    tone === "success"
-      ? "bg-emerald-50 text-emerald-600"
-      : tone === "warning" || tone === "pending"
-      ? "bg-amber-50 text-amber-600"
-      : tone === "danger"
-      ? "bg-rose-50 text-rose-600"
-      : "bg-blue-50 text-blue-600";
-
   return (
-    <article className="bg-white rounded-2xl border border-slate-100 shadow-2xs hover:border-slate-200/80 transition-all p-5 flex flex-col justify-between space-y-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="space-y-1">
-          <p className="text-xs font-semibold text-slate-500">{label}</p>
-          <p className="text-2xl font-bold tracking-tight text-slate-900 font-headline">{value}</p>
-        </div>
-        {icon ? (
-          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-2xs ${toneBg}`}>
-            <Icon name={icon} className="text-[20px]" />
-          </div>
-        ) : null}
+    <article className="bg-white rounded-2xl border border-neutral-900/[0.08] shadow-xs p-5 flex flex-col justify-between gap-3">
+      <div className="space-y-2">
+        <p className="text-xs font-normal text-neutral-500">{label}</p>
+        <p className="text-[28px] leading-none font-medium tracking-tight text-neutral-900 font-headline tabular-nums">
+          {value}
+        </p>
       </div>
 
-      {(delta || hint) ? (
-        <div className="flex items-center gap-2 pt-2 border-t border-slate-100/80">
+      {delta || hint ? (
+        <div className="flex items-center gap-2 pt-2 border-t border-neutral-900/[0.06]">
           {delta ? <Chip variant={tone}>{delta}</Chip> : null}
-          {hint ? <p className="text-[11px] text-slate-400 truncate">{hint}</p> : null}
+          {hint ? <p className="text-xs text-neutral-500 truncate">{hint}</p> : null}
         </div>
       ) : null}
     </article>

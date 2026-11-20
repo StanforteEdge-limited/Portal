@@ -77,7 +77,7 @@ function versionManifestPlugin(): Plugin {
         2,
       );
       writeFileSync(
-        new URL("./public/version.json", import.meta.url),
+        new URL("./dist/version.json", import.meta.url),
         manifest,
         "utf-8",
       );
@@ -109,6 +109,18 @@ export default defineConfig(({ mode }) => {
       "import.meta.env.VITE_DOWNLOAD_BASE_URL": JSON.stringify(
         env.VITE_DOWNLOAD_BASE_URL || "/downloads"
       ),
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            "vendor-react": ["react", "react-dom"],
+            "vendor-router": ["@tanstack/react-router"],
+            "vendor-icons": ["lucide-react"],
+            "vendor-pdf": ["pdf-lib"],
+          },
+        },
+      },
     },
     server: {
       host: "0.0.0.0",

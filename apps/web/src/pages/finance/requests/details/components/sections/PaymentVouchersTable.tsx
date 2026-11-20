@@ -43,7 +43,7 @@ export function PaymentVouchersTable() {
       }
     >
       {(paymentVouchers ?? []).length ? (
-        <div className="overflow-x-auto rounded-[22px] border border-slate-200 bg-white">
+        <div className="overflow-x-auto rounded-[22px] border border-neutral-200 bg-white">
           <Table caption="Payment vouchers">
             <TableHead>
               <TableHeaderRow>
@@ -76,7 +76,7 @@ export function PaymentVouchersTable() {
                          <span>{voucher.voucher_number}</span>
                        </span>
                      </button>
-                    <div className="mt-1 text-xs text-slate-500">
+                    <div className="mt-1 text-xs text-neutral-500">
                       {formatDisplayDate(voucher.disbursed_at)}
                     </div>
                     {voucher.deductions && voucher.deductions.length > 0 && (
@@ -93,7 +93,7 @@ export function PaymentVouchersTable() {
                                   : "/finance/statutory-deductions";
                                 window.open(url, "_blank", "noopener,noreferrer");
                               }}
-                              className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[0.68rem] font-semibold hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-900/20 ${
+                              className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-semibold hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-900/20 ${
                                 isRemitted ? "bg-success/10 text-success" : "bg-warning/10 text-warning"
                               }`}
                               title={isRemitted ? "Remitted — open in Statutory Deductions" : "Pending remittance — open in Statutory Deductions"}
@@ -109,17 +109,17 @@ export function PaymentVouchersTable() {
                       </div>
                     )}
                   </TableCell>
-                  <TableCell className="text-sm font-semibold text-slate-700">
+                  <TableCell className="text-sm font-semibold text-neutral-700">
                     {voucher.gross_amount && voucher.gross_amount !== voucher.amount ? (
                       <div>
-                        <div className="text-slate-700">{formatCurrency(voucher.gross_amount, request?.currency)} <span className="text-[10px] text-slate-400 font-normal">(Gross)</span></div>
-                        <div className="text-xs text-slate-500 font-normal">Net paid: {formatCurrency(voucher.amount, request?.currency)}</div>
+                        <div className="text-neutral-700">{formatCurrency(voucher.gross_amount, request?.currency)} <span className="text-xs text-neutral-400 font-normal">(Gross)</span></div>
+                        <div className="text-xs text-neutral-500 font-normal">Net paid: {formatCurrency(voucher.amount, request?.currency)}</div>
                       </div>
                     ) : (
                       formatCurrency(voucher.amount, request?.currency)
                     )}
                   </TableCell>
-                  <TableCell className="text-sm font-semibold text-slate-700">
+                  <TableCell className="text-sm font-semibold text-neutral-700">
                     {Number(voucher.retired_amount || 0) > 0 ? (
                       <button
                         type="button"
@@ -139,13 +139,13 @@ export function PaymentVouchersTable() {
                             voucher.retired_amount,
                             request?.currency,
                           )}
-                          <span className="ml-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                          <span className="ml-2 text-xs font-semibold text-neutral-500">
                             {formatRequestStatus(voucher.retirement_status)}
                           </span>
                         </span>
                       </button>
                     ) : (
-                      <span className="text-slate-400">-</span>
+                      <span className="text-neutral-400">-</span>
                     )}
                   </TableCell>
                   <TableCell className="text-right">

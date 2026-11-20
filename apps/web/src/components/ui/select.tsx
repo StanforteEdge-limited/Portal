@@ -121,7 +121,7 @@ const SelectTrigger = React.forwardRef<
         type="button"
         disabled={isDisabled}
         className={cn(
-          "flex h-10 w-full items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-left text-sm font-medium text-slate-900 shadow-2xs transition hover:border-slate-300 focus:outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+          "flex h-10 w-full items-center justify-between gap-2 rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-left text-sm font-medium text-neutral-900 shadow-2xs transition hover:border-neutral-300 focus:outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
           className
         )}
         {...props}
@@ -129,7 +129,7 @@ const SelectTrigger = React.forwardRef<
         {children}
         <ChevronDown
           className={cn(
-            "h-4 w-4 text-slate-400 shrink-0 ml-1 transition-transform duration-150",
+            "h-4 w-4 text-neutral-400 shrink-0 ml-1 transition-transform duration-150",
             ctx?.open && "rotate-180 text-[#ff6900]"
           )}
         />
@@ -141,13 +141,13 @@ SelectTrigger.displayName = "SelectTrigger";
 
 const SelectScrollUpButton = () => (
   <div className="flex cursor-default items-center justify-center py-1">
-    <ChevronUp className="h-4 w-4 text-slate-400" />
+    <ChevronUp className="h-4 w-4 text-neutral-400" />
   </div>
 );
 
 const SelectScrollDownButton = () => (
   <div className="flex cursor-default items-center justify-center py-1">
-    <ChevronDown className="h-4 w-4 text-slate-400" />
+    <ChevronDown className="h-4 w-4 text-neutral-400" />
   </div>
 );
 
@@ -160,7 +160,7 @@ const SelectContent = React.forwardRef<
     align="start"
     sideOffset={6}
     className={cn(
-      "p-1.5 max-h-72 overflow-y-auto rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-2xl",
+      "p-1.5 max-h-72 overflow-y-auto rounded-2xl border border-neutral-200 bg-white text-neutral-900 shadow-2xl",
       className
     )}
     {...props}
@@ -176,7 +176,7 @@ const SelectLabel = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("px-2.5 py-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider", className)}
+    className={cn("px-2.5 py-1.5 text-xs font-medium text-neutral-400  ", className)}
     {...props}
   />
 ));
@@ -207,8 +207,8 @@ const SelectItem = React.forwardRef<
       className={cn(
         "relative flex w-full cursor-pointer select-none items-center justify-between gap-3 rounded-xl py-2 pl-3 pr-2.5 text-left text-xs font-semibold outline-none transition-colors disabled:pointer-events-none disabled:opacity-50",
         isSelected
-          ? "bg-orange-50/80 text-[#ff6900] font-bold"
-          : "text-slate-700 hover:bg-slate-50 hover:text-slate-900",
+          ? "bg-orange-50/80 text-[#ff6900] font-medium"
+          : "text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900",
         className
       )}
       {...props}
@@ -226,7 +226,7 @@ const SelectSeparator = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("-mx-1 my-1 h-px bg-slate-100", className)}
+    className={cn("-mx-1 my-1 h-px bg-neutral-100", className)}
     {...props}
   />
 ));
@@ -350,7 +350,7 @@ const SelectBox = React.forwardRef<HTMLButtonElement, SelectBoxProps>(
               onClick?.(e as any);
             }}
             className={cn(
-              "flex h-10 w-full items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-left text-sm font-medium text-slate-900 shadow-2xs transition hover:border-slate-300 focus:outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15 disabled:cursor-not-allowed disabled:opacity-50",
+              "flex h-10 w-full items-center justify-between gap-2 rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-left text-sm font-medium text-neutral-900 shadow-2xs transition hover:border-neutral-300 focus:outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15 disabled:cursor-not-allowed disabled:opacity-50",
               className
             )}
           >
@@ -359,7 +359,7 @@ const SelectBox = React.forwardRef<HTMLButtonElement, SelectBoxProps>(
             </span>
             <ChevronDown
               className={cn(
-                "h-4 w-4 text-slate-400 shrink-0 transition-transform duration-150",
+                "h-4 w-4 text-neutral-400 shrink-0 transition-transform duration-150",
                 open && "rotate-180 text-[#ff6900]"
               )}
             />
@@ -372,10 +372,10 @@ const SelectBox = React.forwardRef<HTMLButtonElement, SelectBoxProps>(
             width: "max-content",
             maxWidth: "min(92vw, 26rem)",
           }}
-          className="p-1.5 max-h-72 overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl"
+          className="p-1.5 max-h-72 overflow-y-auto rounded-2xl border border-neutral-200 bg-white shadow-2xl"
         >
           {options.length === 0 ? (
-            <div className="px-3 py-2 text-xs text-slate-400">No options available</div>
+            <div className="px-3 py-2 text-xs text-neutral-400">No options available</div>
           ) : (
             <div className="space-y-0.5">
               {options.map((opt, idx) => {
@@ -391,8 +391,8 @@ const SelectBox = React.forwardRef<HTMLButtonElement, SelectBoxProps>(
                     className={cn(
                       "relative flex w-full cursor-pointer select-none items-center justify-between gap-3 rounded-xl py-2 pl-3 pr-2.5 text-left text-xs font-semibold outline-none transition-colors disabled:pointer-events-none disabled:opacity-50",
                       isSelected
-                        ? "bg-orange-50/80 text-[#ff6900] font-bold"
-                        : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+                        ? "bg-orange-50/80 text-[#ff6900] font-medium"
+                        : "text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900"
                     )}
                   >
                     <span className="truncate">{opt.label}</span>

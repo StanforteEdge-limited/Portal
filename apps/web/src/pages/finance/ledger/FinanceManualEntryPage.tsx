@@ -229,16 +229,16 @@ export default function FinanceManualEntryPage() {
       <SectionCard title="Entry Header">
         <div className="grid gap-4 md:grid-cols-3">
           <label className="grid gap-1.5 text-sm">
-            <span className="font-semibold text-slate-700">Entry Date</span>
-            <DateInput  className="rounded-2xl border border-slate-200 px-4 py-2.5" value={entryDate} onChange={(e) => setEntryDate(e.target.value)} />
+            <span className="font-semibold text-neutral-700">Entry Date</span>
+            <DateInput  className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={entryDate} onChange={(e) => setEntryDate(e.target.value)} />
           </label>
           <label className="grid gap-1.5 text-sm">
-            <span className="font-semibold text-slate-700">Currency</span>
-            <input className="rounded-2xl border border-slate-200 px-4 py-2.5" value={currency} onChange={(e) => setCurrency(e.target.value.toUpperCase())} />
+            <span className="font-semibold text-neutral-700">Currency</span>
+            <input className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={currency} onChange={(e) => setCurrency(e.target.value.toUpperCase())} />
           </label>
           <label className="grid gap-1.5 text-sm md:col-span-3">
-            <span className="font-semibold text-slate-700">Memo</span>
-            <input className="rounded-2xl border border-slate-200 px-4 py-2.5" value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="Adjustment reason" />
+            <span className="font-semibold text-neutral-700">Memo</span>
+            <input className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="Adjustment reason" />
           </label>
         </div>
       </SectionCard>
@@ -252,8 +252,8 @@ export default function FinanceManualEntryPage() {
           {lines.map((line, index) => (
             <div key={index} className="grid gap-3 md:grid-cols-12 items-end">
               <label className="grid gap-1.5 text-sm md:col-span-4">
-                <span className="font-semibold text-slate-700">Chart Account</span>
-                <SelectBox className="rounded-2xl border border-slate-200 px-4 py-2.5" value={line.chart_account_id} onChange={(e) => setLine(index, { chart_account_id: e.target.value })}>
+                <span className="font-semibold text-neutral-700">Chart Account</span>
+                <SelectBox className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={line.chart_account_id} onChange={(e) => setLine(index, { chart_account_id: e.target.value })}>
                   <option value="">Select account</option>
                   {chartAccounts.map((account: any) => (
                     <option key={account.id} value={account.id}>{account.code} - {account.name}</option>
@@ -261,16 +261,16 @@ export default function FinanceManualEntryPage() {
                 </SelectBox>
               </label>
               <label className="grid gap-1.5 text-sm md:col-span-3">
-                <span className="font-semibold text-slate-700">Description</span>
-                <input className="rounded-2xl border border-slate-200 px-4 py-2.5" value={line.description} onChange={(e) => setLine(index, { description: e.target.value })} />
+                <span className="font-semibold text-neutral-700">Description</span>
+                <input className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={line.description} onChange={(e) => setLine(index, { description: e.target.value })} />
               </label>
               <label className="grid gap-1.5 text-sm md:col-span-2">
-                <span className="font-semibold text-slate-700">Debit</span>
-                <input type="number" className="rounded-2xl border border-slate-200 px-4 py-2.5" value={line.debit} onChange={(e) => setLine(index, { debit: Number(e.target.value) })} />
+                <span className="font-semibold text-neutral-700">Debit</span>
+                <input type="number" className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={line.debit} onChange={(e) => setLine(index, { debit: Number(e.target.value) })} />
               </label>
               <label className="grid gap-1.5 text-sm md:col-span-2">
-                <span className="font-semibold text-slate-700">Credit</span>
-                <input type="number" className="rounded-2xl border border-slate-200 px-4 py-2.5" value={line.credit} onChange={(e) => setLine(index, { credit: Number(e.target.value) })} />
+                <span className="font-semibold text-neutral-700">Credit</span>
+                <input type="number" className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={line.credit} onChange={(e) => setLine(index, { credit: Number(e.target.value) })} />
               </label>
               <div className="md:col-span-1">
                 <Button variant="danger" size="sm" onClick={() => removeLine(index)} disabled={lines.length <= 2}><Icon name="delete" className="text-sm" /></Button>
@@ -284,7 +284,7 @@ export default function FinanceManualEntryPage() {
       </SectionCard>
 
       <SectionCard title="Recent Manual Entries">
-        {loading ? <p className="text-sm text-slate-500">Loading entries...</p> : null}
+        {loading ? <p className="text-sm text-neutral-500">Loading entries...</p> : null}
         {entries.length ? (
           <Table caption="Manual journal entries">
             <TableHead>
@@ -320,30 +320,30 @@ export default function FinanceManualEntryPage() {
       {editingEntry && (
         <SlideOver open onClose={() => setEditingEntry(null)} size="md">
           <div className="space-y-4 p-4">
-            <h3 className="font-semibold text-slate-800">Edit Journal Entry</h3>
+            <h3 className="font-semibold text-neutral-800">Edit Journal Entry</h3>
             <label className="grid gap-1.5 text-sm">
-              <span className="font-semibold text-slate-700">Entry Date</span>
-              <DateInput  className="rounded-2xl border border-slate-200 px-4 py-2.5" value={editEntryDate} onChange={(e) => setEditEntryDate(e.target.value)} />
+              <span className="font-semibold text-neutral-700">Entry Date</span>
+              <DateInput  className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={editEntryDate} onChange={(e) => setEditEntryDate(e.target.value)} />
             </label>
             <label className="grid gap-1.5 text-sm">
-              <span className="font-semibold text-slate-700">Currency</span>
-              <input className="rounded-2xl border border-slate-200 px-4 py-2.5" value={editCurrency} onChange={(e) => setEditCurrency(e.target.value.toUpperCase())} />
+              <span className="font-semibold text-neutral-700">Currency</span>
+              <input className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={editCurrency} onChange={(e) => setEditCurrency(e.target.value.toUpperCase())} />
             </label>
             <label className="grid gap-1.5 text-sm">
-              <span className="font-semibold text-slate-700">Memo</span>
-              <input className="rounded-2xl border border-slate-200 px-4 py-2.5" value={editMemo} onChange={(e) => setEditMemo(e.target.value)} />
+              <span className="font-semibold text-neutral-700">Memo</span>
+              <input className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={editMemo} onChange={(e) => setEditMemo(e.target.value)} />
             </label>
             <div className="space-y-2">
-              <span className="font-semibold text-slate-700 text-sm">Lines</span>
+              <span className="font-semibold text-neutral-700 text-sm">Lines</span>
               {editLines.map((line, idx) => (
                 <div key={idx} className="grid gap-2 md:grid-cols-12 items-end">
-                  <SelectBox className="md:col-span-4 rounded-2xl border border-slate-200 px-3 py-2 text-sm" value={line.chart_account_id} onChange={(e) => setEditLines((p) => p.map((l, i) => i === idx ? { ...l, chart_account_id: e.target.value } : l))}>
+                  <SelectBox className="md:col-span-4 rounded-2xl border border-neutral-200 px-3 py-2 text-sm" value={line.chart_account_id} onChange={(e) => setEditLines((p) => p.map((l, i) => i === idx ? { ...l, chart_account_id: e.target.value } : l))}>
                     <option value="">Account</option>
                     {chartAccounts.map((a: any) => <option key={a.id} value={a.id}>{a.code} - {a.name}</option>)}
                   </SelectBox>
-                  <input className="md:col-span-3 rounded-2xl border border-slate-200 px-3 py-2 text-sm" placeholder="Description" value={line.description} onChange={(e) => setEditLines((p) => p.map((l, i) => i === idx ? { ...l, description: e.target.value } : l))} />
-                  <input type="number" className="md:col-span-2 rounded-2xl border border-slate-200 px-3 py-2 text-sm" placeholder="Debit" value={line.debit} onChange={(e) => setEditLines((p) => p.map((l, i) => i === idx ? { ...l, debit: Number(e.target.value) } : l))} />
-                  <input type="number" className="md:col-span-2 rounded-2xl border border-slate-200 px-3 py-2 text-sm" placeholder="Credit" value={line.credit} onChange={(e) => setEditLines((p) => p.map((l, i) => i === idx ? { ...l, credit: Number(e.target.value) } : l))} />
+                  <input className="md:col-span-3 rounded-2xl border border-neutral-200 px-3 py-2 text-sm" placeholder="Description" value={line.description} onChange={(e) => setEditLines((p) => p.map((l, i) => i === idx ? { ...l, description: e.target.value } : l))} />
+                  <input type="number" className="md:col-span-2 rounded-2xl border border-neutral-200 px-3 py-2 text-sm" placeholder="Debit" value={line.debit} onChange={(e) => setEditLines((p) => p.map((l, i) => i === idx ? { ...l, debit: Number(e.target.value) } : l))} />
+                  <input type="number" className="md:col-span-2 rounded-2xl border border-neutral-200 px-3 py-2 text-sm" placeholder="Credit" value={line.credit} onChange={(e) => setEditLines((p) => p.map((l, i) => i === idx ? { ...l, credit: Number(e.target.value) } : l))} />
                   <button className="md:col-span-1 text-red-500 text-sm" onClick={() => setEditLines((p) => p.filter((_, i) => i !== idx))} disabled={editLines.length <= 2}>×</button>
                 </div>
               ))}

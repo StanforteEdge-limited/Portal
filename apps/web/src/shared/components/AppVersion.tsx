@@ -59,10 +59,10 @@ export function AppVersion() {
   if (!updateAvailable) return null;
 
   return (
-    <div className="fixed bottom-3 right-3 z-[1100] w-64 rounded-2xl border border-slate-200 bg-white p-4 shadow-lg">
-      <p className="text-sm font-semibold text-slate-800">New version available</p>
+    <div className="fixed bottom-3 right-3 z-[1100] w-64 rounded-2xl border border-neutral-200 bg-white p-4 shadow-lg">
+      <p className="text-sm font-semibold text-neutral-800">New version available</p>
       {newBuildVersion && (
-        <p className="mt-0.5 text-xs text-slate-500">
+        <p className="mt-0.5 text-xs text-neutral-500">
           Build {newBuildVersion} is ready
         </p>
       )}

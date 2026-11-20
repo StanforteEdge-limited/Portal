@@ -24,7 +24,7 @@ export function SummarySection({ cards }: { cards: SummaryCard[] }) {
       title="Request Summary"
       action={<Chip variant={viewerStatus.tone}>{viewerStatus.label}</Chip>}
     >
-      <p className="max-w-3xl text-sm leading-7 text-slate-600">
+      <p className="max-w-3xl text-sm leading-7 text-neutral-600">
         {String(
           requestData.purpose ||
             requestData.leave_reason ||

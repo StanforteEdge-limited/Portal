@@ -36,14 +36,14 @@ export default function OfficeLocationsTab({ onEditLocation }: Props) {
     void load();
   }, []);
 
-  if (loading) return <div className="p-8 text-center text-slate-500 text-sm">Loading office locations...</div>;
+  if (loading) return <div className="p-8 text-center text-neutral-500 text-sm">Loading office locations...</div>;
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-bold text-slate-900">Attendance Geofences</h3>
-          <p className="text-sm text-slate-500 mt-1">Authorized locations where staff can clock in and out.</p>
+          <h3 className="text-lg font-medium text-neutral-900">Attendance Geofences</h3>
+          <p className="text-sm text-neutral-500 mt-1">Authorized locations where staff can clock in and out.</p>
         </div>
         <Button onClick={() => onEditLocation(true)}>
           <Icon name="add" className="mr-1" />
@@ -55,11 +55,11 @@ export default function OfficeLocationsTab({ onEditLocation }: Props) {
         columns={[
           { header: "Name", cell: (loc: any) => (
             <>
-              <p className="font-bold text-slate-900">{loc.name}</p>
-              <p className="text-xs text-slate-500">{loc.address || "No address provided"}</p>
+              <p className="font-medium text-neutral-900">{loc.name}</p>
+              <p className="text-xs text-neutral-500">{loc.address || "No address provided"}</p>
             </>
           ) },
-          { header: "Coordinates", className: "font-mono text-[11px] text-slate-600", cell: (loc: any) => `${loc.latitude.toFixed(4)}, ${loc.longitude.toFixed(4)}` },
+          { header: "Coordinates", className: "font-mono text-xs text-neutral-600", cell: (loc: any) => `${loc.latitude.toFixed(4)}, ${loc.longitude.toFixed(4)}` },
           { header: "Radius", cell: (loc: any) => `${loc.radius_meters}m` },
           { header: "Organizations", cell: (loc: any) => (
             <div className="flex flex-wrap gap-1">

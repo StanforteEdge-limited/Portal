@@ -1,18 +1,18 @@
-import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "@/shared/context/AuthProvider";
 
 function AuthCheckingScreen() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
+    <main className="flex min-h-screen items-center justify-center bg-[#fafafa] p-6">
       <section
         role="status"
         aria-live="polite"
         className="section-card w-full max-w-md p-6 text-center"
       >
-        <h1 className="text-lg font-semibold text-slate-950">
-          Preparing your workspace...
+        <h1 className="text-base font-medium text-neutral-900">
+          Preparing your workspace
         </h1>
-        <p className="mt-2 text-sm text-slate-500">
+        <p className="mt-1.5 text-sm text-neutral-500">
           Checking your active session.
         </p>
       </section>
@@ -22,7 +22,6 @@ function AuthCheckingScreen() {
 
 export function ProtectedRoute() {
   const { status, initialized, authIssue } = useAuth();
-  const location = useLocation();
 
   if (!initialized || status === "checking") {
     return <AuthCheckingScreen />;
@@ -30,9 +29,8 @@ export function ProtectedRoute() {
 
   if (status !== "authenticated") {
     const nextPath = authIssue === "session_expired" ? "/reauth" : "/login";
-    return (
-      <Navigate to={nextPath} replace state={{ from: location.pathname }} />
-    );
+    const from = typeof window !== "undefined" ? window.location.pathname : "/dashboard";
+    return <Navigate to={nextPath} replace state={{ from }} />;
   }
 
   return <Outlet />;

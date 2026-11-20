@@ -165,9 +165,9 @@ export function ApprovalFlowBuilder({
           : roleOptions;
 
         return (
-          <div key={step.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div key={step.id} className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
             <div className="mb-3 flex items-center justify-between">
-              <p className="text-sm font-semibold text-slate-800">Step {index + 1}</p>
+              <p className="text-sm font-semibold text-neutral-800">Step {index + 1}</p>
               <Button
                 variant="ghost"
                 size="sm"
@@ -233,9 +233,9 @@ export function ApprovalFlowBuilder({
               />
             </div>
 
-            <div className="mt-4 border-t border-slate-200/60 pt-4">
+            <div className="mt-4 border-t border-neutral-200/60 pt-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-slate-700">Dynamic Conditions</span>
+                <span className="text-sm font-medium text-neutral-700">Dynamic Conditions</span>
                 <Button 
                   variant="ghost" 
                   size="sm" 
@@ -255,7 +255,7 @@ export function ApprovalFlowBuilder({
               </div>
               
               {(!step.conditions || step.conditions.length === 0) && (
-                <p className="text-xs text-slate-400">No conditions. This step applies to all requests (except those filtered by Minimum Amount).</p>
+                <p className="text-xs text-neutral-400">No conditions. This step applies to all requests (except those filtered by Minimum Amount).</p>
               )}
               
               <div className="space-y-2">

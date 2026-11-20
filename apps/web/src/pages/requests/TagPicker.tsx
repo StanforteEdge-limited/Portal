@@ -79,12 +79,12 @@ export function TagPicker({
         {value.map((tag) => (
           <span
             key={tag.id}
-            className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700"
+            className="inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-700"
           >
             {tag.label}
             <button
               type="button"
-              className="text-slate-500 transition hover:text-slate-900 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
+              className="text-neutral-500 transition hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
               aria-label={`Remove tag ${tag.label}`}
               onClick={() =>
                 onChange(value.filter((item) => item.id !== tag.id))
@@ -113,7 +113,7 @@ export function TagPicker({
 
       {query.trim() ? (
         <div
-          className="rounded-[20px] border border-slate-200 bg-white p-2 shadow-soft"
+          className="rounded-[20px] border border-neutral-200 bg-white p-2 shadow-soft"
           role="listbox"
           aria-label={`${label} suggestions`}
         >
@@ -130,13 +130,13 @@ export function TagPicker({
             <button
               key={item.id}
               type="button"
-              className="flex w-full items-center justify-between rounded-2xl px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
+              className="flex w-full items-center justify-between rounded-2xl px-3 py-2 text-left text-sm text-neutral-700 transition hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
               onClick={() => addTag(item)}
               role="option"
               aria-selected="false"
             >
               <span>{item.label}</span>
-              <Icon name="sell" className="text-[18px] text-slate-400" />
+              <Icon name="sell" className="text-[18px] text-neutral-400" />
             </button>
           ))}
         </div>

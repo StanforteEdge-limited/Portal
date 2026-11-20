@@ -6,6 +6,9 @@ const connectionString =
   "postgresql://stanforte:stanforte-dev@localhost:5455/stanforte?schema=public";
 
 async function runSeed() {
+  if (String(process.env.NODE_ENV || '').toLowerCase() === "production" && process.env.ALLOW_PRODUCTION_SEED !== "true") {
+    throw new Error("Refusing to run seed script in production. Set ALLOW_PRODUCTION_SEED=true only if intentional.");
+  }
   const client = new Client({ connectionString });
   await client.connect();
   console.log(" Connected to database:", connectionString.replace(/:[^:@]+@/, ":****@"));

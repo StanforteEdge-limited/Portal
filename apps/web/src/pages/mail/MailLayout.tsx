@@ -47,7 +47,7 @@ export function MailLayout() {
     ?? (selectedAccountId === 'all' ? (accounts[0]?.id ?? null) : selectedAccountId);
 
   if (loading) {
-    return <div className="flex items-center justify-center h-full text-slate-400 text-sm">Loading…</div>;
+    return <div className="flex items-center justify-center h-full text-neutral-400 text-sm">Loading…</div>;
   }
 
   if (accounts.length === 0) {
@@ -55,7 +55,7 @@ export function MailLayout() {
   }
 
   return (
-    <div className="flex flex-1 h-full overflow-hidden rounded-xl border border-slate-200 bg-white font-sans shadow-sm">
+    <div className="flex flex-1 h-full overflow-hidden rounded-xl border border-neutral-200 bg-white font-sans shadow-sm">
       {/* Desktop Sidebar */}
       <div className="hidden md:block">
         <AccountSidebar
@@ -87,7 +87,7 @@ export function MailLayout() {
 
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Toolbar */}
-        <div className="px-4 py-2 border-b border-slate-200 flex justify-between items-center shrink-0 bg-slate-50">
+        <div className="px-4 py-2 border-b border-neutral-200 flex justify-between items-center shrink-0 bg-neutral-50">
           <div className="flex items-center gap-2">
             {/* Toggle folders button on mobile */}
             <Button
@@ -124,11 +124,11 @@ export function MailLayout() {
         <div className="flex-1 flex overflow-hidden">
           {/* Message List Pane */}
           {listAccountIds.length === 0 ? (
-            <div className="w-full md:w-80 border-r border-slate-200 flex items-center justify-center text-slate-400 text-sm">
+            <div className="w-full md:w-80 border-r border-neutral-200 flex items-center justify-center text-neutral-400 text-sm">
               Select an account
             </div>
           ) : (
-            <div className={`w-full md:w-80 border-r border-slate-200 flex flex-col ${selectedHeader ? 'hidden md:flex' : 'flex'}`}>
+            <div className={`w-full md:w-80 border-r border-neutral-200 flex flex-col ${selectedHeader ? 'hidden md:flex' : 'flex'}`}>
               <MessageList
                 headers={headers}
                 loading={headersLoading}
@@ -159,7 +159,7 @@ export function MailLayout() {
                 onBack={() => setSelectedHeader(null)} // Mobile back button handler
               />
             ) : (
-              <div className="flex-1 flex items-center justify-center text-slate-400 text-sm bg-slate-50">
+              <div className="flex-1 flex items-center justify-center text-neutral-400 text-sm bg-neutral-50">
                 Select a message to read
               </div>
             )}

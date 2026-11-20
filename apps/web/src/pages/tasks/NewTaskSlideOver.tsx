@@ -142,8 +142,8 @@ export function NewTaskSlideOver({
           <div className="space-y-5">
             {/* Staff info banner */}
             {!isAdmin && (
-              <div className="p-3 rounded-xl bg-blue-50 border border-blue-200/80 text-blue-900 text-xs flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 text-blue-600 shrink-0" />
+              <div className="p-3 rounded-xl bg-neutral-100 border border-neutral-200 text-blue-900 text-xs flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-neutral-700 shrink-0" />
                 <span>
                   This task will be saved as your <strong>Personal Task</strong> to organize your daily deliverables and standup logs.
                 </span>
@@ -152,7 +152,7 @@ export function NewTaskSlideOver({
 
             {/* 1. Title */}
             <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
+              <label className="text-xs font-medium text-neutral-700 block">
                 Task Title <span className="text-rose-500">*</span>
               </label>
               <input
@@ -161,20 +161,20 @@ export function NewTaskSlideOver({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder={isAdmin ? "e.g., Implement Fastify authentication token rotation..." : "e.g., Review project documentation, test staging build..."}
-                className="w-full text-xs font-bold text-slate-900 border border-slate-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+                className="w-full text-xs font-medium text-neutral-900 border border-neutral-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
               />
             </div>
 
             {/* 2. Grid for Status, Priority, Due Date */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                <label className="text-xs font-medium text-neutral-500 block mb-1">
                   Initial Column / Status
                 </label>
                 <SelectBox
                   value={status}
                   onChange={(e) => setStatus(e.target.value as TaskStatus)}
-                  className="w-full text-xs font-bold bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-slate-800 outline-none focus:border-[#ff6900]"
+                  className="w-full text-xs font-medium bg-white border border-neutral-200 rounded-xl px-2.5 py-2 text-neutral-800 outline-none focus:border-[#ff6900]"
                 >
                   <option value="planned">● Planned / Backlog</option>
                   <option value="in_progress">● In Progress</option>
@@ -184,13 +184,13 @@ export function NewTaskSlideOver({
               </div>
 
               <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                <label className="text-xs font-medium text-neutral-500 block mb-1">
                   Priority
                 </label>
                 <SelectBox
                   value={priority}
                   onChange={(e) => setPriority(e.target.value as TaskPriority)}
-                  className="w-full text-xs font-bold bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-slate-800 outline-none focus:border-[#ff6900]"
+                  className="w-full text-xs font-medium bg-white border border-neutral-200 rounded-xl px-2.5 py-2 text-neutral-800 outline-none focus:border-[#ff6900]"
                 >
                   <option value="low">Low Priority</option>
                   <option value="medium">Medium</option>
@@ -200,21 +200,21 @@ export function NewTaskSlideOver({
               </div>
 
               <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                <label className="text-xs font-medium text-neutral-500 block mb-1">
                   Due Date
                 </label>
                 <DateInput
                   
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
-                  className="w-full text-xs font-bold bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-slate-800 outline-none focus:border-[#ff6900]"
+                  className="w-full text-xs font-medium bg-white border border-neutral-200 rounded-xl px-2.5 py-2 text-neutral-800 outline-none focus:border-[#ff6900]"
                 />
               </div>
             </div>
 
             {/* 3. Deliverables Description */}
             <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
+              <label className="text-xs font-medium text-neutral-700 block">
                 Deliverables &amp; Details
               </label>
               <textarea
@@ -222,22 +222,22 @@ export function NewTaskSlideOver({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Outline specific tasks, deliverables, and acceptance criteria..."
-                className="w-full text-xs text-slate-700 border border-slate-200 rounded-xl p-3 focus:outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+                className="w-full text-xs text-neutral-700 border border-neutral-200 rounded-xl p-3 focus:outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
               />
             </div>
 
             {/* 4. Tagging People & Assignees */}
             {isAdmin ? (
-              <div className="space-y-2 pt-2 border-t border-slate-100">
+              <div className="space-y-2 pt-2 border-t border-neutral-100">
                 <div className="flex items-center justify-between">
-                  <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <label className="text-xs font-medium text-neutral-700 flex items-center gap-1.5">
                     <Users className="h-3.5 w-3.5 text-[#ff6900]" />
                     <span>Tag Colleagues &amp; Assignees ({selectedAssignees.length})</span>
                   </label>
-                  <span className="text-[10px] text-slate-400">Click to select teammates</span>
+                  <span className="text-xs text-neutral-400">Click to select teammates</span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-44 overflow-y-auto p-1 border border-slate-200 rounded-xl bg-slate-50/50">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-44 overflow-y-auto p-1 border border-neutral-200 rounded-xl bg-neutral-50/50">
                   {SAMPLE_TEAM_MEMBERS.map((member) => {
                     const isSelected = selectedAssignees.some((a) => a.id === member.id);
                     return (
@@ -247,18 +247,18 @@ export function NewTaskSlideOver({
                         onClick={() => handleToggleAssignee(member)}
                         className={`flex items-center gap-2.5 p-2 rounded-xl text-left border transition ${
                           isSelected
-                            ? "bg-orange-50 border-[#ff6900] text-slate-900 shadow-xs"
-                            : "bg-white border-slate-200/80 text-slate-700 hover:bg-slate-100"
+                            ? "bg-orange-50 border-[#ff6900] text-neutral-900 shadow-xs"
+                            : "bg-white border-neutral-200/80 text-neutral-700 hover:bg-neutral-100"
                         }`}
                       >
-                        <div className={`w-7 h-7 rounded-full text-white text-[10px] font-black flex items-center justify-center shrink-0 ${
-                          isSelected ? "bg-[#ff6900]" : "bg-slate-800"
+                        <div className={`w-7 h-7 rounded-full text-white text-xs font-semibold flex items-center justify-center shrink-0 ${
+                          isSelected ? "bg-[#ff6900]" : "bg-neutral-800"
                         }`}>
                           {member.avatar || member.name.slice(0, 2).toUpperCase()}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="text-xs font-bold truncate">{member.name}</div>
-                          <div className="text-[10px] text-slate-400 truncate">{member.role}</div>
+                          <div className="text-xs font-medium truncate">{member.name}</div>
+                          <div className="text-xs text-neutral-400 truncate">{member.role}</div>
                         </div>
                       </button>
                     );
@@ -266,21 +266,21 @@ export function NewTaskSlideOver({
                 </div>
               </div>
             ) : (
-              <div className="space-y-1.5 pt-2 border-t border-slate-100">
-                <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
+              <div className="space-y-1.5 pt-2 border-t border-neutral-100">
+                <label className="text-xs font-medium text-neutral-700 block">
                   Assignee
                 </label>
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                <div className="p-3 rounded-xl bg-neutral-50 border border-neutral-200 flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-full bg-[#0a1128] text-white text-xs font-bold flex items-center justify-center">
+                    <div className="w-8 h-8 rounded-full bg-[#0a1128] text-white text-xs font-medium flex items-center justify-center">
                       {authorName.slice(0, 2).toUpperCase()}
                     </div>
                     <div>
-                      <div className="text-xs font-bold text-slate-900">{authorName} (You)</div>
-                      <div className="text-[10px] text-slate-400">Assigned to self</div>
+                      <div className="text-xs font-medium text-neutral-900">{authorName} (You)</div>
+                      <div className="text-xs text-neutral-400">Assigned to self</div>
                     </div>
                   </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-50 text-[#ff6900] border border-orange-200">
+                  <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-orange-50 text-[#ff6900] border border-orange-200">
                     Personal Task
                   </span>
                 </div>
@@ -288,9 +288,9 @@ export function NewTaskSlideOver({
             )}
 
             {/* 5. Project & Tags */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-neutral-100">
               <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                <label className="text-xs font-medium text-neutral-500 block mb-1">
                   Linked Project
                 </label>
                 <input
@@ -298,12 +298,12 @@ export function NewTaskSlideOver({
                   value={projectName}
                   onChange={(e) => setProjectName(e.target.value)}
                   placeholder="e.g. Portal Modernization"
-                  className="w-full text-xs font-semibold text-slate-800 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:border-[#ff6900]"
+                  className="w-full text-xs font-semibold text-neutral-800 border border-neutral-200 rounded-xl px-3 py-2 outline-none focus:border-[#ff6900]"
                 />
               </div>
 
               <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                <label className="text-xs font-medium text-neutral-500 block mb-1">
                   Tags (comma separated)
                 </label>
                 <input
@@ -311,7 +311,7 @@ export function NewTaskSlideOver({
                   value={tagsInput}
                   onChange={(e) => setTagsInput(e.target.value)}
                   placeholder="Backend, Security, Sprint 44"
-                  className="w-full text-xs font-semibold text-slate-800 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:border-[#ff6900]"
+                  className="w-full text-xs font-semibold text-neutral-800 border border-neutral-200 rounded-xl px-3 py-2 outline-none focus:border-[#ff6900]"
                 />
               </div>
             </div>
@@ -323,13 +323,13 @@ export function NewTaskSlideOver({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold transition"
+              className="px-4 py-2 rounded-xl border border-neutral-200 text-neutral-700 hover:bg-neutral-50 text-xs font-medium transition"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-5 py-2 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-bold transition shadow-sm"
+              className="px-5 py-2 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-medium transition shadow-sm"
             >
               Create Task
             </button>

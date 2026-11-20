@@ -7,6 +7,7 @@ RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY packages/contract/package.json packages/contract/package.json
 COPY apps/web/package.json apps/web/package.json
 COPY apps/shared/package.json apps/shared/package.json
 COPY apps/api/package.json apps/api/package.json
@@ -15,8 +16,11 @@ COPY apps/desktop/package.json apps/desktop/package.json
 RUN pnpm install --frozen-lockfile
 
 # Full source (vite aliases @stanforte/shared -> ../shared/src/index.ts)
+COPY packages/contract packages/contract
 COPY apps/web apps/web
 COPY apps/shared apps/shared
+
+RUN pnpm --filter @stanforte/contract build
 
 EXPOSE 5173
 CMD ["pnpm", "--dir", "apps/web", "dev", "--host", "0.0.0.0", "--port", "5173"]
@@ -28,6 +32,7 @@ RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY packages/contract/package.json packages/contract/package.json
 COPY apps/web/package.json apps/web/package.json
 COPY apps/shared/package.json apps/shared/package.json
 COPY apps/api/package.json apps/api/package.json
@@ -35,10 +40,11 @@ COPY apps/desktop/package.json apps/desktop/package.json
 
 RUN pnpm install --frozen-lockfile
 
+COPY packages/contract packages/contract
 COPY apps/web apps/web
 COPY apps/shared apps/shared
 
-RUN pnpm --dir apps/web build
+RUN pnpm --filter @stanforte/contract build && pnpm --dir apps/web build
 
 # ---- prod --------------------------------------------------------------
 FROM nginx:1.25-alpine AS prod

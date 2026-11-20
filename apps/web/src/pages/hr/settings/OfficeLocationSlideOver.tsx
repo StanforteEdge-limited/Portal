@@ -92,16 +92,16 @@ export default function OfficeLocationSlideOver({ location, onClose, onSaved }: 
             />
             <div>
               <p className="field-label mb-2">Attached Organizations</p>
-              <div className="grid gap-2 max-h-40 overflow-y-auto p-3 bg-slate-50 rounded-2xl border border-slate-100">
+              <div className="grid gap-2 max-h-40 overflow-y-auto p-3 bg-neutral-50 rounded-2xl border border-neutral-100">
                 {orgs.map((o) => (
                   <label key={o.id} className="flex items-center gap-3 cursor-pointer">
                     <input 
                       type="checkbox" 
                       checked={selectedOrgIds.includes(o.id)} 
                       onChange={() => toggleOrg(o.id)}
-                      className="h-4 w-4 rounded border-slate-300 text-brand-900"
+                      className="h-4 w-4 rounded border-neutral-300 text-brand-900"
                     />
-                    <span className="text-sm text-slate-700">{o.name}</span>
+                    <span className="text-sm text-neutral-700">{o.name}</span>
                   </label>
                 ))}
               </div>
@@ -110,7 +110,7 @@ export default function OfficeLocationSlideOver({ location, onClose, onSaved }: 
         </SectionCard>
 
         <SectionCard title="Geofence Controls">
-          <p className="mb-4 text-xs text-slate-500">
+          <p className="mb-4 text-xs text-neutral-500">
             Attendance clock-ins are validated against these coordinates.
           </p>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -140,9 +140,9 @@ export default function OfficeLocationSlideOver({ location, onClose, onSaved }: 
                 id="loc-active"
                 checked={isActive} 
                 onChange={(e) => setIsActive(e.target.checked)}
-                className="h-4 w-4 rounded border-slate-300 text-brand-900"
+                className="h-4 w-4 rounded border-neutral-300 text-brand-900"
               />
-              <label htmlFor="loc-active" className="text-sm font-medium text-slate-700">Active Location</label>
+              <label htmlFor="loc-active" className="text-sm font-medium text-neutral-700">Active Location</label>
             </div>
           </div>
         </SectionCard>

@@ -126,7 +126,7 @@ export function DisburseDialog() {
 
   return (
     <>
-      <div ref={trapRef} className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/45 px-4">
+      <div ref={trapRef} className="fixed inset-0 z-[80] flex items-center justify-center bg-neutral-950/45 px-4">
         <button
           type="button"
           aria-label="Close disbursement dialog"
@@ -137,23 +137,23 @@ export function DisburseDialog() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="disburse-request-title"
-          className="relative z-[81] flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-[28px] border border-white/70 bg-white shadow-card"
+          className="relative z-[81] flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-white/70 bg-white shadow-xs"
         >
-          <div className="border-b border-slate-100 px-6 py-5">
+          <div className="border-b border-neutral-100 px-6 py-5">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-[0.72rem] font-bold uppercase tracking-[0.18em] text-slate-500">
+                <p className="text-[0.72rem] font-medium text-neutral-500">
                   Finance Action
                 </p>
                 <h2
                   id="disburse-request-title"
-                  className="mt-2 text-2xl font-semibold tracking-tight text-slate-950"
+                  className="mt-2 text-2xl font-semibold tracking-tight text-neutral-950"
                 >
                   {disburseMode === "edit"
                     ? "Edit Payment Voucher"
                     : "Disburse Request"}
                 </h2>
-                <p className="mt-2 text-sm leading-6 text-slate-500">
+                <p className="mt-2 text-sm leading-6 text-neutral-500">
                   {disburseMode === "edit"
                     ? "Update the existing payment voucher without creating a new disbursement."
                     : "Capture the disbursement record, finance account, transaction reference, and supporting evidence."}
@@ -162,7 +162,7 @@ export function DisburseDialog() {
               <button
                 type="button"
                 onClick={() => closeDisburseDialog()}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-700 transition hover:bg-slate-200"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-neutral-100 text-neutral-700 transition hover:bg-neutral-200"
               >
                 <Icon name="close" />
               </button>
@@ -295,37 +295,37 @@ export function DisburseDialog() {
             </div>
 
             {/* Statutory Deductions */}
-            <div className="mt-4 rounded-[22px] border border-slate-200">
+            <div className="mt-4 rounded-[22px] border border-neutral-200">
               <button
                 type="button"
                 onClick={() => setDeductionsOpen((o) => !o)}
-                className="flex w-full items-center justify-between px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 rounded-[22px] transition"
+                className="flex w-full items-center justify-between px-4 py-3 text-sm font-semibold text-neutral-700 hover:bg-neutral-50 rounded-[22px] transition"
               >
                 <span className="flex items-center gap-2">
                   Statutory Deductions
                   {disburseDeductions.length > 0 && (
-                    <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs font-bold text-brand-900">
+                    <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-900">
                       {disburseDeductions.length}
                     </span>
                   )}
                 </span>
                 <Icon
                   name={deductionsOpen ? "expand_less" : "expand_more"}
-                  className="text-slate-400"
+                  className="text-neutral-400"
                 />
               </button>
 
               {deductionsOpen && (
-                <div className="border-t border-slate-100 px-4 pb-4 pt-3 space-y-4">
+                <div className="border-t border-neutral-100 px-4 pb-4 pt-3 space-y-4">
                   {/* Gross Amount */}
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-slate-500">
+                    <label className="mb-1 block text-xs font-medium text-neutral-500">
                       Gross Amount
                     </label>
                     <input
                       type="number"
                       min="0"
-                      className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-900/20"
+                      className="w-full rounded-xl border border-neutral-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-900/20"
                       value={grossAmount}
                       onChange={(e) => {
                         setGrossAmountEdited(true);
@@ -333,7 +333,7 @@ export function DisburseDialog() {
                       }}
                       placeholder={disburseForm.amount || "Enter gross amount"}
                     />
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="mt-1 text-xs text-neutral-500">
                       Gross amount before WHT/VAT/other statutory deductions.
                     </p>
                   </div>
@@ -343,10 +343,10 @@ export function DisburseDialog() {
                     {disburseDeductions.map((line, i) => (
                       <div
                         key={i}
-                        className="rounded-xl border border-slate-200 bg-white p-3 space-y-3"
+                        className="rounded-xl border border-neutral-200 bg-white p-3 space-y-3"
                       >
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-semibold text-slate-500">
+                          <span className="text-xs font-semibold text-neutral-500">
                             Line {i + 1}
                           </span>
                           <button
@@ -359,11 +359,11 @@ export function DisburseDialog() {
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <label className="mb-1 block text-xs text-slate-500">
+                            <label className="mb-1 block text-xs text-neutral-500">
                               Deduction Type
                             </label>
                             <SelectBox
-                              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-900/20"
+                              className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-900/20"
                               value={line.deduction_type_id}
                               onChange={(e) =>
                                 updateLine(
@@ -383,7 +383,7 @@ export function DisburseDialog() {
                             </SelectBox>
                           </div>
                           <div>
-                            <label className="mb-1 block text-xs text-slate-500">
+                            <label className="mb-1 block text-xs text-neutral-500">
                               Rate (decimal)
                             </label>
                             <input
@@ -391,7 +391,7 @@ export function DisburseDialog() {
                               step="0.001"
                               min="0"
                               max="1"
-                              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-900/20"
+                              className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-900/20"
                               value={line.rate}
                               onChange={(e) =>
                                 updateLine(i, "rate", Number(e.target.value))
@@ -399,8 +399,8 @@ export function DisburseDialog() {
                             />
                           </div>
                         </div>
-                        <div className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm">
-                          <span className="text-slate-500">
+                        <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2 text-sm">
+                          <span className="text-neutral-500">
                             Deduction Amount
                           </span>
                           <span className="font-semibold text-danger">
@@ -420,8 +420,8 @@ export function DisburseDialog() {
                   </button>
 
                   {disburseDeductions.length > 0 && (
-                    <div className="rounded-xl bg-slate-100 px-4 py-3 space-y-2 text-sm">
-                      <div className="flex justify-between text-slate-600">
+                    <div className="rounded-xl bg-neutral-100 px-4 py-3 space-y-2 text-sm">
+                      <div className="flex justify-between text-neutral-600">
                         <span>Gross</span>
                         <span>
                           {formatCurrency(Number(grossAmount) || 0, "NGN")}
@@ -431,11 +431,11 @@ export function DisburseDialog() {
                         <span>Total Deductions</span>
                         <span>− {formatCurrency(totalDeducted, "NGN")}</span>
                       </div>
-                      <div className="flex justify-between font-bold text-slate-900 border-t border-slate-200 pt-2">
+                      <div className="flex justify-between font-medium text-neutral-900 border-t border-neutral-200 pt-2">
                         <span>Net Payable</span>
                         <span>{formatCurrency(netPayable, "NGN")}</span>
                       </div>
-                      <div className="text-xs text-slate-500">
+                      <div className="text-xs text-neutral-500">
                         Net payable should match the Amount (Net Paid) field above.
                       </div>
                     </div>
@@ -444,13 +444,13 @@ export function DisburseDialog() {
               )}
             </div>
 
-            <div className="mt-4 rounded-[22px] border border-slate-200 bg-slate-50 p-4">
+            <div className="mt-4 rounded-[22px] border border-neutral-200 bg-neutral-50 p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-slate-950">
+                  <p className="text-sm font-semibold text-neutral-950">
                     Evidence Upload
                   </p>
-                  <p className="mt-1 text-sm text-slate-500">
+                  <p className="mt-1 text-sm text-neutral-500">
                     Attach transfer proof, voucher support, or any disbursement
                     evidence.
                   </p>
@@ -469,7 +469,7 @@ export function DisburseDialog() {
                   {disburseFiles.map((file) => (
                     <div
                       key={file.id}
-                      className="flex items-center gap-2 rounded-2xl bg-white px-3 py-2 text-sm text-slate-700"
+                      className="flex items-center gap-2 rounded-2xl bg-white px-3 py-2 text-sm text-neutral-700"
                     >
                       <Icon
                         name="attach_file"
@@ -480,14 +480,14 @@ export function DisburseDialog() {
                   ))}
                 </div>
               ) : (
-                <div className="mt-3 text-xs text-slate-500">
+                <div className="mt-3 text-xs text-neutral-500">
                   You can select existing uploads or add new evidence here.
                 </div>
               )}
             </div>
           </div>
 
-          <div className="border-t border-slate-100 px-6 py-4">
+          <div className="border-t border-neutral-100 px-6 py-4">
             <div className="flex flex-wrap justify-end gap-3">
               <Button
                 variant="secondary"

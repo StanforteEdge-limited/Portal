@@ -1188,7 +1188,7 @@ export function FinanceRequestDetailsPage() {
           />
           <Link
             to={parentPath}
-            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
+            className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-5 py-3 text-sm font-semibold text-neutral-900 transition hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
           >
             Back to {parentLabel}
           </Link>
@@ -1241,7 +1241,7 @@ export function FinanceRequestDetailsPage() {
                 <div className="flex flex-wrap items-center gap-3">
                   <Link
                     to={parentPath}
-                    className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
+                    className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-5 py-3 text-sm font-semibold text-neutral-900 transition hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
                   >
                     <Icon name="arrow_back" className="text-[18px]" />
                     Back to {parentLabel}

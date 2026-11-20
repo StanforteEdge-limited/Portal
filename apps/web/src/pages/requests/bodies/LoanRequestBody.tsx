@@ -48,7 +48,7 @@ export function LoanRequestBody({ request, requestData, teamName, organizationNa
         description="Scheduled installments and payment status."
       >
         {repaymentSchedule.length ? (
-          <div className="overflow-x-auto rounded-[22px] border border-slate-200 bg-white">
+          <div className="overflow-x-auto rounded-[22px] border border-neutral-200 bg-white">
             <Table caption="Repayment schedule">
               <TableHead>
                 <TableHeaderRow>
@@ -61,16 +61,16 @@ export function LoanRequestBody({ request, requestData, teamName, organizationNa
               <TableBody>
                 {repaymentSchedule.map((row) => (
                   <TableRow key={row.id}>
-                    <TableCell className="text-sm text-slate-700">
+                    <TableCell className="text-sm text-neutral-700">
                       {formatDisplayDate(row.due_date)}
                     </TableCell>
-                    <TableCell className="text-sm font-semibold text-slate-700">
+                    <TableCell className="text-sm font-semibold text-neutral-700">
                       {formatCurrency(row.amount, request?.currency)}
                     </TableCell>
-                    <TableCell className="text-sm text-slate-700">
+                    <TableCell className="text-sm text-neutral-700">
                       {row.paid_amount != null ? formatCurrency(row.paid_amount, request?.currency) : "-"}
                     </TableCell>
-                    <TableCell className="text-sm capitalize text-slate-600">
+                    <TableCell className="text-sm capitalize text-neutral-600">
                       {String(row.status || "pending").replaceAll("_", " ")}
                     </TableCell>
                   </TableRow>

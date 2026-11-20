@@ -22,7 +22,7 @@ export function ActivityFeed({ items, emptyState, limit }: ActivityFeedProps) {
 
   if (!items.length) {
     return (
-      <div className="rounded-[22px] border border-dashed border-outline-variant bg-surface-container-low p-6 text-sm text-slate-500">
+      <div className="rounded-[22px] border border-dashed border-outline-variant bg-surface-container-low p-6 text-sm text-neutral-500">
         {emptyState ?? "No activity yet."}
       </div>
     );
@@ -45,17 +45,17 @@ export function ActivityFeed({ items, emptyState, limit }: ActivityFeedProps) {
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-slate-950">
+                <p className="truncate text-sm font-semibold text-neutral-950">
                   {item.title}
                 </p>
-                <p className="mt-1 text-sm leading-6 text-slate-500">
+                <p className="mt-1 text-sm leading-6 text-neutral-500">
                   {item.description}
                 </p>
               </div>
               {item.tone ? <Chip variant={item.tone}>{item.time}</Chip> : null}
             </div>
             {!item.tone ? (
-              <p className="mt-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+              <p className="mt-3 text-xs font-semibold text-neutral-400">
                 {item.time}
               </p>
             ) : null}
@@ -66,7 +66,7 @@ export function ActivityFeed({ items, emptyState, limit }: ActivityFeedProps) {
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="flex w-full items-center justify-center gap-1.5 rounded-[14px] border border-slate-200 bg-slate-50 py-2.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-100"
+          className="flex w-full items-center justify-center gap-1.5 rounded-[14px] border border-neutral-200 bg-neutral-50 py-2.5 text-xs font-semibold text-neutral-600 transition hover:bg-neutral-100"
         >
           <Icon name={expanded ? "expand_less" : "expand_more"} className="text-[16px]" />
           {expanded ? "Show less" : `Show ${items.length - limit!} more`}

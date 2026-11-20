@@ -87,7 +87,7 @@ export default function FinanceAssetDisposalsPage() {
       </SectionCard>
 
       <SectionCard title="Disposal Register" description="Chronological log of asset disposal events.">
-        {loading ? <p className="text-sm text-slate-500">Loading disposals...</p> : null}
+        {loading ? <p className="text-sm text-neutral-500">Loading disposals...</p> : null}
         {error ? <p className="text-sm text-danger">{error}</p> : null}
 
         {rows.length ? (
@@ -108,7 +108,7 @@ export default function FinanceAssetDisposalsPage() {
                   <TableCell>
                     <button
                       type="button"
-                      className="font-semibold text-slate-900 hover:text-brand-700 hover:underline"
+                      className="font-semibold text-neutral-900 hover:text-brand-700 hover:underline"
                       onClick={() => navigate(`/finance/assets/${asset.id}`)}
                     >
                       {asset.asset_description || asset.asset_name || asset.asset_id || asset.id.slice(0, 8)}

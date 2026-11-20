@@ -26,24 +26,22 @@ export function SectionCard({
   return (
     <section
       className={[
-        "bg-white rounded-2xl border border-slate-100 shadow-2xs hover:border-slate-200/80 transition-all p-5 sm:p-6 mt-6",
+        "bg-white rounded-2xl border border-neutral-900/[0.08] shadow-xs p-5 sm:p-6 mt-6",
         className,
       ]
         .filter(Boolean)
         .join(" ")}
     >
-      {(title || action) ? (
-        <div className="mb-5 flex items-start justify-between gap-3">
+      {title || action ? (
+        <div className="mb-5 flex items-start justify-between gap-4">
           <div>
             {title ? (
-              <h2 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 font-headline">
+              <h2 className="text-base font-medium tracking-tight text-neutral-900 font-headline">
                 {title}
               </h2>
             ) : null}
             {description ? (
-              <p className="mt-1 max-w-2xl text-xs sm:text-sm text-slate-500">
-                {description}
-              </p>
+              <p className="mt-1 max-w-2xl text-sm text-neutral-500">{description}</p>
             ) : null}
           </div>
           {action ? <div className="shrink-0">{action}</div> : null}

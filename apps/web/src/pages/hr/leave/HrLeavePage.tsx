@@ -232,26 +232,16 @@ export default function HrLeavePage() {
     []
   );
 
-  const rawApprovals: RequestRecord[] = (approvals && approvals.length > 0 ? approvals : fallbackPendingLeaves).filter(
+  const rawApprovals: RequestRecord[] = (approvals ?? []).filter(
     (r) => !decidedIds[r.id]
   );
   const pendingApprovals: RequestRecord[] = rawApprovals;
-  const allLeaveRequests: RequestRecord[] =
-    allLeave && allLeave.length > 0 ? allLeave : [...fallbackPendingLeaves, ...fallbackHistoryLeaves];
-  const currentlyOnLeave =
-    allLeaveRequests.filter(isCurrentlyOnLeave).length > 0
-      ? allLeaveRequests.filter(isCurrentlyOnLeave)
-      : fallbackHistoryLeaves.slice(0, 2);
+  const allLeaveRequests: RequestRecord[] = allLeave ?? [];
+  const currentlyOnLeave = allLeaveRequests.filter(isCurrentlyOnLeave);
   const historyLeaveRequests = useMemo(() => {
-    const decidedRecords = fallbackPendingLeaves
-      .filter((r) => decidedIds[r.id])
-      .map((r) => ({ ...r, status: decidedIds[r.id] }));
-    const baseItems =
-      historyData?.items && historyData.items.length > 0
-        ? historyData.items
-        : [...decidedRecords, ...fallbackHistoryLeaves];
+    const baseItems = historyData?.items ?? [];
     return baseItems.filter((record) => matchesHistoryFilter(record, historyFilter));
-  }, [historyData?.items, historyFilter, decidedIds, fallbackPendingLeaves, fallbackHistoryLeaves]);
+  }, [historyData?.items, historyFilter]);
 
   const historySafePage = historyData?.meta?.page ?? historyPage;
   const historyTotalPages = historyData?.meta?.total_pages ?? 1;
@@ -339,8 +329,8 @@ export default function HrLeavePage() {
               }
             }}
           >
-            <p className="font-semibold text-brand-700">{name}</p>
-            <p className="text-xs text-slate-500">{r.creator?.email ?? ""}</p>
+            <p className="font-medium text-neutral-900">{name}</p>
+            <p className="text-xs text-neutral-500">{r.creator?.email ?? ""}</p>
           </div>
         );
       }
@@ -380,7 +370,7 @@ export default function HrLeavePage() {
               e.stopPropagation();
               handleQuickDecision(r, "approved");
             }}
-            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/70 text-xs font-bold transition cursor-pointer"
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/70 text-xs font-medium transition cursor-pointer"
           >
             <Check className="h-3.5 w-3.5" />
             <span>Approve</span>
@@ -391,7 +381,7 @@ export default function HrLeavePage() {
               e.stopPropagation();
               handleQuickDecision(r, "rejected");
             }}
-            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/70 text-xs font-bold transition cursor-pointer"
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/70 text-xs font-medium transition cursor-pointer"
           >
             <X className="h-3.5 w-3.5" />
             <span>Decline</span>
@@ -417,8 +407,8 @@ export default function HrLeavePage() {
               }
             }}
           >
-            <p className="font-semibold text-brand-700">{name}</p>
-            <p className="text-xs text-slate-500">{r.creator?.email ?? ""}</p>
+            <p className="font-medium text-neutral-900">{name}</p>
+            <p className="text-xs text-neutral-500">{r.creator?.email ?? ""}</p>
           </div>
         );
       }
@@ -497,14 +487,14 @@ export default function HrLeavePage() {
                 type="button"
                 onClick={handleExportCsv}
                 disabled={exportingCsv}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold shadow-2xs transition cursor-pointer"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 text-xs font-medium shadow-2xs transition cursor-pointer"
               >
-                <Download className="h-4 w-4 text-slate-400" />
+                <Download className="h-4 w-4 text-neutral-400" />
                 <span>{exportingCsv ? "Exporting..." : "Export Leave Roster"}</span>
               </button>
               <Link
                 to="/requests/approvals"
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-bold shadow-sm shadow-orange-500/20 transition"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-medium shadow-sm transition"
               >
                 <FileCheck className="h-4 w-4" />
                 <span>All Workflow Approvals</span>
@@ -513,60 +503,39 @@ export default function HrLeavePage() {
           }
         />
 
-        {/* 4 KPI Metric Cards */}
+        {/* 4 Compact Numbers-Only KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-                <AlertCircle className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="text-[11px] font-semibold text-slate-500">Pending Review</div>
-                <div className="text-xl font-black text-amber-600 mt-0.5">
-                  {pendingApprovals.length}
-                </div>
-              </div>
-            </div>
-            <div className="text-[11px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
-              Action
-            </div>
-          </div>
+          <article className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
+            <p className="text-xs text-neutral-500">Pending review</p>
+            <p className="text-[28px] leading-none font-medium text-[#c2410c] font-headline tabular-nums">
+              {pendingApprovals.length}
+            </p>
+            <p className="text-xs text-neutral-500">Awaiting approval action</p>
+          </article>
 
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-              <Users className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="text-[11px] font-semibold text-slate-500">Currently on Leave</div>
-              <div className="text-xl font-black text-slate-900 mt-0.5">
-                {currentlyOnLeave.length}
-              </div>
-            </div>
-          </div>
+          <article className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
+            <p className="text-xs text-neutral-500">Currently on leave</p>
+            <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+              {currentlyOnLeave.length}
+            </p>
+            <p className="text-xs text-neutral-500">Approved overlapping today</p>
+          </article>
 
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
-              <Calendar className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="text-[11px] font-semibold text-slate-500">Total Requests</div>
-              <div className="text-xl font-black text-slate-900 mt-0.5">
-                {allLeaveRequests.length}
-              </div>
-            </div>
-          </div>
+          <article className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
+            <p className="text-xs text-neutral-500">Total requests</p>
+            <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+              {allLeaveRequests.length}
+            </p>
+            <p className="text-xs text-neutral-500">Across all leave types</p>
+          </article>
 
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-              <CheckCircle2 className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="text-[11px] font-semibold text-slate-500">Historical Records</div>
-              <div className="text-xl font-black text-emerald-600 mt-0.5">
-                {historyTotalCount}
-              </div>
-            </div>
-          </div>
+          <article className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
+            <p className="text-xs text-neutral-500">Historical records</p>
+            <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+              {historyTotalCount}
+            </p>
+            <p className="text-xs text-neutral-500">Completed leave entries</p>
+          </article>
         </div>
 
         <div className="space-y-6">
@@ -585,10 +554,10 @@ export default function HrLeavePage() {
                 return (
                   <div
                     key={r.id}
-                    className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3"
+                    className="rounded-2xl border border-neutral-100 bg-neutral-50 px-4 py-3"
                   >
-                    <p className="text-sm font-semibold text-slate-900">{name}</p>
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="text-sm font-semibold text-neutral-900">{name}</p>
+                    <p className="mt-1 text-xs text-neutral-500">
                       {r.request_type?.name ?? "Leave"} · returns {end}
                     </p>
                   </div>

@@ -56,7 +56,7 @@ export function DataTable<T>({
   return (
     <>
       {loading && !data.length ? (
-        <p className="text-sm text-slate-500 my-4">Loading...</p>
+        <p className="text-sm text-neutral-500 my-4">Loading...</p>
       ) : data.length ? (
         <>
           <Table caption={caption}>

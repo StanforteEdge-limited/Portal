@@ -178,13 +178,13 @@ export default function FinanceDeductionTypesPage() {
           }
         >
           {loading ? (
-            <div className="rounded-2xl bg-slate-50 px-4 py-6 text-sm text-slate-500">
+            <div className="rounded-2xl bg-neutral-50 px-4 py-6 text-sm text-neutral-500">
               Loading deduction types...
             </div>
           ) : types.length === 0 ? (
             <div className="text-center py-10">
-              <Icon name="percent" className="text-4xl text-slate-300 mx-auto mb-2" />
-              <p className="text-slate-500">No deduction types found.</p>
+              <Icon name="percent" className="text-4xl text-neutral-300 mx-auto mb-2" />
+              <p className="text-neutral-500">No deduction types found.</p>
             </div>
           ) : (
             <DataTable
@@ -192,21 +192,21 @@ export default function FinanceDeductionTypesPage() {
                 {
                   header: "Name", cell: (dt: any) => (
                     <>
-                      <p className="font-medium text-slate-900">{dt.name}</p>
-                      <p className="text-xs text-slate-400 capitalize">{dt.applies_to || "-"}</p>
+                      <p className="font-medium text-neutral-900">{dt.name}</p>
+                      <p className="text-xs text-neutral-400 capitalize">{dt.applies_to || "-"}</p>
                     </>
                   )
                 },
                 {
                   header: "Code", cell: (dt: any) => (
-                    <code className="text-xs bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">
+                    <code className="text-xs bg-neutral-100 px-1.5 py-0.5 rounded text-neutral-600">
                       {dt.code || "-"}
                     </code>
                   )
                 },
                 {
                   header: "Rate", cell: (dt: any) => (
-                    <span className="font-medium text-slate-900">
+                    <span className="font-medium text-neutral-900">
                       {dt.rate != null ? `${(dt.rate * 100).toFixed(2)}%` : "-"}
                     </span>
                   )
@@ -214,7 +214,7 @@ export default function FinanceDeductionTypesPage() {
                 {
                   header: "GL Account", cell: (dt: any) => {
                     const glAccount = glAccounts.find((a: any) => a.id === dt.gl_account_id);
-                    return <span className="text-slate-600">{glAccount ? glAccount.name : "-"}</span>;
+                    return <span className="text-neutral-600">{glAccount ? glAccount.name : "-"}</span>;
                   }
                 },
                 {
@@ -297,9 +297,9 @@ export default function FinanceDeductionTypesPage() {
                 type="checkbox"
                 checked={form.is_active}
                 onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))}
-                className="h-4 w-4 rounded border-slate-300"
+                className="h-4 w-4 rounded border-neutral-300"
               />
-              <span className="text-slate-700 font-medium">Active</span>
+              <span className="text-neutral-700 font-medium">Active</span>
             </label>
           </div>
         </SlideOverContent>

@@ -560,16 +560,16 @@ export default function StatutoryDeductionManualEntryPage() {
       <SectionCard title="Add Backdated Deduction" description="Use this only when you need to create a deduction manually and anchor it with its journal lines.">
         <div className="grid gap-4 md:grid-cols-3">
           <label className="grid gap-1.5 text-sm">
-            <span className="font-semibold text-slate-700">Entry Date</span>
-            <DateInput  className="rounded-2xl border border-slate-200 px-4 py-2.5" value={entryDate} onChange={(e) => setEntryDate(e.target.value)} />
+            <span className="font-semibold text-neutral-700">Entry Date</span>
+            <DateInput  className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={entryDate} onChange={(e) => setEntryDate(e.target.value)} />
           </label>
           <label className="grid gap-1.5 text-sm">
-            <span className="font-semibold text-slate-700">Currency</span>
-            <input className="rounded-2xl border border-slate-200 px-4 py-2.5" value={currency} onChange={(e) => setCurrency(e.target.value.toUpperCase())} />
+            <span className="font-semibold text-neutral-700">Currency</span>
+            <input className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={currency} onChange={(e) => setCurrency(e.target.value.toUpperCase())} />
           </label>
           <label className="grid gap-1.5 text-sm md:col-span-3">
-            <span className="font-semibold text-slate-700">Memo</span>
-            <input className="rounded-2xl border border-slate-200 px-4 py-2.5" value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="Statutory withholding memo" />
+            <span className="font-semibold text-neutral-700">Memo</span>
+            <input className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="Statutory withholding memo" />
           </label>
         </div>
       </SectionCard>
@@ -577,8 +577,8 @@ export default function StatutoryDeductionManualEntryPage() {
       <SectionCard title="Deduction Details">
         <div className="grid gap-4 md:grid-cols-3">
           <label className="grid gap-1.5 text-sm md:col-span-2">
-            <span className="font-semibold text-slate-700">Deduction Type</span>
-            <SelectBox className="rounded-2xl border border-slate-200 px-4 py-2.5" value={deductionTypeId} onChange={(e) => setDeductionTypeId(e.target.value)}>
+            <span className="font-semibold text-neutral-700">Deduction Type</span>
+            <SelectBox className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={deductionTypeId} onChange={(e) => setDeductionTypeId(e.target.value)}>
               <option value="">Select deduction type</option>
               {deductionTypes.map((type: any) => (
                 <option key={type.id} value={type.id}>{type.name}{type.code ? ` (${type.code})` : ""}</option>
@@ -586,12 +586,12 @@ export default function StatutoryDeductionManualEntryPage() {
             </SelectBox>
           </label>
           <label className="grid gap-1.5 text-sm">
-            <span className="font-semibold text-slate-700">Gross Amount</span>
-            <input type="number" className="rounded-2xl border border-slate-200 px-4 py-2.5" value={grossAmount} onChange={(e) => setGrossAmount(Number(e.target.value))} />
+            <span className="font-semibold text-neutral-700">Gross Amount</span>
+            <input type="number" className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={grossAmount} onChange={(e) => setGrossAmount(Number(e.target.value))} />
           </label>
           <label className="grid gap-1.5 text-sm md:col-span-3">
-            <span className="font-semibold text-slate-700">Withheld Amount</span>
-            <input type="number" className="rounded-2xl border border-slate-200 px-4 py-2.5" value={withheldAmount} onChange={(e) => setWithheldAmount(Number(e.target.value))} />
+            <span className="font-semibold text-neutral-700">Withheld Amount</span>
+            <input type="number" className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={withheldAmount} onChange={(e) => setWithheldAmount(Number(e.target.value))} />
           </label>
         </div>
       </SectionCard>
@@ -604,31 +604,31 @@ export default function StatutoryDeductionManualEntryPage() {
         >
         <div className="grid gap-4 md:grid-cols-4">
           <label className="grid gap-1.5 text-sm md:col-span-3">
-            <span className="font-semibold text-slate-700">Load Existing Remittance</span>
-            <input className="rounded-2xl border border-slate-200 px-4 py-2.5" value={lookupRemittance} onChange={(e) => setLookupRemittance(e.target.value)} placeholder="Remittance number, payment reference, or deduction ID" />
+            <span className="font-semibold text-neutral-700">Load Existing Remittance</span>
+            <input className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={lookupRemittance} onChange={(e) => setLookupRemittance(e.target.value)} placeholder="Remittance number, payment reference, or deduction ID" />
           </label>
           <div className="flex items-end">
             <Button variant="secondary" onClick={() => void loadRemittance()} disabled={loadingRemittance}>{loadingRemittance ? "Loading..." : "Load"}</Button>
           </div>
           <label className="grid gap-1.5 text-sm">
-            <span className="font-semibold text-slate-700">Remittance No.</span>
-            <input className="rounded-2xl border border-slate-200 px-4 py-2.5" value={remitNumber} onChange={(e) => setRemitNumber(e.target.value)} placeholder="e.g. TRM/2026/500" />
+            <span className="font-semibold text-neutral-700">Remittance No.</span>
+            <input className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={remitNumber} onChange={(e) => setRemitNumber(e.target.value)} placeholder="e.g. TRM/2026/500" />
           </label>
           <label className="grid gap-1.5 text-sm md:col-span-2">
-            <span className="font-semibold text-slate-700">Remittance Reference</span>
-            <input className="rounded-2xl border border-slate-200 px-4 py-2.5" value={remitRef} onChange={(e) => setRemitRef(e.target.value)} placeholder="e.g. FIRS/WHT/2026/Q2" />
+            <span className="font-semibold text-neutral-700">Remittance Reference</span>
+            <input className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={remitRef} onChange={(e) => setRemitRef(e.target.value)} placeholder="e.g. FIRS/WHT/2026/Q2" />
           </label>
           <label className="grid gap-1.5 text-sm md:col-span-2">
-            <span className="font-semibold text-slate-700">Remitted On</span>
-            <DateInput  className="rounded-2xl border border-slate-200 px-4 py-2.5" value={remitDate} onChange={(e) => setRemitDate(e.target.value)} />
+            <span className="font-semibold text-neutral-700">Remitted On</span>
+            <DateInput  className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={remitDate} onChange={(e) => setRemitDate(e.target.value)} />
           </label>
           <label className="grid gap-1.5 text-sm md:col-span-2">
-            <span className="font-semibold text-slate-700">Remittance Total Amount</span>
-            <input type="number" className="rounded-2xl border border-slate-200 px-4 py-2.5" value={remitTotalAmount} onChange={(e) => setRemitTotalAmount(Number(e.target.value) || 0)} />
+            <span className="font-semibold text-neutral-700">Remittance Total Amount</span>
+            <input type="number" className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={remitTotalAmount} onChange={(e) => setRemitTotalAmount(Number(e.target.value) || 0)} />
           </label>
           <label className="grid gap-1.5 text-sm md:col-span-2">
-            <span className="font-semibold text-slate-700">Created By</span>
-            <SelectBox className="rounded-2xl border border-slate-200 px-4 py-2.5" value={remittedByUserId} onChange={(e) => setRemittedByUserId(e.target.value)}>
+            <span className="font-semibold text-neutral-700">Created By</span>
+            <SelectBox className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={remittedByUserId} onChange={(e) => setRemittedByUserId(e.target.value)}>
               <option value="">Select user</option>
               {users.map((u: any) => {
                 const label = `${u.first_name || ""} ${u.last_name || ""}`.trim() || u.email || u.username;
@@ -637,8 +637,8 @@ export default function StatutoryDeductionManualEntryPage() {
             </SelectBox>
           </label>
           <label className="grid gap-1.5 text-sm">
-            <span className="font-semibold text-slate-700">Paid From Account</span>
-            <SelectBox className="rounded-2xl border border-slate-200 px-4 py-2.5" value={remitAccountId} onChange={(e) => setRemitAccountId(e.target.value)}>
+            <span className="font-semibold text-neutral-700">Paid From Account</span>
+            <SelectBox className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={remitAccountId} onChange={(e) => setRemitAccountId(e.target.value)}>
               <option value="">Select account</option>
               {financeAccounts.map((account: any) => (
                 <option key={account.id} value={account.id}>{account.code} - {account.name}</option>
@@ -646,8 +646,8 @@ export default function StatutoryDeductionManualEntryPage() {
             </SelectBox>
           </label>
           <label className="grid gap-1.5 text-sm md:col-span-4">
-            <span className="font-semibold text-slate-700">Funding Payment Voucher</span>
-            <SelectBox className="rounded-2xl border border-slate-200 px-4 py-2.5" value={remitPaymentVoucherId} onChange={(e) => setRemitPaymentVoucherId(e.target.value)}>
+            <span className="font-semibold text-neutral-700">Funding Payment Voucher</span>
+            <SelectBox className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={remitPaymentVoucherId} onChange={(e) => setRemitPaymentVoucherId(e.target.value)}>
               <option value="">Select payment voucher</option>
               {paymentVouchers.map((pv: any) => (
                 <option key={pv.id} value={pv.id}>{pv.voucher_number} - {pv.request_number || pv.request_id || "Request"}</option>
@@ -655,14 +655,14 @@ export default function StatutoryDeductionManualEntryPage() {
             </SelectBox>
           </label>
           <label className="grid gap-1.5 text-sm md:col-span-4">
-            <span className="font-semibold text-slate-700">Evidence Files</span>
+            <span className="font-semibold text-neutral-700">Evidence Files</span>
             <div className="flex items-center gap-2">
               <Button variant="secondary" onClick={() => setShowEvidencePicker(true)}>Select Evidence Files</Button>
             </div>
             {remitEvidenceFiles.length > 0 ? (
               <div className="mt-2 flex flex-wrap gap-2">
                 {remitEvidenceFiles.map((file) => (
-                  <span key={file.id} className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700">
+                  <span key={file.id} className="inline-flex items-center gap-2 rounded-full bg-neutral-100 px-3 py-1 text-xs text-neutral-700">
                     {file.file_name}
                     <button type="button" onClick={() => setRemitEvidenceFiles((prev) => prev.filter((item) => item.id !== file.id))}>×</button>
                   </span>
@@ -671,39 +671,39 @@ export default function StatutoryDeductionManualEntryPage() {
             ) : null}
           </label>
           <label className="grid gap-1.5 text-sm md:col-span-4">
-            <span className="font-semibold text-slate-700">Notes</span>
-            <input className="rounded-2xl border border-slate-200 px-4 py-2.5" value={remitNotes} onChange={(e) => setRemitNotes(e.target.value)} placeholder="Internal note for this remittance batch" />
+            <span className="font-semibold text-neutral-700">Notes</span>
+            <input className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={remitNotes} onChange={(e) => setRemitNotes(e.target.value)} placeholder="Internal note for this remittance batch" />
           </label>
         </div>
 
         <div className="mt-4 grid gap-4 md:grid-cols-3">
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Mode</div>
-            <div className="mt-1 text-lg font-semibold text-slate-900">{activeRemittance ? "Edit Existing Remittance" : "Create New Remittance"}</div>
+          <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+            <div className="text-xs font-semibold text-neutral-500">Mode</div>
+            <div className="mt-1 text-lg font-semibold text-neutral-900">{activeRemittance ? "Edit Existing Remittance" : "Create New Remittance"}</div>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Attached Deductions</div>
-            <div className="mt-1 text-lg font-semibold text-slate-900">{selectedDeductionIds.length}</div>
+          <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+            <div className="text-xs font-semibold text-neutral-500">Attached Deductions</div>
+            <div className="mt-1 text-lg font-semibold text-neutral-900">{selectedDeductionIds.length}</div>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Allocated Total</div>
-            <div className="mt-1 text-lg font-semibold text-slate-900">{formatCurrency(workspaceAllocatedTotal, "NGN")}</div>
+          <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+            <div className="text-xs font-semibold text-neutral-500">Allocated Total</div>
+            <div className="mt-1 text-lg font-semibold text-neutral-900">{formatCurrency(workspaceAllocatedTotal, "NGN")}</div>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Remittance Total</div>
-            <div className="mt-1 text-lg font-semibold text-slate-900">{formatCurrency(remitTotalAmount || workspaceAllocatedTotal, "NGN")}</div>
+          <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+            <div className="text-xs font-semibold text-neutral-500">Remittance Total</div>
+            <div className="mt-1 text-lg font-semibold text-neutral-900">{formatCurrency(remitTotalAmount || workspaceAllocatedTotal, "NGN")}</div>
           </div>
         </div>
 
         <div className="mt-5 grid gap-5 lg:grid-cols-2">
           <div>
-            <h4 className="mb-2 text-sm font-semibold text-slate-800">Available Deductions</h4>
-            <p className="mb-3 text-xs text-slate-500">Select deductions to attach to this remittance. You can allocate the full balance or only part of it.</p>
+            <h4 className="mb-2 text-sm font-semibold text-neutral-800">Available Deductions</h4>
+            <p className="mb-3 text-xs text-neutral-500">Select deductions to attach to this remittance. You can allocate the full balance or only part of it.</p>
             <div className="mb-3 flex gap-2">
-              <input className="w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm" value={deductionLookup} onChange={(e) => setDeductionLookup(e.target.value)} placeholder="Search by request, deduction type, remittance ref, or deduction id" />
+              <input className="w-full rounded-2xl border border-neutral-200 px-4 py-2.5 text-sm" value={deductionLookup} onChange={(e) => setDeductionLookup(e.target.value)} placeholder="Search by request, deduction type, remittance ref, or deduction id" />
               {deductionLookup ? <Button variant="secondary" onClick={() => setDeductionLookup("")}>Clear</Button> : null}
             </div>
-            <div className="max-h-72 overflow-auto rounded-2xl border border-slate-200 bg-white">
+            <div className="max-h-72 overflow-auto rounded-2xl border border-neutral-200 bg-white">
               <Table caption="Pending deductions">
                 <TableHead>
                   <TableHeaderRow>
@@ -723,12 +723,12 @@ export default function StatutoryDeductionManualEntryPage() {
                       <TableCell>{row.deduction_type_name}</TableCell>
                       <TableCell className="text-right">{formatCurrency(Number(row.amount || 0), "NGN")}</TableCell>
                       <TableCell className="text-right">{formatCurrency(Number(row.remaining_amount ?? row.amount ?? 0), "NGN")}</TableCell>
-                      <TableCell><input type="number" min={0} step="0.01" value={String(allocationAmounts[row.id] ?? row.remaining_amount ?? row.amount ?? 0)} onChange={(e) => setAllocationAmount(row.id, Number(e.target.value))} className="w-24 rounded-xl border border-slate-200 px-2 py-1" /></TableCell>
+                      <TableCell><input type="number" min={0} step="0.01" value={String(allocationAmounts[row.id] ?? row.remaining_amount ?? row.amount ?? 0)} onChange={(e) => setAllocationAmount(row.id, Number(e.target.value))} className="w-24 rounded-xl border border-neutral-200 px-2 py-1" /></TableCell>
                     </TableRow>
                   ))}
                   {filteredPendingDeductions.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="py-8 text-center text-slate-400">No deductions matched your search.</TableCell>
+                      <TableCell colSpan={6} className="py-8 text-center text-neutral-400">No deductions matched your search.</TableCell>
                     </TableRow>
                   ) : null}
                 </TableBody>
@@ -737,9 +737,9 @@ export default function StatutoryDeductionManualEntryPage() {
           </div>
 
           <div>
-            <h4 className="mb-2 text-sm font-semibold text-slate-800">Loaded Remittance Deductions</h4>
-            <p className="mb-3 text-xs text-slate-500">When a remittance is loaded, this shows the deductions already tied to it and the amount currently allocated on each one.</p>
-            <div className="max-h-72 overflow-auto rounded-2xl border border-slate-200 bg-white">
+            <h4 className="mb-2 text-sm font-semibold text-neutral-800">Loaded Remittance Deductions</h4>
+            <p className="mb-3 text-xs text-neutral-500">When a remittance is loaded, this shows the deductions already tied to it and the amount currently allocated on each one.</p>
+            <div className="max-h-72 overflow-auto rounded-2xl border border-neutral-200 bg-white">
               <Table caption="Loaded remittance deductions">
                 <TableHead>
                   <TableHeaderRow>
@@ -763,7 +763,7 @@ export default function StatutoryDeductionManualEntryPage() {
                      </TableRow>
                    )) : (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center text-slate-400 py-8">No remittance loaded.</TableCell>
+                      <TableCell colSpan={5} className="text-center text-neutral-400 py-8">No remittance loaded.</TableCell>
                     </TableRow>
                   )}
                 </TableBody>
@@ -773,16 +773,16 @@ export default function StatutoryDeductionManualEntryPage() {
             {activeRemittance ? (
                <div className="mt-4 space-y-3">
                 {activeRemittance.deductions.map((row) => (
-                  <div key={`${row.deduction_id}-history`} className="rounded-2xl border border-slate-200 p-3">
+                  <div key={`${row.deduction_id}-history`} className="rounded-2xl border border-neutral-200 p-3">
                     <div className="mb-2 flex items-center justify-between gap-3">
                       <div>
-                        <div className="text-sm font-semibold text-slate-900">{row.deduction_type_name}</div>
-                        <div className="text-xs text-slate-500">{row.request_number || row.request_id}</div>
+                        <div className="text-sm font-semibold text-neutral-900">{row.deduction_type_name}</div>
+                        <div className="text-xs text-neutral-500">{row.request_number || row.request_id}</div>
                       </div>
-                      <div className="text-xs font-semibold text-slate-500">Remaining {formatCurrency(Number(row.remaining_amount ?? 0), "NGN")}</div>
+                      <div className="text-xs font-semibold text-neutral-500">Remaining {formatCurrency(Number(row.remaining_amount ?? 0), "NGN")}</div>
                     </div>
                     <div className="space-y-2">
-                      <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                      <div className="flex items-center justify-between rounded-xl bg-neutral-50 px-3 py-2 text-xs text-neutral-700">
                         <span>{activeRemittance.remittance_number} {activeRemittance.reference ? `• ${activeRemittance.reference}` : ""}</span>
                         <span className="font-semibold">{formatCurrency(Number(row.allocated_amount || 0), "NGN")}</span>
                       </div>
@@ -800,37 +800,37 @@ export default function StatutoryDeductionManualEntryPage() {
             {loadedRemittanceSummary ? (
               <dl className="space-y-3 text-sm">
                 <div className="flex items-center justify-between gap-4">
-                  <dt className="text-slate-500">TRM Number</dt>
-                  <dd className="font-semibold text-slate-900">{loadedRemittanceSummary.remittance_number || "-"}</dd>
+                  <dt className="text-neutral-500">TRM Number</dt>
+                  <dd className="font-semibold text-neutral-900">{loadedRemittanceSummary.remittance_number || "-"}</dd>
                 </div>
                 <div className="flex items-center justify-between gap-4">
-                  <dt className="text-slate-500">Reference</dt>
-                  <dd className="font-semibold text-slate-900">{loadedRemittanceSummary.reference || "-"}</dd>
+                  <dt className="text-neutral-500">Reference</dt>
+                  <dd className="font-semibold text-neutral-900">{loadedRemittanceSummary.reference || "-"}</dd>
                 </div>
                 <div className="flex items-center justify-between gap-4">
-                  <dt className="text-slate-500">Remitted On</dt>
-                  <dd className="font-semibold text-slate-900">{loadedRemittanceSummary.remitted_at ? formatDate(loadedRemittanceSummary.remitted_at) : "-"}</dd>
+                  <dt className="text-neutral-500">Remitted On</dt>
+                  <dd className="font-semibold text-neutral-900">{loadedRemittanceSummary.remitted_at ? formatDate(loadedRemittanceSummary.remitted_at) : "-"}</dd>
                 </div>
                 <div className="flex items-center justify-between gap-4">
-                  <dt className="text-slate-500">Created By</dt>
-                  <dd className="font-semibold text-slate-900">{loadedRemittanceSummary.remitted_by?.name || "-"}</dd>
+                  <dt className="text-neutral-500">Created By</dt>
+                  <dd className="font-semibold text-neutral-900">{loadedRemittanceSummary.remitted_by?.name || "-"}</dd>
                 </div>
                 <div className="flex items-center justify-between gap-4">
-                  <dt className="text-slate-500">Payment Voucher</dt>
-                  <dd className="font-semibold text-slate-900">{loadedRemittanceSummary.payment_voucher?.voucher_number || "-"}</dd>
+                  <dt className="text-neutral-500">Payment Voucher</dt>
+                  <dd className="font-semibold text-neutral-900">{loadedRemittanceSummary.payment_voucher?.voucher_number || "-"}</dd>
                 </div>
                 <div className="flex items-center justify-between gap-4">
-                  <dt className="text-slate-500">Paid From</dt>
-                  <dd className="font-semibold text-slate-900">{loadedRemittanceSummary.paid_from_account?.name || "-"}</dd>
+                  <dt className="text-neutral-500">Paid From</dt>
+                  <dd className="font-semibold text-neutral-900">{loadedRemittanceSummary.paid_from_account?.name || "-"}</dd>
                 </div>
               </dl>
             ) : (
-              <p className="text-sm text-slate-500">No remittance loaded yet. Start a new one or load an existing batch from the list below.</p>
+              <p className="text-sm text-neutral-500">No remittance loaded yet. Start a new one or load an existing batch from the list below.</p>
             )}
           </SectionCard>
 
           <SectionCard title="Workspace Checklist" description="Quick audit before saving.">
-            <div className="space-y-2 text-sm text-slate-700">
+            <div className="space-y-2 text-sm text-neutral-700">
               <div className="flex items-center justify-between"><span>Reference entered</span><span className="font-semibold">{remitRef.trim() ? "Yes" : "No"}</span></div>
               <div className="flex items-center justify-between"><span>Deductions attached</span><span className="font-semibold">{selectedDeductionIds.length}</span></div>
               <div className="flex items-center justify-between"><span>Allocated total</span><span className="font-semibold">{formatCurrency(workspaceAllocatedTotal, "NGN")}</span></div>
@@ -840,11 +840,11 @@ export default function StatutoryDeductionManualEntryPage() {
         </div>
       </div>
 
-      <div className="mt-5 flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-3">
-        <div className="text-sm text-slate-600">
-          <span className="font-semibold text-slate-900">{selectedDeductionIds.length}</span> deductions attached
-          <span className="mx-2 text-slate-300">|</span>
-          Allocation total <span className="font-semibold text-slate-900">{formatCurrency(workspaceAllocatedTotal, "NGN")}</span>
+      <div className="mt-5 flex items-center justify-between gap-4 rounded-2xl border border-neutral-200 bg-white px-4 py-3">
+        <div className="text-sm text-neutral-600">
+          <span className="font-semibold text-neutral-900">{selectedDeductionIds.length}</span> deductions attached
+          <span className="mx-2 text-neutral-300">|</span>
+          Allocation total <span className="font-semibold text-neutral-900">{formatCurrency(workspaceAllocatedTotal, "NGN")}</span>
         </div>
         <div className="flex gap-2">
           <Button variant="secondary" onClick={resetRemittanceForm}>Reset Workspace</Button>
@@ -863,8 +863,8 @@ export default function StatutoryDeductionManualEntryPage() {
           {lines.map((line, index) => (
             <div key={index} className="grid gap-3 md:grid-cols-12 items-end">
               <label className="grid gap-1.5 text-sm md:col-span-4">
-                <span className="font-semibold text-slate-700">Chart Account</span>
-                <SelectBox className="rounded-2xl border border-slate-200 px-4 py-2.5" value={line.chart_account_id} onChange={(e) => setLine(index, { chart_account_id: e.target.value })}>
+                <span className="font-semibold text-neutral-700">Chart Account</span>
+                <SelectBox className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={line.chart_account_id} onChange={(e) => setLine(index, { chart_account_id: e.target.value })}>
                   <option value="">Select account</option>
                   {chartAccounts.map((account: any) => (
                     <option key={account.id} value={account.id}>{account.code} - {account.name}</option>
@@ -872,16 +872,16 @@ export default function StatutoryDeductionManualEntryPage() {
                 </SelectBox>
               </label>
               <label className="grid gap-1.5 text-sm md:col-span-3">
-                <span className="font-semibold text-slate-700">Description</span>
-                <input className="rounded-2xl border border-slate-200 px-4 py-2.5" value={line.description} onChange={(e) => setLine(index, { description: e.target.value })} />
+                <span className="font-semibold text-neutral-700">Description</span>
+                <input className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={line.description} onChange={(e) => setLine(index, { description: e.target.value })} />
               </label>
               <label className="grid gap-1.5 text-sm md:col-span-2">
-                <span className="font-semibold text-slate-700">Debit</span>
-                <input type="number" className="rounded-2xl border border-slate-200 px-4 py-2.5" value={line.debit} onChange={(e) => setLine(index, { debit: Number(e.target.value) })} />
+                <span className="font-semibold text-neutral-700">Debit</span>
+                <input type="number" className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={line.debit} onChange={(e) => setLine(index, { debit: Number(e.target.value) })} />
               </label>
               <label className="grid gap-1.5 text-sm md:col-span-2">
-                <span className="font-semibold text-slate-700">Credit</span>
-                <input type="number" className="rounded-2xl border border-slate-200 px-4 py-2.5" value={line.credit} onChange={(e) => setLine(index, { credit: Number(e.target.value) })} />
+                <span className="font-semibold text-neutral-700">Credit</span>
+                <input type="number" className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={line.credit} onChange={(e) => setLine(index, { credit: Number(e.target.value) })} />
               </label>
               <div className="md:col-span-1">
                 <Button variant="danger" size="sm" onClick={() => removeLine(index)} disabled={lines.length <= 2}><Icon name="delete" className="text-sm" /></Button>
@@ -895,7 +895,7 @@ export default function StatutoryDeductionManualEntryPage() {
       </SectionCard>
 
       <SectionCard title="Recent Manual Deduction Entries" description="These are the journal-backed manual deductions created from this page.">
-        {loading ? <p className="text-sm text-slate-500">Loading entries...</p> : null}
+        {loading ? <p className="text-sm text-neutral-500">Loading entries...</p> : null}
         {entries.length ? (
           <Table caption="Statutory deduction manual journal entries">
             <TableHead>
@@ -930,7 +930,7 @@ export default function StatutoryDeductionManualEntryPage() {
 
       <SectionCard title="Recent Remittances" description="Use this list to load, review, and correct remittance batches and their linked deductions.">
         <div className="mb-4">
-          <input className="w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm" value={remittanceSearch} onChange={(e) => setRemittanceSearch(e.target.value)} placeholder="Search TRM number, reference, voucher, or account" />
+          <input className="w-full rounded-2xl border border-neutral-200 px-4 py-2.5 text-sm" value={remittanceSearch} onChange={(e) => setRemittanceSearch(e.target.value)} placeholder="Search TRM number, reference, voucher, or account" />
         </div>
         {requestRemittances.length ? (
           <Table caption="Recent remittances">
@@ -967,30 +967,30 @@ export default function StatutoryDeductionManualEntryPage() {
       {editingEntry && (
         <SlideOver open onClose={() => setEditingEntry(null)} size="md">
           <div className="space-y-4 p-4">
-            <h3 className="font-semibold text-slate-800">Edit Journal Entry</h3>
+            <h3 className="font-semibold text-neutral-800">Edit Journal Entry</h3>
             <label className="grid gap-1.5 text-sm">
-              <span className="font-semibold text-slate-700">Entry Date</span>
-              <DateInput  className="rounded-2xl border border-slate-200 px-4 py-2.5" value={editEntryDate} onChange={(e) => setEditEntryDate(e.target.value)} />
+              <span className="font-semibold text-neutral-700">Entry Date</span>
+              <DateInput  className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={editEntryDate} onChange={(e) => setEditEntryDate(e.target.value)} />
             </label>
             <label className="grid gap-1.5 text-sm">
-              <span className="font-semibold text-slate-700">Currency</span>
-              <input className="rounded-2xl border border-slate-200 px-4 py-2.5" value={editCurrency} onChange={(e) => setEditCurrency(e.target.value.toUpperCase())} />
+              <span className="font-semibold text-neutral-700">Currency</span>
+              <input className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={editCurrency} onChange={(e) => setEditCurrency(e.target.value.toUpperCase())} />
             </label>
             <label className="grid gap-1.5 text-sm">
-              <span className="font-semibold text-slate-700">Memo</span>
-              <input className="rounded-2xl border border-slate-200 px-4 py-2.5" value={editMemo} onChange={(e) => setEditMemo(e.target.value)} />
+              <span className="font-semibold text-neutral-700">Memo</span>
+              <input className="rounded-2xl border border-neutral-200 px-4 py-2.5" value={editMemo} onChange={(e) => setEditMemo(e.target.value)} />
             </label>
             <div className="space-y-2">
-              <span className="font-semibold text-slate-700 text-sm">Lines</span>
+              <span className="font-semibold text-neutral-700 text-sm">Lines</span>
               {editLines.map((line, idx) => (
                 <div key={idx} className="grid gap-2 md:grid-cols-12 items-end">
-                  <SelectBox className="md:col-span-4 rounded-2xl border border-slate-200 px-3 py-2 text-sm" value={line.chart_account_id} onChange={(e) => setEditLines((p) => p.map((l, i) => i === idx ? { ...l, chart_account_id: e.target.value } : l))}>
+                  <SelectBox className="md:col-span-4 rounded-2xl border border-neutral-200 px-3 py-2 text-sm" value={line.chart_account_id} onChange={(e) => setEditLines((p) => p.map((l, i) => i === idx ? { ...l, chart_account_id: e.target.value } : l))}>
                     <option value="">Account</option>
                     {chartAccounts.map((a: any) => <option key={a.id} value={a.id}>{a.code} - {a.name}</option>)}
                   </SelectBox>
-                  <input className="md:col-span-3 rounded-2xl border border-slate-200 px-3 py-2 text-sm" placeholder="Description" value={line.description} onChange={(e) => setEditLines((p) => p.map((l, i) => i === idx ? { ...l, description: e.target.value } : l))} />
-                  <input type="number" className="md:col-span-2 rounded-2xl border border-slate-200 px-3 py-2 text-sm" placeholder="Debit" value={line.debit} onChange={(e) => setEditLines((p) => p.map((l, i) => i === idx ? { ...l, debit: Number(e.target.value) } : l))} />
-                  <input type="number" className="md:col-span-2 rounded-2xl border border-slate-200 px-3 py-2 text-sm" placeholder="Credit" value={line.credit} onChange={(e) => setEditLines((p) => p.map((l, i) => i === idx ? { ...l, credit: Number(e.target.value) } : l))} />
+                  <input className="md:col-span-3 rounded-2xl border border-neutral-200 px-3 py-2 text-sm" placeholder="Description" value={line.description} onChange={(e) => setEditLines((p) => p.map((l, i) => i === idx ? { ...l, description: e.target.value } : l))} />
+                  <input type="number" className="md:col-span-2 rounded-2xl border border-neutral-200 px-3 py-2 text-sm" placeholder="Debit" value={line.debit} onChange={(e) => setEditLines((p) => p.map((l, i) => i === idx ? { ...l, debit: Number(e.target.value) } : l))} />
+                  <input type="number" className="md:col-span-2 rounded-2xl border border-neutral-200 px-3 py-2 text-sm" placeholder="Credit" value={line.credit} onChange={(e) => setEditLines((p) => p.map((l, i) => i === idx ? { ...l, credit: Number(e.target.value) } : l))} />
                   <button className="md:col-span-1 text-red-500 text-sm" onClick={() => setEditLines((p) => p.filter((_, i) => i !== idx))} disabled={editLines.length <= 2}>×</button>
                 </div>
               ))}

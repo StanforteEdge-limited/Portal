@@ -68,7 +68,7 @@ export function MailSettingsPanel({ accounts, onClose, onAddGoogle, onAddMicroso
         <div style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
           {/* Connected accounts */}
           <div style={{ marginBottom: 24 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: '', letterSpacing: '0.05em', marginBottom: 10 }}>
               Connected Accounts
             </div>
 
@@ -133,7 +133,7 @@ export function MailSettingsPanel({ accounts, onClose, onAddGoogle, onAddMicroso
 
           {/* Add account */}
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: '', letterSpacing: '0.05em', marginBottom: 10 }}>
               Add Account
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

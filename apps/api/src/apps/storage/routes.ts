@@ -13,12 +13,8 @@ export const StorageRoutes: FastifyPluginAsync = async (fastify) => {
   const auth = composeGuards(requireAuth);
   const actor = (request: { user?: { id?: string } }) => request.user?.id as string;
   const inTenant = <T>(request: FastifyRequest, operation: () => Promise<T> | T) => {
-    try {
-      const t = currentTenant(request);
-      return fastify.container.tenantContext.run(t, operation);
-    } catch {
-      return operation();
-    }
+    const t = currentTenant(request);
+    return fastify.container.tenantContext.run(t, operation);
   };
 
   // List file assets

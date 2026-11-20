@@ -252,7 +252,7 @@ export const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentPro
           onClick?.(e);
         }}
         className={cn(
-          "z-[99999] rounded-2xl border border-slate-200 bg-white p-4 text-slate-900 shadow-2xl outline-none overscroll-contain animate-in fade-in-0 zoom-in-95 duration-150",
+          "z-[99999] rounded-2xl border border-neutral-200 bg-white p-4 text-neutral-900 shadow-2xl outline-none overscroll-contain animate-in fade-in-0 zoom-in-95 duration-150",
           className
         )}
         {...props}

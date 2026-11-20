@@ -96,7 +96,7 @@ export const PaymentRequestFormPage = forwardRef<RequestFormHandle, Props>(({
   useEffect(() => {
     onSummary(
       <section className="section-card bg-brand-900 p-5 text-white">
-        <p className="text-[0.72rem] font-bold uppercase tracking-[0.16em] text-white/70">
+        <p className="text-[0.72rem] font-medium text-white/70">
           {selectedCategory?.name || "Financial Request"}
         </p>
         <p className="mt-3 text-4xl font-semibold tracking-tight">
@@ -182,10 +182,10 @@ export const PaymentRequestFormPage = forwardRef<RequestFormHandle, Props>(({
             value={form.due_date}
             onChange={(event) => setForm((prev) => ({ ...prev, due_date: event.target.value }))}
           />
-          <label className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3">
+          <label className="flex items-center justify-between rounded-2xl border border-neutral-200 bg-white px-4 py-3">
             <span>
               <span className="field-label">Reimbursement Needed</span>
-              <span className="block text-sm text-slate-500">
+              <span className="block text-sm text-neutral-500">
                 Mark this if the request is a reimbursement flow.
               </span>
             </span>
@@ -193,7 +193,7 @@ export const PaymentRequestFormPage = forwardRef<RequestFormHandle, Props>(({
               type="checkbox"
               checked={form.reimbursement}
               onChange={(event) => setForm((prev) => ({ ...prev, reimbursement: event.target.checked }))}
-              className="h-5 w-5 rounded border-slate-300 text-brand-900 focus:ring-brand-900"
+              className="h-5 w-5 rounded border-neutral-300 text-brand-900 focus:ring-brand-900"
             />
           </label>
         </div>
@@ -207,7 +207,7 @@ export const PaymentRequestFormPage = forwardRef<RequestFormHandle, Props>(({
             <Button
               variant="secondary"
               size="sm"
-              className="gap-2 border-slate-200"
+              className="gap-2 border-neutral-200"
               onClick={() => setShowCsvModal(true)}
             >
               <Icon name="file_upload" className="text-[18px]" />
@@ -232,11 +232,11 @@ export const PaymentRequestFormPage = forwardRef<RequestFormHandle, Props>(({
       >
         <div className="space-y-4">
           {form.items.map((item, index) => (
-            <div key={`item-${index}`} className="rounded-[20px] border border-slate-200 bg-white p-4">
+            <div key={`item-${index}`} className="rounded-[20px] border border-neutral-200 bg-white p-4">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-slate-950">Request Item {index + 1}</p>
-                  <p className="mt-1 text-xs text-slate-500">Line total updates as quantity and unit price change.</p>
+                  <p className="text-sm font-semibold text-neutral-950">Request Item {index + 1}</p>
+                  <p className="mt-1 text-xs text-neutral-500">Line total updates as quantity and unit price change.</p>
                 </div>
                 <button
                   type="button"
@@ -352,7 +352,7 @@ export const PaymentRequestFormPage = forwardRef<RequestFormHandle, Props>(({
                 </div>
                 <div>
                   <span className="field-label">Invoice File</span>
-                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-neutral-200 bg-white px-4 py-2 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50">
                     <Icon name="attach_file" className="text-[18px]" />
                     {(item.file_names || []).length ? "Change Files" : "Pick Files"}
                     <input
@@ -365,14 +365,14 @@ export const PaymentRequestFormPage = forwardRef<RequestFormHandle, Props>(({
                       }}
                     />
                   </label>
-                  <p className="mt-2 text-xs text-slate-500">
+                  <p className="mt-2 text-xs text-neutral-500">
                     {(item.file_names || []).length
                       ? `Attached: ${(item.file_names || []).join(", ")}`
                       : "Attach invoice per item"}
                   </p>
                 </div>
               </div>
-              <div className="mt-4 grid gap-4 lg:grid-cols-3 border-t border-slate-100 pt-4">
+              <div className="mt-4 grid gap-4 lg:grid-cols-3 border-t border-neutral-100 pt-4">
                 <TextField
                   label="Bank Name (Optional)"
                   value={item.bank_name || ""}
@@ -432,17 +432,17 @@ export const PaymentRequestFormPage = forwardRef<RequestFormHandle, Props>(({
 
       {showCsvModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="csv-modal-title">
-          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setShowCsvModal(false)} aria-hidden="true" />
+          <div className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm" onClick={() => setShowCsvModal(false)} aria-hidden="true" />
           <div className="relative w-full max-w-2xl rounded-2xl bg-white shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-              <h2 id="csv-modal-title" className="text-lg font-semibold text-slate-900">Import CSV</h2>
-              <button onClick={() => setShowCsvModal(false)} className="rounded-full p-2 text-slate-400 hover:bg-slate-50 hover:text-slate-600">
+            <div className="flex items-center justify-between border-b border-neutral-100 px-6 py-4">
+              <h2 id="csv-modal-title" className="text-lg font-semibold text-neutral-900">Import CSV</h2>
+              <button onClick={() => setShowCsvModal(false)} className="rounded-full p-2 text-neutral-400 hover:bg-neutral-50 hover:text-neutral-600">
                 <Icon name="close" className="text-[20px]" />
               </button>
             </div>
             <div className="p-6 overflow-y-auto">
               <div className="mb-4">
-                <p className="text-sm text-slate-600 mb-2">Upload a CSV file containing your line items. Use headers like: Description, Quantity, Unit Price, Bank Name, Account Number, Account Name.</p>
+                <p className="text-sm text-neutral-600 mb-2">Upload a CSV file containing your line items. Use headers like: Description, Quantity, Unit Price, Bank Name, Account Number, Account Name.</p>
                 <div className="flex gap-2 mb-4">
                   <a href="/csv-samples/request-items-sample.csv" download className="text-brand-600 text-sm hover:underline">Download Sample CSV</a>
                 </div>
@@ -503,18 +503,18 @@ export const PaymentRequestFormPage = forwardRef<RequestFormHandle, Props>(({
                     };
                     reader.readAsText(file);
                   }}
-                  className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100"
+                  className="block w-full text-sm text-neutral-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100"
                 />
               </div>
 
               {csvPreview.length > 0 && (
                 <div className="mt-4 border rounded-lg overflow-hidden">
-                  <div className="bg-slate-50 px-4 py-2 font-medium text-sm border-b">Preview ({csvPreview.length} items)</div>
+                  <div className="bg-neutral-50 px-4 py-2 font-medium text-sm border-b">Preview ({csvPreview.length} items)</div>
                   <div className="max-h-60 overflow-y-auto">
                     {csvPreview.map((item, idx) => (
                       <div key={idx} className="p-3 border-b last:border-0 text-sm">
                         <div className="font-medium">{item.description}</div>
-                        <div className="text-slate-500 text-xs mt-1">
+                        <div className="text-neutral-500 text-xs mt-1">
                           {item.quantity} x {formatCurrency(Number(item.unit_price) || 0)}
                           {(item.bank_name || item.account_number) && ` • Bank: ${item.bank_name} - ${item.account_number}`}
                         </div>
@@ -524,7 +524,7 @@ export const PaymentRequestFormPage = forwardRef<RequestFormHandle, Props>(({
                 </div>
               )}
             </div>
-            <div className="border-t border-slate-100 bg-slate-50 px-6 py-4 flex justify-end gap-3">
+            <div className="border-t border-neutral-100 bg-neutral-50 px-6 py-4 flex justify-end gap-3">
               <Button variant="secondary" onClick={() => setShowCsvModal(false)}>Cancel</Button>
               <Button variant="primary" disabled={csvPreview.length === 0} onClick={() => {
                 if (csvPreview.length > 0) {

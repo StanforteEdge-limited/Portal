@@ -93,12 +93,12 @@ export default function SettingsPage() {
                 ["Approval reminders", "Receive nudges when a request waits on you."],
                 ["Attendance reminders", "Get reminders for onsite days and attendance actions."],
               ].map(([label, text]) => (
-                <label key={label} className="flex items-center justify-between rounded-[18px] border border-slate-100 bg-slate-50 px-4 py-3">
+                <label key={label} className="flex items-center justify-between rounded-[18px] border border-neutral-100 bg-neutral-50 px-4 py-3">
                   <span>
-                    <span className="block text-sm font-semibold text-slate-800">{label}</span>
-                    <span className="mt-1 block text-sm text-slate-500">{text}</span>
+                    <span className="block text-sm font-semibold text-neutral-800">{label}</span>
+                    <span className="mt-1 block text-sm text-neutral-500">{text}</span>
                   </span>
-                  <input type="checkbox" defaultChecked className="h-5 w-5 rounded border-slate-300 text-brand-900 focus:ring-brand-900" />
+                  <input type="checkbox" defaultChecked className="h-5 w-5 rounded border-neutral-300 text-brand-900 focus:ring-brand-900" />
                 </label>
               ))}
             </div>
@@ -106,7 +106,7 @@ export default function SettingsPage() {
 
           <SectionCard title="Security" description="Ported from the existing profile/security flow.">
             {notice ? (
-              <div className="mb-4 rounded-[18px] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+              <div className="mb-4 rounded-[18px] border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-neutral-700">
                 {notice}
               </div>
             ) : null}
@@ -145,10 +145,10 @@ export default function SettingsPage() {
               ].map(([label, value]) => (
                 <div
                   key={label}
-                  className="flex items-center justify-between rounded-[18px] border border-slate-100 bg-slate-50 px-4 py-3"
+                  className="flex items-center justify-between rounded-[18px] border border-neutral-100 bg-neutral-50 px-4 py-3"
                 >
-                  <span className="text-sm text-slate-500">{label}</span>
-                  <span className="text-sm font-semibold text-slate-800">{value}</span>
+                  <span className="text-sm text-neutral-500">{label}</span>
+                  <span className="text-sm font-semibold text-neutral-800">{value}</span>
                 </div>
               ))}
             </div>

@@ -158,6 +158,25 @@ export default function TasksPage() {
     }
   };
 
+  const handleMoveTask = (taskId: string, newStatus: TaskStatus, targetTaskId?: string) => {
+    const moving = tasks.find((t) => t.id === taskId);
+    if (!moving) return;
+    const updatedTask: TaskItem = {
+      ...moving,
+      status: newStatus,
+    };
+    const withoutMoving = tasks.filter((t) => t.id !== taskId);
+    if (targetTaskId) {
+      const targetIndex = withoutMoving.findIndex((t) => t.id === targetTaskId);
+      if (targetIndex !== -1) {
+        withoutMoving.splice(targetIndex, 0, updatedTask);
+        saveTasks(withoutMoving);
+        return;
+      }
+    }
+    saveTasks([...withoutMoving, updatedTask]);
+  };
+
   const handleSaveTask = (updatedTask: TaskItem) => {
     const updated = tasks.map((t) => (t.id === updatedTask.id ? updatedTask : t));
     saveTasks(updated);
@@ -199,7 +218,7 @@ export default function TasksPage() {
             <button
               type="button"
               onClick={() => handleOpenNewTask("planned")}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-bold transition shadow-sm active:scale-95 cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-medium transition shadow-sm active:scale-[0.98] cursor-pointer"
             >
               <Plus className="h-4 w-4" />
               <span>{isAdminView ? "Create & Assign Task to Staff" : "+ New Personal Task"}</span>
@@ -210,100 +229,100 @@ export default function TasksPage() {
         {/* 2. Top 4 Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Total Tasks */}
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between">
+          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
                 <CheckSquare className="h-5 w-5" />
               </div>
               <div>
-                <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                <div className="text-xs font-medium text-neutral-500">
                   {isAdminView ? "All Staff Work Items" : "My Tasks"}
                 </div>
-                <div className="text-2xl font-black text-slate-900 mt-0.5 font-headline">{scopedTasks.length}</div>
+                <div className="text-2xl font-semibold text-neutral-900 mt-0.5 font-headline">{scopedTasks.length}</div>
               </div>
             </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600">
               {isAdminView ? "Org Scope" : "Personal"}
             </span>
           </div>
 
           {/* In Progress */}
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between">
+          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
                 <Clock className="h-5 w-5" />
               </div>
               <div>
-                <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">In Progress</div>
-                <div className="text-2xl font-black text-slate-900 mt-0.5 font-headline">{inProgressCount}</div>
+                <div className="text-xs font-medium text-neutral-500">In Progress</div>
+                <div className="text-2xl font-semibold text-neutral-900 mt-0.5 font-headline">{inProgressCount}</div>
               </div>
             </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200/60">
+            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-700 border border-neutral-200">
               Active
             </span>
           </div>
 
           {/* Blocked / Under Review */}
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between">
+          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
                 <AlertCircle className="h-5 w-5" />
               </div>
               <div>
-                <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Under Review</div>
-                <div className="text-2xl font-black text-slate-900 mt-0.5 font-headline">{blockedCount}</div>
+                <div className="text-xs font-medium text-neutral-500">Under Review</div>
+                <div className="text-2xl font-semibold text-neutral-900 mt-0.5 font-headline">{blockedCount}</div>
               </div>
             </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200/60">
+            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200/60">
               Review
             </span>
           </div>
 
           {/* Completed Rate */}
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between">
+          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
                 <CheckCircle2 className="h-5 w-5" />
               </div>
               <div>
-                <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Completed</div>
-                <div className="text-2xl font-black text-emerald-600 mt-0.5 font-headline">{completedCount}</div>
+                <div className="text-xs font-medium text-neutral-500">Completed</div>
+                <div className="text-2xl font-semibold text-emerald-600 mt-0.5 font-headline">{completedCount}</div>
               </div>
             </div>
-            <span className="text-[11px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">
+            <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">
               {completionRate}% Done
             </span>
           </div>
         </div>
 
         {/* 3. View Mode Switcher + Scope Filter & Search Toolbar */}
-        <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+        <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
           {/* Left: View Mode Pills (Kanban Board vs Table vs Daily Log) */}
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl shrink-0">
+            <div className="flex items-center gap-1.5 p-1 bg-neutral-100 rounded-xl shrink-0">
               <button
                 type="button"
                 onClick={() => handleSetViewMode("kanban")}
-                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition ${
                   viewMode === "kanban"
-                    ? "bg-white text-slate-900 shadow-xs"
-                    : "text-slate-600 hover:text-slate-900"
+                    ? "bg-white text-neutral-900 shadow-xs"
+                    : "text-neutral-600 hover:text-neutral-900"
                 }`}
               >
-                <LayoutGrid className={`h-4 w-4 ${viewMode === "kanban" ? "text-[#ff6900]" : "text-slate-400"}`} />
+                <LayoutGrid className={`h-4 w-4 ${viewMode === "kanban" ? "text-[#ff6900]" : "text-neutral-400"}`} />
                 <span>Kanban Board</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => handleSetViewMode("table")}
-                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition ${
                   viewMode === "table"
-                    ? "bg-white text-slate-900 shadow-xs"
-                    : "text-slate-600 hover:text-slate-900"
+                    ? "bg-white text-neutral-900 shadow-xs"
+                    : "text-neutral-600 hover:text-neutral-900"
                 }`}
               >
-                <TableIcon className={`h-4 w-4 ${viewMode === "table" ? "text-[#ff6900]" : "text-slate-400"}`} />
+                <TableIcon className={`h-4 w-4 ${viewMode === "table" ? "text-[#ff6900]" : "text-neutral-400"}`} />
                 <span>Table View</span>
               </button>
 
@@ -311,13 +330,13 @@ export default function TasksPage() {
                 <button
                   type="button"
                   onClick={() => handleSetViewMode("log")}
-                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition ${
                     viewMode === "log"
-                      ? "bg-white text-slate-900 shadow-xs"
-                      : "text-slate-600 hover:text-slate-900"
+                      ? "bg-white text-neutral-900 shadow-xs"
+                      : "text-neutral-600 hover:text-neutral-900"
                   }`}
                 >
-                  <Clock className={`h-4 w-4 ${viewMode === "log" ? "text-[#ff6900]" : "text-slate-400"}`} />
+                  <Clock className={`h-4 w-4 ${viewMode === "log" ? "text-[#ff6900]" : "text-neutral-400"}`} />
                   <span>Daily Log &amp; Standup</span>
                 </button>
               )}
@@ -325,12 +344,12 @@ export default function TasksPage() {
 
             {/* Scope Filter for Personal Workplace: All My Tasks / Assigned to Me / Personal Tasks */}
             {!isAdminView && viewMode !== "log" && (
-              <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl text-xs font-semibold">
+              <div className="flex items-center gap-1 p-1 bg-neutral-100 rounded-xl text-xs font-semibold">
                 <button
                   type="button"
                   onClick={() => setScopeFilter("all")}
                   className={`px-2.5 py-1 rounded-lg transition ${
-                    scopeFilter === "all" ? "bg-white text-slate-900 font-bold shadow-xs" : "text-slate-500 hover:text-slate-800"
+                    scopeFilter === "all" ? "bg-white text-neutral-900 font-medium shadow-xs" : "text-neutral-500 hover:text-neutral-800"
                   }`}
                 >
                   All ({scopedTasks.length})
@@ -339,7 +358,7 @@ export default function TasksPage() {
                   type="button"
                   onClick={() => setScopeFilter("assigned")}
                   className={`px-2.5 py-1 rounded-lg transition ${
-                    scopeFilter === "assigned" ? "bg-white text-slate-900 font-bold shadow-xs" : "text-slate-500 hover:text-slate-800"
+                    scopeFilter === "assigned" ? "bg-white text-neutral-900 font-medium shadow-xs" : "text-neutral-500 hover:text-neutral-800"
                   }`}
                 >
                   Assigned
@@ -348,7 +367,7 @@ export default function TasksPage() {
                   type="button"
                   onClick={() => setScopeFilter("personal")}
                   className={`px-2.5 py-1 rounded-lg transition ${
-                    scopeFilter === "personal" ? "bg-white text-slate-900 font-bold shadow-xs" : "text-slate-500 hover:text-slate-800"
+                    scopeFilter === "personal" ? "bg-white text-neutral-900 font-medium shadow-xs" : "text-neutral-500 hover:text-neutral-800"
                   }`}
                 >
                   Personal
@@ -362,13 +381,13 @@ export default function TasksPage() {
             <div className="flex flex-wrap items-center gap-2.5">
               {/* Search Box */}
               <div className="relative flex-1 sm:w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-400" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder={isAdminView ? "Search staff tasks, projects, or assignees..." : "Search my tasks or tags..."}
-                  className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+                  className="w-full pl-9 pr-3 py-1.5 text-xs bg-neutral-50 border border-neutral-200 rounded-xl text-neutral-800 placeholder-neutral-400 focus:outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
                 />
               </div>
 
@@ -377,7 +396,7 @@ export default function TasksPage() {
                 <SelectBox
                   value={assigneeFilter}
                   onChange={(e) => setAssigneeFilter(e.target.value)}
-                  className="text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-slate-700 outline-none hover:bg-slate-100"
+                  className="text-xs font-semibold bg-neutral-50 border border-neutral-200 rounded-xl px-2.5 py-1.5 text-neutral-700 outline-none hover:bg-neutral-100"
                 >
                   <option value="all">All Staff Members</option>
                   {SAMPLE_TEAM_MEMBERS.map((member) => (
@@ -392,7 +411,7 @@ export default function TasksPage() {
               <SelectBox
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-slate-700 outline-none hover:bg-slate-100"
+                className="text-xs font-semibold bg-neutral-50 border border-neutral-200 rounded-xl px-2.5 py-1.5 text-neutral-700 outline-none hover:bg-neutral-100"
               >
                 <option value="all">All Lanes</option>
                 <option value="planned">Planned</option>
@@ -405,7 +424,7 @@ export default function TasksPage() {
               <SelectBox
                 value={priorityFilter}
                 onChange={(e) => setPriorityFilter(e.target.value)}
-                className="text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-slate-700 outline-none hover:bg-slate-100"
+                className="text-xs font-semibold bg-neutral-50 border border-neutral-200 rounded-xl px-2.5 py-1.5 text-neutral-700 outline-none hover:bg-neutral-100"
               >
                 <option value="all">All Priorities</option>
                 <option value="critical">Critical</option>
@@ -424,6 +443,7 @@ export default function TasksPage() {
               tasks={filteredTasks}
               onSelectTask={(task) => setSelectedTask(task)}
               onUpdateStatus={handleUpdateStatus}
+              onMoveTask={handleMoveTask}
               onOpenNewTask={handleOpenNewTask}
             />
           )}

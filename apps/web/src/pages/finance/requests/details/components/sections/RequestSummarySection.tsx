@@ -21,7 +21,7 @@ export function RequestSummarySection() {
       action={
         <span
           className={[
-            "inline-flex items-center rounded-full px-4 py-1.5 text-sm font-bold uppercase tracking-[0.1em]",
+            "inline-flex items-center rounded-full px-4 py-1.5 text-sm font-medium  ",
             viewerStatus.tone === "success"
               ? "bg-success/10 text-success"
               : viewerStatus.tone === "danger"
@@ -29,15 +29,15 @@ export function RequestSummarySection() {
                 : viewerStatus.tone === "warning"
                   ? "bg-amber-500/10 text-amber-700"
                   : viewerStatus.tone === "pending"
-                    ? "bg-blue-500/10 text-blue-700"
-                    : "bg-slate-100 text-slate-700",
+                    ? "bg-blue-500/10 text-neutral-700"
+                    : "bg-neutral-100 text-neutral-700",
           ].join(" ")}
         >
           {viewerStatus.label}
         </span>
       }
     >
-      <p className="max-w-3xl text-sm leading-7 text-slate-600">
+      <p className="max-w-3xl text-sm leading-7 text-neutral-600">
         {String(
           requestData.purpose ||
             requestData.leave_reason ||

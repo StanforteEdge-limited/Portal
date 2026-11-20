@@ -37,8 +37,8 @@ export default function DesignationsTab({ onEditDesignation }: DesignationsTabPr
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div>
-          <h3 className="text-sm font-semibold text-slate-900">Job Title Designation Templates</h3>
-          <p className="text-xs text-slate-500 mt-0.5">Manage master job titles and their default job description documents.</p>
+          <h3 className="text-sm font-semibold text-neutral-900">Job Title Designation Templates</h3>
+          <p className="text-xs text-neutral-500 mt-0.5">Manage master job titles and their default job description documents.</p>
         </div>
         <Button onClick={() => onEditDesignation(true)} className="gap-1">
           <Icon name="add" />
@@ -47,16 +47,16 @@ export default function DesignationsTab({ onEditDesignation }: DesignationsTabPr
       </div>
 
       {loading && list.length === 0 ? (
-        <div className="text-sm text-slate-500 py-4">Loading job titles...</div>
+        <div className="text-sm text-neutral-500 py-4">Loading job titles...</div>
       ) : list.length === 0 ? (
-        <div className="text-sm text-slate-500 py-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+        <div className="text-sm text-neutral-500 py-8 text-center bg-neutral-50 rounded-2xl border border-dashed border-neutral-200">
           No job title designations defined yet. Click "Add Job Title" to create one.
         </div>
       ) : (
-        <div className="overflow-x-auto border border-slate-100 rounded-lg">
+        <div className="overflow-x-auto border border-neutral-100 rounded-lg">
           <DataTable
             columns={[
-              { header: "Name", className: "font-semibold text-slate-900", cell: (item: any) => item.name },
+              { header: "Name", className: "font-semibold text-neutral-900", cell: (item: any) => item.name },
               { header: "Code", cell: (item: any) => item.code || "-" },
               { header: "Description", cell: (item: any) => item.description || "-" },
               { header: "Job Description Template", cell: (item: any) => item.job_description ? (
@@ -64,7 +64,7 @@ export default function DesignationsTab({ onEditDesignation }: DesignationsTabPr
                   <Icon name="check_circle" className="text-sm" /> Configured
                 </span>
               ) : (
-                <span className="text-slate-400 text-xs">-</span>
+                <span className="text-neutral-400 text-xs">-</span>
               ) },
               { header: "Actions", className: "text-right space-x-2", cell: (item: any) => (
                 <>

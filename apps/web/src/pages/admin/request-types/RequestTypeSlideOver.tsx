@@ -160,14 +160,14 @@ export default function RequestTypeSlideOver({
         <SlideOverContent className="space-y-6 p-6">
           {/* Basic Info */}
           <div className="space-y-4">
-            <div className="flex items-center gap-2 pb-2 border-b border-slate-100 text-xs font-bold text-slate-900 uppercase tracking-wider">
+            <div className="flex items-center gap-2 pb-2 border-b border-neutral-100 text-xs font-medium text-neutral-900">
               <FileText className="h-4 w-4 text-[#ff6900]" />
               Basic Identification
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-medium text-neutral-700 mb-1">
                   Type Name <span className="text-rose-500">*</span>
                 </label>
                 <input
@@ -176,12 +176,12 @@ export default function RequestTypeSlideOver({
                   onChange={(e) => handleNameChange(e.target.value)}
                   placeholder="e.g., Equipment Requisition"
                   required
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-medium text-neutral-700 mb-1">
                   Slug Identifier
                 </label>
                 <input
@@ -190,21 +190,21 @@ export default function RequestTypeSlideOver({
                   onChange={(e) => setSlug(e.target.value)}
                   placeholder="e.g., equipment_requisition"
                   disabled={!!requestType}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-mono text-slate-800 placeholder-slate-400 disabled:bg-slate-50 disabled:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-mono text-neutral-800 placeholder-neutral-400 disabled:bg-neutral-50 disabled:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-medium text-neutral-700 mb-1">
                   Requisition Category <span className="text-rose-500">*</span>
                 </label>
                 <SelectBox
                   value={categoryId}
                   onChange={(e) => setCategoryId(e.target.value)}
                   required
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
                 >
                   <option value="">Select category...</option>
                   {categories.map((c) => (
@@ -214,20 +214,20 @@ export default function RequestTypeSlideOver({
                   ))}
                 </SelectBox>
                 {selectedCategory?.groupName && (
-                  <p className="text-[11px] text-slate-500 mt-1">
-                    Group: <strong className="text-slate-700">{selectedCategory.groupName}</strong>
+                  <p className="text-xs text-neutral-500 mt-1">
+                    Group: <strong className="text-neutral-700">{selectedCategory.groupName}</strong>
                   </p>
                 )}
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-medium text-neutral-700 mb-1">
                   Workflow Class
                 </label>
                 <SelectBox
                   value={workflowType}
                   onChange={(e) => setWorkflowType(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
                 >
                   <option value="">Auto-detect from schema</option>
                   <option value="payment">Payment & Cash Advance</option>
@@ -240,7 +240,7 @@ export default function RequestTypeSlideOver({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-medium text-neutral-700 mb-1">
                   Handler Role Label
                 </label>
                 <input
@@ -248,7 +248,7 @@ export default function RequestTypeSlideOver({
                   value={handlerRoleLabel}
                   onChange={(e) => setHandlerRoleLabel(e.target.value)}
                   placeholder="e.g., Senior Accountant, HR Business Partner"
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
                 />
               </div>
 
@@ -258,9 +258,9 @@ export default function RequestTypeSlideOver({
                     type="checkbox"
                     checked={isActive}
                     onChange={(e) => setIsActive(e.target.checked)}
-                    className="w-4 h-4 rounded text-[#ff6900] border-slate-300 focus:ring-[#ff6900]"
+                    className="w-4 h-4 rounded text-[#ff6900] border-neutral-300 focus:ring-[#ff6900]"
                   />
-                  <span className="text-xs font-bold text-slate-700">
+                  <span className="text-xs font-medium text-neutral-700">
                     Active & Available in Requisitions Menu
                   </span>
                 </label>
@@ -270,15 +270,15 @@ export default function RequestTypeSlideOver({
             {/* Taxonomies & Visibility */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-medium text-neutral-700 mb-1">
                   Attached Taxonomies
                 </label>
-                <div className="max-h-40 overflow-y-auto space-y-1.5 rounded-xl border border-slate-200 p-2.5 bg-slate-50/50">
+                <div className="max-h-40 overflow-y-auto space-y-1.5 rounded-xl border border-neutral-200 p-2.5 bg-neutral-50/50">
                   {taxonomies.length === 0 ? (
-                    <p className="text-xs text-slate-400 italic">No taxonomies configured.</p>
+                    <p className="text-xs text-neutral-400 italic">No taxonomies configured.</p>
                   ) : (
                     taxonomies.map((t) => (
-                      <label key={t.id} className="flex items-center gap-2 text-xs font-medium text-slate-700 cursor-pointer">
+                      <label key={t.id} className="flex items-center gap-2 text-xs font-medium text-neutral-700 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={taxonomyKeys.includes(t.key)}
@@ -289,7 +289,7 @@ export default function RequestTypeSlideOver({
                               setTaxonomyKeys(taxonomyKeys.filter((k) => k !== t.key));
                             }
                           }}
-                          className="w-3.5 h-3.5 rounded text-[#ff6900] border-slate-300 focus:ring-[#ff6900]"
+                          className="w-3.5 h-3.5 rounded text-[#ff6900] border-neutral-300 focus:ring-[#ff6900]"
                         />
                         <span>{t.name}</span>
                       </label>
@@ -299,15 +299,15 @@ export default function RequestTypeSlideOver({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-medium text-neutral-700 mb-1">
                   Restricted to Roles (empty = visible to all)
                 </label>
-                <div className="max-h-40 overflow-y-auto space-y-1.5 rounded-xl border border-slate-200 p-2.5 bg-slate-50/50">
+                <div className="max-h-40 overflow-y-auto space-y-1.5 rounded-xl border border-neutral-200 p-2.5 bg-neutral-50/50">
                   {roles.length === 0 ? (
-                    <p className="text-xs text-slate-400 italic">No roles configured.</p>
+                    <p className="text-xs text-neutral-400 italic">No roles configured.</p>
                   ) : (
                     roles.map((r) => (
-                      <label key={r.id} className="flex items-center gap-2 text-xs font-medium text-slate-700 cursor-pointer">
+                      <label key={r.id} className="flex items-center gap-2 text-xs font-medium text-neutral-700 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={visibleToRoles.includes(r.slug)}
@@ -318,7 +318,7 @@ export default function RequestTypeSlideOver({
                               setVisibleToRoles(visibleToRoles.filter((s) => s !== r.slug));
                             }
                           }}
-                          className="w-3.5 h-3.5 rounded text-[#ff6900] border-slate-300 focus:ring-[#ff6900]"
+                          className="w-3.5 h-3.5 rounded text-[#ff6900] border-neutral-300 focus:ring-[#ff6900]"
                         />
                         <span>{r.name}</span>
                       </label>
@@ -331,12 +331,12 @@ export default function RequestTypeSlideOver({
 
           {/* Approval Flow Section */}
           <div className="space-y-4 pt-2">
-            <div className="flex items-center gap-2 pb-2 border-b border-slate-100 text-xs font-bold text-slate-900 uppercase tracking-wider">
-              <GitBranch className="h-4 w-4 text-purple-600" />
+            <div className="flex items-center gap-2 pb-2 border-b border-neutral-100 text-xs font-medium text-neutral-900">
+              <GitBranch className="h-4 w-4 text-neutral-700" />
               Multi-Step Approval Chain
             </div>
 
-            <div className="bg-slate-50/60 border border-slate-200/80 rounded-2xl p-4">
+            <div className="bg-neutral-50/60 border border-neutral-200/80 rounded-2xl p-4">
               <ApprovalFlowBuilder
                 steps={approvalSteps}
                 onChange={setApprovalSteps}
@@ -351,19 +351,19 @@ export default function RequestTypeSlideOver({
           </div>
         </SlideOverContent>
 
-        <SlideOverFooter className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3">
+        <SlideOverFooter className="p-4 bg-neutral-50 border-t border-neutral-100 flex items-center justify-end gap-3">
           <button
             type="button"
             onClick={onClose}
             disabled={saving}
-            className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 font-semibold text-xs hover:bg-white transition"
+            className="px-4 py-2 rounded-xl border border-neutral-200 text-neutral-700 font-semibold text-xs hover:bg-white transition"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={saving}
-            className="px-5 py-2 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white font-bold text-xs shadow-sm shadow-orange-500/20 transition flex items-center gap-2"
+            className="px-5 py-2 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white font-medium text-xs shadow-sm transition flex items-center gap-2"
           >
             {saving ? (
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />

@@ -41,7 +41,7 @@ export default function FinanceSettingsPage() {
       </SidebarTabs>
 
       <SectionCard title="Party Management">
-        <p className="text-sm text-slate-500 mb-4">Manage customers and vendors as dedicated entities with full transaction history.</p>
+        <p className="text-sm text-neutral-500 mb-4">Manage customers and vendors as dedicated entities with full transaction history.</p>
         <div className="flex gap-3">
           <Link to="/finance/customers">
             <Button variant="secondary">View Customers</Button>

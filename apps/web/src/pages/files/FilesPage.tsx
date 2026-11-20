@@ -89,12 +89,12 @@ export default function FilesPage() {
   const columns: ColumnDef<any>[] = useMemo(() => [
     {
       header: "Name",
-      cell: (file: any) => <p className="font-medium text-slate-900 truncate max-w-[200px]">{file.file_name}</p>
+      cell: (file: any) => <p className="font-medium text-neutral-900 truncate max-w-[200px]">{file.file_name}</p>
     },
     {
       header: "Type",
       cell: (file: any) => (
-        <code className="text-xs bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">
+        <code className="text-xs bg-neutral-100 px-1.5 py-0.5 rounded text-neutral-600">
           {file.mime_type || "-"}
         </code>
       )
@@ -142,13 +142,13 @@ export default function FilesPage() {
         <section className="section-card p-4 sm:p-5">
           <div className="flex flex-wrap items-end gap-3">
             <label className="grid gap-1.5 text-sm flex-1 min-w-[180px]">
-              <span className="font-semibold text-slate-700">Search</span>
+              <span className="font-semibold text-neutral-700">Search</span>
               <input
                 type="search"
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                 placeholder="Search files..."
-                className="rounded-2xl border border-slate-200 bg-white px-4 py-[0.6rem] text-sm font-semibold text-slate-700 focus:outline-none focus:ring-4 focus:ring-brand-900/10"
+                className="rounded-2xl border border-neutral-200 bg-white px-4 py-[0.6rem] text-sm font-semibold text-neutral-700 focus:outline-none focus:ring-4 focus:ring-brand-900/10"
               />
             </label>
 
@@ -170,7 +170,7 @@ export default function FilesPage() {
             </Button>
 
             <label className="grid w-48 shrink-0 gap-1.5 text-sm">
-              <span className="font-semibold text-slate-700">Upload</span>
+              <span className="font-semibold text-neutral-700">Upload</span>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -218,38 +218,38 @@ export default function FilesPage() {
           }
         >
           {loading ? (
-            <div className="rounded-2xl bg-slate-50 px-4 py-6 text-sm text-slate-500">
+            <div className="rounded-2xl bg-neutral-50 px-4 py-6 text-sm text-neutral-500">
               Loading files...
             </div>
           ) : files.length === 0 ? (
             <div className="text-center py-10">
-              <Icon name="folder_open" className="text-4xl text-slate-300 mx-auto mb-2" />
-              <p className="text-slate-500">No files found.</p>
+              <Icon name="folder_open" className="text-4xl text-neutral-300 mx-auto mb-2" />
+              <p className="text-neutral-500">No files found.</p>
             </div>
           ) : viewMode === "grid" ? (
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 p-2">
               {files.map((file: any) => (
                 <div
                   key={file.id}
-                  className="group relative bg-white border border-slate-200 rounded-xl p-3 hover:shadow-md transition-shadow"
+                  className="group relative bg-white border border-neutral-200 rounded-xl p-3 hover:shadow-md transition-shadow"
                 >
-                  <div className="aspect-square bg-slate-50 rounded-lg flex items-center justify-center mb-2 overflow-hidden">
+                  <div className="aspect-square bg-neutral-50 rounded-lg flex items-center justify-center mb-2 overflow-hidden">
                     {file.mime_type?.startsWith("image/") ? (
                       file.public_url ? (
                         <img src={file.public_url} alt={file.file_name} className="w-full h-full object-cover" />
                       ) : (
-                        <Icon name="image" className="text-3xl text-slate-400" />
+                        <Icon name="image" className="text-3xl text-neutral-400" />
                       )
                     ) : file.mime_type?.startsWith("video/") ? (
-                      <Icon name="videocam" className="text-3xl text-slate-400" />
+                      <Icon name="videocam" className="text-3xl text-neutral-400" />
                     ) : (
-                      <Icon name="description" className="text-3xl text-slate-400" />
+                      <Icon name="description" className="text-3xl text-neutral-400" />
                     )}
                   </div>
-                  <p className="text-xs font-medium text-slate-700 truncate" title={file.file_name}>
+                  <p className="text-xs font-medium text-neutral-700 truncate" title={file.file_name}>
                     {file.file_name}
                   </p>
-                  <p className="text-xs text-slate-400">{formatFileSize(file.file_size)}</p>
+                  <p className="text-xs text-neutral-400">{formatFileSize(file.file_size)}</p>
                   {file.usage?.attached && (
                     <span className="absolute top-2 right-2 bg-green-100 text-green-700 text-xs px-1.5 py-0.5 rounded">
                       Attached

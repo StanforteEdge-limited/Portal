@@ -18,10 +18,10 @@ export function EmptyState({
         <Icon name="inbox" fill />
       </div>
       <div className="max-w-md">
-        <h3 className="font-headline text-lg font-semibold tracking-tight text-slate-950">
+        <h3 className="font-headline text-lg font-semibold tracking-tight text-neutral-950">
           {title}
         </h3>
-        <p className="mt-2 text-sm leading-6 text-slate-500">{description}</p>
+        <p className="mt-2 text-sm leading-6 text-neutral-500">{description}</p>
       </div>
       {action ? action : null}
     </div>

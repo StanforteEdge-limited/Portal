@@ -59,10 +59,10 @@ function DownloadDropdown({
         <Icon name="expand_more" className="text-[18px]" />
       </Button>
       {open ? (
-        <div className="absolute left-0 right-0 top-full z-10 mt-1 overflow-hidden rounded-[18px] border border-slate-200 bg-white shadow-card">
+        <div className="absolute left-0 right-0 top-full z-10 mt-1 overflow-hidden rounded-[18px] border border-neutral-200 bg-white shadow-xs">
           <button
             type="button"
-            className="w-full px-4 py-3 text-left text-sm font-semibold text-slate-900 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-900/20"
+            className="w-full px-4 py-3 text-left text-sm font-semibold text-neutral-900 transition hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-900/20"
             onClick={() => {
               setOpen(false);
               onDownloadRequestPdf();
@@ -72,7 +72,7 @@ function DownloadDropdown({
           </button>
           <button
             type="button"
-            className="w-full px-4 py-3 text-left text-sm font-semibold text-slate-900 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-900/20"
+            className="w-full px-4 py-3 text-left text-sm font-semibold text-neutral-900 transition hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-900/20"
             onClick={() => {
               setOpen(false);
               onDownloadFullDocument();

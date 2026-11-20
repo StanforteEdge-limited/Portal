@@ -129,7 +129,7 @@ export default function FinancePayrollTaxTablesPage() {
       />
 
       <SectionCard title="Tax Tables" description="Active tax tables for payroll calculations.">
-        {loading ? <div className="text-sm text-slate-500">Loading...</div> : tables.length ? (
+        {loading ? <div className="text-sm text-neutral-500">Loading...</div> : tables.length ? (
           <DataTable
             columns={[
               { header: "Name", cell: (t: any) => <p className="font-semibold">{t.name}</p> },

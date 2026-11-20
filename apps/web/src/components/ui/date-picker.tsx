@@ -67,20 +67,20 @@ export function DatePicker({
         <button
           type="button"
           className={cn(
-            "flex h-10 w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-left text-sm font-medium transition hover:border-slate-300 focus:outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15 disabled:cursor-not-allowed disabled:opacity-50",
-            !selectedDate ? "text-slate-400" : "text-slate-900",
+            "flex h-10 w-full items-center justify-between rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-left text-sm font-medium transition hover:border-neutral-300 focus:outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15 disabled:cursor-not-allowed disabled:opacity-50",
+            !selectedDate ? "text-neutral-400" : "text-neutral-900",
             className
           )}
         >
           <div className="flex items-center gap-2.5 truncate min-w-0">
-            <CalendarIcon className="h-4 w-4 text-slate-400 shrink-0" />
+            <CalendarIcon className="h-4 w-4 text-neutral-400 shrink-0" />
             <span className="truncate">{displayString || placeholder}</span>
           </div>
 
           {selectedDate && !disabled ? (
             <span
               onClick={handleClear}
-              className="p-1 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition cursor-pointer"
+              className="p-1 rounded-md hover:bg-neutral-100 text-neutral-400 hover:text-neutral-600 transition cursor-pointer"
               title="Clear date"
             >
               <X className="h-3.5 w-3.5" />

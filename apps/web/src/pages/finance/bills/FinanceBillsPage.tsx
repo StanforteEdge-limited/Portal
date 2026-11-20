@@ -206,7 +206,7 @@ export default function FinanceBillsPage() {
         Number(bill.totalAmount ?? bill.total_amount ?? 0),
         bill.currency || "NGN"
       ),
-      className: "text-right font-medium text-slate-900"
+      className: "text-right font-medium text-neutral-900"
     },
     {
       header: "Due Date",
@@ -255,7 +255,7 @@ export default function FinanceBillsPage() {
         <section className="section-card p-4 sm:p-5">
           <div className="flex flex-wrap items-end gap-3">
             <label className="grid gap-1.5 text-sm flex-1 min-w-[180px]">
-              <span className="font-semibold text-slate-700">Search</span>
+              <span className="font-semibold text-neutral-700">Search</span>
               <input
                 type="search"
                 value={search}
@@ -264,7 +264,7 @@ export default function FinanceBillsPage() {
                   setPage(1);
                 }}
                 placeholder="Search bills"
-                className="rounded-2xl border border-slate-200 bg-white px-4 py-[0.6rem] text-sm font-semibold text-slate-700 focus:outline-none focus:ring-4 focus:ring-brand-900/10"
+                className="rounded-2xl border border-neutral-200 bg-white px-4 py-[0.6rem] text-sm font-semibold text-neutral-700 focus:outline-none focus:ring-4 focus:ring-brand-900/10"
               />
             </label>
             <SelectField
@@ -331,10 +331,10 @@ export default function FinanceBillsPage() {
       </div>
 
       {showModal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/40 p-4">
           <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 sticky top-0 bg-white z-10">
-              <h3 className="text-lg font-semibold text-slate-900">
+            <div className="flex items-center justify-between border-b border-neutral-200 px-6 py-4 sticky top-0 bg-white z-10">
+              <h3 className="text-lg font-semibold text-neutral-900">
                 New Bill
               </h3>
               <Button
@@ -372,10 +372,10 @@ export default function FinanceBillsPage() {
                 <option value="paid">Paid</option>
               </SelectField>
               <label className="grid gap-1.5 text-sm">
-                <span className="font-semibold text-slate-700">Bill Date</span>
+                <span className="font-semibold text-neutral-700">Bill Date</span>
                 <DateInput
                   
-                  className="rounded-2xl border border-slate-200 px-4 py-2.5"
+                  className="rounded-2xl border border-neutral-200 px-4 py-2.5"
                   value={form.bill_date}
                   onChange={(e) =>
                     setForm((f) => ({ ...f, bill_date: e.target.value }))
@@ -383,10 +383,10 @@ export default function FinanceBillsPage() {
                 />
               </label>
               <label className="grid gap-1.5 text-sm">
-                <span className="font-semibold text-slate-700">Due Date</span>
+                <span className="font-semibold text-neutral-700">Due Date</span>
                 <DateInput
                   
-                  className="rounded-2xl border border-slate-200 px-4 py-2.5"
+                  className="rounded-2xl border border-neutral-200 px-4 py-2.5"
                   value={form.due_date}
                   onChange={(e) =>
                     setForm((f) => ({ ...f, due_date: e.target.value }))
@@ -394,9 +394,9 @@ export default function FinanceBillsPage() {
                 />
               </label>
               <label className="grid gap-1.5 text-sm">
-                <span className="font-semibold text-slate-700">Currency</span>
+                <span className="font-semibold text-neutral-700">Currency</span>
                 <input
-                  className="rounded-2xl border border-slate-200 px-4 py-2.5"
+                  className="rounded-2xl border border-neutral-200 px-4 py-2.5"
                   value={form.currency}
                   onChange={(e) =>
                     setForm((f) => ({
@@ -411,7 +411,7 @@ export default function FinanceBillsPage() {
             {/* Bill Lines */}
             <div className="px-6 pb-4">
               <div className="flex items-center justify-between mb-3">
-                <h4 className="font-semibold text-slate-700 text-sm">
+                <h4 className="font-semibold text-neutral-700 text-sm">
                   Bill Lines
                 </h4>
                 <Button variant="secondary" size="sm" onClick={addLine}>
@@ -423,11 +423,11 @@ export default function FinanceBillsPage() {
                 {form.lines.map((line, index) => (
                   <div key={index} className="flex gap-2 items-end">
                     <label className="grid gap-1.5 text-sm flex-1">
-                      <span className="font-semibold text-slate-700">
+                      <span className="font-semibold text-neutral-700">
                         Description
                       </span>
                       <input
-                        className="rounded-2xl border border-slate-200 px-4 py-2.5"
+                        className="rounded-2xl border border-neutral-200 px-4 py-2.5"
                         value={line.description}
                         onChange={(e) =>
                           updateLine(index, "description", e.target.value)
@@ -435,10 +435,10 @@ export default function FinanceBillsPage() {
                       />
                     </label>
                     <label className="grid gap-1.5 text-sm w-24">
-                      <span className="font-semibold text-slate-700">Qty</span>
+                      <span className="font-semibold text-neutral-700">Qty</span>
                       <input
                         type="number"
-                        className="rounded-2xl border border-slate-200 px-4 py-2.5"
+                        className="rounded-2xl border border-neutral-200 px-4 py-2.5"
                         value={line.quantity}
                         onChange={(e) =>
                           updateLine(index, "quantity", Number(e.target.value))
@@ -446,12 +446,12 @@ export default function FinanceBillsPage() {
                       />
                     </label>
                     <label className="grid gap-1.5 text-sm w-28">
-                      <span className="font-semibold text-slate-700">
+                      <span className="font-semibold text-neutral-700">
                         Unit Price
                       </span>
                       <input
                         type="number"
-                        className="rounded-2xl border border-slate-200 px-4 py-2.5"
+                        className="rounded-2xl border border-neutral-200 px-4 py-2.5"
                         value={line.unit_price}
                         onChange={(e) =>
                           updateLine(index, "unit_price", Number(e.target.value))
@@ -473,9 +473,9 @@ export default function FinanceBillsPage() {
             </div>
 
             <label className="grid gap-1.5 text-sm px-6 pb-6">
-              <span className="font-semibold text-slate-700">Notes</span>
+              <span className="font-semibold text-neutral-700">Notes</span>
               <textarea
-                className="rounded-2xl border border-slate-200 px-4 py-2.5"
+                className="rounded-2xl border border-neutral-200 px-4 py-2.5"
                 rows={2}
                 value={form.notes}
                 onChange={(e) =>
@@ -484,7 +484,7 @@ export default function FinanceBillsPage() {
               />
             </label>
 
-            <div className="flex justify-end gap-2 border-t border-slate-200 px-6 py-4 sticky bottom-0 bg-white">
+            <div className="flex justify-end gap-2 border-t border-neutral-200 px-6 py-4 sticky bottom-0 bg-white">
               <Button variant="secondary" onClick={() => setShowModal(false)}>
                 Cancel
               </Button>

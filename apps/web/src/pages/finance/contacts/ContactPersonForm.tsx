@@ -33,7 +33,7 @@ export function ContactPersonForm({ persons, setPersons, readOnly }: Props) {
   return (
     <div className="grid gap-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-700">Contact Persons</h3>
+        <h3 className="text-sm font-semibold text-neutral-700">Contact Persons</h3>
         {!readOnly && (
           <Button variant="ghost" size="sm" onClick={addPerson}>
             <Icon name="add" className="text-[16px]" /> Add
@@ -41,17 +41,17 @@ export function ContactPersonForm({ persons, setPersons, readOnly }: Props) {
         )}
       </div>
       {persons.map((person, idx) => (
-        <div key={idx} className="grid gap-3 rounded-md border border-slate-200 p-3">
+        <div key={idx} className="grid gap-3 rounded-md border border-neutral-200 p-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-500">Person {idx + 1}</span>
+            <span className="text-xs font-medium text-neutral-500">Person {idx + 1}</span>
             <div className="flex items-center gap-2">
-              <label className="flex items-center gap-1 text-xs text-slate-600">
+              <label className="flex items-center gap-1 text-xs text-neutral-600">
                 <input
                   type="checkbox"
                   checked={person.is_primary}
                   onChange={(e) => update(idx, "is_primary", e.target.checked)}
                   disabled={readOnly}
-                  className="h-3.5 w-3.5 rounded border-slate-300"
+                  className="h-3.5 w-3.5 rounded border-neutral-300"
                 />
                 Primary
               </label>

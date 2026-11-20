@@ -139,7 +139,7 @@ export default function DailyLogTab({ preselectedTaskId, onPreselectedConsumed }
               className={[
                 "flex-1 min-w-[60px] rounded py-2 text-xs text-center transition-colors",
                 selectedDate === day.key
-                  ? "bg-blue-600 text-white"
+                  ? "bg-neutral-900 text-white"
                   : day.isFuture
                     ? "text-gray-300 cursor-not-allowed"
                     : "hover:bg-gray-100 text-gray-600",

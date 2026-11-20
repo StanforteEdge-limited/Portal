@@ -64,7 +64,7 @@ export default function ProjectsPage() {
           actions={
             <Link
               to="/admin/projects"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-bold shadow-md shadow-orange-500/20 transition transform hover:-translate-y-0.5"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-medium shadow-md transition transform"
             >
               <Plus className="h-4 w-4" />
               <span>New Project</span>
@@ -75,53 +75,53 @@ export default function ProjectsPage() {
         {/* 4 KPI Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Card 1: Active Projects */}
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between">
+          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
                 <FolderKanban className="h-5 w-5" />
               </div>
               <div>
-                <div className="text-[11px] font-semibold text-slate-500">Active Projects</div>
-                <div className="text-xl font-black text-slate-900 mt-0.5">{activeCount}</div>
+                <div className="text-xs font-semibold text-neutral-500">Active Projects</div>
+                <div className="text-xl font-semibold text-neutral-900 mt-0.5">{activeCount}</div>
               </div>
             </div>
-            <div className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-0.5">
+            <div className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-0.5">
               <TrendingUp className="h-3 w-3" /> Live
             </div>
           </div>
 
           {/* Card 2: Total Projects */}
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
               <Layers className="h-5 w-5" />
             </div>
             <div>
-              <div className="text-[11px] font-semibold text-slate-500">Total Enrolled</div>
-              <div className="text-xl font-black text-slate-900 mt-0.5">{projects.length}</div>
+              <div className="text-xs font-semibold text-neutral-500">Total Enrolled</div>
+              <div className="text-xl font-semibold text-neutral-900 mt-0.5">{projects.length}</div>
             </div>
           </div>
 
           {/* Card 3: Governance Compliant */}
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
+          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
               <CheckCircle2 className="h-5 w-5" />
             </div>
             <div>
-              <div className="text-[11px] font-semibold text-slate-500">Governance Ready</div>
-              <div className="text-xl font-black text-emerald-600 mt-0.5">
+              <div className="text-xs font-semibold text-neutral-500">Governance Ready</div>
+              <div className="text-xl font-semibold text-emerald-600 mt-0.5">
                 {projects.filter((p: any) => p.governance?.project_code).length}
               </div>
             </div>
           </div>
 
           {/* Card 4: Archive Ratio */}
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
+          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-neutral-100 text-neutral-600 flex items-center justify-center shrink-0">
               <Clock className="h-5 w-5" />
             </div>
             <div>
-              <div className="text-[11px] font-semibold text-slate-500">Archived / Closed</div>
-              <div className="text-xl font-black text-slate-700 mt-0.5">
+              <div className="text-xs font-semibold text-neutral-500">Archived / Closed</div>
+              <div className="text-xl font-semibold text-neutral-700 mt-0.5">
                 {projects.length - activeCount}
               </div>
             </div>
@@ -129,21 +129,21 @@ export default function ProjectsPage() {
         </div>
 
         {/* Filter & Search Bar */}
-        <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="relative w-full sm:w-72">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-400" />
             <input
               type="text"
               placeholder="Search projects or code..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 rounded-xl border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+              className="w-full pl-9 pr-3 py-1.5 text-xs bg-neutral-50 rounded-xl border border-neutral-200 text-neutral-800 placeholder-neutral-400 focus:outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
             />
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto">
-            <Filter className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs font-semibold text-slate-600 w-full sm:w-auto">
+            <Filter className="h-3.5 w-3.5 text-neutral-400 shrink-0" />
+            <div className="flex items-center gap-1 bg-neutral-100 p-1 rounded-xl text-xs font-semibold text-neutral-600 w-full sm:w-auto">
               {["all", "active", "archived"].map((st) => (
                 <button
                   key={st}
@@ -151,8 +151,8 @@ export default function ProjectsPage() {
                   onClick={() => setStatusFilter(st)}
                   className={`px-3 py-1 rounded-lg capitalize transition-colors ${
                     statusFilter === st
-                      ? "bg-white text-slate-900 shadow-sm font-bold"
-                      : "text-slate-500 hover:text-slate-800"
+                      ? "bg-white text-neutral-900 shadow-sm font-medium"
+                      : "text-neutral-500 hover:text-neutral-800"
                   }`}
                 >
                   {st}
@@ -163,22 +163,22 @@ export default function ProjectsPage() {
         </div>
 
         {/* Projects Modern High-Density Table */}
-        <div className="rounded-2xl bg-white border border-slate-200/80 shadow-sm overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+        <div className="rounded-2xl bg-white border border-neutral-200/80 shadow-sm overflow-hidden">
+          <div className="px-5 py-3.5 border-b border-neutral-100 flex items-center justify-between">
+            <h3 className="text-xs font-medium text-neutral-500">
               Initiatives & Programs ({filteredProjects.length})
             </h3>
           </div>
 
           {projectsLoading ? (
-            <div className="p-12 text-center text-xs font-medium text-slate-400">
+            <div className="p-12 text-center text-xs font-medium text-neutral-400">
               Loading projects directory...
             </div>
           ) : filteredProjects.length === 0 ? (
             <div className="p-12 text-center">
-              <FolderKanban className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-              <p className="text-xs font-bold text-slate-700">No projects found</p>
-              <p className="text-[11px] text-slate-400 mt-0.5">
+              <FolderKanban className="h-8 w-8 text-neutral-300 mx-auto mb-2" />
+              <p className="text-xs font-medium text-neutral-700">No projects found</p>
+              <p className="text-xs text-neutral-400 mt-0.5">
                 {searchQuery ? "Try refining your search keyword." : "No project workspaces have been initialized."}
               </p>
             </div>
@@ -186,7 +186,7 @@ export default function ProjectsPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="bg-slate-50/75 border-b border-slate-100 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <tr className="bg-neutral-50/75 border-b border-neutral-100 text-xs font-medium text-neutral-500">
                     <th className="py-3 px-5">Project Name</th>
                     <th className="py-3 px-4">Code</th>
                     <th className="py-3 px-4">Governance</th>
@@ -194,7 +194,7 @@ export default function ProjectsPage() {
                     <th className="py-3 px-5 text-right">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 text-slate-700">
+                <tbody className="divide-y divide-neutral-100 text-neutral-700">
                   {filteredProjects.map((project: any) => {
                     const status =
                       project.governance?.governance_status ||
@@ -203,22 +203,22 @@ export default function ProjectsPage() {
                     return (
                       <tr
                         key={project.id}
-                        className="hover:bg-slate-50/80 transition-colors group cursor-pointer"
+                        className="hover:bg-neutral-50/80 transition-colors group cursor-pointer"
                         onClick={() => {
                           window.location.href = `/projects/${project.id}`;
                         }}
                       >
                         <td className="py-3.5 px-5">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-orange-50 text-[#ff6900] flex items-center justify-center font-bold text-xs shrink-0 group-hover:bg-[#ff6900] group-hover:text-white transition-colors">
+                            <div className="w-8 h-8 rounded-lg bg-orange-50 text-[#ff6900] flex items-center justify-center font-medium text-xs shrink-0 group-hover:bg-[#ff6900] group-hover:text-white transition-colors">
                               <FolderKanban className="h-4 w-4" />
                             </div>
                             <div className="min-w-0">
-                              <p className="font-bold text-slate-900 group-hover:text-[#ff6900] transition-colors truncate">
+                              <p className="font-medium text-neutral-900 group-hover:text-[#ff6900] transition-colors truncate">
                                 {project.name}
                               </p>
                               {project.description && (
-                                <p className="text-[11px] text-slate-400 truncate max-w-sm">
+                                <p className="text-xs text-neutral-400 truncate max-w-sm">
                                   {project.description}
                                 </p>
                               )}
@@ -226,27 +226,27 @@ export default function ProjectsPage() {
                           </div>
                         </td>
 
-                        <td className="py-3.5 px-4 font-mono text-[11px]">
-                          <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-semibold border border-slate-200/60">
+                        <td className="py-3.5 px-4 font-mono text-xs">
+                          <span className="px-2 py-0.5 rounded-md bg-neutral-100 text-neutral-600 font-semibold border border-neutral-200/60">
                             {project.governance?.project_code || "UNCATALOGED"}
                           </span>
                         </td>
 
                         <td className="py-3.5 px-4">
                           <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold capitalize ${
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${
                               status === "active"
                                 ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                : "bg-slate-100 text-slate-600 border border-slate-200"
+                                : "bg-neutral-100 text-neutral-600 border border-neutral-200"
                             }`}
                           >
                             {status}
                           </span>
                         </td>
 
-                        <td className="py-3.5 px-4 text-slate-500">
+                        <td className="py-3.5 px-4 text-neutral-500">
                           <div className="flex items-center gap-1.5">
-                            <Calendar className="h-3 w-3 text-slate-400 shrink-0" />
+                            <Calendar className="h-3 w-3 text-neutral-400 shrink-0" />
                             <span>
                               {formatDate(project.governance?.start_date) || "TBD"} –{" "}
                               {formatDate(project.governance?.end_date) || "Ongoing"}
@@ -258,7 +258,7 @@ export default function ProjectsPage() {
                           <Link
                             to={`/projects/${project.id}`}
                             onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700 hover:text-white hover:bg-[#ff6900] border border-slate-200 hover:border-[#ff6900] transition shadow-sm"
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-neutral-700 hover:text-white hover:bg-[#ff6900] border border-neutral-200 hover:border-[#ff6900] transition shadow-sm"
                           >
                             <span>Open</span>
                             <ArrowRight className="h-3 w-3" />

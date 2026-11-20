@@ -42,18 +42,18 @@ export default function VendorOrderDetail() {
     }
   };
 
-  if (loading) return <div className="p-12 text-center text-slate-500">Loading Order details...</div>;
-  if (!po) return <div className="p-12 text-center text-slate-500">Order not found</div>;
+  if (loading) return <div className="p-12 text-center text-neutral-500">Loading Order details...</div>;
+  if (!po) return <div className="p-12 text-center text-neutral-500">Order not found</div>;
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       <div className="flex items-center gap-3">
-        <Link to="/vendor-portal/dashboard" className="text-slate-400 hover:text-slate-600 transition-colors">
+        <Link to="/vendor-portal/dashboard" className="text-neutral-400 hover:text-neutral-600 transition-colors">
           <span className="material-symbols-outlined">arrow_back</span>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Purchase Order {po.poNumber}</h1>
-          <p className="text-sm text-slate-500">Issued on {new Date(po.createdAt).toLocaleDateString()}</p>
+          <h1 className="text-2xl font-medium tracking-tight text-neutral-900">Purchase Order {po.poNumber}</h1>
+          <p className="text-sm text-neutral-500">Issued on {new Date(po.createdAt).toLocaleDateString()}</p>
         </div>
         <Button
           variant="secondary"
@@ -69,9 +69,9 @@ export default function VendorOrderDetail() {
         <div className="md:col-span-2 space-y-6">
           <SectionCard title="Ordered Items" description="Review line items of this Purchase Order">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm text-slate-600">
+              <table className="w-full text-sm text-neutral-600">
                 <thead>
-                  <tr className="border-b border-slate-100 text-slate-400 text-xs font-semibold uppercase">
+                  <tr className="border-b border-neutral-100 text-neutral-400 text-xs font-semibold">
                     <th className="text-left pb-3">Description</th>
                     <th className="text-center pb-3">Qty</th>
                     <th className="text-center pb-3">Unit</th>
@@ -79,22 +79,22 @@ export default function VendorOrderDetail() {
                     <th className="text-right pb-3">Subtotal</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-50">
+                <tbody className="divide-y divide-neutral-50">
                   {po.items?.map((it: any, i: number) => (
                     <tr key={i}>
-                      <td className="py-3 font-medium text-slate-900">{it.description}</td>
+                      <td className="py-3 font-medium text-neutral-900">{it.description}</td>
                       <td className="py-3 text-center">{it.qty}</td>
                       <td className="py-3 text-center capitalize">{it.unit}</td>
                       <td className="py-3 text-right">{formatCurrency(it.unitCost)}</td>
-                      <td className="py-3 text-right font-semibold text-slate-900">{formatCurrency(it.qty * it.unitCost)}</td>
+                      <td className="py-3 text-right font-semibold text-neutral-900">{formatCurrency(it.qty * it.unitCost)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              <div className="flex justify-end pt-4 border-t border-slate-100">
+              <div className="flex justify-end pt-4 border-t border-neutral-100">
                 <div className="text-right">
-                  <span className="text-xs text-slate-400 font-semibold uppercase">Order Total</span>
-                  <div className="text-xl font-bold text-slate-900">{formatCurrency(Number(po.totalAmount))}</div>
+                  <span className="text-xs text-neutral-400 font-semibold">Order Total</span>
+                  <div className="text-xl font-medium text-neutral-900">{formatCurrency(Number(po.totalAmount))}</div>
                 </div>
               </div>
             </div>
@@ -102,14 +102,14 @@ export default function VendorOrderDetail() {
 
           <SectionCard title="Vendor Documents" description="Files shared with you for this purchase order.">
             {attachments.length === 0 ? (
-              <p className="text-sm text-slate-500">No supporting files have been shared for this order yet.</p>
+              <p className="text-sm text-neutral-500">No supporting files have been shared for this order yet.</p>
             ) : (
               <div className="space-y-3">
                 {attachments.map((attachment: any) => (
-                  <div key={attachment.id} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm">
+                  <div key={attachment.id} className="flex items-center justify-between rounded-xl border border-neutral-100 bg-neutral-50 px-4 py-3 text-sm">
                     <div>
-                      <p className="font-medium text-slate-900">{attachment.label || attachment.file?.file_name}</p>
-                      <p className="mt-1 text-xs text-slate-500">Vendor-shareable attachment</p>
+                      <p className="font-medium text-neutral-900">{attachment.label || attachment.file?.file_name}</p>
+                      <p className="mt-1 text-xs text-neutral-500">Vendor-shareable attachment</p>
                     </div>
                     {attachment.file?.public_url ? (
                       <a
@@ -131,11 +131,11 @@ export default function VendorOrderDetail() {
             <SectionCard title="Acknowledge Order" description="Sign off and accept terms to begin fulfillment">
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1">Acknowledgement Note (Optional)</label>
+                  <label className="block text-sm font-semibold text-neutral-700 mb-1">Acknowledgement Note (Optional)</label>
                   <textarea
                     rows={3}
                     placeholder="Add optional notes, e.g., estimated shipping timeline..."
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    className="w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                     value={ackNote}
                     onChange={e => setAckNote(e.target.value)}
                   />
@@ -165,22 +165,22 @@ export default function VendorOrderDetail() {
           <SectionCard title="Terms & Details" description="Fulfillment parameters">
             <div className="space-y-4 text-sm">
               <div>
-                <span className="text-xs text-slate-400 font-semibold uppercase block">Delivery Address</span>
-                <span className="font-semibold text-slate-900">{po.deliveryAddress || '—'}</span>
+                <span className="text-xs text-neutral-400 font-semibold block">Delivery Address</span>
+                <span className="font-semibold text-neutral-900">{po.deliveryAddress || '—'}</span>
               </div>
               <div>
-                <span className="text-xs text-slate-400 font-semibold uppercase block">Expected Delivery Date</span>
-                <span className="font-semibold text-slate-900">
+                <span className="text-xs text-neutral-400 font-semibold block">Expected Delivery Date</span>
+                <span className="font-semibold text-neutral-900">
                   {po.deliveryDate ? new Date(po.deliveryDate).toLocaleDateString() : '—'}
                 </span>
               </div>
               <div>
-                <span className="text-xs text-slate-400 font-semibold uppercase block">Payment Terms</span>
-                <span className="font-semibold text-slate-900">{po.paymentTerms || '—'}</span>
+                <span className="text-xs text-neutral-400 font-semibold block">Payment Terms</span>
+                <span className="font-semibold text-neutral-900">{po.paymentTerms || '—'}</span>
               </div>
               <div>
-                <span className="text-xs text-slate-400 font-semibold uppercase block">Payment Pattern</span>
-                <span className="font-semibold text-slate-900 capitalize">{po.paymentPattern.replace(/_/g, ' ')}</span>
+                <span className="text-xs text-neutral-400 font-semibold block">Payment Pattern</span>
+                <span className="font-semibold text-neutral-900 capitalize">{po.paymentPattern.replace(/_/g, ' ')}</span>
               </div>
             </div>
           </SectionCard>

@@ -31,14 +31,14 @@ export default function VendorLogin() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-neutral-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-slate-900">Vendor Portal</h2>
-        <p className="mt-2 text-center text-sm text-slate-600">Acknowledge purchase orders and manage deliveries.</p>
+        <h2 className="mt-6 text-center text-3xl font-semibold text-neutral-900">Vendor Portal</h2>
+        <p className="mt-2 text-center text-sm text-neutral-600">Acknowledge purchase orders and manage deliveries.</p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-2xl sm:px-10 border border-slate-100">
+        <div className="bg-white py-8 px-4 shadow sm:rounded-2xl sm:px-10 border border-neutral-100">
           <form className="space-y-6" onSubmit={handleLogin}>
             {error && (
               <div className="bg-rose-50 border border-rose-100 text-rose-700 text-xs font-semibold p-3 rounded-xl">
@@ -46,12 +46,12 @@ export default function VendorLogin() {
               </div>
             )}
             <div>
-              <label className="block text-sm font-semibold text-slate-700">Email address</label>
+              <label className="block text-sm font-semibold text-neutral-700">Email address</label>
               <div className="mt-1">
                 <input
                   type="email"
                   required
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                 />
@@ -59,12 +59,12 @@ export default function VendorLogin() {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-slate-700">Password</label>
+              <label className="block text-sm font-semibold text-neutral-700">Password</label>
               <div className="mt-1">
                 <input
                   type="password"
                   required
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                 />

@@ -1,6 +1,8 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import fastifyCookie from '@fastify/cookie';
 import fastifyCors from '@fastify/cors';
+import fastifyHelmet from '@fastify/helmet';
+import fastifyRateLimit from '@fastify/rate-limit';
 import { appRoutes } from './routes';
 import { config } from '../config';
 import { dbPlugin } from '$plugins/db';
@@ -17,6 +19,16 @@ export async function buildServer(): Promise<FastifyInstance> {
     bodyLimit: Number(process.env.MAX_BODY_SIZE_BYTES || 25 * 1024 * 1024),
   });
 
+  server.register(fastifyHelmet, {
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  });
+  if (config.env !== 'test') {
+    server.register(fastifyRateLimit, {
+      max: config.rateLimit.global.max,
+      timeWindow: config.rateLimit.global.windowMs,
+    });
+  }
   server.register(fastifyCookie);
   server.register(fastifyCors, {
     origin: (origin, cb) => {

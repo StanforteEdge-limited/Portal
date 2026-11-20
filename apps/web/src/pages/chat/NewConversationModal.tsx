@@ -129,7 +129,7 @@ export function NewConversationModal({ isOpen, onClose, onCreated }: Props) {
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 dark:border-neutral-800">
           <div>
-            <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+            <h2 className="text-lg font-medium text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
               <UserPlus className="w-5 h-5 text-orange-500" />
               New Conversation
             </h2>
@@ -224,7 +224,7 @@ export function NewConversationModal({ isOpen, onClose, onCreated }: Props) {
                 {type === "direct" ? "Select a Colleague" : "Select Channel Members"}
               </label>
               {selectedIds.length > 0 && (
-                <span className="text-[11px] font-medium text-orange-600 dark:text-orange-400">
+                <span className="text-xs font-medium text-orange-600 dark:text-orange-400">
                   {selectedIds.length} selected
                 </span>
               )}
@@ -260,12 +260,12 @@ export function NewConversationModal({ isOpen, onClose, onCreated }: Props) {
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-orange-500 to-amber-400 text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-sm">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-orange-500 to-amber-400 text-white font-medium flex items-center justify-center text-xs shrink-0 shadow-sm">
                           {c.name.slice(0, 2).toUpperCase()}
                         </div>
                         <div className="truncate">
                           <div className="font-semibold truncate">{c.name}</div>
-                          <div className="text-[11px] text-neutral-400 truncate">{c.email || c.role}</div>
+                          <div className="text-xs text-neutral-400 truncate">{c.email || c.role}</div>
                         </div>
                       </div>
 

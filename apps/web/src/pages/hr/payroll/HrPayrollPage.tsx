@@ -150,11 +150,11 @@ export default function HrPayrollPage() {
           </div>
 
           {loading ? (
-            <div className="text-sm text-slate-500">Loading runs...</div>
+            <div className="text-sm text-neutral-500">Loading runs...</div>
           ) : filteredRuns.length ? (
             <DataTable
               columns={[
-                { header: "Name", cell: (run: any) => <p className="font-semibold text-slate-900">{run.name}</p> },
+                { header: "Name", cell: (run: any) => <p className="font-semibold text-neutral-900">{run.name}</p> },
                 { header: "Period", cell: (run: any) => periodLabel(run) },
                 { header: "Workers", cell: (run: any) => run.item_count ?? "-" },
                 { header: "Gross", cell: (run: any) => run.totals?.gross != null ? formatCurrency(run.totals.gross, run.currency) : "-" },

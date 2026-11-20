@@ -77,7 +77,9 @@ export default function LoginPage() {
 
   const redirectPath = useMemo(() => {
     const state = location.state as LocationState | null;
-    return state?.from && state.from.startsWith("/") ? state.from : "/dashboard";
+    return state?.from && state.from.startsWith("/") && !state.from.startsWith("//")
+      ? state.from
+      : "/dashboard";
   }, [location.state]);
 
   function handleGoToWorkspace(e: FormEvent) {
@@ -135,85 +137,54 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen w-full bg-white flex flex-col lg:flex-row selection:bg-[#ff6900] selection:text-white">
-      {/* 1. Left Half: Full-Bleed Dark Navy Visual (50% on desktop) */}
-      <div className="relative w-full lg:w-1/2 bg-[#070e20] text-white p-8 sm:p-12 lg:p-16 flex flex-col justify-between overflow-hidden min-h-[420px] lg:min-h-screen">
-        {/* Modern Skyscraper Dusk Background Photo */}
-        <div className="absolute inset-0 z-0">
-          <img
-            src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1600&q=85"
-            alt="Corporate Headquarters"
-            className="w-full h-full object-cover object-center opacity-30 mix-blend-luminosity"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#070e20] via-[#070e20]/85 to-[#070e20]/75" />
-          <div className="absolute inset-0 bg-radial-gradient from-transparent to-[#070e20]/90" />
-        </div>
-
-        {/* Decorative Orange Arc Concentric Lines at Bottom Left */}
-        <svg
-          className="absolute -bottom-16 -left-16 w-64 h-64 pointer-events-none z-10"
-          viewBox="0 0 200 200"
-          fill="none"
-        >
-          <circle cx="20" cy="180" r="140" stroke="#ff6900" strokeWidth="2" strokeOpacity="0.3" />
-          <circle cx="20" cy="180" r="100" stroke="#ff6900" strokeWidth="2" strokeOpacity="0.4" />
-          <circle cx="20" cy="180" r="60" stroke="#ff6900" strokeWidth="2.5" strokeOpacity="0.55" />
-        </svg>
-
-        {/* Top Logo */}
-        <div className="relative z-10">
+    <div className="min-h-screen w-full bg-[#fafafa] flex flex-col lg:flex-row selection:bg-[#ff6900] selection:text-white">
+      {/* 1. Left Half: Calm Graphite Institutional Panel */}
+      <div className="relative w-full lg:w-1/2 bg-[#141415] text-[#ededed] p-8 sm:p-12 lg:p-16 flex flex-col justify-between min-h-[360px] lg:min-h-screen border-r border-white/[0.08]">
+        <div>
           <Link to="/" className="inline-block hover:opacity-90 transition-opacity">
-            <StanforteLogo variant="dark" className="h-9" />
+            <StanforteLogo variant="dark" className="h-8" />
           </Link>
         </div>
 
-        {/* Center: Welcome Back & 3 Feature Badges */}
-        <div className="relative z-10 my-auto py-10 max-w-md space-y-8">
+        <div className="my-auto py-10 max-w-md space-y-8">
           <div className="space-y-3">
             {detectedSubdomain && (
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-500/20 text-[#ff6900] text-xs font-bold border border-orange-500/30">
-                <Globe className="h-3.5 w-3.5" />
+              <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-white/[0.06] text-[#ededed] text-xs font-mono border border-white/[0.08]">
+                <Globe className="h-3.5 w-3.5 text-[#a1a1a6]" strokeWidth={1.5} />
                 <span>{detectedSubdomain}.{baseDomain}</span>
               </div>
             )}
-            <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-white font-headline leading-tight">
-              {detectedSubdomain ? `Sign In to ${detectedSubdomain.toUpperCase()}` : "Welcome Back"}
-            </h1>
-            <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
+            <h1 className="text-3xl sm:text-4xl font-medium tracking-[-0.02em] text-[#ededed] font-headline leading-[1.15]">
               {detectedSubdomain
-                ? `Enter your enterprise credentials for the ${detectedSubdomain} workspace.`
-                : "Sign in to access your enterprise workspace."}
+                ? `${detectedSubdomain} workspace`
+                : "Operations, payroll, and approvals in one ledger"}
+            </h1>
+            <p className="text-sm sm:text-base text-[#a1a1a6] leading-relaxed">
+              {detectedSubdomain
+                ? `Sign in with your organization account to access ${detectedSubdomain}.`
+                : "Manage workforce attendance, Nigerian statutory payroll, procurement, and disbursement approvals from one tenant-isolated portal."}
             </p>
           </div>
 
-          {/* 3 Badges */}
-          <div className="space-y-3.5 pt-2">
-            <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
-              <div className="w-10 h-10 rounded-xl bg-orange-500/20 text-[#ff6900] flex items-center justify-center shrink-0 border border-orange-500/30">
-                <Shield className="h-5 w-5" />
-              </div>
-              <span className="text-sm font-semibold text-slate-200">Secure & Reliable</span>
+          <div className="divide-y divide-white/[0.08] border-y border-white/[0.08]">
+            <div className="flex items-center gap-3 py-3.5">
+              <Shield className="h-4 w-4 text-[#a1a1a6] shrink-0" strokeWidth={1.5} />
+              <span className="text-sm text-[#ededed]">Role-based access and full audit trail</span>
             </div>
-
-            <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
-              <div className="w-10 h-10 rounded-xl bg-orange-500/20 text-[#ff6900] flex items-center justify-center shrink-0 border border-orange-500/30">
-                <Building2 className="h-5 w-5" />
-              </div>
-              <span className="text-sm font-semibold text-slate-200">Multi-Branch Support</span>
+            <div className="flex items-center gap-3 py-3.5">
+              <Building2 className="h-4 w-4 text-[#a1a1a6] shrink-0" strokeWidth={1.5} />
+              <span className="text-sm text-[#ededed]">Multi-entity and branch workspace isolation</span>
             </div>
-
-            <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
-              <div className="w-10 h-10 rounded-xl bg-orange-500/20 text-[#ff6900] flex items-center justify-center shrink-0 border border-orange-500/30">
-                <TrendingUp className="h-5 w-5" />
-              </div>
-              <span className="text-sm font-semibold text-slate-200">Real-Time Insights</span>
+            <div className="flex items-center gap-3 py-3.5">
+              <TrendingUp className="h-4 w-4 text-[#a1a1a6] shrink-0" strokeWidth={1.5} />
+              <span className="text-sm text-[#ededed]">PAYE, PenCom, and payment voucher workflows</span>
             </div>
           </div>
         </div>
 
-        {/* Bottom Tagline */}
-        <div className="relative z-10 pt-6 border-t border-white/10 flex items-center justify-between text-xs text-slate-400">
-          <span>Smarter Operations. Greater Productivity.</span>
+        <div className="pt-6 border-t border-white/[0.08] flex items-center justify-between text-xs text-[#85858b]">
+          <span>Stanforte Edge Portal</span>
+          <span className="font-mono">NGN · Multi-entity</span>
         </div>
       </div>
 
@@ -224,14 +195,14 @@ export default function LoginPage() {
           {detectedSubdomain ? (
             <div className="flex items-center justify-between p-3 rounded-2xl bg-orange-50/70 border border-orange-200/80">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-[#ff6900] text-white flex items-center justify-center font-bold text-xs">
+                <div className="w-8 h-8 rounded-xl bg-[#ff6900] text-white flex items-center justify-center font-medium text-xs">
                   {detectedSubdomain.charAt(0).toUpperCase()}
                 </div>
                 <div>
-                  <div className="text-xs font-bold text-slate-900 capitalize leading-tight">
+                  <div className="text-xs font-medium text-neutral-900 capitalize leading-tight">
                     {detectedSubdomain} Workspace
                   </div>
-                  <div className="text-[11px] font-medium text-orange-700/80">
+                  <div className="text-xs font-medium text-orange-700/80">
                     {detectedSubdomain}.{baseDomain}
                   </div>
                 </div>
@@ -239,7 +210,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={handleSwitchWorkspace}
-                className="text-xs font-bold text-slate-600 hover:text-slate-900 px-2.5 py-1.5 rounded-lg hover:bg-white transition-colors"
+                className="text-xs font-medium text-neutral-600 hover:text-neutral-900 px-2.5 py-1.5 rounded-lg hover:bg-white transition-colors"
               >
                 Switch
               </button>
@@ -248,12 +219,12 @@ export default function LoginPage() {
 
           {/* Header */}
           <div className="space-y-1.5">
-            <h2 className="text-3xl font-black tracking-tight text-slate-900 font-headline">
-              Sign In
+            <h2 className="text-2xl sm:text-[28px] font-medium tracking-tight text-neutral-900 font-headline">
+              Sign in
             </h2>
-            <p className="text-xs sm:text-sm text-slate-500">
+            <p className="text-sm text-neutral-500">
               {detectedSubdomain
-                ? `Enter your enterprise credentials for ${detectedSubdomain}`
+                ? `Enter your work credentials for ${detectedSubdomain}`
                 : "Enter your work credentials to access your organization"}
             </p>
           </div>
@@ -262,7 +233,7 @@ export default function LoginPage() {
           {error && (
             <div
               role="alert"
-              className="rounded-2xl border border-red-200 bg-red-50 p-3.5 text-xs text-red-600 font-medium"
+              className="rounded-lg border border-red-600/20 bg-red-50 p-3 text-xs text-red-700 font-medium"
             >
               {error}
             </div>
@@ -272,61 +243,62 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Email Field */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700">Email Address</label>
+              <label className="block text-xs font-medium text-neutral-700">Email address</label>
               <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400 pointer-events-none" strokeWidth={1.5} />
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@company.com"
+                  placeholder="name@company.com"
                   required
                   autoComplete="email"
-                  className="w-full pl-11 pr-4 py-3 text-xs sm:text-sm bg-white border border-slate-200 rounded-2xl outline-none transition focus:border-[#ff6900] focus:ring-4 focus:ring-orange-500/10 placeholder:text-slate-400"
+                  className="w-full h-10 pl-10 pr-3 text-sm bg-white border border-neutral-900/[0.12] rounded-lg outline-none transition-[border-color,box-shadow] focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15 placeholder:text-neutral-400"
                 />
               </div>
             </div>
 
             {/* Password Field */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700">Password</label>
+              <label className="block text-xs font-medium text-neutral-700">Password</label>
               <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400 pointer-events-none" strokeWidth={1.5} />
                 <input
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
+                  placeholder="Password"
                   required
                   autoComplete="current-password"
-                  className="w-full pl-11 pr-11 py-3 text-xs sm:text-sm bg-white border border-slate-200 rounded-2xl outline-none transition focus:border-[#ff6900] focus:ring-4 focus:ring-orange-500/10 placeholder:text-slate-400"
+                  className="w-full h-10 pl-10 pr-10 text-sm bg-white border border-neutral-900/[0.12] rounded-lg outline-none transition-[border-color,box-shadow] focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15 placeholder:text-neutral-400"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-700 transition-colors"
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPassword ? <EyeOff className="h-4 w-4" strokeWidth={1.5} /> : <Eye className="h-4 w-4" strokeWidth={1.5} />}
                 </button>
               </div>
             </div>
 
             {/* Remember Me & Forgot Password */}
             <div className="flex items-center justify-between text-xs pt-0.5">
-              <label className="flex items-center gap-2 cursor-pointer text-slate-600 font-medium select-none">
+              <label className="flex items-center gap-2 cursor-pointer text-neutral-600 select-none">
                 <input
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 rounded border-slate-300 text-[#ff6900] focus:ring-[#ff6900]"
+                  className="w-4 h-4 rounded border-neutral-300 text-[#ff6900] focus:ring-[#ff6900]"
                 />
                 <span>Remember me</span>
               </label>
               <Link
                 to="/forgot-password"
-                className="font-bold text-[#ff6900] hover:text-[#ea580c] transition-colors"
+                className="font-medium text-[#c2410c] hover:text-[#9a3412] transition-colors"
               >
-                Forgot password?
+                Forgot password
               </Link>
             </div>
 
@@ -334,9 +306,9 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3.5 rounded-2xl font-bold text-sm bg-[#ff6900] hover:bg-[#ea580c] text-white shadow-lg shadow-orange-500/25 transition-all transform hover:-translate-y-0.5 disabled:opacity-50"
+              className="w-full h-10 rounded-lg font-medium text-sm bg-[#ff6900] hover:bg-[#ea580c] text-white transition-colors duration-150 active:scale-[0.98] disabled:opacity-50"
             >
-              {loading ? "Signing in..." : "Sign In"}
+              {loading ? "Signing in..." : "Sign in"}
             </button>
           </form>
 
@@ -348,20 +320,20 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowWorkspacePrompt(true)}
-                    className="text-xs text-slate-500 hover:text-[#ff6900] font-semibold inline-flex items-center gap-1.5 transition-colors"
+                    className="text-xs text-neutral-500 hover:text-[#ff6900] font-semibold inline-flex items-center gap-1.5 transition-colors"
                   >
-                    <Globe className="h-3.5 w-3.5 text-slate-400" />
+                    <Globe className="h-3.5 w-3.5 text-neutral-400" />
                     <span>Sign in with your organization workspace URL</span>
                   </button>
                 </div>
               ) : (
-                <form onSubmit={handleGoToWorkspace} className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                <form onSubmit={handleGoToWorkspace} className="p-3.5 rounded-2xl bg-neutral-50 border border-neutral-200 space-y-2">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-slate-700">Enter Organization Subdomain</label>
+                    <label className="text-xs font-medium text-neutral-700">Enter Organization Subdomain</label>
                     <button
                       type="button"
                       onClick={() => setShowWorkspacePrompt(false)}
-                      className="text-[11px] text-slate-400 hover:text-slate-600"
+                      className="text-xs text-neutral-400 hover:text-neutral-600"
                     >
                       Cancel
                     </button>
@@ -373,16 +345,16 @@ export default function LoginPage() {
                         value={customWorkspaceSlug}
                         onChange={(e) => setCustomWorkspaceSlug(formatWorkspaceSlug(e.target.value))}
                         placeholder="your-company"
-                        className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl outline-none focus:border-[#ff6900] font-medium"
+                        className="w-full px-3 py-2 text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#ff6900] font-medium"
                       />
-                      <span className="absolute right-3 text-[11px] text-slate-400 pointer-events-none">
+                      <span className="absolute right-3 text-xs text-neutral-400 pointer-events-none">
                         .{baseDomain}
                       </span>
                     </div>
                     <button
                       type="submit"
                       disabled={!customWorkspaceSlug.trim()}
-                      className="px-3.5 py-2 text-xs font-bold bg-slate-900 text-white rounded-xl hover:bg-black disabled:opacity-40 transition-colors inline-flex items-center gap-1"
+                      className="px-3.5 py-2 text-xs font-medium bg-neutral-900 text-white rounded-xl hover:bg-black disabled:opacity-40 transition-colors inline-flex items-center gap-1"
                     >
                       <span>Go</span>
                       <ArrowRight className="h-3.5 w-3.5" />
@@ -395,25 +367,25 @@ export default function LoginPage() {
 
           {/* Social Divider */}
           <div className="relative flex items-center justify-center my-3">
-            <div className="border-t border-slate-200 w-full" />
-            <span className="bg-white px-3 text-[11px] text-slate-400 font-medium whitespace-nowrap">
+            <div className="border-t border-neutral-200 w-full" />
+            <span className="bg-white px-3 text-xs text-neutral-400 font-medium whitespace-nowrap">
               or continue with
             </span>
-            <div className="border-t border-slate-200 w-full" />
+            <div className="border-t border-neutral-200 w-full" />
           </div>
 
           {/* Social Logins */}
-          <div className="grid grid-cols-2 gap-3.5">
+          <div className="grid grid-cols-2 gap-3">
             <a
               href={`${apiBase}/auth/google`}
-              className="flex items-center justify-center gap-2.5 py-3 px-4 rounded-2xl border border-slate-200 hover:bg-slate-50 text-xs font-bold text-slate-700 transition-colors shadow-xs"
+              className="flex items-center justify-center gap-2 h-10 px-4 rounded-lg border border-neutral-900/[0.10] bg-white hover:bg-neutral-50 text-sm font-medium text-neutral-800 transition-colors"
             >
               <GoogleIcon />
               <span>Google</span>
             </a>
             <button
               type="button"
-              className="flex items-center justify-center gap-2.5 py-3 px-4 rounded-2xl border border-slate-200 hover:bg-slate-50 text-xs font-bold text-slate-700 transition-colors shadow-xs"
+              className="flex items-center justify-center gap-2 h-10 px-4 rounded-lg border border-neutral-900/[0.10] bg-white hover:bg-neutral-50 text-sm font-medium text-neutral-800 transition-colors"
             >
               <MicrosoftIcon />
               <span>Microsoft</span>
@@ -421,9 +393,9 @@ export default function LoginPage() {
           </div>
 
           {/* Register Footer */}
-          <div className="text-center text-xs text-slate-500 pt-1">
+          <div className="text-center text-xs text-neutral-500 pt-1">
             Don&apos;t have an account?{" "}
-            <Link to="/register" className="font-extrabold text-[#ff6900] hover:underline">
+            <Link to="/register" className="font-semibold text-[#ff6900] hover:underline">
               Register
             </Link>
           </div>

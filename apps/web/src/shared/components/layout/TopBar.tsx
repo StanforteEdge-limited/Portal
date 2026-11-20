@@ -142,11 +142,11 @@ export function DesktopTopBar({
   }
 
   return (
-    <header className="fixed top-0 z-50 hidden h-16 w-full items-center justify-between border-b border-outline-variant bg-surface-container-lowest/95 backdrop-blur-md transition-all duration-300 lg:flex">
+    <header className="fixed top-0 z-50 hidden h-16 w-full items-center justify-between border-b border-outline-variant bg-surface-container-lowest/95 backdrop-blur-md transition-colors duration-300 lg:flex">
       <div
         className={[
           sidebarCollapsed ? "w-[6rem] px-4" : "w-64 px-6",
-          "flex items-center gap-3 transition-all duration-300",
+          "flex items-center gap-3 transition-colors duration-300",
         ].join(" ")}
       >
         <button
@@ -242,14 +242,14 @@ export function DesktopTopBar({
                 id="workspace-notifications-menu"
                 role="menu"
                 aria-label="Notifications"
-                className="absolute right-0 top-[calc(100%+0.75rem)] w-[460px] rounded-[24px] border border-slate-200 bg-white p-4 shadow-card"
+                className="absolute right-0 top-[calc(100%+0.75rem)] w-[460px] rounded-2xl border border-neutral-200 bg-white p-4 shadow-xs"
               >
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-sm font-semibold text-slate-950">
+                    <p className="text-sm font-semibold text-neutral-950">
                       Notifications
                     </p>
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="mt-1 text-xs text-neutral-500">
                       Quick updates from your workspace.
                     </p>
                   </div>
@@ -269,16 +269,16 @@ export function DesktopTopBar({
                   {notifications.length ? (
                     notifications.slice(0, 5).map((item) => {
                       const inner = (
-                        <div className="rounded-[18px] border border-slate-100 bg-slate-50 px-4 py-3">
+                        <div className="rounded-[18px] border border-neutral-100 bg-neutral-50 px-4 py-3">
                           <div className="flex items-center justify-between gap-3">
-                            <p className="text-sm font-semibold text-slate-900">
+                            <p className="text-sm font-semibold text-neutral-900">
                               {item.title}
                             </p>
-                            <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                            <span className="text-xs font-semibold text-neutral-400">
                               {formatRelativeTime(item.createdAt)}
                             </span>
                           </div>
-                          <p className="mt-2 text-sm leading-6 text-slate-500">
+                          <p className="mt-2 text-sm leading-6 text-neutral-500">
                             {item.message}
                           </p>
                           {item.status === "unread" ? (
@@ -307,7 +307,7 @@ export function DesktopTopBar({
                       );
                     })
                   ) : (
-                    <div className="rounded-[18px] border border-slate-100 bg-slate-50 px-4 py-6 text-sm text-slate-500">
+                    <div className="rounded-[18px] border border-neutral-100 bg-neutral-50 px-4 py-6 text-sm text-neutral-500">
                       No notifications yet.
                     </div>
                   )}
@@ -341,10 +341,10 @@ export function DesktopTopBar({
             aria-controls="workspace-user-menu"
           >
             <div className="hidden flex-col items-end sm:flex">
-              <span className="font-headline text-sm font-bold text-on-surface capitalize">
+              <span className="font-headline text-sm font-medium text-on-surface capitalize">
                 {user.name}
               </span>
-              <span className="text-[11px] font-semibold text-on-surface-variant">
+              <span className="text-xs font-semibold text-on-surface-variant">
                 {user.title || ""}
               </span>
             </div>
@@ -362,13 +362,13 @@ export function DesktopTopBar({
               id="workspace-user-menu"
               role="menu"
               aria-label="User menu"
-              className="absolute right-0 top-[calc(100%+0.75rem)] w-[280px] rounded-[24px] border border-slate-200 bg-white p-4 shadow-card"
+              className="absolute right-0 top-[calc(100%+0.75rem)] w-[280px] rounded-2xl border border-neutral-200 bg-white p-4 shadow-xs"
             >
-              <div className="border-b border-slate-100 pb-3">
-                <p className="text-sm font-semibold text-slate-950">
+              <div className="border-b border-neutral-100 pb-3">
+                <p className="text-sm font-semibold text-neutral-950">
                   {user.name}
                 </p>
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mt-1 text-sm text-neutral-500">
                   {user.title || "Staff"}
                 </p>
               </div>
@@ -376,7 +376,7 @@ export function DesktopTopBar({
                  <NavLink
                   to="/profile"
                   onClick={() => setProfileOpen(false)}
-                  className="flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
+                  className="flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
                   role="menuitem"
                 >
                   <Icon name="person" />
@@ -385,7 +385,7 @@ export function DesktopTopBar({
                 <NavLink
                   to="/policies"
                   onClick={() => setProfileOpen(false)}
-                  className="flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
+                  className="flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
                   role="menuitem"
                 >
                   <Icon name="policy" />
@@ -394,7 +394,7 @@ export function DesktopTopBar({
                 <NavLink
                   to="/settings"
                   onClick={() => setProfileOpen(false)}
-                  className="flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
+                  className="flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
                   role="menuitem"
                 >
                   <Icon name="settings" />
@@ -403,7 +403,7 @@ export function DesktopTopBar({
                 <NavLink
                   to="/help"
                   onClick={() => setProfileOpen(false)}
-                  className="flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
+                  className="flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
                   role="menuitem"
                 >
                   <Icon name="help" />
@@ -470,7 +470,7 @@ export function MobileTopBar({
         <NavLink
           to="/mail"
           className={[
-            "relative rounded-full p-2 transition-all active:scale-95 active:opacity-80 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10",
+            "relative rounded-full p-2 transition-colors active:scale-[0.98] active:opacity-80 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10",
             location.pathname === "/mail"
               ? "bg-brand-900/10 text-brand-900"
               : "",
@@ -483,7 +483,7 @@ export function MobileTopBar({
         <NavLink
           to="/notifications"
           className={[
-            "relative rounded-full p-2 transition-all active:scale-95 active:opacity-80 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10",
+            "relative rounded-full p-2 transition-colors active:scale-[0.98] active:opacity-80 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10",
             location.pathname === "/notifications"
               ? "bg-brand-900/10 text-brand-900"
               : "",
@@ -522,13 +522,13 @@ export function MobileTopBar({
               id="workspace-mobile-user-menu"
               role="menu"
               aria-label="User menu"
-              className="absolute right-0 top-[calc(100%+0.75rem)] w-[240px] rounded-[24px] border border-slate-200 bg-white p-4 shadow-card"
+              className="absolute right-0 top-[calc(100%+0.75rem)] w-[240px] rounded-2xl border border-neutral-200 bg-white p-4 shadow-xs"
             >
-              <div className="border-b border-slate-100 pb-3">
-                <p className="text-sm font-semibold text-slate-950">
+              <div className="border-b border-neutral-100 pb-3">
+                <p className="text-sm font-semibold text-neutral-950">
                   {user.name}
                 </p>
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mt-1 text-sm text-neutral-500">
                   {user.title || "Staff"}
                 </p>
               </div>
@@ -536,7 +536,7 @@ export function MobileTopBar({
                 <NavLink
                   to="/policies"
                   onClick={() => setProfileOpen(false)}
-                  className="flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
+                  className="flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
                   role="menuitem"
                 >
                   <Icon name="policy" />
@@ -545,7 +545,7 @@ export function MobileTopBar({
                 <NavLink
                   to="/settings"
                   onClick={() => setProfileOpen(false)}
-                  className="flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
+                  className="flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
                   role="menuitem"
                 >
                   <Icon name="settings" />
@@ -554,7 +554,7 @@ export function MobileTopBar({
                 <NavLink
                   to="/help"
                   onClick={() => setProfileOpen(false)}
-                  className="flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
+                  className="flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
                   role="menuitem"
                 >
                   <Icon name="help" />

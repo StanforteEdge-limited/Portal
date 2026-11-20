@@ -138,10 +138,10 @@ function DownloadDropdown(props: {
         />
       </Button>
       {open ? (
-        <div className="absolute right-0 z-30 mt-2 w-full min-w-[240px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card">
+        <div className="absolute right-0 z-30 mt-2 w-full min-w-[240px] overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-xs">
           <button
             type="button"
-            className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50"
             onClick={() => {
               setOpen(false);
               onDownloadRequestPdf();
@@ -153,7 +153,7 @@ function DownloadDropdown(props: {
           {includeFullDocument ? (
             <button
               type="button"
-              className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50"
               onClick={() => {
                 setOpen(false);
                 onDownloadFullDocument();
@@ -1036,7 +1036,7 @@ export function RequestDetailsPage(props: RequestDetailsPageProps = {}) {
           />
           <Link
             to={parentPath}
-            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
+            className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-5 py-3 text-sm font-semibold text-neutral-900 transition hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
           >
             Back to {parentLabel}
           </Link>
@@ -1083,7 +1083,7 @@ export function RequestDetailsPage(props: RequestDetailsPageProps = {}) {
               <div className="flex flex-wrap items-center gap-3">
                 <Link
                   to={parentPath}
-                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
+                  className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-5 py-3 text-sm font-semibold text-neutral-900 transition hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
                 >
                   <Icon name="arrow_back" className="text-[18px]" />
                   Back to {parentLabel}
@@ -1107,7 +1107,7 @@ export function RequestDetailsPage(props: RequestDetailsPageProps = {}) {
           <button
             type="button"
             onClick={() => navigate(parentPath)}
-            className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
+            className="inline-flex items-center gap-2 text-xs font-semibold text-neutral-500 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
           >
             <Icon name="arrow_back" className="text-[16px]" />
             Back to {parentLabel}
@@ -1115,13 +1115,13 @@ export function RequestDetailsPage(props: RequestDetailsPageProps = {}) {
 
           <div className="mt-3 flex items-start justify-between gap-4">
             <div>
-              <p className="text-[0.72rem] font-bold uppercase tracking-[0.18em] text-slate-500">
+              <p className="text-[0.72rem] font-medium text-neutral-500">
                 {parentLabel}
               </p>
               <h1 className="page-title mt-2 text-[clamp(1.7rem,7vw,2.2rem)]">
                 {request?.request_number || "Request details"}
               </h1>
-              <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">
+              <p className="mt-2 max-w-xl text-sm leading-6 text-neutral-500">
                 {request
                   ? `${request.request_type?.name || workflowTypeFromRecord(request)} • ${formatPersonName(request.creator)} • ${formatDisplayDate(request.created_at)}`
                   : "Loading..."}
@@ -1135,7 +1135,7 @@ export function RequestDetailsPage(props: RequestDetailsPageProps = {}) {
 
         {/* Shared content — responsive single layout */}
         {loading ? (
-          <div className="rounded-2xl bg-slate-50 px-4 py-6 text-sm text-slate-500">
+          <div className="rounded-2xl bg-neutral-50 px-4 py-6 text-sm text-neutral-500">
             Loading request details...
           </div>
         ) : error ? (

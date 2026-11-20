@@ -46,8 +46,8 @@ export default function SessionReauthPage() {
 
   return (
     <main className="relative flex min-h-screen flex-col overflow-hidden bg-surface text-on-surface">
-      <div className="pointer-events-none absolute -left-24 top-0 h-80 w-80 rounded-full bg-primary-fixed/30 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-24 -right-24 h-80 w-80 rounded-full bg-secondary-fixed/40 blur-3xl" />
+      <div className="pointer-events-none absolute -left-24 top-0 h-80 w-80 rounded-full bg-primary-fixed/30 hidden" />
+      <div className="pointer-events-none absolute -bottom-24 -right-24 h-80 w-80 rounded-full bg-secondary-fixed/40 hidden" />
 
       <section className="mx-auto hidden w-full max-w-7xl items-center justify-between px-8 py-8 md:flex">
         <div className="flex items-center gap-4">
@@ -57,7 +57,7 @@ export default function SessionReauthPage() {
             className="h-11 w-auto object-contain"
           />
         </div>
-        <div className="flex items-center gap-6 text-sm font-semibold text-slate-500">
+        <div className="flex items-center gap-6 text-sm font-semibold text-neutral-500">
           <span>Support</span>
           <span>Documentation</span>
         </div>
@@ -65,8 +65,8 @@ export default function SessionReauthPage() {
 
       <section className="relative z-10 mx-auto flex w-full max-w-7xl flex-1 items-center px-6 pb-12 pt-4 md:px-10">
         <div className="hidden w-full items-stretch gap-8 md:grid md:grid-cols-[minmax(0,480px)_minmax(0,1fr)]">
-          <div className="rounded-3xl border border-white/60 bg-white/85 p-10 shadow-card backdrop-blur-xl">
-            <h1 className="font-headline text-2xl font-bold text-primary">
+          <div className="rounded-2xl border border-white/60 bg-white/85 p-10 shadow-xs backdrop-blur-xl">
+            <h1 className="font-headline text-2xl font-medium text-primary">
               Session Expired
             </h1>
             <p className="mt-2 text-sm text-on-surface-variant">
@@ -75,7 +75,7 @@ export default function SessionReauthPage() {
             </p>
 
             {displayedEmail ? (
-              <div className="mt-4 rounded-2xl border border-primary/10 bg-primary/5 px-4 py-3 text-sm text-slate-700">
+              <div className="mt-4 rounded-2xl border border-primary/10 bg-primary/5 px-4 py-3 text-sm text-neutral-700">
                 <span className="font-semibold text-primary">
                   Signed in as:
                 </span>{" "}
@@ -98,7 +98,7 @@ export default function SessionReauthPage() {
                 <div className="relative">
                   <Icon
                     name="mail"
-                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
                   />
                   <input
                     className="input-base pl-10"
@@ -117,7 +117,7 @@ export default function SessionReauthPage() {
                 <div className="relative">
                   <Icon
                     name="lock"
-                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
                   />
                   <input
                     className="input-base pl-10 pr-11"
@@ -171,9 +171,9 @@ export default function SessionReauthPage() {
             </div>
           </div>
 
-          <aside className="rounded-3xl border border-white/60 bg-gradient-to-br from-primary-fixed/40 to-secondary-fixed/30 p-8 shadow-soft">
+          <aside className="rounded-2xl border border-white/60 bg-gradient-to-br from-primary-fixed/40 to-secondary-fixed/30 p-8 shadow-soft">
             <div className="rounded-2xl bg-white/80 p-6 backdrop-blur">
-              <h2 className="font-headline text-2xl font-bold text-primary">
+              <h2 className="font-headline text-2xl font-medium text-primary">
                 Keep Working
               </h2>
               <p className="mt-2 text-sm leading-6 text-on-surface-variant">
@@ -231,7 +231,7 @@ export default function SessionReauthPage() {
             />
           </div>
 
-          <div className="rounded-3xl bg-white p-7 shadow-soft">
+          <div className="rounded-2xl bg-white p-7 shadow-soft">
             <h2 className="font-headline text-xl font-semibold text-on-surface">
               Session Expired
             </h2>
@@ -240,7 +240,7 @@ export default function SessionReauthPage() {
             </p>
 
             {displayedEmail ? (
-              <div className="mt-4 rounded-2xl border border-primary/10 bg-primary/5 px-4 py-3 text-sm text-slate-700">
+              <div className="mt-4 rounded-2xl border border-primary/10 bg-primary/5 px-4 py-3 text-sm text-neutral-700">
                 <span className="font-semibold text-primary">
                   Signed in as:
                 </span>{" "}

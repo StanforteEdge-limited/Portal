@@ -179,11 +179,11 @@ export default function FinanceAccountsPage() {
           <button
             type="button"
             onClick={() => navigate(`/finance/accounts/${account.id}`)}
-            className="font-medium text-slate-900 hover:text-brand-700 hover:underline text-left"
+            className="font-medium text-neutral-900 hover:text-brand-700 hover:underline text-left"
           >
             {account.name}
           </button>
-          {account.code && <p className="text-xs text-slate-400">{account.code}</p>}
+          {account.code && <p className="text-xs text-neutral-400">{account.code}</p>}
         </div>
       )
     },
@@ -201,7 +201,7 @@ export default function FinanceAccountsPage() {
           </>
         ) : "-"
       ),
-      className: "text-xs text-slate-600"
+      className: "text-xs text-neutral-600"
     },
     {
       header: "Currency",
@@ -210,12 +210,12 @@ export default function FinanceAccountsPage() {
     {
       header: "Opening",
       cell: (account: any) => formatCurrency(account.opening_balance),
-      className: "text-right text-slate-600"
+      className: "text-right text-neutral-600"
     },
     {
       header: "Current",
       cell: (account: any) => formatCurrency(account.current_balance),
-      className: "text-right font-medium text-slate-900"
+      className: "text-right font-medium text-neutral-900"
     },
     {
       header: "Status",
@@ -257,7 +257,7 @@ export default function FinanceAccountsPage() {
             <button
               type="button"
               onClick={openCreate}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-bold shadow-md shadow-orange-500/20 transition transform hover:-translate-y-0.5"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-medium shadow-md transition transform"
             >
               <Plus className="h-4 w-4" />
               <span>Add Account</span>
@@ -267,52 +267,52 @@ export default function FinanceAccountsPage() {
 
         {/* 4 KPI Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between">
+          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
                 <Wallet className="h-5 w-5" />
               </div>
               <div>
-                <div className="text-[11px] font-semibold text-slate-500">Total Accounts</div>
-                <div className="text-xl font-black text-slate-900 mt-0.5">{accounts.length}</div>
+                <div className="text-xs font-semibold text-neutral-500">Total Accounts</div>
+                <div className="text-xl font-semibold text-neutral-900 mt-0.5">{accounts.length}</div>
               </div>
             </div>
-            <div className="text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+            <div className="text-xs font-medium text-neutral-700 bg-neutral-100 px-2 py-0.5 rounded-full">
               Ledger
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
+          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
               <CheckCircle2 className="h-5 w-5" />
             </div>
             <div>
-              <div className="text-[11px] font-semibold text-slate-500">Active Accounts</div>
-              <div className="text-xl font-black text-emerald-600 mt-0.5">
+              <div className="text-xs font-semibold text-neutral-500">Active Accounts</div>
+              <div className="text-xl font-semibold text-emerald-600 mt-0.5">
                 {accounts.filter((a: any) => a.is_active).length}
               </div>
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
+          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-neutral-100 text-neutral-600 flex items-center justify-center shrink-0">
               <Building className="h-5 w-5" />
             </div>
             <div>
-              <div className="text-[11px] font-semibold text-slate-500">Opening Balance</div>
-              <div className="text-lg font-black text-slate-800 mt-0.5">
+              <div className="text-xs font-semibold text-neutral-500">Opening Balance</div>
+              <div className="text-lg font-semibold text-neutral-800 mt-0.5">
                 {formatCurrency(totalOpening)}
               </div>
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
+          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
               <DollarSign className="h-5 w-5" />
             </div>
             <div>
-              <div className="text-[11px] font-semibold text-slate-500">Current Balance</div>
-              <div className="text-lg font-black text-[#ff6900] mt-0.5">
+              <div className="text-xs font-semibold text-neutral-500">Current Balance</div>
+              <div className="text-lg font-semibold text-[#ff6900] mt-0.5">
                 {formatCurrency(totalCurrent)}
               </div>
             </div>
@@ -331,8 +331,8 @@ export default function FinanceAccountsPage() {
               <option value="inactive">Inactive</option>
             </SelectField>
             <label className="grid gap-1.5 text-sm flex-1 min-w-[180px]">
-              <span className="font-semibold text-slate-700">Search</span>
-              <input type="search" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="Search accounts..." className="rounded-2xl border border-slate-200 bg-white px-4 py-[0.6rem] text-sm font-semibold text-slate-700 focus:outline-none focus:ring-4 focus:ring-brand-900/10" />
+              <span className="font-semibold text-neutral-700">Search</span>
+              <input type="search" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="Search accounts..." className="rounded-2xl border border-neutral-200 bg-white px-4 py-[0.6rem] text-sm font-semibold text-neutral-700 focus:outline-none focus:ring-4 focus:ring-brand-900/10" />
             </label>
             <Button variant="secondary" size="sm" onClick={() => void refetch()}><Icon name="refresh" className="text-[16px]" />Refresh</Button>
             <Button onClick={openCreate}>
@@ -378,25 +378,25 @@ export default function FinanceAccountsPage() {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/40">
           <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl">
-            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-              <h2 className="text-lg font-semibold text-slate-900">{editingId ? "Edit Account" : "New Account"}</h2>
+            <div className="flex items-center justify-between border-b border-neutral-200 px-6 py-4">
+              <h2 className="text-lg font-semibold text-neutral-900">{editingId ? "Edit Account" : "New Account"}</h2>
               <Button variant="ghost" size="sm" onClick={() => setShowModal(false)}><Icon name="close" /></Button>
             </div>
             <div className="p-6 space-y-4">
               <label className="grid gap-1.5 text-sm">
-                <span className="font-semibold text-slate-700">Account Name <span className="text-red-500">*</span></span>
-                <input type="text" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g., Main Operating Account" className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 focus:outline-none focus:ring-4 focus:ring-brand-900/10" />
+                <span className="font-semibold text-neutral-700">Account Name <span className="text-red-500">*</span></span>
+                <input type="text" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g., Main Operating Account" className="rounded-2xl border border-neutral-200 bg-white px-4 py-2.5 text-sm font-medium text-neutral-900 focus:outline-none focus:ring-4 focus:ring-brand-900/10" />
               </label>
               <div className="grid grid-cols-2 gap-4">
                 <label className="grid gap-1.5 text-sm">
-                  <span className="font-semibold text-slate-700">Code</span>
-                  <input type="text" value={form.code} onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))} placeholder="e.g., ACC-001" className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 focus:outline-none focus:ring-4 focus:ring-brand-900/10" />
+                  <span className="font-semibold text-neutral-700">Code</span>
+                  <input type="text" value={form.code} onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))} placeholder="e.g., ACC-001" className="rounded-2xl border border-neutral-200 bg-white px-4 py-2.5 text-sm font-medium text-neutral-900 focus:outline-none focus:ring-4 focus:ring-brand-900/10" />
                 </label>
                 <label className="grid gap-1.5 text-sm">
-                  <span className="font-semibold text-slate-700">Type</span>
-                  <SelectBox value={form.account_type} onChange={(e) => setForm((f) => ({ ...f, account_type: e.target.value as AccountType }))} className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 focus:outline-none focus:ring-4 focus:ring-brand-900/10">
+                  <span className="font-semibold text-neutral-700">Type</span>
+                  <SelectBox value={form.account_type} onChange={(e) => setForm((f) => ({ ...f, account_type: e.target.value as AccountType }))} className="rounded-2xl border border-neutral-200 bg-white px-4 py-2.5 text-sm font-medium text-neutral-900 focus:outline-none focus:ring-4 focus:ring-brand-900/10">
                     {ACCOUNT_TYPES.map((t) => (<option key={t.value} value={t.value}>{t.label}</option>))}
                   </SelectBox>
                 </label>
@@ -405,44 +405,44 @@ export default function FinanceAccountsPage() {
                 <>
                   <div className="grid grid-cols-2 gap-4">
                     <label className="grid gap-1.5 text-sm">
-                      <span className="font-semibold text-slate-700">Bank Name</span>
-                      <input type="text" value={form.bank_name} onChange={(e) => setForm((f) => ({ ...f, bank_name: e.target.value }))} placeholder="e.g., GTBank" className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 focus:outline-none focus:ring-4 focus:ring-brand-900/10" />
+                      <span className="font-semibold text-neutral-700">Bank Name</span>
+                      <input type="text" value={form.bank_name} onChange={(e) => setForm((f) => ({ ...f, bank_name: e.target.value }))} placeholder="e.g., GTBank" className="rounded-2xl border border-neutral-200 bg-white px-4 py-2.5 text-sm font-medium text-neutral-900 focus:outline-none focus:ring-4 focus:ring-brand-900/10" />
                     </label>
                     <label className="grid gap-1.5 text-sm">
-                      <span className="font-semibold text-slate-700">Account Name</span>
-                      <input type="text" value={form.account_name} onChange={(e) => setForm((f) => ({ ...f, account_name: e.target.value }))} placeholder="Name on account" className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 focus:outline-none focus:ring-4 focus:ring-brand-900/10" />
+                      <span className="font-semibold text-neutral-700">Account Name</span>
+                      <input type="text" value={form.account_name} onChange={(e) => setForm((f) => ({ ...f, account_name: e.target.value }))} placeholder="Name on account" className="rounded-2xl border border-neutral-200 bg-white px-4 py-2.5 text-sm font-medium text-neutral-900 focus:outline-none focus:ring-4 focus:ring-brand-900/10" />
                     </label>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <label className="grid gap-1.5 text-sm">
-                      <span className="font-semibold text-slate-700">Account Number</span>
-                      <input type="text" value={form.account_number} onChange={(e) => setForm((f) => ({ ...f, account_number: e.target.value }))} placeholder="e.g., 0123456789" className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 focus:outline-none focus:ring-4 focus:ring-brand-900/10" />
+                      <span className="font-semibold text-neutral-700">Account Number</span>
+                      <input type="text" value={form.account_number} onChange={(e) => setForm((f) => ({ ...f, account_number: e.target.value }))} placeholder="e.g., 0123456789" className="rounded-2xl border border-neutral-200 bg-white px-4 py-2.5 text-sm font-medium text-neutral-900 focus:outline-none focus:ring-4 focus:ring-brand-900/10" />
                     </label>
                     <label className="grid gap-1.5 text-sm">
-                      <span className="font-semibold text-slate-700">Branch</span>
-                      <input type="text" value={form.branch_name} onChange={(e) => setForm((f) => ({ ...f, branch_name: e.target.value }))} placeholder="Branch name" className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 focus:outline-none focus:ring-4 focus:ring-brand-900/10" />
+                      <span className="font-semibold text-neutral-700">Branch</span>
+                      <input type="text" value={form.branch_name} onChange={(e) => setForm((f) => ({ ...f, branch_name: e.target.value }))} placeholder="Branch name" className="rounded-2xl border border-neutral-200 bg-white px-4 py-2.5 text-sm font-medium text-neutral-900 focus:outline-none focus:ring-4 focus:ring-brand-900/10" />
                     </label>
                   </div>
                 </>
               )}
               <div className="grid grid-cols-2 gap-4">
                 <label className="grid gap-1.5 text-sm">
-                  <span className="font-semibold text-slate-700">Currency</span>
-                  <input type="text" value={form.currency} onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value.toUpperCase() }))} placeholder="NGN" className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 focus:outline-none focus:ring-4 focus:ring-brand-900/10" />
+                  <span className="font-semibold text-neutral-700">Currency</span>
+                  <input type="text" value={form.currency} onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value.toUpperCase() }))} placeholder="NGN" className="rounded-2xl border border-neutral-200 bg-white px-4 py-2.5 text-sm font-medium text-neutral-900 focus:outline-none focus:ring-4 focus:ring-brand-900/10" />
                 </label>
                 <label className="grid gap-1.5 text-sm">
-                  <span className="font-semibold text-slate-700">Opening Balance</span>
-                  <input type="number" value={form.opening_balance} onChange={(e) => setForm((f) => ({ ...f, opening_balance: e.target.value }))} placeholder="0.00" className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 focus:outline-none focus:ring-4 focus:ring-brand-900/10" />
+                  <span className="font-semibold text-neutral-700">Opening Balance</span>
+                  <input type="number" value={form.opening_balance} onChange={(e) => setForm((f) => ({ ...f, opening_balance: e.target.value }))} placeholder="0.00" className="rounded-2xl border border-neutral-200 bg-white px-4 py-2.5 text-sm font-medium text-neutral-900 focus:outline-none focus:ring-4 focus:ring-brand-900/10" />
                 </label>
               </div>
               {editingId && (
                 <label className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" checked={form.is_active} onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))} className="h-4 w-4 rounded border-slate-300" />
-                  <span className="text-slate-700">Active</span>
+                  <input type="checkbox" checked={form.is_active} onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))} className="h-4 w-4 rounded border-neutral-300" />
+                  <span className="text-neutral-700">Active</span>
                 </label>
               )}
             </div>
-            <div className="flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-4">
+            <div className="flex items-center justify-end gap-3 border-t border-neutral-200 px-6 py-4">
               <Button variant="secondary" onClick={() => setShowModal(false)}>Cancel</Button>
               <Button onClick={handleSave}>{editingId ? "Update Account" : "Create Account"}</Button>
             </div>

@@ -13,20 +13,18 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const base =
-  "inline-flex items-center justify-center rounded-xl font-bold transition focus:outline-none focus:ring-2 focus:ring-orange-500/20 disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50";
 
 const variants: Record<ButtonVariant, string> = {
-  primary:
-    "bg-[#ff6900] text-white shadow-md shadow-orange-500/20 hover:bg-[#ea580c] hover:shadow-orange-500/30",
-  secondary:
-    "border border-slate-200 bg-white text-slate-800 hover:bg-slate-50 shadow-sm",
-  ghost: "bg-transparent text-slate-700 hover:bg-slate-100",
-  danger: "bg-rose-600 text-white hover:bg-rose-700 shadow-sm",
+  primary: "bg-[#ff6900] text-white hover:bg-[#ea580c]",
+  secondary: "border border-neutral-900/[0.10] bg-white text-neutral-900 hover:bg-neutral-50",
+  ghost: "bg-transparent text-neutral-700 hover:bg-neutral-100",
+  danger: "bg-red-600 text-white hover:bg-red-700",
 };
 
 const sizes: Record<ButtonSize, string> = {
-  sm: "px-3.5 py-1.5 text-xs",
-  md: "px-4 py-2 text-xs sm:text-sm",
+  sm: "h-8 px-3 text-xs",
+  md: "h-9 px-4 text-sm",
 };
 
 export function Button({

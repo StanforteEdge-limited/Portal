@@ -130,7 +130,7 @@ export default function FinancePayrollPage() {
           >
             <DataTable
               columns={[
-                { header: "Name", cell: (run: any) => <p className="font-semibold text-slate-900">{run.name}</p> },
+                { header: "Name", cell: (run: any) => <p className="font-semibold text-neutral-900">{run.name}</p> },
                 { header: "Period", cell: (run: any) => `${MONTH_NAMES[run.month] ?? run.month} ${run.year}` },
                 { header: "Workers", cell: (run: any) => run.item_count ?? "-" },
                 { header: "Net Pay", cell: (run: any) => run.totals?.net != null ? formatCurrency(run.totals.net, run.currency) : "-" },
@@ -156,11 +156,11 @@ export default function FinancePayrollPage() {
           description="Full history of payroll runs visible to Finance."
         >
           {loading ? (
-            <div className="text-sm text-slate-500">Loading runs...</div>
+            <div className="text-sm text-neutral-500">Loading runs...</div>
           ) : allRuns.length ? (
             <DataTable
               columns={[
-                { header: "Name", cell: (run: any) => <p className="font-semibold text-slate-900">{run.name}</p> },
+                { header: "Name", cell: (run: any) => <p className="font-semibold text-neutral-900">{run.name}</p> },
                 { header: "Period", cell: (run: any) => `${MONTH_NAMES[run.month] ?? run.month} ${run.year}` },
                 { header: "Gross", cell: (run: any) => run.totals?.gross != null ? formatCurrency(run.totals.gross, run.currency) : "-" },
                 { header: "Net", cell: (run: any) => run.totals?.net != null ? formatCurrency(run.totals.net, run.currency) : "-" },

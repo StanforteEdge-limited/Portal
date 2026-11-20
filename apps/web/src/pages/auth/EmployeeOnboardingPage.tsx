@@ -48,10 +48,10 @@ export default function EmployeeOnboardingPage() {
     } finally { setSaving(false); }
   }
 
-  if (loading) return <main className="mx-auto max-w-3xl p-8 text-sm text-slate-500">Loading onboarding...</main>;
+  if (loading) return <main className="mx-auto max-w-3xl p-8 text-sm text-neutral-500">Loading onboarding...</main>;
 
   return <main className="mx-auto max-w-3xl space-y-6 px-6 py-10">
-    <div><p className="text-sm font-semibold uppercase tracking-wider text-brand-700">Employee onboarding</p><h1 className="mt-2 text-3xl font-bold text-slate-950">Complete your profile</h1><p className="mt-2 text-slate-600">Save your details, then submit them for HR review.</p></div>
+    <div><p className="text-sm font-semibold text-brand-700">Employee onboarding</p><h1 className="mt-2 text-3xl font-medium text-neutral-950">Complete your profile</h1><p className="mt-2 text-neutral-600">Save your details, then submit them for HR review.</p></div>
     <SectionCard title="Personal details" description={`Current status: ${data?.progress?.status ?? "profile_pending"}`}>
       <div className="grid gap-4 sm:grid-cols-2">
         <TextField label="First name" value={form.first_name} onChange={(event) => setForm({ ...form, first_name: event.target.value })} />

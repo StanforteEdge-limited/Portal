@@ -54,7 +54,7 @@ export function MessageDetail({ accountId, header, onReply, onForward, onDeleted
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#fff' }}>
       {/* Top Action Bar (MacBook Mail Style) */}
-      <div className="px-4 py-2 border-b border-slate-200 flex gap-2 items-center bg-slate-50">
+      <div className="px-4 py-2 border-b border-neutral-200 flex gap-2 items-center bg-neutral-50">
         {onBack && (
           <Button
             variant="secondary"

@@ -52,8 +52,8 @@ export function RequestDeductionDetailPanel({ deduction: d, onClose, onRemit, on
       <SlideOverHeader title={`${d.deduction_type_name} — ${d.request_number}`} onClose={onClose} />
       <SlideOverContent>
         <div className="space-y-6">
-          <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-            <span className="text-sm font-medium text-slate-600">Remittance status</span>
+          <div className="flex items-center justify-between rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3">
+            <span className="text-sm font-medium text-neutral-600">Remittance status</span>
             <Chip variant={isRemitted ? "success" : "warning"}>
               {isRemitted ? "Remitted" : "Pending"}
             </Chip>
@@ -61,7 +61,7 @@ export function RequestDeductionDetailPanel({ deduction: d, onClose, onRemit, on
 
           <dl className="space-y-3 text-sm">
             <div className="flex items-center justify-between">
-              <dt className="text-slate-500">Request</dt>
+              <dt className="text-neutral-500">Request</dt>
               <dd>
                 <button
                   type="button"
@@ -73,66 +73,66 @@ export function RequestDeductionDetailPanel({ deduction: d, onClose, onRemit, on
               </dd>
             </div>
             <div className="flex items-center justify-between">
-              <dt className="text-slate-500">Deduction Type</dt>
-              <dd className="font-semibold text-slate-800">
+              <dt className="text-neutral-500">Deduction Type</dt>
+              <dd className="font-semibold text-neutral-800">
                 {d.deduction_type_name} ({d.deduction_type_code})
               </dd>
             </div>
             <div className="flex items-center justify-between">
-              <dt className="text-slate-500">Rate</dt>
-              <dd className="font-semibold text-slate-800">{(d.rate * 100).toFixed(1)}%</dd>
+              <dt className="text-neutral-500">Rate</dt>
+              <dd className="font-semibold text-neutral-800">{(d.rate * 100).toFixed(1)}%</dd>
             </div>
             <div className="flex items-center justify-between">
-              <dt className="text-slate-500">Gross Amount</dt>
-              <dd className="font-semibold text-slate-800">{formatCurrency(d.gross_amount, "NGN")}</dd>
+              <dt className="text-neutral-500">Gross Amount</dt>
+              <dd className="font-semibold text-neutral-800">{formatCurrency(d.gross_amount, "NGN")}</dd>
             </div>
             <div className="flex items-center justify-between">
-              <dt className="text-slate-500">Amount Withheld</dt>
+              <dt className="text-neutral-500">Amount Withheld</dt>
               <dd className="font-semibold text-danger">{formatCurrency(d.amount, "NGN")}</dd>
             </div>
             <div className="flex items-center justify-between">
-              <dt className="text-slate-500">Created By</dt>
-              <dd className="text-slate-700">{d.created_by_name || "—"}</dd>
+              <dt className="text-neutral-500">Created By</dt>
+              <dd className="text-neutral-700">{d.created_by_name || "—"}</dd>
             </div>
             <div className="flex items-center justify-between">
-              <dt className="text-slate-500">Created</dt>
-              <dd className="text-slate-700">{formatDisplayDate(d.created_at)}</dd>
+              <dt className="text-neutral-500">Created</dt>
+              <dd className="text-neutral-700">{formatDisplayDate(d.created_at)}</dd>
             </div>
           </dl>
 
           {isRemitted && (
             <div>
-              <p className="mb-2 text-xs font-bold uppercase tracking-widest text-slate-400">
+              <p className="mb-2 text-xs font-medium text-neutral-400">
                 Remittance Details
               </p>
-              <dl className="space-y-3 text-sm rounded-xl border border-slate-200 p-4">
+              <dl className="space-y-3 text-sm rounded-xl border border-neutral-200 p-4">
                 <div className="flex items-center justify-between">
-                  <dt className="text-slate-500">TRM Reference</dt>
-                  <dd className="font-semibold text-slate-800">{d.remittance_number ?? "—"}</dd>
+                  <dt className="text-neutral-500">TRM Reference</dt>
+                  <dd className="font-semibold text-neutral-800">{d.remittance_number ?? "—"}</dd>
                 </div>
                 <div className="flex items-center justify-between">
-                  <dt className="text-slate-500">Payment Reference</dt>
-                  <dd className="font-semibold text-slate-800">{d.remittance_ref ?? "—"}</dd>
+                  <dt className="text-neutral-500">Payment Reference</dt>
+                  <dd className="font-semibold text-neutral-800">{d.remittance_ref ?? "—"}</dd>
                 </div>
                 <div className="flex items-center justify-between">
-                  <dt className="text-slate-500">Remitted On</dt>
-                  <dd className="font-semibold text-slate-800">{formatDisplayDate(d.remitted_at)}</dd>
+                  <dt className="text-neutral-500">Remitted On</dt>
+                  <dd className="font-semibold text-neutral-800">{formatDisplayDate(d.remitted_at)}</dd>
                 </div>
                 <div className="flex items-center justify-between">
-                  <dt className="text-slate-500">Paid From</dt>
-                  <dd className="font-semibold text-slate-800">{d.paid_from_account?.name ?? "—"}</dd>
+                  <dt className="text-neutral-500">Paid From</dt>
+                  <dd className="font-semibold text-neutral-800">{d.paid_from_account?.name ?? "—"}</dd>
                 </div>
                 <div className="flex items-center justify-between">
-                  <dt className="text-slate-500">Remitted By</dt>
-                  <dd className="font-semibold text-slate-800">{(d as any).remitted_by?.name ?? "—"}</dd>
+                  <dt className="text-neutral-500">Remitted By</dt>
+                  <dd className="font-semibold text-neutral-800">{(d as any).remitted_by?.name ?? "—"}</dd>
                 </div>
                 <div className="flex items-center justify-between">
-                  <dt className="text-slate-500">Payment Voucher</dt>
-                  <dd className="font-semibold text-slate-800">{(d as any).payment_voucher?.voucher_number ?? "—"}</dd>
+                  <dt className="text-neutral-500">Payment Voucher</dt>
+                  <dd className="font-semibold text-neutral-800">{(d as any).payment_voucher?.voucher_number ?? "—"}</dd>
                 </div>
                 {d.evidence_file && (
                   <div className="flex items-center justify-between">
-                    <dt className="text-slate-500">Evidence</dt>
+                    <dt className="text-neutral-500">Evidence</dt>
                     <dd>
                       <a
                         href={d.evidence_file.public_url ?? "#"}
@@ -147,7 +147,7 @@ export function RequestDeductionDetailPanel({ deduction: d, onClose, onRemit, on
                 )}
                 {Array.isArray((d as any).evidence_files) && (d as any).evidence_files.length > 0 ? (
                   <div>
-                    <dt className="text-slate-500 mb-1">Evidence Files</dt>
+                    <dt className="text-neutral-500 mb-1">Evidence Files</dt>
                     <dd className="space-y-1">
                       {(d as any).evidence_files.map((file: any) => (
                         <div key={file.id}>
@@ -161,8 +161,8 @@ export function RequestDeductionDetailPanel({ deduction: d, onClose, onRemit, on
                 ) : null}
                 {d.notes && (
                   <div>
-                    <dt className="text-slate-500 mb-1">Notes</dt>
-                    <dd className="text-slate-700">{d.notes}</dd>
+                    <dt className="text-neutral-500 mb-1">Notes</dt>
+                    <dd className="text-neutral-700">{d.notes}</dd>
                   </div>
                 )}
               </dl>
@@ -171,30 +171,30 @@ export function RequestDeductionDetailPanel({ deduction: d, onClose, onRemit, on
 
           {isRemitted && d.remittance_id && (
             <div>
-              <p className="mb-2 text-xs font-bold uppercase tracking-widest text-slate-400">
+              <p className="mb-2 text-xs font-medium text-neutral-400">
                 Other taxes in this payment
               </p>
               {batchLoading ? (
-                <p className="text-sm text-slate-400">Loading…</p>
+                <p className="text-sm text-neutral-400">Loading…</p>
               ) : batchSiblings && batchSiblings.length > 0 ? (
-                <div className="rounded-xl border border-slate-200 divide-y divide-slate-100">
+                <div className="rounded-xl border border-neutral-200 divide-y divide-neutral-100">
                   {batchSiblings.map((s) => (
                     <button
                       key={s.id}
                       type="button"
                       onClick={() => navigate(`/requests/${s.request_id}`)}
-                      className="flex w-full items-center justify-between px-4 py-3 text-left text-sm hover:bg-slate-50"
+                      className="flex w-full items-center justify-between px-4 py-3 text-left text-sm hover:bg-neutral-50"
                     >
                       <span>
-                        <span className="font-medium text-slate-700">{s.deduction_type_name}</span>
-                        <span className="ml-2 text-xs text-slate-400">{s.request_number}</span>
+                        <span className="font-medium text-neutral-700">{s.deduction_type_name}</span>
+                        <span className="ml-2 text-xs text-neutral-400">{s.request_number}</span>
                       </span>
                       <span className="font-semibold text-danger">{formatCurrency(s.amount, "NGN")}</span>
                     </button>
                   ))}
                 </div>
               ) : (
-                <p className="rounded-xl border border-dashed border-slate-200 px-4 py-3 text-sm text-slate-400">
+                <p className="rounded-xl border border-dashed border-neutral-200 px-4 py-3 text-sm text-neutral-400">
                   This payment reference covers only this one tax.
                 </p>
               )}

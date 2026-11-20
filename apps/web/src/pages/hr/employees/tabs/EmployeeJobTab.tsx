@@ -88,7 +88,7 @@ export default function EmployeeJobTab({ employee, onSaved }: { employee: Employ
             )}
 
             <div className="mb-4">
-                <p className="text-sm font-semibold text-slate-700">Employment Status</p>
+                <p className="text-sm font-semibold text-neutral-700">Employment Status</p>
                 <div className="mt-2">
                     <Chip variant={
                         employee.employment_status === 'active' ? 'success' :
@@ -99,7 +99,7 @@ export default function EmployeeJobTab({ employee, onSaved }: { employee: Employ
                         {humanize(employee.employment_status || "draft")}
                     </Chip>
                 </div>
-                <p className="mt-2 text-xs text-slate-500">Status can be changed via the Actions tab.</p>
+                <p className="mt-2 text-xs text-neutral-500">Status can be changed via the Actions tab.</p>
             </div>
 
             <div className="grid gap-4 max-w-2xl">

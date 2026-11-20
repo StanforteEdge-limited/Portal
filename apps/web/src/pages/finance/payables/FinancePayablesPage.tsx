@@ -110,7 +110,7 @@ export default function FinancePayablesPage() {
         <SectionCard title="Bill Information">
           <DataTable
             columns={[
-              { header: "Field", className: "w-40 font-medium text-slate-500", cell: (r) => r.field },
+              { header: "Field", className: "w-40 font-medium text-neutral-500", cell: (r) => r.field },
               { header: "Value", cell: (r) => r.value },
             ]}
             data={[
@@ -178,7 +178,7 @@ export default function FinancePayablesPage() {
       </SectionCard>
 
       <SectionCard title="Vendor Bills" description="Payment planning view for cashflow control.">
-        {loading ? <p className="text-sm text-slate-500">Loading bills...</p> : null}
+        {loading ? <p className="text-sm text-neutral-500">Loading bills...</p> : null}
         {error ? <p className="text-sm text-danger">{error}</p> : null}
         {rows.length ? (
           <DataTable

@@ -79,7 +79,7 @@ export function MobileMenuSheet({ open, navigation, activeLabel, user, onClose, 
       <button
         type="button"
         aria-label="Close menu"
-        className="absolute inset-0 bg-slate-950/40"
+        className="absolute inset-0 bg-neutral-950/40"
         onClick={onClose}
       />
 
@@ -88,21 +88,21 @@ export function MobileMenuSheet({ open, navigation, activeLabel, user, onClose, 
         role="dialog"
         aria-modal="true"
         aria-labelledby="mobile-menu-title"
-        className="absolute bottom-0 left-0 right-0 max-h-[85vh] overflow-y-auto rounded-t-[32px] border-t border-outline-variant bg-surface-container-lowest px-5 pb-6 pt-5 shadow-card"
+        className="absolute bottom-0 left-0 right-0 max-h-[85vh] overflow-y-auto rounded-t-[32px] border-t border-outline-variant bg-surface-container-lowest px-5 pb-6 pt-5 shadow-xs"
       >
         <div className="mb-5 flex items-center justify-between gap-4">
           <div>
-            <p className="text-[0.72rem] font-bold uppercase tracking-[0.16em] text-slate-500">Menu</p>
-            <h2 id="mobile-menu-title" className="mt-1 font-headline text-xl font-semibold text-slate-950">
+            <p className="text-[0.72rem] font-medium text-neutral-500">Menu</p>
+            <h2 id="mobile-menu-title" className="mt-1 font-headline text-xl font-semibold text-neutral-950">
               {user.name}
             </h2>
-            <p className="mt-1 text-sm text-slate-500">{user.title}</p>
+            <p className="mt-1 text-sm text-neutral-500">{user.title}</p>
           </div>
           <button
             ref={closeButtonRef}
             type="button"
             onClick={onClose}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-700 transition hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-neutral-100 text-neutral-700 transition hover:bg-neutral-200 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
             aria-label="Close menu"
           >
             <Icon name="close" />
@@ -119,32 +119,32 @@ export function MobileMenuSheet({ open, navigation, activeLabel, user, onClose, 
             return (
               <div key={item.label} className="space-y-2">
               {showSectionLabel ? (
-                  <div className="px-1 pt-3 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-slate-400">
+                  <div className="px-1 pt-3 text-xs font-medium text-neutral-400">
                     {item.section}
                   </div>
                 ) : null}
-                <div className="rounded-[24px] border border-slate-100 bg-white p-4">
+                <div className="rounded-2xl border border-neutral-100 bg-white p-4">
                   <div className="flex items-center gap-3">
-                    <div className={["flex h-10 w-10 items-center justify-center rounded-2xl", active ? "bg-brand-900 text-white" : "bg-slate-100 text-slate-600"].join(" ")}>
+                    <div className={["flex h-10 w-10 items-center justify-center rounded-2xl", active ? "bg-brand-900 text-white" : "bg-neutral-100 text-neutral-600"].join(" ")}>
                       <Icon name={item.icon} fill={active} />
                     </div>
                     {item.path ? (
                       <NavLink
                         to={item.path}
                         onClick={onClose}
-                        className={["text-sm font-semibold focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10", active ? "text-brand-900" : "text-slate-900"].join(" ")}
+                        className={["text-sm font-semibold focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10", active ? "text-brand-900" : "text-neutral-900"].join(" ")}
                       >
                         {item.label}
                       </NavLink>
                     ) : (
-                      <p className={["text-sm font-semibold", active ? "text-brand-900" : "text-slate-900"].join(" ")}>
+                      <p className={["text-sm font-semibold", active ? "text-brand-900" : "text-neutral-900"].join(" ")}>
                         {item.label}
                       </p>
                     )}
                   </div>
 
                   {hasChildren ? (
-                    <div className="mt-4 space-y-2 border-l border-slate-200 pl-4">
+                    <div className="mt-4 space-y-2 border-l border-neutral-200 pl-4">
                       {item.children!.map((child) => {
                         const childActive = nodeHasActiveDescendant(child, activeLabel);
                         const hasNestedChildren = Array.isArray(child.children) && child.children.length > 0;
@@ -156,19 +156,19 @@ export function MobileMenuSheet({ open, navigation, activeLabel, user, onClose, 
                                 onClick={onClose}
                                 className={[
                                   "flex items-center gap-2 rounded-2xl px-3 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10",
-                                  childActive ? "bg-brand-900/10 text-brand-900" : "text-slate-600 hover:bg-slate-50",
+                                  childActive ? "bg-brand-900/10 text-brand-900" : "text-neutral-600 hover:bg-neutral-50",
                                 ].join(" ")}
                               >
                                 {child.icon ? <Icon name={child.icon} className="text-[16px]" /> : null}
                                 <span>{child.label}</span>
                               </NavLink>
                             ) : (
-                              <p className="px-1 pt-1 text-[0.65rem] font-bold uppercase tracking-[0.16em] text-slate-400">
+                              <p className="px-1 pt-1 text-xs font-medium text-neutral-400">
                                 {child.label}
                               </p>
                             )}
                             {hasNestedChildren ? (
-                              <div className="space-y-2 border-l border-slate-100 pl-3">
+                              <div className="space-y-2 border-l border-neutral-100 pl-3">
                                 {child.children!.map((grandChild) => {
                                   const grandChildActive = nodeHasActiveDescendant(grandChild, activeLabel);
                                   return grandChild.path ? (
@@ -178,7 +178,7 @@ export function MobileMenuSheet({ open, navigation, activeLabel, user, onClose, 
                                       onClick={onClose}
                                       className={[
                                         "flex items-center gap-2 rounded-2xl px-3 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10",
-                                        grandChildActive ? "bg-brand-900/10 text-brand-900" : "text-slate-600 hover:bg-slate-50",
+                                        grandChildActive ? "bg-brand-900/10 text-brand-900" : "text-neutral-600 hover:bg-neutral-50",
                                       ].join(" ")}
                                     >
                                       <Icon name={grandChild.icon || child.icon || item.icon} className="text-[16px]" />
@@ -199,11 +199,11 @@ export function MobileMenuSheet({ open, navigation, activeLabel, user, onClose, 
           })}
         </div>
 
-        <div className="mt-5 space-y-3 border-t border-slate-200 pt-4">
+        <div className="mt-5 space-y-3 border-t border-neutral-200 pt-4">
           <NavLink
             to="/settings"
             onClick={onClose}
-            className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
+            className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
           >
             <Icon name="settings" />
             Settings
@@ -211,7 +211,7 @@ export function MobileMenuSheet({ open, navigation, activeLabel, user, onClose, 
           <NavLink
             to="/help"
             onClick={onClose}
-            className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
+            className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-900/10"
           >
             <Icon name="help" />
             Support

@@ -155,7 +155,7 @@ export default function FinanceChartAccountsPage() {
     {
       header: "Code",
       cell: (account: any) => (
-        <code className="text-xs bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">
+        <code className="text-xs bg-neutral-100 px-1.5 py-0.5 rounded text-neutral-600">
           {account.code || "-"}
         </code>
       )
@@ -164,7 +164,7 @@ export default function FinanceChartAccountsPage() {
       header: "Name",
       cell: (account: any) => (
         <div>
-          <p className="font-medium text-slate-900">{account.name}</p>
+          <p className="font-medium text-neutral-900">{account.name}</p>
           {account.is_control_account && (
             <span className="text-xs text-brand-600">Control account</span>
           )}
@@ -262,13 +262,13 @@ export default function FinanceChartAccountsPage() {
             </SelectField>
 
             <label className="grid gap-1.5 text-sm flex-1 min-w-[180px]">
-              <span className="font-semibold text-slate-700">Search</span>
+              <span className="font-semibold text-neutral-700">Search</span>
               <input
                 type="search"
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                 placeholder="Search accounts..."
-                className="rounded-2xl border border-slate-200 bg-white px-4 py-[0.6rem] text-sm font-semibold text-slate-700 focus:outline-none focus:ring-4 focus:ring-brand-900/10"
+                className="rounded-2xl border border-neutral-200 bg-white px-4 py-[0.6rem] text-sm font-semibold text-neutral-700 focus:outline-none focus:ring-4 focus:ring-brand-900/10"
               />
             </label>
 
@@ -322,10 +322,10 @@ export default function FinanceChartAccountsPage() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/40">
           <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl">
-            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-              <h2 className="text-lg font-semibold text-slate-900">
+            <div className="flex items-center justify-between border-b border-neutral-200 px-6 py-4">
+              <h2 className="text-lg font-semibold text-neutral-900">
                 {editingId ? "Edit Account" : "New Account"}
               </h2>
               <Button variant="ghost" size="sm" onClick={() => setShowModal(false)}>
@@ -336,21 +336,21 @@ export default function FinanceChartAccountsPage() {
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <label className="grid gap-1.5 text-sm">
-                  <span className="font-semibold text-slate-700">Code</span>
+                  <span className="font-semibold text-neutral-700">Code</span>
                   <input
                     type="text"
                     value={form.code}
                     onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
                     placeholder="e.g., 1001"
-                    className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 focus:outline-none focus:ring-4 focus:ring-brand-900/10"
+                    className="rounded-2xl border border-neutral-200 bg-white px-4 py-2.5 text-sm font-medium text-neutral-900 focus:outline-none focus:ring-4 focus:ring-brand-900/10"
                   />
                 </label>
                 <label className="grid gap-1.5 text-sm">
-                  <span className="font-semibold text-slate-700">Type <span className="text-red-500">*</span></span>
+                  <span className="font-semibold text-neutral-700">Type <span className="text-red-500">*</span></span>
                   <SelectBox
                     value={form.type}
                     onChange={(e) => setForm((f) => ({ ...f, type: e.target.value as AccountType }))}
-                    className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 focus:outline-none focus:ring-4 focus:ring-brand-900/10"
+                    className="rounded-2xl border border-neutral-200 bg-white px-4 py-2.5 text-sm font-medium text-neutral-900 focus:outline-none focus:ring-4 focus:ring-brand-900/10"
                   >
                     {ACCOUNT_TYPES.map((t) => (
                       <option key={t.value} value={t.value}>{t.label}</option>
@@ -360,33 +360,33 @@ export default function FinanceChartAccountsPage() {
               </div>
 
               <label className="grid gap-1.5 text-sm">
-                <span className="font-semibold text-slate-700">Name <span className="text-red-500">*</span></span>
+                <span className="font-semibold text-neutral-700">Name <span className="text-red-500">*</span></span>
                 <input
                   type="text"
                   value={form.name}
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                   placeholder="e.g., Cash at Bank"
-                  className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 focus:outline-none focus:ring-4 focus:ring-brand-900/10"
+                  className="rounded-2xl border border-neutral-200 bg-white px-4 py-2.5 text-sm font-medium text-neutral-900 focus:outline-none focus:ring-4 focus:ring-brand-900/10"
                 />
               </label>
 
               <div className="grid grid-cols-2 gap-4">
                 <label className="grid gap-1.5 text-sm">
-                  <span className="font-semibold text-slate-700">Category</span>
+                  <span className="font-semibold text-neutral-700">Category</span>
                   <input
                     type="text"
                     value={form.category}
                     onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
                     placeholder="e.g., bank"
-                    className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 focus:outline-none focus:ring-4 focus:ring-brand-900/10"
+                    className="rounded-2xl border border-neutral-200 bg-white px-4 py-2.5 text-sm font-medium text-neutral-900 focus:outline-none focus:ring-4 focus:ring-brand-900/10"
                   />
                 </label>
                 <label className="grid gap-1.5 text-sm">
-                  <span className="font-semibold text-slate-700">Normal Balance</span>
+                  <span className="font-semibold text-neutral-700">Normal Balance</span>
                   <SelectBox
                     value={form.normal_balance}
                     onChange={(e) => setForm((f) => ({ ...f, normal_balance: e.target.value }))}
-                    className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 focus:outline-none focus:ring-4 focus:ring-brand-900/10"
+                    className="rounded-2xl border border-neutral-200 bg-white px-4 py-2.5 text-sm font-medium text-neutral-900 focus:outline-none focus:ring-4 focus:ring-brand-900/10"
                   >
                     <option value="debit">Debit</option>
                     <option value="credit">Credit</option>
@@ -400,9 +400,9 @@ export default function FinanceChartAccountsPage() {
                     type="checkbox"
                     checked={form.is_control_account}
                     onChange={(e) => setForm((f) => ({ ...f, is_control_account: e.target.checked }))}
-                    className="h-4 w-4 rounded border-slate-300"
+                    className="h-4 w-4 rounded border-neutral-300"
                   />
-                  <span className="text-slate-700">Control account</span>
+                  <span className="text-neutral-700">Control account</span>
                 </label>
 
                 {editingId && (
@@ -411,15 +411,15 @@ export default function FinanceChartAccountsPage() {
                       type="checkbox"
                       checked={form.is_active}
                       onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))}
-                      className="h-4 w-4 rounded border-slate-300"
+                      className="h-4 w-4 rounded border-neutral-300"
                     />
-                    <span className="text-slate-700">Active</span>
+                    <span className="text-neutral-700">Active</span>
                   </label>
                 )}
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-4">
+            <div className="flex items-center justify-end gap-3 border-t border-neutral-200 px-6 py-4">
               <Button variant="secondary" onClick={() => setShowModal(false)}>
                 Cancel
               </Button>
