@@ -61,14 +61,14 @@ export default function AdminRolesPage() {
   const roles: Role[] = Array.isArray((rolesData as any)?.data?.items)
     ? (rolesData as any).data.items
     : Array.isArray(rolesData)
-      ? rolesData
-      : [];
+    ? rolesData
+    : [];
 
   const permissions: RolePermission[] = Array.isArray((permissionsData as any)?.data?.items)
     ? (permissionsData as any).data.items
     : Array.isArray(permissionsData)
-      ? permissionsData
-      : [];
+    ? permissionsData
+    : [];
 
   const totalAssignedUsers = useMemo(() => {
     return roles.reduce((sum, r) => sum + (r.users?.length ?? 0), 0);
@@ -121,10 +121,11 @@ export default function AdminRolesPage() {
         {/* Toast */}
         {toastMsg && (
           <div
-            className={`px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-2.5 border ${toastMsg.tone === "success"
+            className={`px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-2.5 border ${
+              toastMsg.tone === "success"
                 ? "bg-emerald-50 text-emerald-800 border-emerald-600/15"
                 : "bg-rose-50 text-rose-800 border-rose-600/15"
-              }`}
+            }`}
           >
             {toastMsg.tone === "success" ? (
               <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" strokeWidth={1.5} />
@@ -176,10 +177,11 @@ export default function AdminRolesPage() {
             <button
               type="button"
               onClick={() => setActiveTab("roles")}
-              className={`inline-flex items-center gap-2 h-8 px-3 rounded-lg text-xs font-medium transition-colors duration-150 ${activeTab === "roles"
+              className={`inline-flex items-center gap-2 h-8 px-3 rounded-lg text-xs font-medium transition-colors duration-150 ${
+                activeTab === "roles"
                   ? "bg-white text-neutral-900 shadow-xs"
                   : "text-neutral-600 hover:text-neutral-900"
-                }`}
+              }`}
             >
               <ShieldCheck className="h-4 w-4 text-neutral-500" strokeWidth={1.5} />
               <span>Roles directory</span>
@@ -188,10 +190,11 @@ export default function AdminRolesPage() {
             <button
               type="button"
               onClick={() => setActiveTab("permissions")}
-              className={`inline-flex items-center gap-2 h-8 px-3 rounded-lg text-xs font-medium transition-colors duration-150 ${activeTab === "permissions"
+              className={`inline-flex items-center gap-2 h-8 px-3 rounded-lg text-xs font-medium transition-colors duration-150 ${
+                activeTab === "permissions"
                   ? "bg-white text-neutral-900 shadow-xs"
                   : "text-neutral-600 hover:text-neutral-900"
-                }`}
+              }`}
             >
               <Key className="h-4 w-4 text-neutral-500" strokeWidth={1.5} />
               <span>Permissions</span>
@@ -257,14 +260,16 @@ export default function AdminRolesPage() {
                         </td>
                         <td className="py-3.5 px-5">
                           <span
-                            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md font-medium text-xs border ${role.is_active
+                            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md font-medium text-xs border ${
+                              role.is_active
                                 ? "bg-emerald-50 text-emerald-700 border-emerald-600/15"
                                 : "bg-neutral-100 text-neutral-600 border-neutral-900/[0.08]"
-                              }`}
+                            }`}
                           >
                             <span
-                              className={`w-1.5 h-1.5 rounded-full ${role.is_active ? "bg-emerald-600" : "bg-neutral-400"
-                                }`}
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                role.is_active ? "bg-emerald-600" : "bg-neutral-400"
+                              }`}
                             />
                             {role.is_active ? "Active" : "Inactive"}
                           </span>

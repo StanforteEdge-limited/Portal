@@ -66,7 +66,7 @@ export interface WorkspaceContextValue {
 export const WorkspaceContext = createContext<WorkspaceContextValue>({
   mode: "employee",
   isAdmin: false,
-  switchMode: () => { },
+  switchMode: () => {},
 });
 
 const WORKSPACE_MODE_EVENT = "portal-workspace-mode-change";
@@ -695,8 +695,8 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
   const userRole = user?.roles?.[0]
     ? String(user.roles[0]).replace(/_/g, " ")
     : isAdmin
-      ? "Administrator"
-      : "Staff Member";
+    ? "Administrator"
+    : "Staff Member";
 
   const orgName =
     (user as any)?.workspace_name ||
@@ -898,1087 +898,1113 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
   return (
     <WorkspaceContext.Provider value={{ mode: workspaceMode, isAdmin, switchMode: switchWorkspaceMode }}>
       <div className="min-h-screen bg-[#fafafa] flex flex-col font-sans text-neutral-900 selection:bg-[#ff6900] selection:text-white antialiased">
-        {/* 1. LEFT SIDEBAR */}
-        <aside
-          className={`fixed inset-y-0 left-0 z-40 bg-white border-r border-neutral-900/[0.08] text-neutral-800 flex flex-col justify-between transition-[width,transform] duration-200 ease-out ${isCompactRail ? "w-16 p-2" : "w-64 p-4"
-            } ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
-        >
-          {/* Top: Brand Logo */}
-          <div className="shrink-0 border-b border-neutral-900/[0.08] pb-3">
-            <div className="flex items-center justify-between">
-              <Link to="/dashboard" className="inline-flex items-center justify-center overflow-hidden">
-                {isCompactRail ? (
-                  <div className="w-10 h-10 flex items-center justify-center">
-                    <StanforteLogo variant="light" showText={false} className="h-7" />
-                  </div>
-                ) : (
-                  <StanforteLogo variant="light" className="h-8" />
-                )}
-              </Link>
-
-              {!isCompactRail && (
-                <button
-                  type="button"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="lg:hidden p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100"
-                  aria-label="Close menu"
-                >
-                  <X className="h-5 w-5" />
-                </button>
+      {/* 1. LEFT SIDEBAR */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 bg-white border-r border-neutral-900/[0.08] text-neutral-800 flex flex-col justify-between transition-[width,transform] duration-200 ease-out ${
+          isCompactRail ? "w-16 p-2" : "w-64 p-4"
+        } ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
+      >
+        {/* Top: Brand Logo */}
+        <div className="shrink-0 border-b border-neutral-900/[0.08] pb-3">
+          <div className="flex items-center justify-between">
+            <Link to="/dashboard" className="inline-flex items-center justify-center overflow-hidden">
+              {isCompactRail ? (
+                <div className="w-10 h-10 flex items-center justify-center">
+                  <StanforteLogo variant="light" showText={false} className="h-7" />
+                </div>
+              ) : (
+                <StanforteLogo variant="light" className="h-8" />
               )}
-            </div>
-          </div>
-
-          {/* Middle: Clean Navigation Items */}
-          <div className="flex-1 overflow-y-auto min-h-0 my-3 space-y-3 scrollbar-thin scrollbar-thumb-slate-200 pr-0.5">
-            {/* Mode 1: Clean Employee Workspace Navigation (Matching 2026 Reference Mockup) */}
-            {workspaceMode === "employee" ? (
-              <div className="space-y-4">
-                {/* Primary Personal Navigation Group */}
-                <nav className="space-y-1">
-                  {EMPLOYEE_PRIMARY_NAV_ITEMS.map((item) => {
-                    const Icon = item.icon;
-                    const isActive = isItemActive(item);
-
-                    return (
-                      <Link
-                        key={item.label}
-                        to={item.path}
-                        onClick={() => setMobileMenuOpen(false)}
-                        title={isCompactRail ? item.label : undefined}
-                        className={`w-full flex items-center rounded-lg transition-colors duration-150 group ${isCompactRail
-                            ? "justify-center h-9 w-9 mx-auto my-0.5"
-                            : "justify-between h-9 px-3 text-sm"
-                          } ${isActive
-                            ? "bg-neutral-100 text-neutral-900 font-medium"
-                            : "text-neutral-600 font-normal hover:text-neutral-900 hover:bg-neutral-50"
-                          }`}
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <Icon
-                            strokeWidth={1.5}
-                            className={`h-4 w-4 shrink-0 transition-colors duration-150 ${isActive ? "text-[#c2410c]" : "text-neutral-400 group-hover:text-neutral-700"
-                              }`}
-                          />
-                          {!isCompactRail && <span className="truncate">{item.label}</span>}
-                        </div>
-
-                        {!isCompactRail && item.badge && (
-                          <span className={`font-mono text-xs tabular-nums ${isActive ? "text-[#c2410c]" : "text-neutral-500"
-                            }`}>
-                            {item.badge}
-                          </span>
-                        )}
-                      </Link>
-                    );
-                  })}
-                </nav>
-
-                {/* Secondary Collaboration Group */}
-                <nav className="space-y-0.5 pt-3 border-t border-neutral-900/[0.06]">
-                  {EMPLOYEE_SECONDARY_NAV_ITEMS.map((item) => {
-                    const Icon = item.icon;
-                    const isActive = isItemActive(item);
-
-                    return (
-                      <Link
-                        key={item.label}
-                        to={item.path}
-                        onClick={() => setMobileMenuOpen(false)}
-                        title={isCompactRail ? item.label : undefined}
-                        className={`w-full flex items-center rounded-lg transition-colors duration-150 group ${isCompactRail
-                            ? "justify-center h-9 w-9 mx-auto my-0.5"
-                            : "justify-between h-9 px-3 text-sm"
-                          } ${isActive
-                            ? "bg-neutral-100 text-neutral-900 font-medium"
-                            : "text-neutral-600 font-normal hover:text-neutral-900 hover:bg-neutral-50"
-                          }`}
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <Icon
-                            strokeWidth={1.5}
-                            className={`h-4 w-4 shrink-0 transition-colors duration-150 ${isActive ? "text-[#c2410c]" : "text-neutral-400 group-hover:text-neutral-700"
-                              }`}
-                          />
-                          {!isCompactRail && <span className="truncate">{item.label}</span>}
-                        </div>
-
-                        {!isCompactRail && item.badge && (
-                          <span className={`font-mono text-xs tabular-nums ${isActive ? "text-[#c2410c]" : "text-neutral-500"
-                            }`}>
-                            {item.badge}
-                          </span>
-                        )}
-                      </Link>
-                    );
-                  })}
-                </nav>
-              </div>
-            ) : (
-              /* Mode 2: Admin Console Navigation Groups */
-              <div className="space-y-5">
-                {ADMIN_NAV_GROUPS.map((group) => {
-                  const isCollapsed = collapsedGroups[group.title];
-
-                  return (
-                    <div key={group.title} className="space-y-1">
-                      {!isCompactRail && (
-                        <button
-                          type="button"
-                          onClick={() => toggleGroup(group.title)}
-                          className="w-full px-3 py-1 flex items-center justify-between text-xs font-medium text-neutral-500 hover:text-neutral-900 transition-colors duration-150"
-                        >
-                          <span>{group.title}</span>
-                          <ChevronDown
-                            strokeWidth={1.5}
-                            className={`h-3.5 w-3.5 text-neutral-400 transition-transform duration-150 ${isCollapsed ? "-rotate-90" : ""
-                              }`}
-                          />
-                        </button>
-                      )}
-
-                      {!isCollapsed && (
-                        <nav className="space-y-0.5">
-                          {group.items.map((item) => {
-                            const Icon = item.icon;
-                            const isActive = isItemActive(item);
-
-                            return (
-                              <Link
-                                key={item.label}
-                                to={item.path}
-                                onClick={() => setMobileMenuOpen(false)}
-                                title={isCompactRail ? item.label : undefined}
-                                className={`w-full flex items-center rounded-lg transition-colors duration-150 group ${isCompactRail
-                                    ? "justify-center h-9 w-9 mx-auto my-0.5"
-                                    : "justify-between h-9 px-3 text-sm"
-                                  } ${isActive
-                                    ? "bg-neutral-100 text-neutral-900 font-medium"
-                                    : "text-neutral-600 font-normal hover:text-neutral-900 hover:bg-neutral-50"
-                                  }`}
-                              >
-                                <div className="flex items-center gap-2.5 min-w-0">
-                                  <Icon
-                                    strokeWidth={1.5}
-                                    className={`h-4 w-4 shrink-0 transition-colors duration-150 ${isActive ? "text-[#c2410c]" : "text-neutral-400 group-hover:text-neutral-700"
-                                      }`}
-                                  />
-                                  {!isCompactRail && <span className="truncate">{item.label}</span>}
-                                </div>
-
-                                {!isCompactRail && item.badge && (
-                                  <span className={`font-mono text-xs tabular-nums ${isActive ? "text-[#c2410c]" : "text-neutral-500"
-                                    }`}>
-                                    {item.badge}
-                                  </span>
-                                )}
-                              </Link>
-                            );
-                          })}
-                        </nav>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Bottom: Settings & Quick Profile */}
-          <div className="shrink-0 pt-2 border-t border-neutral-100 space-y-1">
-            <Link
-              to={workspaceMode === "admin" ? "/admin/settings" : "/settings"}
-              className={`w-full flex items-center gap-2.5 py-2 px-3 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50 rounded-xl transition-colors text-xs font-semibold ${isCompactRail ? "justify-center" : "justify-start"
-                }`}
-            >
-              <Settings className="h-4 w-4 text-neutral-400" />
-              {!isCompactRail && <span>Settings</span>}
             </Link>
 
-            {/* User Profile Mini Trigger */}
-            <button
-              type="button"
-              onClick={() => setUserDrawerOpen(true)}
-              className={`w-full flex items-center gap-2.5 p-2 rounded-lg hover:bg-neutral-100/80 transition-colors text-left ${isCompactRail ? "justify-center" : "justify-between"
-                }`}
-            >
-              <div className="w-8 h-8 rounded-md bg-neutral-900 text-white font-medium text-xs flex items-center justify-center shrink-0">
-                {initials || "DO"}
-              </div>
-              {!isCompactRail && (
-                <div className="min-w-0 flex-1 leading-tight">
-                  <div className="text-xs font-medium text-neutral-900 truncate">{userName}</div>
-                  <div className="text-xs text-neutral-500 capitalize truncate">{userRole}</div>
-                </div>
-              )}
-              {!isCompactRail && (
-                <ChevronRight className="h-4 w-4 text-neutral-400 shrink-0" strokeWidth={1.5} />
-              )}
-            </button>
+            {!isCompactRail && (
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(false)}
+                className="lg:hidden p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100"
+                aria-label="Close menu"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            )}
           </div>
-        </aside>
-
-        {/* Backdrop for mobile menu */}
-        {mobileMenuOpen && (
-          <div
-            className="fixed inset-0 bg-neutral-900/60 backdrop-blur-sm z-30 lg:hidden"
-            onClick={() => setMobileMenuOpen(false)}
-          />
-        )}
-
-        {/* ------------------------------------------------------------- */}
-        {/* 2. MAIN CONTAINER & TOP NAVIGATION BAR (Matching Zoho Header)  */}
-        {/* ------------------------------------------------------------- */}
-        <div
-          className={`flex-1 flex flex-col min-w-0 transition-colors duration-200 ${isCompactRail ? "lg:pl-16" : "lg:pl-64"
-            }`}
-        >
-          {/* Sticky Top Bar */}
-          <header className="h-14 shrink-0 bg-white border-b border-neutral-900/[0.08] px-4 sm:px-6 flex items-center justify-between sticky top-0 z-20">
-            {/* Left: Mobile hamburger + Workspace Label + Command Search */}
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setMobileMenuOpen(true)}
-                className="lg:hidden p-2 rounded-lg text-neutral-600 hover:bg-neutral-100 transition-colors duration-150"
-                aria-label="Open menu"
-              >
-                <Menu className="h-5 w-5" strokeWidth={1.5} />
-              </button>
-
-              <div className="flex items-center gap-2 px-2.5 h-8 rounded-lg bg-neutral-100/80 border border-neutral-900/[0.06] text-xs font-medium text-neutral-800">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 shrink-0" />
-                <span className="truncate max-w-[160px] sm:max-w-[240px]">
-                  {(user as any)?.organizations?.[0]?.name || (user as any)?.organization?.name || "Stanforte Edge"}
-                </span>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setCommandPaletteOpen(true)}
-                className="hidden sm:flex items-center gap-2 px-3 h-8 rounded-lg bg-neutral-50 hover:bg-neutral-100 border border-neutral-900/[0.08] text-xs text-neutral-500 hover:text-neutral-900 transition-colors duration-150 w-56 lg:w-72 justify-between cursor-pointer"
-              >
-                <div className="flex items-center gap-2 truncate">
-                  <Search className="h-3.5 w-3.5 text-neutral-400 shrink-0" strokeWidth={1.5} />
-                  <span className="truncate">Search</span>
-                </div>
-                <kbd className="hidden sm:inline-flex items-center px-1.5 h-5 text-xs font-mono font-normal bg-white border border-neutral-900/[0.10] rounded text-neutral-500">
-                  ⌘K
-                </kbd>
-              </button>
-            </div>
-
-            {/* Right Action Items */}
-            <div className="flex items-center gap-2">
-              {isAdmin && (
-                <div className="hidden md:flex items-center p-0.5 rounded-lg bg-neutral-100 border border-neutral-900/[0.06] text-xs font-medium">
-                  <button
-                    type="button"
-                    onClick={() => switchWorkspaceMode("employee")}
-                    className={`flex items-center gap-1.5 px-2.5 h-7 rounded-md transition-colors duration-150 cursor-pointer ${workspaceMode === "employee"
-                        ? "bg-white text-neutral-900 shadow-2xs"
-                        : "text-neutral-500 hover:text-neutral-900"
-                      }`}
-                  >
-                    <UserIcon className="h-3.5 w-3.5" strokeWidth={1.5} />
-                    <span>Personal</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => switchWorkspaceMode("admin")}
-                    className={`flex items-center gap-1.5 px-2.5 h-7 rounded-md transition-colors duration-150 cursor-pointer ${workspaceMode === "admin"
-                        ? "bg-neutral-900 text-white shadow-2xs"
-                        : "text-neutral-500 hover:text-neutral-900"
-                      }`}
-                  >
-                    <ShieldCheck className="h-3.5 w-3.5" strokeWidth={1.5} />
-                    <span>Admin</span>
-                  </button>
-                </div>
-              )}
-
-              <Link
-                to="/account/help"
-                className="p-2 rounded-lg text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 transition-colors duration-150 hidden sm:flex"
-                title="Help"
-              >
-                <HelpCircle className="h-4 w-4" strokeWidth={1.5} />
-              </Link>
-
-              <Link
-                to="/account/notifications"
-                className="relative p-2 rounded-lg text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 transition-colors duration-150"
-                title="Notifications"
-              >
-                <Bell className="h-4 w-4" strokeWidth={1.5} />
-              </Link>
-
-              {isAdmin && (
-                <button
-                  type="button"
-                  onClick={() => setAppLauncherOpen(true)}
-                  className="p-2 rounded-lg hover:bg-neutral-100 text-neutral-600 hover:text-neutral-900 transition-colors duration-150"
-                  title="Applications directory"
-                >
-                  <LayoutGrid className="h-4 w-4" strokeWidth={1.5} />
-                </button>
-              )}
-
-              <div className="relative" ref={userDropdownRef}>
-                <button
-                  type="button"
-                  onClick={() => setUserDropdownOpen((v) => !v)}
-                  className={`flex items-center gap-1.5 p-1 pr-2 rounded-lg transition-colors duration-150 border ${userDropdownOpen
-                      ? "bg-neutral-100 border-neutral-300"
-                      : "hover:bg-neutral-100 border-neutral-900/[0.08]"
-                    }`}
-                  title="Account"
-                >
-                  <div className="w-7 h-7 rounded-md bg-neutral-900 text-white font-medium text-xs flex items-center justify-center">
-                    {initials || "US"}
-                  </div>
-                  <ChevronDown
-                    className={`h-3.5 w-3.5 text-neutral-500 transition-transform duration-150 ${userDropdownOpen ? "rotate-180 text-neutral-900" : ""
-                      }`}
-                    strokeWidth={1.5}
-                  />
-                </button>
-
-                {userDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-soft border border-neutral-900/[0.08] py-2 z-50">
-                    {/* User Profile Header */}
-                    <div className="px-4 py-3 border-b border-neutral-100">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-[#ff6900] text-white font-medium text-sm flex items-center justify-center shrink-0 shadow-sm">
-                          {initials || "AD"}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="text-xs font-medium text-neutral-900 truncate">
-                            {userName}
-                          </div>
-                          <div className="text-xs text-neutral-400 truncate">
-                            {user?.email || "staff@stanforteedge.com"}
-                          </div>
-                          <div className="mt-1 flex items-center gap-1.5 flex-wrap">
-                            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-orange-50 text-[#ff6900] border border-orange-200/60">
-                              {userRole}
-                            </span>
-                            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-neutral-100 text-neutral-600">
-                              {workspaceMode === "admin" ? "Admin Mode" : "Staff Mode"}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* ADMIN CONSOLE VIEW SWITCH ACTION (Prominent for admins) */}
-                    {isAdmin && (
-                      <div className="p-2 border-b border-neutral-100 bg-neutral-50/50">
-                        {workspaceMode === "employee" ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              switchWorkspaceMode("admin");
-                              setUserDropdownOpen(false);
-                            }}
-                            className="w-full flex items-center justify-between p-2.5 rounded-xl bg-neutral-100 hover:bg-neutral-100 border border-neutral-200 text-blue-900 transition text-xs font-medium group shadow-xs"
-                          >
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-lg bg-neutral-900 text-white flex items-center justify-center shadow-sm shrink-0">
-                                <ShieldCheck className="h-4 w-4" />
-                              </div>
-                              <div className="text-left">
-                                <div className="text-xs font-semibold text-blue-900">
-                                  View Admin Console
-                                </div>
-                                <div className="text-xs font-medium text-neutral-700">
-                                  Workforce &amp; Management Hub
-                                </div>
-                              </div>
-                            </div>
-                            <ChevronRight className="h-4 w-4 text-neutral-700 transition-transform shrink-0" />
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              switchWorkspaceMode("employee");
-                              setUserDropdownOpen(false);
-                            }}
-                            className="w-full flex items-center justify-between p-2.5 rounded-xl bg-orange-50 hover:bg-orange-100/90 border border-orange-200/70 text-orange-950 transition text-xs font-medium group shadow-xs"
-                          >
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-lg bg-[#ff6900] text-white flex items-center justify-center shadow-sm shrink-0">
-                                <UserIcon className="h-4 w-4" />
-                              </div>
-                              <div className="text-left">
-                                <div className="text-xs font-semibold text-orange-900">
-                                  Staff Workspace
-                                </div>
-                                <div className="text-xs font-medium text-[#ff6900]">
-                                  Return to daily staff dashboard
-                                </div>
-                              </div>
-                            </div>
-                            <ChevronRight className="h-4 w-4 text-orange-500 transition-transform shrink-0" />
-                          </button>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Navigation Links */}
-                    <div className="p-1 text-xs space-y-0.5">
-                      <Link
-                        to="/account/profile"
-                        onClick={() => setUserDropdownOpen(false)}
-                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-neutral-700 hover:bg-neutral-50 font-medium transition"
-                      >
-                        <UserIcon className="h-4 w-4 text-neutral-400" />
-                        <span>My Profile</span>
-                      </Link>
-
-                      <Link
-                        to="/account/payslips"
-                        onClick={() => setUserDropdownOpen(false)}
-                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-neutral-700 hover:bg-neutral-50 font-medium transition"
-                      >
-                        <Receipt className="h-4 w-4 text-neutral-400" />
-                        <span>My Payslips</span>
-                      </Link>
-
-                      <Link
-                        to="/account/timesheets"
-                        onClick={() => setUserDropdownOpen(false)}
-                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-neutral-700 hover:bg-neutral-50 font-medium transition"
-                      >
-                        <CalendarCheck className="h-4 w-4 text-neutral-400" />
-                        <span>My Timesheets</span>
-                      </Link>
-
-                      <Link
-                        to="/account/settings"
-                        onClick={() => setUserDropdownOpen(false)}
-                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-neutral-700 hover:bg-neutral-50 font-medium transition"
-                      >
-                        <Settings className="h-4 w-4 text-neutral-400" />
-                        <span>Account Settings</span>
-                      </Link>
-
-                      {isAdmin && (
-                        <Link
-                          to="/admin/settings"
-                          onClick={() => setUserDropdownOpen(false)}
-                          className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-neutral-700 hover:bg-neutral-50 font-medium transition"
-                        >
-                          <SlidersHorizontal className="h-4 w-4 text-neutral-400" />
-                          <span>System Administration</span>
-                        </Link>
-                      )}
-                    </div>
-
-                    {/* Sign Out */}
-                    <div className="p-1 pt-1 border-t border-neutral-100">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setUserDropdownOpen(false);
-                          handleSignOut();
-                        }}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 transition"
-                      >
-                        <LogOut className="h-4 w-4" />
-                        <span>Sign Out</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </header>
-
-          {/* Inner Content View - Full width dashboard layout */}
-          <main className="p-4 sm:p-6 lg:p-8 space-y-6 w-full flex-1 pb-16 min-w-0">
-            {children}
-          </main>
         </div>
 
-        {/* ------------------------------------------------------------- */}
-        {/* 3. 9-DOTS APP LAUNCHER SLIDE-OVER DRAWER (Admin only)         */}
-        {/* ------------------------------------------------------------- */}
-        {appLauncherOpen && isAdmin && (
-          <div className="fixed inset-0 z-50 overflow-hidden">
-            {/* Backdrop */}
-            <div
-              className="absolute inset-0 bg-neutral-900/50 backdrop-blur-sm transition-opacity"
-              onClick={() => setAppLauncherOpen(false)}
-            />
+        {/* Middle: Clean Navigation Items */}
+        <div className="flex-1 overflow-y-auto min-h-0 my-3 space-y-3 scrollbar-thin scrollbar-thumb-slate-200 pr-0.5">
+          {/* Mode 1: Clean Employee Workspace Navigation (Matching 2026 Reference Mockup) */}
+          {workspaceMode === "employee" ? (
+            <div className="space-y-4">
+              {/* Primary Personal Navigation Group */}
+              <nav className="space-y-1">
+                {EMPLOYEE_PRIMARY_NAV_ITEMS.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = isItemActive(item);
 
-            <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
-              <div className="w-screen max-w-md bg-[#0d1633] text-white shadow-2xl flex flex-col justify-between">
-                {/* Drawer Top Header & Search */}
-                <div className="p-5 border-b border-white/10 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-lg bg-[#ff6900] text-white flex items-center justify-center">
-                        <LayoutGrid className="h-4 w-4" />
-                      </div>
-                      <h3 className="font-semibold text-sm text-white">Application Launcher</h3>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setAppLauncherOpen(false)}
-                      className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10"
+                  return (
+                    <Link
+                      key={item.label}
+                      to={item.path}
+                      onClick={() => setMobileMenuOpen(false)}
+                      title={isCompactRail ? item.label : undefined}
+                      className={`w-full flex items-center rounded-lg transition-colors duration-150 group ${
+                        isCompactRail
+                          ? "justify-center h-9 w-9 mx-auto my-0.5"
+                          : "justify-between h-9 px-3 text-sm"
+                      } ${
+                        isActive
+                          ? "bg-neutral-100 text-neutral-900 font-medium"
+                          : "text-neutral-600 font-normal hover:text-neutral-900 hover:bg-neutral-50"
+                      }`}
                     >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Icon
+                          strokeWidth={1.5}
+                          className={`h-4 w-4 shrink-0 transition-colors duration-150 ${
+                            isActive ? "text-[#c2410c]" : "text-neutral-400 group-hover:text-neutral-700"
+                          }`}
+                        />
+                        {!isCompactRail && <span className="truncate">{item.label}</span>}
+                      </div>
 
-                  {/* Search in Apps */}
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-400" />
-                    <input
-                      type="text"
-                      value={launcherSearch}
-                      onChange={(e) => setLauncherSearch(e.target.value)}
-                      placeholder="Search applications & tools..."
-                      className="w-full pl-9 pr-3 py-2 text-xs bg-white/5 border border-white/10 rounded-xl text-white placeholder-neutral-400 outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
-                    />
-                  </div>
-                </div>
+                      {!isCompactRail && item.badge && (
+                        <span className={`font-mono text-xs tabular-nums ${
+                          isActive ? "text-[#c2410c]" : "text-neutral-500"
+                        }`}>
+                          {item.badge}
+                        </span>
+                      )}
+                    </Link>
+                  );
+                })}
+              </nav>
 
-                {/* Scrollable Apps Grid */}
-                <div className="flex-1 overflow-y-auto p-5 space-y-6 scrollbar-thin scrollbar-thumb-white/10">
-                  {/* Featured App Banner (Image 3) */}
-                  <div className="p-4 rounded-2xl bg-gradient-to-r from-orange-600/30 to-amber-600/20 border border-orange-500/30 relative overflow-hidden">
-                    <div className="relative z-10">
-                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-[#ff6900] text-white">
-                        Featured Module
-                      </span>
-                      <h4 className="text-sm font-medium text-white mt-1.5">
-                        Stanforte People & Payroll
-                      </h4>
-                      <p className="text-xs text-neutral-300 mt-1 leading-relaxed">
-                        Automated salary calculations, statutory deductions (PAYE, NHF, Pension), and one-click bank disbursement.
-                      </p>
-                      <Link
-                        to="/admin/payroll/authorization"
-                        onClick={() => setAppLauncherOpen(false)}
-                        className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-orange-400 hover:text-orange-300 transition"
+              {/* Secondary Collaboration Group */}
+              <nav className="space-y-0.5 pt-3 border-t border-neutral-900/[0.06]">
+                {EMPLOYEE_SECONDARY_NAV_ITEMS.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = isItemActive(item);
+
+                  return (
+                    <Link
+                      key={item.label}
+                      to={item.path}
+                      onClick={() => setMobileMenuOpen(false)}
+                      title={isCompactRail ? item.label : undefined}
+                      className={`w-full flex items-center rounded-lg transition-colors duration-150 group ${
+                        isCompactRail
+                          ? "justify-center h-9 w-9 mx-auto my-0.5"
+                          : "justify-between h-9 px-3 text-sm"
+                      } ${
+                        isActive
+                          ? "bg-neutral-100 text-neutral-900 font-medium"
+                          : "text-neutral-600 font-normal hover:text-neutral-900 hover:bg-neutral-50"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Icon
+                          strokeWidth={1.5}
+                          className={`h-4 w-4 shrink-0 transition-colors duration-150 ${
+                            isActive ? "text-[#c2410c]" : "text-neutral-400 group-hover:text-neutral-700"
+                          }`}
+                        />
+                        {!isCompactRail && <span className="truncate">{item.label}</span>}
+                      </div>
+
+                      {!isCompactRail && item.badge && (
+                        <span className={`font-mono text-xs tabular-nums ${
+                          isActive ? "text-[#c2410c]" : "text-neutral-500"
+                        }`}>
+                          {item.badge}
+                        </span>
+                      )}
+                    </Link>
+                  );
+                })}
+              </nav>
+            </div>
+          ) : (
+            /* Mode 2: Admin Console Navigation Groups */
+            <div className="space-y-5">
+              {ADMIN_NAV_GROUPS.map((group) => {
+                const isCollapsed = collapsedGroups[group.title];
+
+                return (
+                  <div key={group.title} className="space-y-1">
+                    {!isCompactRail && (
+                      <button
+                        type="button"
+                        onClick={() => toggleGroup(group.title)}
+                        className="w-full px-3 py-1 flex items-center justify-between text-xs font-medium text-neutral-500 hover:text-neutral-900 transition-colors duration-150"
                       >
-                        <span>Open Payroll Authorization</span>
-                        <ArrowRight className="h-3 w-3" />
-                      </Link>
-                    </div>
-                  </div>
+                        <span>{group.title}</span>
+                        <ChevronDown
+                          strokeWidth={1.5}
+                          className={`h-3.5 w-3.5 text-neutral-400 transition-transform duration-150 ${
+                            isCollapsed ? "-rotate-90" : ""
+                          }`}
+                        />
+                      </button>
+                    )}
 
-                  {/* Categorized Apps List */}
-                  {filteredCatalog.map((cat) => (
-                    <div key={cat.category} className="space-y-2.5">
-                      <p className="text-xs font-medium text-neutral-400">
-                        {cat.category}
-                      </p>
+                    {!isCollapsed && (
+                      <nav className="space-y-0.5">
+                        {group.items.map((item) => {
+                          const Icon = item.icon;
+                          const isActive = isItemActive(item);
 
-                      <div className="grid grid-cols-2 gap-2.5">
-                        {cat.apps.map((app) => {
-                          const Icon = app.icon;
                           return (
                             <Link
-                              key={app.name}
-                              to={app.path}
-                              onClick={() => setAppLauncherOpen(false)}
-                              className="p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 transition-colors group flex flex-col justify-between"
+                              key={item.label}
+                              to={item.path}
+                              onClick={() => setMobileMenuOpen(false)}
+                              title={isCompactRail ? item.label : undefined}
+                              className={`w-full flex items-center rounded-lg transition-colors duration-150 group ${
+                                isCompactRail
+                                  ? "justify-center h-9 w-9 mx-auto my-0.5"
+                                  : "justify-between h-9 px-3 text-sm"
+                              } ${
+                                isActive
+                                  ? "bg-neutral-100 text-neutral-900 font-medium"
+                                  : "text-neutral-600 font-normal hover:text-neutral-900 hover:bg-neutral-50"
+                              }`}
                             >
-                              <div className="flex items-center justify-between gap-2 mb-2">
-                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${app.color}`}>
-                                  <Icon className="h-4 w-4" />
-                                </div>
-                                {app.badge && (
-                                  <span className="px-1.5 py-0.5 rounded-full text-xs font-medium bg-[#ff6900] text-white">
-                                    {app.badge}
-                                  </span>
-                                )}
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <Icon
+                                  strokeWidth={1.5}
+                                  className={`h-4 w-4 shrink-0 transition-colors duration-150 ${
+                                    isActive ? "text-[#c2410c]" : "text-neutral-400 group-hover:text-neutral-700"
+                                  }`}
+                                />
+                                {!isCompactRail && <span className="truncate">{item.label}</span>}
                               </div>
 
-                              <div>
-                                <p className="text-xs font-medium text-white group-hover:text-orange-400 transition-colors">
-                                  {app.name}
-                                </p>
-                                <p className="text-xs text-neutral-400 line-clamp-1 mt-0.5">
-                                  {app.description}
-                                </p>
-                              </div>
+                              {!isCompactRail && item.badge && (
+                                <span className={`font-mono text-xs tabular-nums ${
+                                  isActive ? "text-[#c2410c]" : "text-neutral-500"
+                                }`}>
+                                  {item.badge}
+                                </span>
+                              )}
                             </Link>
                           );
                         })}
+                      </nav>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Bottom: Settings & Quick Profile */}
+        <div className="shrink-0 pt-2 border-t border-neutral-100 space-y-1">
+          <Link
+            to={workspaceMode === "admin" ? "/admin/settings" : "/settings"}
+            className={`w-full flex items-center gap-2.5 py-2 px-3 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50 rounded-xl transition-colors text-xs font-semibold ${
+              isCompactRail ? "justify-center" : "justify-start"
+            }`}
+          >
+            <Settings className="h-4 w-4 text-neutral-400" />
+            {!isCompactRail && <span>Settings</span>}
+          </Link>
+
+          {/* User Profile Mini Trigger */}
+          <button
+            type="button"
+            onClick={() => setUserDrawerOpen(true)}
+            className={`w-full flex items-center gap-2.5 p-2 rounded-lg hover:bg-neutral-100/80 transition-colors text-left ${
+              isCompactRail ? "justify-center" : "justify-between"
+            }`}
+          >
+            <div className="w-8 h-8 rounded-md bg-neutral-900 text-white font-medium text-xs flex items-center justify-center shrink-0">
+              {initials || "DO"}
+            </div>
+            {!isCompactRail && (
+              <div className="min-w-0 flex-1 leading-tight">
+                <div className="text-xs font-medium text-neutral-900 truncate">{userName}</div>
+                <div className="text-xs text-neutral-500 capitalize truncate">{userRole}</div>
+              </div>
+            )}
+            {!isCompactRail && (
+              <ChevronRight className="h-4 w-4 text-neutral-400 shrink-0" strokeWidth={1.5} />
+            )}
+          </button>
+        </div>
+      </aside>
+
+      {/* Backdrop for mobile menu */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-neutral-900/60 backdrop-blur-sm z-30 lg:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* 2. MAIN CONTAINER & TOP NAVIGATION BAR (Matching Zoho Header)  */}
+      {/* ------------------------------------------------------------- */}
+      <div
+        className={`flex-1 flex flex-col min-w-0 transition-colors duration-200 ${
+          isCompactRail ? "lg:pl-16" : "lg:pl-64"
+        }`}
+      >
+        {/* Sticky Top Bar */}
+        <header className="h-14 shrink-0 bg-white border-b border-neutral-900/[0.08] px-4 sm:px-6 flex items-center justify-between sticky top-0 z-20">
+          {/* Left: Mobile hamburger + Workspace Label + Command Search */}
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(true)}
+              className="lg:hidden p-2 rounded-lg text-neutral-600 hover:bg-neutral-100 transition-colors duration-150"
+              aria-label="Open menu"
+            >
+              <Menu className="h-5 w-5" strokeWidth={1.5} />
+            </button>
+
+            <div className="flex items-center gap-2 px-2.5 h-8 rounded-lg bg-neutral-100/80 border border-neutral-900/[0.06] text-xs font-medium text-neutral-800">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 shrink-0" />
+              <span className="truncate max-w-[160px] sm:max-w-[240px]">
+                {(user as any)?.organizations?.[0]?.name || (user as any)?.organization?.name || "Stanforte Edge"}
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setCommandPaletteOpen(true)}
+              className="hidden sm:flex items-center gap-2 px-3 h-8 rounded-lg bg-neutral-50 hover:bg-neutral-100 border border-neutral-900/[0.08] text-xs text-neutral-500 hover:text-neutral-900 transition-colors duration-150 w-56 lg:w-72 justify-between cursor-pointer"
+            >
+              <div className="flex items-center gap-2 truncate">
+                <Search className="h-3.5 w-3.5 text-neutral-400 shrink-0" strokeWidth={1.5} />
+                <span className="truncate">Search</span>
+              </div>
+              <kbd className="hidden sm:inline-flex items-center px-1.5 h-5 text-xs font-mono font-normal bg-white border border-neutral-900/[0.10] rounded text-neutral-500">
+                ⌘K
+              </kbd>
+            </button>
+          </div>
+
+          {/* Right Action Items */}
+          <div className="flex items-center gap-2">
+            {isAdmin && (
+              <div className="hidden md:flex items-center p-0.5 rounded-lg bg-neutral-100 border border-neutral-900/[0.06] text-xs font-medium">
+                <button
+                  type="button"
+                  onClick={() => switchWorkspaceMode("employee")}
+                  className={`flex items-center gap-1.5 px-2.5 h-7 rounded-md transition-colors duration-150 cursor-pointer ${
+                    workspaceMode === "employee"
+                      ? "bg-white text-neutral-900 shadow-2xs"
+                      : "text-neutral-500 hover:text-neutral-900"
+                  }`}
+                >
+                  <UserIcon className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  <span>Personal</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchWorkspaceMode("admin")}
+                  className={`flex items-center gap-1.5 px-2.5 h-7 rounded-md transition-colors duration-150 cursor-pointer ${
+                    workspaceMode === "admin"
+                      ? "bg-neutral-900 text-white shadow-2xs"
+                      : "text-neutral-500 hover:text-neutral-900"
+                  }`}
+                >
+                  <ShieldCheck className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  <span>Admin</span>
+                </button>
+              </div>
+            )}
+
+            <Link
+              to="/account/help"
+              className="p-2 rounded-lg text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 transition-colors duration-150 hidden sm:flex"
+              title="Help"
+            >
+              <HelpCircle className="h-4 w-4" strokeWidth={1.5} />
+            </Link>
+
+            <Link
+              to="/account/notifications"
+              className="relative p-2 rounded-lg text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 transition-colors duration-150"
+              title="Notifications"
+            >
+              <Bell className="h-4 w-4" strokeWidth={1.5} />
+            </Link>
+
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => setAppLauncherOpen(true)}
+                className="p-2 rounded-lg hover:bg-neutral-100 text-neutral-600 hover:text-neutral-900 transition-colors duration-150"
+                title="Applications directory"
+              >
+                <LayoutGrid className="h-4 w-4" strokeWidth={1.5} />
+              </button>
+            )}
+
+            <div className="relative" ref={userDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setUserDropdownOpen((v) => !v)}
+                className={`flex items-center gap-1.5 p-1 pr-2 rounded-lg transition-colors duration-150 border ${
+                  userDropdownOpen
+                    ? "bg-neutral-100 border-neutral-300"
+                    : "hover:bg-neutral-100 border-neutral-900/[0.08]"
+                }`}
+                title="Account"
+              >
+                <div className="w-7 h-7 rounded-md bg-neutral-900 text-white font-medium text-xs flex items-center justify-center">
+                  {initials || "US"}
+                </div>
+                <ChevronDown
+                  className={`h-3.5 w-3.5 text-neutral-500 transition-transform duration-150 ${
+                    userDropdownOpen ? "rotate-180 text-neutral-900" : ""
+                  }`}
+                  strokeWidth={1.5}
+                />
+              </button>
+
+              {userDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-soft border border-neutral-900/[0.08] py-2 z-50">
+                  {/* User Profile Header */}
+                  <div className="px-4 py-3 border-b border-neutral-100">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-[#ff6900] text-white font-medium text-sm flex items-center justify-center shrink-0 shadow-sm">
+                        {initials || "AD"}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs font-medium text-neutral-900 truncate">
+                          {userName}
+                        </div>
+                        <div className="text-xs text-neutral-400 truncate">
+                          {user?.email || "staff@stanforteedge.com"}
+                        </div>
+                        <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-orange-50 text-[#ff6900] border border-orange-200/60">
+                            {userRole}
+                          </span>
+                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-neutral-100 text-neutral-600">
+                            {workspaceMode === "admin" ? "Admin Mode" : "Staff Mode"}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  ))}
-                </div>
+                  </div>
 
-                {/* Bottom Footer */}
-                <div className="p-4 border-t border-white/10 text-center text-xs text-neutral-400">
-                  Organization: <span className="text-white font-medium">{orgName}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ------------------------------------------------------------- */}
-        {/* 4. USER PROFILE SLIDE-OVER DRAWER (Image 2)                   */}
-        {/* ------------------------------------------------------------- */}
-        {userDrawerOpen && (
-          <div className="fixed inset-0 z-50 overflow-hidden">
-            {/* Backdrop */}
-            <div
-              className="absolute inset-0 bg-neutral-900/50 backdrop-blur-sm transition-opacity"
-              onClick={() => setUserDrawerOpen(false)}
-            />
-
-            <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
-              <div className="w-screen max-w-sm bg-[#0d1633] text-white shadow-2xl flex flex-col justify-between">
-                {/* Top User Card */}
-                <div className="p-6 border-b border-white/10 relative">
-                  <button
-                    type="button"
-                    onClick={() => setUserDrawerOpen(false)}
-                    className="absolute top-4 right-4 p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-
-                  <div className="flex flex-col items-center text-center space-y-3 pt-2">
-                    <div className="w-20 h-20 rounded-full bg-[#ff6900] text-white font-semibold text-2xl flex items-center justify-center ring-4 ring-white/10 shadow-xl">
-                      {initials || "AD"}
-                    </div>
-
-                    <div>
-                      <h3 className="text-base font-semibold text-white">{userName}</h3>
-                      <p className="text-xs text-neutral-400">{user?.email || "staff@stanforteedge.com"}</p>
-                      <span className="inline-block mt-2 px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/10 text-orange-400 border border-white/10">
-                        {userRole}
-                      </span>
-                    </div>
-
-                    {/* Admin Console Switch Action (Image 2) */}
-                    {isAdmin && (
-                      <div className="w-full pt-2">
+                  {/* ADMIN CONSOLE VIEW SWITCH ACTION (Prominent for admins) */}
+                  {isAdmin && (
+                    <div className="p-2 border-b border-neutral-100 bg-neutral-50/50">
+                      {workspaceMode === "employee" ? (
                         <button
                           type="button"
                           onClick={() => {
-                            switchWorkspaceMode(workspaceMode === "admin" ? "employee" : "admin");
-                            setUserDrawerOpen(false);
+                            switchWorkspaceMode("admin");
+                            setUserDropdownOpen(false);
                           }}
-                          className={`w-full py-2 px-4 rounded-xl text-xs font-medium transition flex items-center justify-center gap-2 shadow-md ${workspaceMode === "admin"
-                              ? "bg-neutral-800 text-neutral-200 border border-neutral-700"
-                              : "bg-neutral-900 hover:bg-neutral-900 text-white"
-                            }`}
+                          className="w-full flex items-center justify-between p-2.5 rounded-xl bg-neutral-100 hover:bg-neutral-100 border border-neutral-200 text-blue-900 transition text-xs font-medium group shadow-xs"
                         >
-                          <ShieldCheck className="h-4 w-4" />
-                          <span>
-                            {workspaceMode === "admin" ? "Return to My Workspace" : "Open Admin Console"}
-                          </span>
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-neutral-900 text-white flex items-center justify-center shadow-sm shrink-0">
+                              <ShieldCheck className="h-4 w-4" />
+                            </div>
+                            <div className="text-left">
+                              <div className="text-xs font-semibold text-blue-900">
+                                View Admin Console
+                              </div>
+                              <div className="text-xs font-medium text-neutral-700">
+                                Workforce &amp; Management Hub
+                              </div>
+                            </div>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-neutral-700 transition-transform shrink-0" />
                         </button>
-                      </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            switchWorkspaceMode("employee");
+                            setUserDropdownOpen(false);
+                          }}
+                          className="w-full flex items-center justify-between p-2.5 rounded-xl bg-orange-50 hover:bg-orange-100/90 border border-orange-200/70 text-orange-950 transition text-xs font-medium group shadow-xs"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-[#ff6900] text-white flex items-center justify-center shadow-sm shrink-0">
+                              <UserIcon className="h-4 w-4" />
+                            </div>
+                            <div className="text-left">
+                              <div className="text-xs font-semibold text-orange-900">
+                                Staff Workspace
+                              </div>
+                              <div className="text-xs font-medium text-[#ff6900]">
+                                Return to daily staff dashboard
+                              </div>
+                            </div>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-orange-500 transition-transform shrink-0" />
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Navigation Links */}
+                  <div className="p-1 text-xs space-y-0.5">
+                    <Link
+                      to="/account/profile"
+                      onClick={() => setUserDropdownOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-neutral-700 hover:bg-neutral-50 font-medium transition"
+                    >
+                      <UserIcon className="h-4 w-4 text-neutral-400" />
+                      <span>My Profile</span>
+                    </Link>
+
+                    <Link
+                      to="/account/payslips"
+                      onClick={() => setUserDropdownOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-neutral-700 hover:bg-neutral-50 font-medium transition"
+                    >
+                      <Receipt className="h-4 w-4 text-neutral-400" />
+                      <span>My Payslips</span>
+                    </Link>
+
+                    <Link
+                      to="/account/timesheets"
+                      onClick={() => setUserDropdownOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-neutral-700 hover:bg-neutral-50 font-medium transition"
+                    >
+                      <CalendarCheck className="h-4 w-4 text-neutral-400" />
+                      <span>My Timesheets</span>
+                    </Link>
+
+                    <Link
+                      to="/account/settings"
+                      onClick={() => setUserDropdownOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-neutral-700 hover:bg-neutral-50 font-medium transition"
+                    >
+                      <Settings className="h-4 w-4 text-neutral-400" />
+                      <span>Account Settings</span>
+                    </Link>
+
+                    {isAdmin && (
+                      <Link
+                        to="/admin/settings"
+                        onClick={() => setUserDropdownOpen(false)}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-neutral-700 hover:bg-neutral-50 font-medium transition"
+                      >
+                        <SlidersHorizontal className="h-4 w-4 text-neutral-400" />
+                        <span>System Administration</span>
+                      </Link>
                     )}
+                  </div>
+
+                  {/* Sign Out */}
+                  <div className="p-1 pt-1 border-t border-neutral-100">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUserDropdownOpen(false);
+                        handleSignOut();
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 transition"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
+
+        {/* Inner Content View - Full width dashboard layout */}
+        <main className="p-4 sm:p-6 lg:p-8 space-y-6 w-full flex-1 pb-16 min-w-0">
+          {children}
+        </main>
+      </div>
+
+      {/* ------------------------------------------------------------- */}
+      {/* 3. 9-DOTS APP LAUNCHER SLIDE-OVER DRAWER (Admin only)         */}
+      {/* ------------------------------------------------------------- */}
+      {appLauncherOpen && isAdmin && (
+        <div className="fixed inset-0 z-50 overflow-hidden">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-neutral-900/50 backdrop-blur-sm transition-opacity"
+            onClick={() => setAppLauncherOpen(false)}
+          />
+
+          <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
+            <div className="w-screen max-w-md bg-[#0d1633] text-white shadow-2xl flex flex-col justify-between">
+              {/* Drawer Top Header & Search */}
+              <div className="p-5 border-b border-white/10 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-[#ff6900] text-white flex items-center justify-center">
+                      <LayoutGrid className="h-4 w-4" />
+                    </div>
+                    <h3 className="font-semibold text-sm text-white">Application Launcher</h3>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setAppLauncherOpen(false)}
+                    className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {/* Search in Apps */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-400" />
+                  <input
+                    type="text"
+                    value={launcherSearch}
+                    onChange={(e) => setLauncherSearch(e.target.value)}
+                    placeholder="Search applications & tools..."
+                    className="w-full pl-9 pr-3 py-2 text-xs bg-white/5 border border-white/10 rounded-xl text-white placeholder-neutral-400 outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+                  />
+                </div>
+              </div>
+
+              {/* Scrollable Apps Grid */}
+              <div className="flex-1 overflow-y-auto p-5 space-y-6 scrollbar-thin scrollbar-thumb-white/10">
+                {/* Featured App Banner (Image 3) */}
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-orange-600/30 to-amber-600/20 border border-orange-500/30 relative overflow-hidden">
+                  <div className="relative z-10">
+                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-[#ff6900] text-white">
+                      Featured Module
+                    </span>
+                    <h4 className="text-sm font-medium text-white mt-1.5">
+                      Stanforte People & Payroll
+                    </h4>
+                    <p className="text-xs text-neutral-300 mt-1 leading-relaxed">
+                      Automated salary calculations, statutory deductions (PAYE, NHF, Pension), and one-click bank disbursement.
+                    </p>
+                    <Link
+                      to="/admin/payroll/authorization"
+                      onClick={() => setAppLauncherOpen(false)}
+                      className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-orange-400 hover:text-orange-300 transition"
+                    >
+                      <span>Open Payroll Authorization</span>
+                      <ArrowRight className="h-3 w-3" />
+                    </Link>
                   </div>
                 </div>
 
-                {/* Drawer Body Settings & Preferences */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                  {/* Account Links */}
-                  <div className="space-y-1">
-                    <p className="text-xs font-medium text-neutral-400 mb-2">
-                      Account & Preferences
-                    </p>
-                    <Link
-                      to="/account/profile"
-                      onClick={() => setUserDrawerOpen(false)}
-                      className="flex items-center justify-between p-2.5 rounded-xl hover:bg-white/5 text-xs font-semibold text-neutral-200 transition"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <UserIcon className="h-4 w-4 text-neutral-400" />
-                        <span>My Profile</span>
-                      </div>
-                      <ChevronRight className="h-3.5 w-3.5 text-neutral-500" />
-                    </Link>
-
-                    <Link
-                      to="/admin/settings"
-                      onClick={() => setUserDrawerOpen(false)}
-                      className="flex items-center justify-between p-2.5 rounded-xl hover:bg-white/5 text-xs font-semibold text-neutral-200 transition"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <Settings className="h-4 w-4 text-neutral-400" />
-                        <span>System Settings</span>
-                      </div>
-                      <ChevronRight className="h-3.5 w-3.5 text-neutral-500" />
-                    </Link>
-                  </div>
-
-                  {/* Left Panel Density Control (Image 2) */}
-                  <div className="space-y-2">
+                {/* Categorized Apps List */}
+                {filteredCatalog.map((cat) => (
+                  <div key={cat.category} className="space-y-2.5">
                     <p className="text-xs font-medium text-neutral-400">
-                      Sidebar Density
+                      {cat.category}
                     </p>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => toggleRail(false)}
-                        className={`p-2.5 rounded-xl border text-xs font-medium transition flex items-center gap-2 justify-center ${!isCompactRail
-                            ? "bg-[#ff6900] text-white border-[#ff6900]"
-                            : "bg-white/5 text-neutral-300 border-white/10 hover:bg-white/10"
-                          }`}
-                      >
-                        <PanelLeft className="h-3.5 w-3.5" />
-                        <span>Expanded (240px)</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => toggleRail(true)}
-                        className={`p-2.5 rounded-xl border text-xs font-medium transition flex items-center gap-2 justify-center ${isCompactRail
-                            ? "bg-[#ff6900] text-white border-[#ff6900]"
-                            : "bg-white/5 text-neutral-300 border-white/10 hover:bg-white/10"
-                          }`}
-                      >
-                        <PanelLeftClose className="h-3.5 w-3.5" />
-                        <span>Compact Rail (64px)</span>
-                      </button>
-                    </div>
-                  </div>
 
-                  {/* Appearance Mode (Image 2) */}
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium text-neutral-400">
-                      Appearance Mode
-                    </p>
-                    <div className="grid grid-cols-3 gap-2">
-                      {[
-                        { id: "light" as const, label: "Light", icon: Sun },
-                        { id: "dark" as const, label: "Dark", icon: Moon },
-                        { id: "system" as const, label: "System", icon: Laptop },
-                      ].map((mode) => {
-                        const Icon = mode.icon;
-                        const active = appearanceMode === mode.id;
+                    <div className="grid grid-cols-2 gap-2.5">
+                      {cat.apps.map((app) => {
+                        const Icon = app.icon;
                         return (
-                          <button
-                            key={mode.id}
-                            type="button"
-                            onClick={() => setAppearanceMode(mode.id)}
-                            className={`p-2 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition ${active
-                                ? "bg-white text-neutral-900 border-white font-medium"
-                                : "bg-white/5 text-neutral-400 border-white/10 hover:bg-white/10"
-                              }`}
+                          <Link
+                            key={app.name}
+                            to={app.path}
+                            onClick={() => setAppLauncherOpen(false)}
+                            className="p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 transition-colors group flex flex-col justify-between"
                           >
-                            <Icon className="h-3.5 w-3.5" />
-                            <span>{mode.label}</span>
-                          </button>
+                            <div className="flex items-center justify-between gap-2 mb-2">
+                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${app.color}`}>
+                                <Icon className="h-4 w-4" />
+                              </div>
+                              {app.badge && (
+                                <span className="px-1.5 py-0.5 rounded-full text-xs font-medium bg-[#ff6900] text-white">
+                                  {app.badge}
+                                </span>
+                              )}
+                            </div>
+
+                            <div>
+                              <p className="text-xs font-medium text-white group-hover:text-orange-400 transition-colors">
+                                {app.name}
+                              </p>
+                              <p className="text-xs text-neutral-400 line-clamp-1 mt-0.5">
+                                {app.description}
+                              </p>
+                            </div>
+                          </Link>
                         );
                       })}
                     </div>
                   </div>
+                ))}
+              </div>
 
-                  {/* Timezone & Regional Display */}
-                  <div className="p-3 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-lg bg-orange-500/15 text-[#ff6900] flex items-center justify-center shrink-0">
-                        <Globe className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <div className="text-xs text-neutral-400 font-semibold">Timezone &amp; Format</div>
-                        <div className="text-xs font-medium text-white mt-0.5">WAT (Africa/Lagos) &bull; 12-Hour</div>
-                      </div>
+              {/* Bottom Footer */}
+              <div className="p-4 border-t border-white/10 text-center text-xs text-neutral-400">
+                Organization: <span className="text-white font-medium">{orgName}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* 4. USER PROFILE SLIDE-OVER DRAWER (Image 2)                   */}
+      {/* ------------------------------------------------------------- */}
+      {userDrawerOpen && (
+        <div className="fixed inset-0 z-50 overflow-hidden">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-neutral-900/50 backdrop-blur-sm transition-opacity"
+            onClick={() => setUserDrawerOpen(false)}
+          />
+
+          <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
+            <div className="w-screen max-w-sm bg-[#0d1633] text-white shadow-2xl flex flex-col justify-between">
+              {/* Top User Card */}
+              <div className="p-6 border-b border-white/10 relative">
+                <button
+                  type="button"
+                  onClick={() => setUserDrawerOpen(false)}
+                  className="absolute top-4 right-4 p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+
+                <div className="flex flex-col items-center text-center space-y-3 pt-2">
+                  <div className="w-20 h-20 rounded-full bg-[#ff6900] text-white font-semibold text-2xl flex items-center justify-center ring-4 ring-white/10 shadow-xl">
+                    {initials || "AD"}
+                  </div>
+
+                  <div>
+                    <h3 className="text-base font-semibold text-white">{userName}</h3>
+                    <p className="text-xs text-neutral-400">{user?.email || "staff@stanforteedge.com"}</p>
+                    <span className="inline-block mt-2 px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/10 text-orange-400 border border-white/10">
+                      {userRole}
+                    </span>
+                  </div>
+
+                  {/* Admin Console Switch Action (Image 2) */}
+                  {isAdmin && (
+                    <div className="w-full pt-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          switchWorkspaceMode(workspaceMode === "admin" ? "employee" : "admin");
+                          setUserDrawerOpen(false);
+                        }}
+                        className={`w-full py-2 px-4 rounded-xl text-xs font-medium transition flex items-center justify-center gap-2 shadow-md ${
+                          workspaceMode === "admin"
+                            ? "bg-neutral-800 text-neutral-200 border border-neutral-700"
+                            : "bg-neutral-900 hover:bg-neutral-900 text-white"
+                        }`}
+                      >
+                        <ShieldCheck className="h-4 w-4" />
+                        <span>
+                          {workspaceMode === "admin" ? "Return to My Workspace" : "Open Admin Console"}
+                        </span>
+                      </button>
                     </div>
-                    <Link
-                      to="/admin/settings"
-                      onClick={() => setUserDrawerOpen(false)}
-                      className="text-xs font-medium text-[#ff6900] hover:underline"
+                  )}
+                </div>
+              </div>
+
+              {/* Drawer Body Settings & Preferences */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                {/* Account Links */}
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-neutral-400 mb-2">
+                    Account & Preferences
+                  </p>
+                  <Link
+                    to="/account/profile"
+                    onClick={() => setUserDrawerOpen(false)}
+                    className="flex items-center justify-between p-2.5 rounded-xl hover:bg-white/5 text-xs font-semibold text-neutral-200 transition"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <UserIcon className="h-4 w-4 text-neutral-400" />
+                      <span>My Profile</span>
+                    </div>
+                    <ChevronRight className="h-3.5 w-3.5 text-neutral-500" />
+                  </Link>
+
+                  <Link
+                    to="/admin/settings"
+                    onClick={() => setUserDrawerOpen(false)}
+                    className="flex items-center justify-between p-2.5 rounded-xl hover:bg-white/5 text-xs font-semibold text-neutral-200 transition"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Settings className="h-4 w-4 text-neutral-400" />
+                      <span>System Settings</span>
+                    </div>
+                    <ChevronRight className="h-3.5 w-3.5 text-neutral-500" />
+                  </Link>
+                </div>
+
+                {/* Left Panel Density Control (Image 2) */}
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-neutral-400">
+                    Sidebar Density
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => toggleRail(false)}
+                      className={`p-2.5 rounded-xl border text-xs font-medium transition flex items-center gap-2 justify-center ${
+                        !isCompactRail
+                          ? "bg-[#ff6900] text-white border-[#ff6900]"
+                          : "bg-white/5 text-neutral-300 border-white/10 hover:bg-white/10"
+                      }`}
                     >
-                      Adjust
-                    </Link>
+                      <PanelLeft className="h-3.5 w-3.5" />
+                      <span>Expanded (240px)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => toggleRail(true)}
+                      className={`p-2.5 rounded-xl border text-xs font-medium transition flex items-center gap-2 justify-center ${
+                        isCompactRail
+                          ? "bg-[#ff6900] text-white border-[#ff6900]"
+                          : "bg-white/5 text-neutral-300 border-white/10 hover:bg-white/10"
+                      }`}
+                    >
+                      <PanelLeftClose className="h-3.5 w-3.5" />
+                      <span>Compact Rail (64px)</span>
+                    </button>
                   </div>
                 </div>
 
-                {/* Bottom Sign Out Button (Image 2) */}
-                <div className="p-6 border-t border-white/10">
-                  <button
-                    type="button"
-                    onClick={handleSignOut}
-                    className="w-full py-2.5 px-4 rounded-xl bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 text-xs font-medium transition flex items-center justify-center gap-2 shadow-sm"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    <span>SIGN OUT</span>
-                  </button>
+                {/* Appearance Mode (Image 2) */}
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-neutral-400">
+                    Appearance Mode
+                  </p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: "light" as const, label: "Light", icon: Sun },
+                      { id: "dark" as const, label: "Dark", icon: Moon },
+                      { id: "system" as const, label: "System", icon: Laptop },
+                    ].map((mode) => {
+                      const Icon = mode.icon;
+                      const active = appearanceMode === mode.id;
+                      return (
+                        <button
+                          key={mode.id}
+                          type="button"
+                          onClick={() => setAppearanceMode(mode.id)}
+                          className={`p-2 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition ${
+                            active
+                              ? "bg-white text-neutral-900 border-white font-medium"
+                              : "bg-white/5 text-neutral-400 border-white/10 hover:bg-white/10"
+                          }`}
+                        >
+                          <Icon className="h-3.5 w-3.5" />
+                          <span>{mode.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            </div>
-          </div>
-        )}
-        {/* ============================================================= */}
-        {/* 2026 GLOBAL COMMAND PALETTE (⌘K) MODAL                        */}
-        {/* ============================================================= */}
-        {commandPaletteOpen && (
-          <div className="fixed inset-0 z-50 overflow-y-auto p-4 sm:p-6 md:p-20 flex justify-center items-start animate-in fade-in duration-150">
-            <div
-              className="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm transition-opacity"
-              onClick={() => setCommandPaletteOpen(false)}
-            />
 
-            <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-xs border border-neutral-100 overflow-hidden z-10 animate-in zoom-in-95 duration-150">
-              {/* Input Bar */}
-              <div className="flex items-center px-4 py-3.5 border-b border-neutral-100 gap-3">
-                <Search className="h-5 w-5 text-neutral-400 shrink-0" />
-                <input
-                  type="text"
-                  autoFocus
-                  value={commandQuery}
-                  onChange={(e) => setCommandQuery(e.target.value)}
-                  placeholder="Search employees, vouchers, leaves, or ask Stanforte AI..."
-                  className="w-full text-sm font-medium bg-transparent outline-none placeholder:text-neutral-400 text-neutral-900 border-none p-0 focus:ring-0"
-                />
-                {commandQuery ? (
-                  <button
-                    type="button"
-                    onClick={() => setCommandQuery("")}
-                    className="p-1 rounded-md text-neutral-400 hover:text-neutral-600"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                ) : (
-                  <span className="text-xs font-mono text-neutral-400 px-1.5 py-0.5 rounded bg-neutral-100">
-                    ESC
-                  </span>
-                )}
-              </div>
-
-              {/* Quick Natural Language AI Suggestion Chips */}
-              <div className="px-4 py-2.5 bg-neutral-50/70 border-b border-neutral-100 flex items-center gap-2 overflow-x-auto text-xs">
-                <span className="text-neutral-400 font-medium shrink-0 text-xs">
-                  Suggested:
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCommandPaletteOpen(false);
-                    setAiDrawerOpen(true);
-                    handleRunAiPrompt("What needs my approval?");
-                  }}
-                  className="px-2.5 py-1 rounded-full bg-white border border-neutral-200/80 text-neutral-700 hover:border-[#ff6900] hover:text-[#ff6900] transition whitespace-nowrap font-medium shrink-0 cursor-pointer"
-                >
-                  ⚡ What needs my approval?
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCommandPaletteOpen(false);
-                    setAiDrawerOpen(true);
-                    handleRunAiPrompt("Show payment vouchers above ₦500,000");
-                  }}
-                  className="px-2.5 py-1 rounded-full bg-white border border-neutral-200/80 text-neutral-700 hover:border-[#ff6900] hover:text-[#ff6900] transition whitespace-nowrap font-medium shrink-0 cursor-pointer"
-                >
-                  ₦ Vouchers above ₦500k
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCommandPaletteOpen(false);
-                    setAiDrawerOpen(true);
-                    handleRunAiPrompt("Who is absent today?");
-                  }}
-                  className="px-2.5 py-1 rounded-full bg-white border border-neutral-200/80 text-neutral-700 hover:border-[#ff6900] hover:text-[#ff6900] transition whitespace-nowrap font-medium shrink-0 cursor-pointer"
-                >
-                  👥 Who is absent today?
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCommandPaletteOpen(false);
-                    setAiDrawerOpen(true);
-                    handleRunAiPrompt("Generate payroll summary");
-                  }}
-                  className="px-2.5 py-1 rounded-full bg-white border border-neutral-200/80 text-neutral-700 hover:border-[#ff6900] hover:text-[#ff6900] transition whitespace-nowrap font-medium shrink-0 cursor-pointer"
-                >
-                  📊 Generate payroll summary
-                </button>
-              </div>
-
-              {/* Entity Results List */}
-              <div className="max-h-96 overflow-y-auto p-2 divide-y divide-neutral-50">
-                {filteredCommandEntities.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <Link
-                      key={item.id}
-                      to={item.path}
-                      onClick={() => {
-                        setCommandPaletteOpen(false);
-                        setCommandQuery("");
-                      }}
-                      className="flex items-center justify-between p-3 rounded-2xl hover:bg-neutral-50 transition group"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-9 h-9 rounded-xl bg-neutral-100 group-hover:bg-orange-50 text-neutral-600 group-hover:text-[#ff6900] flex items-center justify-center shrink-0 transition">
-                          <Icon className="h-4 w-4" />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="text-xs font-medium text-neutral-900 group-hover:text-[#ff6900] transition truncate">
-                            {item.title}
-                          </div>
-                          <div className="text-xs text-neutral-400 truncate">{item.subtitle}</div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0 ml-3">
-                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-neutral-100 text-neutral-600">
-                          {item.tag}
-                        </span>
-                        <ChevronRight className="h-4 w-4 text-neutral-300 group-hover:text-neutral-600 transition" />
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-
-              {/* Footer */}
-              <div className="px-4 py-2.5 bg-neutral-50 border-t border-neutral-100 flex items-center justify-between text-xs text-neutral-400">
-                <div className="flex items-center gap-3">
-                  <span>Navigate <kbd className="px-1.5 py-0.5 bg-white border rounded text-xs">↑</kbd> <kbd className="px-1.5 py-0.5 bg-white border rounded text-xs">↓</kbd></span>
-                  <span>Select <kbd className="px-1.5 py-0.5 bg-white border rounded text-xs">↵</kbd></span>
-                </div>
-                <span className="font-semibold text-neutral-500">Stanforte Edge 2026</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ============================================================= */}
-        {/* 2026 STANFORTE AI ASSISTANT SLIDE-OVER DRAWER                */}
-        {/* ============================================================= */}
-        {aiDrawerOpen && (
-          <div className="fixed inset-0 z-50 overflow-hidden">
-            <div
-              className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm transition-opacity"
-              onClick={() => setAiDrawerOpen(false)}
-            />
-
-            <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
-              <div className="w-screen max-w-md bg-white text-neutral-900 shadow-xs flex flex-col justify-between border-l border-neutral-100">
-                {/* Header */}
-                <div className="p-5 border-b border-neutral-100 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-2xl bg-orange-50 text-[#ff6900] flex items-center justify-center font-medium">
-                      <Sparkles className="h-5 w-5" />
+                {/* Timezone & Regional Display */}
+                <div className="p-3 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-orange-500/15 text-[#ff6900] flex items-center justify-center shrink-0">
+                      <Globe className="h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="font-medium text-sm text-neutral-900 flex items-center gap-1.5">
-                        <span>Stanforte AI</span>
-                        <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-[#ff6900]">
-                          2026
-                        </span>
-                      </h3>
-                      <p className="text-xs text-neutral-400">Enterprise Contextual Assistant</p>
+                      <div className="text-xs text-neutral-400 font-semibold">Timezone &amp; Format</div>
+                      <div className="text-xs font-medium text-white mt-0.5">WAT (Africa/Lagos) &bull; 12-Hour</div>
                     </div>
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setAiDrawerOpen(false)}
-                    className="p-1.5 rounded-xl text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100"
+                  <Link
+                    to="/admin/settings"
+                    onClick={() => setUserDrawerOpen(false)}
+                    className="text-xs font-medium text-[#ff6900] hover:underline"
                   >
-                    <X className="h-4 w-4" />
-                  </button>
+                    Adjust
+                  </Link>
                 </div>
+              </div>
 
-                {/* Suggested Questions Grid */}
-                <div className="p-4 bg-neutral-50/70 border-b border-neutral-100 space-y-2">
-                  <div className="text-xs font-medium text-neutral-400">
-                    Contextual Suggestions:
-                  </div>
-                  <div className="grid grid-cols-1 gap-1.5 text-xs">
-                    {[
-                      "What needs my approval?",
-                      "Show delayed requisitions",
-                      "Compare payroll costs",
-                      "Explain this budget variance",
-                      "Show payment vouchers above ₦500,000",
-                      "Who is absent today?",
-                    ].map((q) => (
-                      <button
-                        key={q}
-                        type="button"
-                        onClick={() => handleRunAiPrompt(q)}
-                        className="text-left px-3 py-2 rounded-xl bg-white border border-neutral-200/80 hover:border-[#ff6900] hover:text-[#ff6900] text-neutral-700 font-medium transition shadow-2xs text-xs flex items-center justify-between group cursor-pointer"
-                      >
-                        <span>{q}</span>
-                        <ArrowRight className="h-3 w-3 text-neutral-300 group-hover:text-[#ff6900] transition" />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Chat Thread */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-3.5 scrollbar-thin">
-                  {aiConversation.map((msg, idx) => (
-                    <div
-                      key={idx}
-                      className={`flex flex-col ${msg.sender === "user" ? "items-end" : "items-start"}`}
-                    >
-                      <div
-                        className={`max-w-[88%] rounded-2xl p-3.5 text-xs leading-relaxed ${msg.sender === "user"
-                            ? "bg-[#ff6900] text-white shadow-sm"
-                            : "bg-neutral-50 border border-neutral-100 text-neutral-800 shadow-2xs"
-                          }`}
-                      >
-                        <div className="font-medium whitespace-pre-wrap">{msg.text}</div>
-
-                        {msg.data && msg.data.actionLink && (
-                          <Link
-                            to={msg.data.actionLink}
-                            onClick={() => setAiDrawerOpen(false)}
-                            className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-neutral-200 text-[#ff6900] font-medium text-xs shadow-2xs hover:bg-neutral-50 transition"
-                          >
-                            <span>{msg.data.actionLabel || "View Record"}</span>
-                            <ArrowRight className="h-3 w-3" />
-                          </Link>
-                        )}
-                      </div>
-                      <span className="text-xs text-neutral-400 mt-1 px-1">{msg.time}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Bottom Input Box */}
-                <div className="p-4 border-t border-neutral-100 bg-white">
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      if (aiInput.trim()) {
-                        handleRunAiPrompt(aiInput.trim());
-                        setAiInput("");
-                      }
-                    }}
-                    className="flex items-center gap-2"
-                  >
-                    <input
-                      type="text"
-                      value={aiInput}
-                      onChange={(e) => setAiInput(e.target.value)}
-                      placeholder="Ask Stanforte AI anything..."
-                      className="flex-1 px-3.5 py-2.5 rounded-xl border border-neutral-200 text-xs text-neutral-900 outline-none focus:border-[#ff6900]"
-                    />
-                    <button
-                      type="submit"
-                      className="p-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white font-medium transition shadow-sm cursor-pointer"
-                    >
-                      <Zap className="h-4 w-4" />
-                    </button>
-                  </form>
-                </div>
+              {/* Bottom Sign Out Button (Image 2) */}
+              <div className="p-6 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  className="w-full py-2.5 px-4 rounded-xl bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 text-xs font-medium transition flex items-center justify-center gap-2 shadow-sm"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span>SIGN OUT</span>
+                </button>
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
+      {/* ============================================================= */}
+      {/* 2026 GLOBAL COMMAND PALETTE (⌘K) MODAL                        */}
+      {/* ============================================================= */}
+      {commandPaletteOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto p-4 sm:p-6 md:p-20 flex justify-center items-start animate-in fade-in duration-150">
+          <div
+            className="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm transition-opacity"
+            onClick={() => setCommandPaletteOpen(false)}
+          />
+
+          <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-xs border border-neutral-100 overflow-hidden z-10 animate-in zoom-in-95 duration-150">
+            {/* Input Bar */}
+            <div className="flex items-center px-4 py-3.5 border-b border-neutral-100 gap-3">
+              <Search className="h-5 w-5 text-neutral-400 shrink-0" />
+              <input
+                type="text"
+                autoFocus
+                value={commandQuery}
+                onChange={(e) => setCommandQuery(e.target.value)}
+                placeholder="Search employees, vouchers, leaves, or ask Stanforte AI..."
+                className="w-full text-sm font-medium bg-transparent outline-none placeholder:text-neutral-400 text-neutral-900 border-none p-0 focus:ring-0"
+              />
+              {commandQuery ? (
+                <button
+                  type="button"
+                  onClick={() => setCommandQuery("")}
+                  className="p-1 rounded-md text-neutral-400 hover:text-neutral-600"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              ) : (
+                <span className="text-xs font-mono text-neutral-400 px-1.5 py-0.5 rounded bg-neutral-100">
+                  ESC
+                </span>
+              )}
+            </div>
+
+            {/* Quick Natural Language AI Suggestion Chips */}
+            <div className="px-4 py-2.5 bg-neutral-50/70 border-b border-neutral-100 flex items-center gap-2 overflow-x-auto text-xs">
+              <span className="text-neutral-400 font-medium shrink-0 text-xs">
+                Suggested:
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setCommandPaletteOpen(false);
+                  setAiDrawerOpen(true);
+                  handleRunAiPrompt("What needs my approval?");
+                }}
+                className="px-2.5 py-1 rounded-full bg-white border border-neutral-200/80 text-neutral-700 hover:border-[#ff6900] hover:text-[#ff6900] transition whitespace-nowrap font-medium shrink-0 cursor-pointer"
+              >
+                ⚡ What needs my approval?
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setCommandPaletteOpen(false);
+                  setAiDrawerOpen(true);
+                  handleRunAiPrompt("Show payment vouchers above ₦500,000");
+                }}
+                className="px-2.5 py-1 rounded-full bg-white border border-neutral-200/80 text-neutral-700 hover:border-[#ff6900] hover:text-[#ff6900] transition whitespace-nowrap font-medium shrink-0 cursor-pointer"
+              >
+                ₦ Vouchers above ₦500k
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setCommandPaletteOpen(false);
+                  setAiDrawerOpen(true);
+                  handleRunAiPrompt("Who is absent today?");
+                }}
+                className="px-2.5 py-1 rounded-full bg-white border border-neutral-200/80 text-neutral-700 hover:border-[#ff6900] hover:text-[#ff6900] transition whitespace-nowrap font-medium shrink-0 cursor-pointer"
+              >
+                👥 Who is absent today?
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setCommandPaletteOpen(false);
+                  setAiDrawerOpen(true);
+                  handleRunAiPrompt("Generate payroll summary");
+                }}
+                className="px-2.5 py-1 rounded-full bg-white border border-neutral-200/80 text-neutral-700 hover:border-[#ff6900] hover:text-[#ff6900] transition whitespace-nowrap font-medium shrink-0 cursor-pointer"
+              >
+                📊 Generate payroll summary
+              </button>
+            </div>
+
+            {/* Entity Results List */}
+            <div className="max-h-96 overflow-y-auto p-2 divide-y divide-neutral-50">
+              {filteredCommandEntities.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.id}
+                    to={item.path}
+                    onClick={() => {
+                      setCommandPaletteOpen(false);
+                      setCommandQuery("");
+                    }}
+                    className="flex items-center justify-between p-3 rounded-2xl hover:bg-neutral-50 transition group"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-neutral-100 group-hover:bg-orange-50 text-neutral-600 group-hover:text-[#ff6900] flex items-center justify-center shrink-0 transition">
+                        <Icon className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-medium text-neutral-900 group-hover:text-[#ff6900] transition truncate">
+                          {item.title}
+                        </div>
+                        <div className="text-xs text-neutral-400 truncate">{item.subtitle}</div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0 ml-3">
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-neutral-100 text-neutral-600">
+                        {item.tag}
+                      </span>
+                      <ChevronRight className="h-4 w-4 text-neutral-300 group-hover:text-neutral-600 transition" />
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+
+            {/* Footer */}
+            <div className="px-4 py-2.5 bg-neutral-50 border-t border-neutral-100 flex items-center justify-between text-xs text-neutral-400">
+              <div className="flex items-center gap-3">
+                <span>Navigate <kbd className="px-1.5 py-0.5 bg-white border rounded text-xs">↑</kbd> <kbd className="px-1.5 py-0.5 bg-white border rounded text-xs">↓</kbd></span>
+                <span>Select <kbd className="px-1.5 py-0.5 bg-white border rounded text-xs">↵</kbd></span>
+              </div>
+              <span className="font-semibold text-neutral-500">Stanforte Edge 2026</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================= */}
+      {/* 2026 STANFORTE AI ASSISTANT SLIDE-OVER DRAWER                */}
+      {/* ============================================================= */}
+      {aiDrawerOpen && (
+        <div className="fixed inset-0 z-50 overflow-hidden">
+          <div
+            className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm transition-opacity"
+            onClick={() => setAiDrawerOpen(false)}
+          />
+
+          <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
+            <div className="w-screen max-w-md bg-white text-neutral-900 shadow-xs flex flex-col justify-between border-l border-neutral-100">
+              {/* Header */}
+              <div className="p-5 border-b border-neutral-100 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-2xl bg-orange-50 text-[#ff6900] flex items-center justify-center font-medium">
+                    <Sparkles className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-medium text-sm text-neutral-900 flex items-center gap-1.5">
+                      <span>Stanforte AI</span>
+                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-[#ff6900]">
+                        2026
+                      </span>
+                    </h3>
+                    <p className="text-xs text-neutral-400">Enterprise Contextual Assistant</p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setAiDrawerOpen(false)}
+                  className="p-1.5 rounded-xl text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Suggested Questions Grid */}
+              <div className="p-4 bg-neutral-50/70 border-b border-neutral-100 space-y-2">
+                <div className="text-xs font-medium text-neutral-400">
+                  Contextual Suggestions:
+                </div>
+                <div className="grid grid-cols-1 gap-1.5 text-xs">
+                  {[
+                    "What needs my approval?",
+                    "Show delayed requisitions",
+                    "Compare payroll costs",
+                    "Explain this budget variance",
+                    "Show payment vouchers above ₦500,000",
+                    "Who is absent today?",
+                  ].map((q) => (
+                    <button
+                      key={q}
+                      type="button"
+                      onClick={() => handleRunAiPrompt(q)}
+                      className="text-left px-3 py-2 rounded-xl bg-white border border-neutral-200/80 hover:border-[#ff6900] hover:text-[#ff6900] text-neutral-700 font-medium transition shadow-2xs text-xs flex items-center justify-between group cursor-pointer"
+                    >
+                      <span>{q}</span>
+                      <ArrowRight className="h-3 w-3 text-neutral-300 group-hover:text-[#ff6900] transition" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Chat Thread */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-3.5 scrollbar-thin">
+                {aiConversation.map((msg, idx) => (
+                  <div
+                    key={idx}
+                    className={`flex flex-col ${msg.sender === "user" ? "items-end" : "items-start"}`}
+                  >
+                    <div
+                      className={`max-w-[88%] rounded-2xl p-3.5 text-xs leading-relaxed ${
+                        msg.sender === "user"
+                          ? "bg-[#ff6900] text-white shadow-sm"
+                          : "bg-neutral-50 border border-neutral-100 text-neutral-800 shadow-2xs"
+                      }`}
+                    >
+                      <div className="font-medium whitespace-pre-wrap">{msg.text}</div>
+
+                      {msg.data && msg.data.actionLink && (
+                        <Link
+                          to={msg.data.actionLink}
+                          onClick={() => setAiDrawerOpen(false)}
+                          className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-neutral-200 text-[#ff6900] font-medium text-xs shadow-2xs hover:bg-neutral-50 transition"
+                        >
+                          <span>{msg.data.actionLabel || "View Record"}</span>
+                          <ArrowRight className="h-3 w-3" />
+                        </Link>
+                      )}
+                    </div>
+                    <span className="text-xs text-neutral-400 mt-1 px-1">{msg.time}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Bottom Input Box */}
+              <div className="p-4 border-t border-neutral-100 bg-white">
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (aiInput.trim()) {
+                      handleRunAiPrompt(aiInput.trim());
+                      setAiInput("");
+                    }
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <input
+                    type="text"
+                    value={aiInput}
+                    onChange={(e) => setAiInput(e.target.value)}
+                    placeholder="Ask Stanforte AI anything..."
+                    className="flex-1 px-3.5 py-2.5 rounded-xl border border-neutral-200 text-xs text-neutral-900 outline-none focus:border-[#ff6900]"
+                  />
+                  <button
+                    type="submit"
+                    className="p-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white font-medium transition shadow-sm cursor-pointer"
+                  >
+                    <Zap className="h-4 w-4" />
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
     </WorkspaceContext.Provider>
   );

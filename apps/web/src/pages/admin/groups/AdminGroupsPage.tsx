@@ -74,8 +74,8 @@ export default function AdminGroupsPage() {
   const teams: TeamOption[] = Array.isArray((groupsData as any)?.data?.items)
     ? (groupsData as any).data.items
     : Array.isArray(groupsData)
-      ? groupsData
-      : [];
+    ? groupsData
+    : [];
 
   const activeGroups = teams.filter((g) => g.isActive).length;
   const inactiveGroups = teams.length - activeGroups;
@@ -174,10 +174,11 @@ export default function AdminGroupsPage() {
             <button
               type="button"
               onClick={() => setActiveTab("groups")}
-              className={`inline-flex items-center gap-2 h-8 px-3 rounded-lg text-xs font-medium transition-colors duration-150 ${activeTab === "groups"
+              className={`inline-flex items-center gap-2 h-8 px-3 rounded-lg text-xs font-medium transition-colors duration-150 ${
+                activeTab === "groups"
                   ? "bg-white text-neutral-900 shadow-xs"
                   : "text-neutral-600 hover:text-neutral-900"
-                }`}
+              }`}
             >
               <Users className="h-4 w-4 text-neutral-500" strokeWidth={1.5} />
               <span>Groups directory</span>
@@ -186,10 +187,11 @@ export default function AdminGroupsPage() {
             <button
               type="button"
               onClick={() => setActiveTab("types")}
-              className={`inline-flex items-center gap-2 h-8 px-3 rounded-lg text-xs font-medium transition-colors duration-150 ${activeTab === "types"
+              className={`inline-flex items-center gap-2 h-8 px-3 rounded-lg text-xs font-medium transition-colors duration-150 ${
+                activeTab === "types"
                   ? "bg-white text-neutral-900 shadow-xs"
                   : "text-neutral-600 hover:text-neutral-900"
-                }`}
+              }`}
             >
               <FolderTree className="h-4 w-4 text-neutral-500" strokeWidth={1.5} />
               <span>Types and categories</span>
@@ -294,14 +296,16 @@ export default function AdminGroupsPage() {
                         </td>
                         <td className="py-3.5 px-5">
                           <span
-                            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium border ${group.isActive
+                            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium border ${
+                              group.isActive
                                 ? "bg-emerald-50 text-emerald-700 border-emerald-600/15"
                                 : "bg-neutral-100 text-neutral-600 border-neutral-900/[0.08]"
-                              }`}
+                            }`}
                           >
                             <span
-                              className={`w-1.5 h-1.5 rounded-full ${group.isActive ? "bg-emerald-600" : "bg-neutral-400"
-                                }`}
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                group.isActive ? "bg-emerald-600" : "bg-neutral-400"
+                              }`}
                             />
                             {group.isActive ? "Active" : "Inactive"}
                           </span>

@@ -82,10 +82,11 @@ export default function AdminOrganizationsPage() {
         {/* Toast */}
         {toastMsg && (
           <div
-            className={`px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-2.5 border ${toastMsg.tone === "success"
+            className={`px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-2.5 border ${
+              toastMsg.tone === "success"
                 ? "bg-emerald-50 text-emerald-800 border-emerald-600/15"
                 : "bg-rose-50 text-rose-800 border-rose-600/15"
-              }`}
+            }`}
           >
             {toastMsg.tone === "success" ? (
               <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" strokeWidth={1.5} />
@@ -189,14 +190,16 @@ export default function AdminOrganizationsPage() {
                       </td>
                       <td className="py-3.5 px-5">
                         <span
-                          className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md font-medium text-xs border ${org.isActive !== false
+                          className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md font-medium text-xs border ${
+                            org.isActive !== false
                               ? "bg-emerald-50 text-emerald-700 border-emerald-600/15"
                               : "bg-rose-50 text-rose-700 border-rose-600/15"
-                            }`}
+                          }`}
                         >
                           <span
-                            className={`w-1.5 h-1.5 rounded-full ${org.isActive !== false ? "bg-emerald-600" : "bg-rose-600"
-                              }`}
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              org.isActive !== false ? "bg-emerald-600" : "bg-rose-600"
+                            }`}
                           />
                           {org.isActive !== false ? "Active" : "Inactive"}
                         </span>

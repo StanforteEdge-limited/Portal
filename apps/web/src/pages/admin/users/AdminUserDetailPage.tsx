@@ -383,16 +383,17 @@ export default function AdminUserDetailPage() {
                           <label
                             key={r.slug}
                             onClick={() => toggleRole(r.slug)}
-                            className={`flex cursor-pointer items-center justify-between rounded-xl border p-3 transition-colors duration-150 ${isChecked
+                            className={`flex cursor-pointer items-center justify-between rounded-xl border p-3 transition-colors duration-150 ${
+                              isChecked
                                 ? "border-[#ff6900] bg-orange-50/30"
                                 : "border-neutral-900/[0.10] bg-white hover:bg-neutral-50"
-                              }`}
+                            }`}
                           >
                             <div className="flex items-center gap-2.5 min-w-0">
                               <input
                                 type="checkbox"
                                 checked={isChecked}
-                                onChange={() => { }}
+                                onChange={() => {}}
                                 className="h-4 w-4 rounded border-neutral-300 text-[#ff6900] focus:ring-[#ff6900]"
                               />
                               <span className="text-sm font-medium text-neutral-900 truncate">
@@ -434,20 +435,22 @@ export default function AdminUserDetailPage() {
                 <div className="mb-5 flex items-center justify-between rounded-xl bg-neutral-50 px-3.5 py-2.5 border border-neutral-900/[0.06]">
                   <span className="text-xs font-medium text-neutral-600">Current status</span>
                   <span
-                    className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium capitalize border ${adminUser?.status === "active"
+                    className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium capitalize border ${
+                      adminUser?.status === "active"
                         ? "bg-emerald-50 text-emerald-700 border-emerald-600/15"
                         : adminUser?.status === "suspended"
-                          ? "bg-rose-50 text-rose-700 border-rose-600/15"
-                          : "bg-amber-50 text-amber-800 border-amber-600/15"
-                      }`}
+                        ? "bg-rose-50 text-rose-700 border-rose-600/15"
+                        : "bg-amber-50 text-amber-800 border-amber-600/15"
+                    }`}
                   >
                     <span
-                      className={`w-1.5 h-1.5 rounded-full ${adminUser?.status === "active"
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        adminUser?.status === "active"
                           ? "bg-emerald-600"
                           : adminUser?.status === "suspended"
-                            ? "bg-rose-600"
-                            : "bg-amber-600"
-                        }`}
+                          ? "bg-rose-600"
+                          : "bg-amber-600"
+                      }`}
                     />
                     {adminUser?.status ?? "pending"}
                   </span>

@@ -62,8 +62,8 @@ export default function AdminFilesPage() {
   const files = Array.isArray(filesData?.result)
     ? filesData.result
     : Array.isArray(filesData)
-      ? filesData
-      : [];
+    ? filesData
+    : [];
 
   const totalPages = Math.ceil(totalCount / perPage) || 1;
   const attachedCount = files.filter((f: any) => f.usage?.attached).length;
@@ -222,8 +222,9 @@ export default function AdminFilesPage() {
             <button
               type="button"
               onClick={() => setViewMode("grid")}
-              className={`h-8 w-8 inline-flex items-center justify-center rounded-lg transition-colors duration-150 ${viewMode === "grid" ? "bg-white text-neutral-900 shadow-xs" : "text-neutral-500 hover:text-neutral-900"
-                }`}
+              className={`h-8 w-8 inline-flex items-center justify-center rounded-lg transition-colors duration-150 ${
+                viewMode === "grid" ? "bg-white text-neutral-900 shadow-xs" : "text-neutral-500 hover:text-neutral-900"
+              }`}
               title="Grid view"
             >
               <LayoutGrid className="h-4 w-4" strokeWidth={1.5} />
@@ -231,8 +232,9 @@ export default function AdminFilesPage() {
             <button
               type="button"
               onClick={() => setViewMode("list")}
-              className={`h-8 w-8 inline-flex items-center justify-center rounded-lg transition-colors duration-150 ${viewMode === "list" ? "bg-white text-neutral-900 shadow-xs" : "text-neutral-500 hover:text-neutral-900"
-                }`}
+              className={`h-8 w-8 inline-flex items-center justify-center rounded-lg transition-colors duration-150 ${
+                viewMode === "list" ? "bg-white text-neutral-900 shadow-xs" : "text-neutral-500 hover:text-neutral-900"
+              }`}
               title="List view"
             >
               <List className="h-4 w-4" strokeWidth={1.5} />

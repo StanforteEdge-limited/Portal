@@ -313,10 +313,11 @@ export default function AdminSettingsPage() {
         {/* Toast feedback */}
         {toastMsg && (
           <div
-            className={`px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-2.5 border ${toastMsg.tone === "success"
+            className={`px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-2.5 border ${
+              toastMsg.tone === "success"
                 ? "bg-emerald-50 text-emerald-800 border-emerald-600/15"
                 : "bg-rose-50 text-rose-800 border-rose-600/15"
-              }`}
+            }`}
           >
             {toastMsg.tone === "success" ? (
               <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" strokeWidth={1.5} />
@@ -337,10 +338,11 @@ export default function AdminSettingsPage() {
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`inline-flex items-center gap-2 h-8 px-3 rounded-lg text-xs font-medium transition-colors duration-150 whitespace-nowrap ${isActive
+                className={`inline-flex items-center gap-2 h-8 px-3 rounded-lg text-xs font-medium transition-colors duration-150 whitespace-nowrap ${
+                  isActive
                     ? "bg-white text-neutral-900 shadow-xs"
                     : "text-neutral-600 hover:text-neutral-900"
-                  }`}
+                }`}
               >
                 <IconComp
                   className={`h-4 w-4 shrink-0 ${isActive ? "text-neutral-900" : "text-neutral-500"}`}
@@ -401,14 +403,16 @@ export default function AdminSettingsPage() {
                         </td>
                         <td className="py-3.5 px-5">
                           <span
-                            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md font-medium text-xs border ${t.is_active
+                            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md font-medium text-xs border ${
+                              t.is_active
                                 ? "bg-emerald-50 text-emerald-700 border-emerald-600/15"
                                 : "bg-neutral-100 text-neutral-600 border-neutral-900/[0.08]"
-                              }`}
+                            }`}
                           >
                             <span
-                              className={`w-1.5 h-1.5 rounded-full ${t.is_active ? "bg-emerald-600" : "bg-neutral-400"
-                                }`}
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                t.is_active ? "bg-emerald-600" : "bg-neutral-400"
+                              }`}
                             />
                             {t.is_active ? "Active" : "Disabled"}
                           </span>
@@ -834,17 +838,18 @@ export default function AdminSettingsPage() {
                         <label
                           key={opt.value}
                           onClick={() => setLocalSettingsForm((p) => ({ ...p, timeFormat: opt.value }))}
-                          className={`flex items-start justify-between p-3 rounded-xl border cursor-pointer transition-colors duration-150 ${isSelected
+                          className={`flex items-start justify-between p-3 rounded-xl border cursor-pointer transition-colors duration-150 ${
+                            isSelected
                               ? "border-[#ff6900] bg-orange-50/30"
                               : "border-neutral-900/[0.10] bg-white hover:bg-neutral-50"
-                            }`}
+                          }`}
                         >
                           <div className="flex items-start gap-2.5">
                             <input
                               type="radio"
                               name="timeFormat"
                               checked={isSelected}
-                              onChange={() => { }}
+                              onChange={() => {}}
                               className="mt-0.5 h-4 w-4 text-[#ff6900] focus:ring-[#ff6900]"
                             />
                             <div>
@@ -872,17 +877,18 @@ export default function AdminSettingsPage() {
                         <label
                           key={opt.value}
                           onClick={() => setLocalSettingsForm((p) => ({ ...p, dateFormat: opt.value }))}
-                          className={`flex items-start justify-between p-3 rounded-xl border cursor-pointer transition-colors duration-150 ${isSelected
+                          className={`flex items-start justify-between p-3 rounded-xl border cursor-pointer transition-colors duration-150 ${
+                            isSelected
                               ? "border-[#ff6900] bg-orange-50/30"
                               : "border-neutral-900/[0.10] bg-white hover:bg-neutral-50"
-                            }`}
+                          }`}
                         >
                           <div className="flex items-start gap-2.5">
                             <input
                               type="radio"
                               name="dateFormat"
                               checked={isSelected}
-                              onChange={() => { }}
+                              onChange={() => {}}
                               className="mt-0.5 h-4 w-4 text-[#ff6900] focus:ring-[#ff6900]"
                             />
                             <div>

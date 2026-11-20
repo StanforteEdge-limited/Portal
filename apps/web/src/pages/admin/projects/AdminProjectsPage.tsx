@@ -85,8 +85,8 @@ export default function AdminProjectsPage() {
   const projects: ProjectRow[] = Array.isArray((projectsData as any)?.data?.items)
     ? (projectsData as any).data.items
     : Array.isArray(projectsData)
-      ? projectsData
-      : [];
+    ? projectsData
+    : [];
 
   const activeProjects = projects.filter(
     (p) => p.isActive && p.governance?.governance_status !== "archived",
@@ -335,16 +335,16 @@ export default function AdminProjectsPage() {
             project={
               editingProject
                 ? {
-                  id: editingProject.id,
-                  name: editingProject.name,
-                  description: editingProject.description || undefined,
-                  projectCode: editingProject.governance?.project_code || undefined,
-                  organizationId: editingProject.organizationId || undefined,
-                  ownerId: editingProject.governance?.owner_user_id || undefined,
-                  status: editingProject.governance?.governance_status || "active",
-                  startDate: editingProject.governance?.start_date || undefined,
-                  endDate: editingProject.governance?.end_date || undefined,
-                }
+                    id: editingProject.id,
+                    name: editingProject.name,
+                    description: editingProject.description || undefined,
+                    projectCode: editingProject.governance?.project_code || undefined,
+                    organizationId: editingProject.organizationId || undefined,
+                    ownerId: editingProject.governance?.owner_user_id || undefined,
+                    status: editingProject.governance?.governance_status || "active",
+                    startDate: editingProject.governance?.start_date || undefined,
+                    endDate: editingProject.governance?.end_date || undefined,
+                  }
                 : null
             }
             defaultOrgId={createOrgId}
