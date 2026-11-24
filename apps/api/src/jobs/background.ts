@@ -146,8 +146,8 @@ export class BackgroundJobsService {
   }
 
   async getJob(id: string, tenantId?: bigint) {
-    const conditions = [eq(backgroundJob.id, toBigInt(id))];
-    if (tenantId) conditions.push(eq(backgroundJob.tenantId, tenantId));
+    const resolvedTenantId = tenantId ?? this.tenantContext.requireTenantId();
+    const conditions = [eq(backgroundJob.id, toBigInt(id)), eq(backgroundJob.tenantId, resolvedTenantId)];
     const [row] = await this.db.client
       .select()
       .from(backgroundJob)

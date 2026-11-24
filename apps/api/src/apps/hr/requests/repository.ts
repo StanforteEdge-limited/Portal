@@ -73,7 +73,7 @@ import { profile } from '$apps/identity/users/model';
 import { permission, role, rolePermission, userRole } from '$apps/identity/rbac/model';
 import { fileAsset } from '$apps/storage/model';
 import { tenantMembership, tenantOrganization } from '$apps/tenancy/model';
-import { BadRequestException, ConflictException, NotFoundException, UnauthorizedException } from '$core/errors';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException, UnauthorizedException } from '$core/errors';
 
 const MANUAL_REQUEST_ID_MIN = BigInt(1);
 const MANUAL_REQUEST_ID_MAX = BigInt(99999);
@@ -1518,6 +1518,13 @@ export class RequestsService {
         return this.getRequest(request.id.toString(), userId);
       }
       throw new BadRequestException('Request is not pending approval');
+    }
+
+    if (request.createdBy && request.createdBy.toString() === userId) {
+      throw new ForbiddenException('Requesters cannot approve their own requests');
+    }
+    if (!request.workflowInstanceId) {
+      throw new ForbiddenException('Request has no active approval workflow and cannot be approved directly');
     }
 
     const effectiveComment = dto.comment?.trim() || 'Approved.';

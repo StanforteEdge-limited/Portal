@@ -422,8 +422,16 @@ export class AuthService {
     if (!tenantContext) this.throwUnauthorized('Tenant membership is required', 'AUTH_TENANT_REQUIRED');
     const authContext = await this.buildAuthContext(tokenRow.profileId, tenantContext.tenantId);
 
-    // Rotate refresh token
-    await this.db.client.delete(tokenTable).where(eq(tokenTable.id, tokenRow.id));
+    // Atomic single-use rotation: claim the refresh token row via DELETE ... RETURNING
+    // so concurrent refresh requests cannot mint duplicate sessions.
+    const [consumed] = await this.db.client
+      .delete(tokenTable)
+      .where(and(eq(tokenTable.id, tokenRow.id), eq(tokenTable.tokenHash, tokenHash), eq(tokenTable.type, 'refresh')))
+      .returning({ id: tokenTable.id });
+    if (!consumed) {
+      this.throwUnauthorized('Refresh token already used', 'AUTH_REFRESH_INVALID');
+    }
+
     const tokens = await this.issueTokens(tokenRow.profileId, tenantContext.tenantId, authContext.permissions, authContext.roles);
     this.setAuthCookies(res, tokens.accessToken, tokens.refreshToken, tokens.expiresIn);
 
@@ -566,7 +574,7 @@ export class AuthService {
     return { success: true };
   }
 
-  async googleAuthUrl(): Promise<string> {
+  async googleAuthUrl(state?: string): Promise<string> {
     const { google } = await import('googleapis');
     const client = new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID,
@@ -577,6 +585,7 @@ export class AuthService {
       access_type: 'offline',
       scope: ['openid', 'email', 'profile'],
       prompt: 'select_account',
+      ...(state ? { state } : {}),
     });
   }
 
@@ -743,7 +752,10 @@ export class AuthService {
 
     const accessToken = await this.jwt.signAsync(accessPayload, {
       secret: config.jwt.secret,
-      expiresIn: ACCESS_EXPIRES_IN
+      expiresIn: ACCESS_EXPIRES_IN,
+      algorithm: 'HS256',
+      issuer: 'stanforte-api',
+      audience: 'portal-user',
     });
 
     const refreshToken = randomToken(48);

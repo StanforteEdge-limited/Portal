@@ -26,9 +26,9 @@ export class ProjectsService {
     private readonly tenantContext: TenantContextService,
   ) {}
 
-  private tenantCond(column: any): SQL | undefined {
-    const tid = this.tenantContext.currentTenantId();
-    return tid ? eq(column, tid) : undefined;
+  private tenantCond(column: any): SQL {
+    const tid = this.tenantContext.requireTenantId();
+    return eq(column, tid);
   }
 
   async list(query: Record<string, any>) {

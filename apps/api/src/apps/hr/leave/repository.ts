@@ -8,7 +8,7 @@ import { TenantContext } from '$core/auth/tenant-context';
 import { DbService } from '$core/db';
 import { NotificationsService } from '$apps/hr/notifications/repository';
 import { leaveBalanceLedger, leaveRequest, leaveType } from './model';
-import { BadRequestException, NotFoundException } from '$core/errors';
+import { BadRequestException, ForbiddenException, NotFoundException } from '$core/errors';
 
 export class LeaveService {
   constructor(
@@ -109,11 +109,21 @@ const [type] = await this.db.client
       .where(and(eq(leaveRequest.id, id), eq(leaveRequest.tenantId, context.tenantId), eq(leaveRequest.status, 'pending')))
       .limit(1);
     if (!request) throw new NotFoundException('Pending leave request not found');
+    if (request.userId === context.profileId) {
+      throw new ForbiddenException('You cannot review your own leave request');
+    }
     const [updated] = await this.db.client
       .update(leaveRequest)
       .set({ status: dto.status, reviewedBy: context.profileId, reviewedAt: new Date(), reviewNotes: dto.notes })
-      .where(eq(leaveRequest.id, request.id))
+      .where(
+        and(
+          eq(leaveRequest.id, request.id),
+          eq(leaveRequest.tenantId, context.tenantId),
+          eq(leaveRequest.status, 'pending'),
+        ),
+      )
       .returning();
+    if (!updated) throw new BadRequestException('Leave request was already reviewed');
     await this.notifications.create({
       userId: request.userId,
       type: 'leave',

@@ -256,11 +256,9 @@ export class StorageService {
 
     const tenantId = await this.currentRequiredTenantId(userId);
     const expectedPrefix = `tenants/${tenantId.toString()}/`;
-    if (dto.storage_path) {
-      const normalizedPath = dto.storage_path.replace(/^\/+/, '');
-      if (normalizedPath.includes('..') || !normalizedPath.startsWith(expectedPrefix)) {
-        throw new ForbiddenException('storage_path must belong to the active tenant');
-      }
+    const normalizedPath = (dto.storage_path || '').replace(/^\/+/, '');
+    if (!normalizedPath || normalizedPath.includes('..') || !normalizedPath.startsWith(expectedPrefix)) {
+      throw new ForbiddenException('storage_path must be a valid key under the active tenant prefix');
     }
 
     if (dto.organization_id) {
@@ -409,9 +407,12 @@ export class StorageService {
     return { id: file.id, file_name: file.fileName, url: publicUrl };
   }
 
-  async remove(id: string) {
+  async remove(id: string, actorId?: string, canDeleteAny = false) {
     const file = await this.findFileAssetById(id);
     if (!file) throw new NotFoundException('File not found');
+    if (!canDeleteAny && (!actorId || file.uploadedBy?.toString() !== actorId)) {
+      throw new ForbiddenException('You do not have permission to delete this file');
+    }
 
     const usage = await this.getUsageSummary(id);
     if (usage.attached) {

@@ -141,13 +141,13 @@ export class FinanceService {
   ) {}
 
   private tenantWhere(): WhereInput {
-    const tid = this.tenantContext.currentTenantId();
-    return tid ? { tenantId: tid } : {};
+    const tid = this.tenantContext.requireTenantId();
+    return { tenantId: tid };
   }
 
   private tenantCond(column: any): SQL | undefined {
-    const tid = this.tenantContext.currentTenantId();
-    return tid ? eq(column, tid) : undefined;
+    const tid = this.tenantContext.requireTenantId();
+    return eq(column, tid);
   }
 
   private combine(...conds: Array<SQL | undefined>): SQL | undefined {

@@ -16,11 +16,16 @@ export async function buildServer(): Promise<FastifyInstance> {
   const server = Fastify({
     logger: { level: config.logLevel },
     trustProxy: config.trustProxy,
-    bodyLimit: Number(process.env.MAX_BODY_SIZE_BYTES || 25 * 1024 * 1024),
+    bodyLimit: Number(process.env.MAX_BODY_SIZE_BYTES || 2 * 1024 * 1024),
   });
 
   server.register(fastifyHelmet, {
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'none'"],
+        frameAncestors: ["'none'"],
+      },
+    },
     crossOriginResourcePolicy: { policy: 'cross-origin' },
   });
   if (config.env !== 'test') {

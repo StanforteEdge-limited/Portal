@@ -76,8 +76,8 @@ export class AttendanceService {
   ) {}
 
 private tenantCond(column: any): SQL | undefined {
-    const tid = this.tenantContext.currentTenantId();
-    return tid ? eq(column, tid) : undefined;
+    const tid = this.tenantContext.requireTenantId();
+    return eq(column, tid);
   }
 
   async clockIn(

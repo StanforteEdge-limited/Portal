@@ -93,7 +93,10 @@ export class ObjectStorageService {
     expiresInSeconds?: number;
     inline?: boolean;
   }): Promise<string> {
-    const disposition = opts.inline ? 'inline' : 'attachment';
+    const unsafeInline =
+      /^(text\/html|image\/svg\+xml|application\/xhtml\+xml|application\/javascript|text\/javascript)/i;
+    const allowInline = Boolean(opts.inline) && !(opts.contentType && unsafeInline.test(opts.contentType));
+    const disposition = allowInline ? 'inline' : 'attachment';
     const command = new GetObjectCommand({
       Bucket: this.bucket,
       Key: opts.key,

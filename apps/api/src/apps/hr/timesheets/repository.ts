@@ -433,9 +433,9 @@ export class TimesheetsService {
     return value instanceof Decimal ? value.toString() : String(value);
   }
 
-  private tenantCond(column: any): SQL | undefined {
-    const tid = this.tenantContext.currentTenantId();
-    return tid ? eq(column, tid) : undefined;
+  private tenantCond(column: any): SQL {
+    const tid = this.tenantContext.requireTenantId();
+    return eq(column, tid);
   }
 
   private combine(...conds: Array<SQL | undefined>): SQL | undefined {

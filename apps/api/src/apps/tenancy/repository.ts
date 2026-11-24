@@ -340,8 +340,10 @@ export class TenancyService {
           ORDER BY table_name ASC`,
     );
 
+    const excludedExportTables = new Set(['sta_tokens', 'sta_mail_accounts', 'sta_webhook_secrets']);
     const exported: Record<string, unknown[]> = {};
     for (const { tableName } of tables) {
+      if (excludedExportTables.has(tableName)) continue;
       const rows = await this.queryRaw<Record<string, unknown>>(
         sql`SELECT * FROM ${sql.raw(`"${tableName}"`)} WHERE tenant_id = ${context.tenantId}`,
       );

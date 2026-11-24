@@ -42,13 +42,24 @@ export const AttendanceRoutes: FastifyPluginAsync = async (fastify) => {
     attendance().myAttendance(actor(request), requestQuery<AttendanceListQuery>(request)),
   );
 
-  fastify.post('/clock-in', { preHandler: authenticated, schema: { body: ClockAttendanceSchema } }, async (request) =>
-    attendance().clockIn(actor(request), request, requestBody<ClockAttendance>(request)),
-  );
+  fastify.post('/clock-in', { preHandler: authenticated, schema: { body: ClockAttendanceSchema } }, async (request) => {
+    const body = requestBody<ClockAttendance>(request);
+    // Strip client-controlled source/at so staff cannot spoof source='import' or backdate timestamps
+    return attendance().clockIn(actor(request), request, {
+      ...body,
+      source: 'web',
+      at: undefined,
+    });
+  });
 
-  fastify.post('/clock-out', { preHandler: authenticated, schema: { body: ClockAttendanceSchema } }, async (request) =>
-    attendance().clockOut(actor(request), request, requestBody<ClockAttendance>(request)),
-  );
+  fastify.post('/clock-out', { preHandler: authenticated, schema: { body: ClockAttendanceSchema } }, async (request) => {
+    const body = requestBody<ClockAttendance>(request);
+    return attendance().clockOut(actor(request), request, {
+      ...body,
+      source: 'web',
+      at: undefined,
+    });
+  });
 
   fastify.get('/records', { preHandler: read, schema: { querystring: AttendanceListQuerySchema } }, async (request) =>
     attendance().records(requestQuery<AttendanceListQuery>(request)),

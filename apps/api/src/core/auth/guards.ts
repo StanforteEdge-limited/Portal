@@ -32,7 +32,11 @@ export async function authenticate(request: FastifyRequest): Promise<Authenticat
 
   let payload: unknown;
   try {
-    payload = container.jwt.verify(token);
+    payload = container.jwt.verify(token, {
+      algorithms: ['HS256'],
+      issuer: 'stanforte-api',
+      audience: 'portal-user',
+    });
   } catch {
     throw new UnauthorizedException();
   }

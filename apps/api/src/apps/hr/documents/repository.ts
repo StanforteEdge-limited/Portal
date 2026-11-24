@@ -285,8 +285,8 @@ export class DocumentsService {
   }
 
   private documentConditions(): SQL[] {
-    const tenantId = this.tenantContext.currentTenantId();
-    return tenantId ? [eq(document.tenantId, tenantId)] : [];
+    const tenantId = this.tenantContext.requireTenantId();
+    return [eq(document.tenantId, tenantId)];
   }
 
   private cleanUpdate<T extends Record<string, unknown>>(data: T): Partial<T> {
@@ -312,9 +312,8 @@ export class DocumentsService {
   }
 
   private async findFile(id: string) {
-    const conditions = [eq(fileAsset.id, id)];
-    const tenantId = this.tenantContext.currentTenantId();
-    if (tenantId) conditions.push(eq(fileAsset.tenantId, tenantId));
+    const tenantId = this.tenantContext.requireTenantId();
+    const conditions = [eq(fileAsset.id, id), eq(fileAsset.tenantId, tenantId)];
     const [row] = await this.db.client
       .select({ id: fileAsset.id })
       .from(fileAsset)

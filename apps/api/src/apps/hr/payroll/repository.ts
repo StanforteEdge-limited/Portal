@@ -76,7 +76,7 @@ import {
   financeReportingPeriod,
  } from '$apps/finance/accounting/model';
 import type { NewPayrollComponent } from './model';
-import { BadRequestException, ConflictException, NotFoundException } from '$core/errors';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '$core/errors';
 
 type TxClient = Parameters<Parameters<AppDb['transaction']>[0]>[0];
 type LookupClient = AppDb | TxClient;
@@ -103,13 +103,13 @@ export class PayrollService {
   }
 
   private tenantWhere() {
-    const tid = this.tenantContext.currentTenantId();
-    return tid ? { tenantId: tid } : {};
+    const tid = this.tenantContext.requireTenantId();
+    return { tenantId: tid };
   }
 
-  private tenantCond(column: any): SQL | undefined {
-    const tid = this.tenantContext.currentTenantId();
-    return tid ? eq(column, tid) : undefined;
+  private tenantCond(column: any): SQL {
+    const tid = this.tenantContext.requireTenantId();
+    return eq(column, tid);
   }
 
   private async findRunScoped(id: string) {
@@ -1534,7 +1534,10 @@ export class PayrollService {
   async approveRun(id: string, dto: { note?: string }, actorId?: string) {
     const run = await this.findRunScoped(id);
     if (!run) throw new NotFoundException('Payroll run not found');
-    if (!['under_review', 'prepared'].includes(run.status)) throw new BadRequestException('Run cannot be approved in its current status');
+    if (run.status !== 'under_review') throw new BadRequestException('Run must be under_review before it can be approved');
+    if (run.preparedById && actorId && run.preparedById.toString() === actorId) {
+      throw new ForbiddenException('Preparer cannot approve their own payroll run');
+    }
     await this.db.client.update(payrollRun)
       .set({
         status: 'approved',
@@ -1562,6 +1565,9 @@ export class PayrollService {
     if (!run) throw new NotFoundException('Payroll run not found');
     if (run.status !== 'approved') {
       throw new BadRequestException(`Cannot authorize a run with status "${run.status}". Run must be approved first.`);
+    }
+    if (run.approvedById && run.approvedById.toString() === userId) {
+      throw new ForbiddenException('Approver cannot authorize the same payroll run');
     }
     await this.db.client.update(payrollRun)
       .set({
@@ -1656,9 +1662,20 @@ export class PayrollService {
     if (!paidFromAccountId) throw new BadRequestException('Select the account to pay payroll from');
 
     await this.db.client.transaction(async (tx) => {
-      await tx.update(payrollRun)
+      const [claimed] = await tx
+        .update(payrollRun)
         .set({ status: 'payment_processing', paidFromAccountId })
-        .where(eq(payrollRun.id, id));
+        .where(
+          and(
+            eq(payrollRun.id, id),
+            this.tenantCond(payrollRun.tenantId),
+            eq(payrollRun.status, 'authorized'),
+          ),
+        )
+        .returning({ id: payrollRun.id });
+      if (!claimed) {
+        throw new BadRequestException('Payroll run is no longer authorized or is already being paid');
+      }
 
       const period = await this.ensureReportingPeriodTx(tx, run.periodEnd, actorId);
       const cashChartAccount = await this.resolveCashChartAccountTx(tx, paidFromAccountId, run.items[0]?.organizationId ?? null);

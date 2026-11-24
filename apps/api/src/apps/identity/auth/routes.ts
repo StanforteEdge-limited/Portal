@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify';
+import { timingSafeEqual } from 'node:crypto';
 import {
   ChangePasswordSchema,
   ForgotPasswordSchema,
@@ -18,42 +19,116 @@ import {
   type VerifyEmail,
 } from '@stanforte/contract';
 import { requireAuth } from '$core/auth/guards';
+import { authCookieOptions, clearAuthCookieOptions, parseCookieHeader } from '$core/auth/cookies';
+import { config } from '$config/index';
+import { randomToken } from '$core/utils';
 import { requestBody, requestQuery, responseAdapter } from '$core/routes';
+
+const OAUTH_STATE_COOKIE = 'se_oauth_state';
+
+function safeEqual(a: string, b: string): boolean {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return timingSafeEqual(bufA, bufB);
+}
 
 export const AuthRoutes: FastifyPluginAsync = async (fastify) => {
   const auth = () => fastify.container.auth;
 
-  fastify.post('/login', { schema: { body: LoginSchema } }, async (request, reply) =>
-    auth().login(requestBody<Login>(request), responseAdapter(reply)),
+  fastify.post(
+    '/login',
+    {
+      schema: { body: LoginSchema },
+      config: {
+        rateLimit: {
+          max: config.rateLimit.auth.loginMax,
+          timeWindow: config.rateLimit.auth.windowMs,
+        },
+      },
+    },
+    async (request, reply) => auth().login(requestBody<Login>(request), responseAdapter(reply)),
   );
 
   fastify.post('/refresh', { schema: { body: RefreshSchema } }, async (request, reply) =>
     auth().refresh(requestBody<Refresh>(request), request, responseAdapter(reply)),
   );
 
-  fastify.post('/forgot-password', { schema: { body: ForgotPasswordSchema } }, async (request) =>
-    auth().forgotPassword(requestBody<ForgotPassword>(request)),
+  fastify.post(
+    '/forgot-password',
+    {
+      schema: { body: ForgotPasswordSchema },
+      config: {
+        rateLimit: {
+          max: config.rateLimit.auth.forgotMax,
+          timeWindow: config.rateLimit.auth.windowMs,
+        },
+      },
+    },
+    async (request) => auth().forgotPassword(requestBody<ForgotPassword>(request)),
   );
 
-  fastify.post('/reset-password', { schema: { body: ResetPasswordSchema } }, async (request) =>
-    auth().resetPassword(requestBody<ResetPassword>(request)),
+  fastify.post(
+    '/reset-password',
+    {
+      schema: { body: ResetPasswordSchema },
+      config: {
+        rateLimit: {
+          max: config.rateLimit.auth.forgotMax,
+          timeWindow: config.rateLimit.auth.windowMs,
+        },
+      },
+    },
+    async (request) => auth().resetPassword(requestBody<ResetPassword>(request)),
   );
 
-  fastify.post('/verify-email', { schema: { body: VerifyEmailSchema } }, async (request) =>
-    auth().verifyEmail(requestBody<VerifyEmail>(request)),
+  fastify.post(
+    '/verify-email',
+    {
+      schema: { body: VerifyEmailSchema },
+      config: {
+        rateLimit: {
+          max: config.rateLimit.auth.inviteMax,
+          timeWindow: config.rateLimit.auth.windowMs,
+        },
+      },
+    },
+    async (request) => auth().verifyEmail(requestBody<VerifyEmail>(request)),
   );
 
-  fastify.post('/resend-verification', { schema: { body: ResendVerificationSchema } }, async (request) =>
-    auth().resendVerification(requestBody<ResendVerification>(request)),
+  fastify.post(
+    '/resend-verification',
+    {
+      schema: { body: ResendVerificationSchema },
+      config: {
+        rateLimit: {
+          max: config.rateLimit.auth.forgotMax,
+          timeWindow: config.rateLimit.auth.windowMs,
+        },
+      },
+    },
+    async (request) => auth().resendVerification(requestBody<ResendVerification>(request)),
   );
 
   fastify.get('/google', async (_request, reply) => {
-    const url = await auth().googleAuthUrl();
+    const state = randomToken(32);
+    reply.setCookie(OAUTH_STATE_COOKIE, state, authCookieOptions(600));
+    const url = await auth().googleAuthUrl(state);
     return reply.redirect(url);
   });
 
   fastify.get('/google/callback', async (request, reply) => {
-    const code = String(requestQuery<{ code?: string }>(request).code ?? '');
+    const query = requestQuery<{ code?: string; state?: string }>(request);
+    const code = String(query.code ?? '');
+    const state = String(query.state ?? '');
+    const cookieState = parseCookieHeader(request.headers.cookie)[OAUTH_STATE_COOKIE] ?? '';
+    reply.clearCookie(OAUTH_STATE_COOKIE, clearAuthCookieOptions());
+
+    if (!state || !cookieState || !safeEqual(state, cookieState)) {
+      const appUrl = process.env.APP_BASE_URL || 'http://localhost:5173';
+      return reply.redirect(`${appUrl}/login?error=invalid_oauth_state`);
+    }
+
     const redirectUrl = await auth().handleGoogleCallback(code, responseAdapter(reply));
     return reply.redirect(redirectUrl);
   });
