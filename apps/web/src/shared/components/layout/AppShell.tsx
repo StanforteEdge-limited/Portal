@@ -32,6 +32,7 @@ function mapActiveLabelToNav(label?: string): NavItemKey {
   if (clean.includes("finan") || clean.includes("procur")) return "Finance & Procurement";
   if (clean.includes("approv") || clean.includes("request")) return "Approvals";
   if (clean.includes("task") || clean.includes("file") || clean.includes("mail") || clean.includes("report")) return "Reports";
+  if (clean.includes("project")) return "Projects";
   if (clean.includes("role") || clean.includes("org") || clean.includes("setting") || clean.includes("admin")) return "Settings";
   return "Dashboard";
 }

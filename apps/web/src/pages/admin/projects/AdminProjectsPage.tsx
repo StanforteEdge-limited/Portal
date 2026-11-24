@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   ChevronRight,
   Clock,
+  FolderKanban,
   Layers,
   Pencil,
   Plus,
@@ -142,20 +143,29 @@ export default function AdminProjectsPage() {
   };
 
   return (
-    <PortalLayout activeNav="Teams & Units">
+    <PortalLayout activeNav="Projects">
       <div className="space-y-6 max-w-[1440px] mx-auto pb-12">
         <PageHeader
           title="Enterprise projects and initiatives"
           description="Manage project governance codes, client delivery timelines, and executive ownership"
           actions={
-            <button
-              type="button"
-              onClick={() => setShowCreate(true)}
-              className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#ff6900] hover:bg-[#ea580c] text-white text-sm font-medium transition-colors duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30"
-            >
-              <Plus className="h-4 w-4" strokeWidth={1.5} />
-              <span>Create project</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <Link
+                to="/projects"
+                className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-neutral-900/[0.10] bg-white hover:bg-neutral-50 text-neutral-700 text-xs font-medium transition-colors duration-150"
+              >
+                <FolderKanban className="h-4 w-4 text-[#ff6900]" strokeWidth={1.5} />
+                <span>Workspaces View</span>
+              </Link>
+              <button
+                type="button"
+                onClick={() => setShowCreate(true)}
+                className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#ff6900] hover:bg-[#ea580c] text-white text-sm font-medium transition-colors duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30"
+              >
+                <Plus className="h-4 w-4" strokeWidth={1.5} />
+                <span>Create project</span>
+              </button>
+            </div>
           }
         />
 
@@ -270,7 +280,12 @@ export default function AdminProjectsPage() {
                       <tr key={p.id} className="hover:bg-neutral-50 focus-within:bg-neutral-50/80 transition-colors duration-150">
                         <td className="py-3.5 px-5">
                           <div className="flex items-center gap-2">
-                            <span className="font-medium text-neutral-900">{p.name}</span>
+                            <Link
+                              to={`/projects/${p.id}`}
+                              className="font-medium text-neutral-900 hover:text-[#ff6900] transition-colors"
+                            >
+                              {p.name}
+                            </Link>
                             {p.governance?.project_code && (
                               <code className="font-mono text-xs px-2 py-0.5 rounded-md bg-neutral-100 text-neutral-700 border border-neutral-900/[0.06]">
                                 {p.governance.project_code}

@@ -232,39 +232,18 @@ export function NewTaskSlideOver({
             {/* 4. Tagging People & Assignees */}
             {isAdmin ? (
               <div className="space-y-2 pt-2 border-t border-neutral-100">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-medium text-neutral-700 flex items-center gap-1.5">
-                    <Users className="h-3.5 w-3.5 text-[#ff6900]" />
-                    <span>Tag Colleagues &amp; Assignees ({selectedAssignees.length})</span>
-                  </label>
-                  <span className="text-xs text-neutral-400">Click to select teammates</span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-44 overflow-y-auto p-1 border border-neutral-200 rounded-xl bg-neutral-50/50">
-                  {colleagues.map((member) => {
-                    const isSelected = selectedAssignees.some((a) => a.id === member.id);
-                    return (
-                      <button
-                        key={member.id}
-                        type="button"
-                        onClick={() => handleToggleAssignee(member)}
-                        className={`flex items-center gap-2.5 p-2 rounded-xl text-left border transition ${isSelected
-                            ? "bg-orange-50 border-[#ff6900] text-neutral-900 shadow-xs"
-                            : "bg-white border-neutral-200/80 text-neutral-700 hover:bg-neutral-100"
-                          }`}
-                      >
-                        <div className={`w-7 h-7 rounded-full text-white text-xs font-semibold flex items-center justify-center shrink-0 ${isSelected ? "bg-[#ff6900]" : "bg-neutral-800"
-                          }`}>
-                          {member.avatar || member.name.slice(0, 2).toUpperCase()}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="text-xs font-medium truncate">{member.name}</div>
-                          <div className="text-xs text-neutral-400 truncate">{member.role}</div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
+                <label className="text-xs font-medium text-neutral-700 flex items-center gap-1.5">
+                  <Users className="h-3.5 w-3.5 text-[#ff6900]" />
+                  <span>Assign Teammates &amp; Tag Staff</span>
+                </label>
+                <ColleagueMultiSelect
+                  colleagues={colleagues}
+                  selectedIds={selectedAssignees.map((a) => a.id)}
+                  onChange={(ids) =>
+                    setSelectedAssignees(colleagues.filter((c) => ids.includes(c.id)))
+                  }
+                  placeholder="Search staff by name, email, or role..."
+                />
               </div>
             ) : (
               <div className="space-y-1.5 pt-2 border-t border-neutral-100">

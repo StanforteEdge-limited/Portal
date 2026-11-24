@@ -21,6 +21,7 @@ import {
   FileText,
   Briefcase,
   CheckSquare,
+  FolderKanban,
   FolderOpen,
   Folder,
   BookOpen,
@@ -207,6 +208,13 @@ export const WORKSPACE_NAV_GROUPS: NavGroupDef[] = [
         description: "Organization management overview, approvals, and staff workflows",
       },
       {
+        label: "Projects",
+        icon: FolderKanban,
+        path: "/projects",
+        aliases: ["Projects", "Project Management", "Initiatives", "Deliverables", "Admin Projects", "Workspaces"],
+        description: "Organization initiatives, roadmaps, milestones, and task deliverables",
+      },
+      {
         label: "Staff Tasks",
         icon: CheckSquare,
         path: "/tasks",
@@ -371,6 +379,13 @@ export const EMPLOYEE_PRIMARY_NAV_ITEMS: NavItemDef[] = [
 ];
 
 export const EMPLOYEE_SECONDARY_NAV_ITEMS: NavItemDef[] = [
+  {
+    label: "Projects",
+    icon: FolderKanban,
+    path: "/projects",
+    aliases: ["Projects", "Project Management", "Initiatives", "Deliverables", "Workspaces"],
+    description: "Team projects, deliverables, and timelines",
+  },
   {
     label: "Teams",
     icon: Users,
@@ -725,6 +740,9 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
     }
     if (currentPath === item.path) return true;
     if (item.path !== "/dashboard" && item.path !== "/finance" && currentPath.startsWith(item.path + "/")) {
+      return true;
+    }
+    if (item.path === "/projects" && (currentPath === "/admin/projects" || currentPath.startsWith("/admin/projects/"))) {
       return true;
     }
     return false;
