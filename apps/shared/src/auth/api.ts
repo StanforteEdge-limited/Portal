@@ -104,8 +104,8 @@ export function createAuthApi(httpRequest: HttpRequest) {
   async function fetchStatus(): Promise<AuthStatusResponse> {
     try {
       const payload = await httpRequest<any>("/auth/status", {
-        auth: false,
-        retryOnUnauthorized: false,
+        auth: true,
+        retryOnUnauthorized: true,
       });
       // Unwrap { success, data } envelope if present
       const inner = (payload as any)?.data ?? payload;
@@ -132,8 +132,13 @@ export function createAuthApi(httpRequest: HttpRequest) {
       }
 
       return { authenticated: false, user: null };
-    } catch {
-      return { authenticated: false, user: null };
+    } catch (err: unknown) {
+      const status = (err as { status?: number } | null)?.status;
+      if (status === 401 || status === 403) {
+        return { authenticated: false, user: null };
+      }
+      // Network error or 5xx (server temporarily down/restarting): propagate so caller preserves session
+      throw err;
     }
   }
 

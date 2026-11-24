@@ -90,6 +90,23 @@ export async function deleteFileAsset(id: string): Promise<void> {
   await httpRequest<unknown>(`/files/${id}`, { method: "DELETE" });
 }
 
+export async function getPresignedFileUrl(
+  id: string,
+  opts?: { inline?: boolean; expiresInSeconds?: number }
+): Promise<string> {
+  const query = new URLSearchParams();
+  if (opts?.inline) query.set("inline", "true");
+  if (opts?.expiresInSeconds) query.set("expires_in_seconds", String(opts.expiresInSeconds));
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  const res = await httpRequest<any>(`/files/${id}/presign-download${suffix}`);
+  const data = (res as any)?.data ?? res;
+  const url = data?.presigned_url ?? data?.url;
+  if (!url) {
+    throw new Error("Unable to generate preview URL for this file.");
+  }
+  return String(url);
+}
+
 export type UploadFileInput =
   | File
   | {

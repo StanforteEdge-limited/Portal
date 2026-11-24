@@ -15,6 +15,8 @@ import { SlideOver, SlideOverHeader, SlideOverContent, SlideOverFooter } from "@
 import { documentApi } from "@/shared/lib/core";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { uploadFileAsset, type FileAssetRecord } from "@/pages/files/files-api";
+import { FilePreviewModal } from "@/shared/components/media/FilePreviewModal";
+import { RichDocumentEditor, DocumentTagBar } from "./DocumentEditor";
 import { useToast } from "@/shared";
 
 type Props = {
@@ -29,12 +31,14 @@ export default function DocumentSlideOver({ documentRecord, onClose, onSaved }: 
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("general");
   const [contentHtml, setContentHtml] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
   const [linkUrl, setLinkUrl] = useState("");
   const [requireAcknowledgement, setRequireAcknowledgement] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   // File attachment state
   const [attachedFile, setAttachedFile] = useState<FileAssetRecord | null>(null);
+  const [previewAttached, setPreviewAttached] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -50,6 +54,7 @@ export default function DocumentSlideOver({ documentRecord, onClose, onSaved }: 
       setTitle(documentRecord.title || "");
       setCategory(documentRecord.category || "general");
       setContentHtml(documentRecord.content_html || "");
+      setTags(Array.isArray(documentRecord.tags) ? documentRecord.tags : []);
       setLinkUrl(documentRecord.link_url || "");
       setRequireAcknowledgement(documentRecord.require_acknowledgement || false);
       setAttachedFile(documentRecord.file || null);
@@ -159,6 +164,7 @@ export default function DocumentSlideOver({ documentRecord, onClose, onSaved }: 
             : null,
           acknowledgements: [],
           shares: [],
+          tags,
         };
 
         const filtered = savedDocs.filter((d: any) => d.id !== docId);
@@ -240,17 +246,24 @@ export default function DocumentSlideOver({ documentRecord, onClose, onSaved }: 
           </div>
         )}
 
-        {/* Content Body */}
+        {/* Document Tags */}
         <div>
           <label className="block text-xs font-semibold text-neutral-700 mb-1.5">
-            Content Body <span className="text-neutral-400 font-normal">(Markdown or HTML supported)</span>
+            Tags
           </label>
-          <textarea
+          <DocumentTagBar tags={tags} onChange={setTags} />
+        </div>
+
+        {/* Rich Content Body */}
+        <div>
+          <label className="block text-xs font-semibold text-neutral-700 mb-1.5">
+            Document Content <span className="text-neutral-400 font-normal">(Format text or use @ to tag colleagues)</span>
+          </label>
+          <RichDocumentEditor
             value={contentHtml}
-            onChange={(e) => setContentHtml(e.target.value)}
+            onChange={setContentHtml}
             placeholder="Write the full document text, instructions, and policies here..."
-            rows={10}
-            className="w-full px-3.5 py-2.5 text-xs bg-white border border-neutral-200 rounded-xl outline-none transition focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900] font-mono leading-relaxed"
+            minHeightClass="min-h-[220px]"
           />
         </div>
 
@@ -287,14 +300,13 @@ export default function DocumentSlideOver({ documentRecord, onClose, onSaved }: 
                 )}
               </div>
               {attachedFile.public_url && (
-                <a
-                  href={attachedFile.public_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  type="button"
+                  onClick={() => setPreviewAttached(true)}
                   className="text-xs text-[#ff6900] hover:underline font-semibold"
                 >
                   View
-                </a>
+                </button>
               )}
               <button
                 type="button"
@@ -357,6 +369,12 @@ export default function DocumentSlideOver({ documentRecord, onClose, onSaved }: 
           <span>{submitting ? "Saving..." : isEdit ? "Save Document" : "Publish Document"}</span>
         </button>
       </SlideOverFooter>
+
+      <FilePreviewModal
+        file={attachedFile}
+        isOpen={previewAttached}
+        onClose={() => setPreviewAttached(false)}
+      />
     </SlideOver>
   );
 }

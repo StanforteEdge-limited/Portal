@@ -26,33 +26,70 @@ type AuthContextValue = {
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+const CACHED_USER_KEY = "se_cached_auth_user";
+
+function readCachedUser(): AuthUser | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(CACHED_USER_KEY);
+    return raw ? (JSON.parse(raw) as AuthUser) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedUser(user: AuthUser | null): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (user) {
+      window.localStorage.setItem(CACHED_USER_KEY, JSON.stringify(user));
+    } else {
+      window.localStorage.removeItem(CACHED_USER_KEY);
+    }
+  } catch {
+    // ignore storage errors
+  }
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [status, setStatus] = useState<AuthStatus>("checking");
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [initialized, setInitialized] = useState(false);
+  const initialCachedUser = readCachedUser();
+  const [status, setStatus] = useState<AuthStatus>(initialCachedUser ? "authenticated" : "checking");
+  const [user, setUser] = useState<AuthUser | null>(initialCachedUser);
+  const [initialized, setInitialized] = useState(Boolean(initialCachedUser));
   const [authIssue, setAuthIssue] = useState<AuthIssue>(null);
-  const [lastKnownEmail, setLastKnownEmail] = useState<string | null>(null);
+  const [lastKnownEmail, setLastKnownEmail] = useState<string | null>(initialCachedUser?.email || null);
 
   const refreshStatus = useCallback(async () => {
-    setStatus("checking");
+    const cached = readCachedUser();
+    if (!cached) {
+      setStatus("checking");
+    }
 
     try {
       const result = await authApi.fetchStatus();
       if (result.authenticated && result.user) {
+        writeCachedUser(result.user);
         setUser(result.user);
         setLastKnownEmail(result.user.email || null);
         setStatus("authenticated");
         setAuthIssue(null);
         getWorkspaceProfile().catch(() => {});
       } else {
+        writeCachedUser(null);
         setUser(null);
         setStatus("unauthenticated");
         setAuthIssue(null);
       }
     } catch {
-      setUser(null);
-      setStatus("unauthenticated");
+      // Transient network/5xx failure (e.g. server restarting): keep cached session intact
+      if (cached) {
+        setUser(cached);
+        setLastKnownEmail(cached.email || null);
+        setStatus("authenticated");
+      } else {
+        setUser(null);
+        setStatus("unauthenticated");
+      }
       setAuthIssue(null);
     } finally {
       setInitialized(true);
@@ -67,6 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (typeof window === "undefined") return;
 
     function handleAuthInvalidated() {
+      writeCachedUser(null);
       setUser(null);
       setStatus("unauthenticated");
       setAuthIssue("session_expired");
@@ -86,6 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       tokens.refresh_token,
       tokens.expires_in,
     );
+    writeCachedUser(authUser);
     setUser(authUser);
     setLastKnownEmail(authUser.email || email);
     setStatus("authenticated");
@@ -97,6 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     await authApi.logout();
     authSession.clearSession();
+    writeCachedUser(null);
     setUser(null);
     setLastKnownEmail(null);
     setStatus("unauthenticated");

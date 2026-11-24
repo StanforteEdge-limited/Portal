@@ -101,3 +101,17 @@ pnpm run test:playwright
 1. Branch from `development` or `main`.
 2. Ensure `pnpm run build:contract`, `pnpm run build:api`, and `pnpm run build:web` pass.
 3. Ensure unit tests pass (`pnpm run test:unit`).
+
+
+Here are the seeded local development login credentials from seed.cjs (all verified as active in your local database):
+
+Password for all seeded accounts: Password123!
+
+Acme Nigeria Ltd (workspace: acme)
+Role	Email	Name
+Administrator / Owner	admin@acme.com	Daniel Owonikoko
+Department Manager	manager@acme.com	Folake Adeleke
+Employee	employee@acme.com	Chidi Eze
+Stanforte Global (workspace: stanforte)
+Role	Email	Name
+Administrator / Owner	admin@stanforte.com	Sarah Connor

@@ -91,11 +91,13 @@ export class ObjectStorageService {
     fileName?: string;
     contentType?: string;
     expiresInSeconds?: number;
+    inline?: boolean;
   }): Promise<string> {
+    const disposition = opts.inline ? 'inline' : 'attachment';
     const command = new GetObjectCommand({
       Bucket: this.bucket,
       Key: opts.key,
-      ResponseContentDisposition: opts.fileName ? `attachment; filename="${opts.fileName.replace(/"/g, '')}"` : undefined,
+      ResponseContentDisposition: opts.fileName ? `${disposition}; filename="${opts.fileName.replace(/"/g, '')}"` : undefined,
       ResponseContentType: opts.contentType,
     });
     return getSignedUrl(this.clientOrThrow(), command, { expiresIn: opts.expiresInSeconds ?? 300 });

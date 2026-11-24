@@ -1,5 +1,4 @@
-import { SelectBox } from "@/components/ui/select";
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   X,
   Share2,
@@ -7,14 +6,15 @@ import {
   MessageSquare,
   FileText,
   Paperclip,
-  CheckCircle2,
   Send,
-  User,
   ArrowLeft,
+  Search,
+  ChevronDown,
+  Check,
 } from "lucide-react";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { useToast } from "@/shared";
-import { SAMPLE_TEAM_MEMBERS } from "@/pages/tasks/types";
+import { useColleagues } from "@/shared/hooks/useColleagues";
 import { createConversation, sendChatMessage } from "@/pages/chat/chat-api";
 import type { DocumentItem, DocumentSharedRecord } from "./types";
 
@@ -33,14 +33,17 @@ export default function DocumentShareModal({
 }: Props) {
   const { user } = useAuth();
   const { showToast } = useToast();
+  const { colleagues } = useColleagues();
 
   const currentUserName = user?.first_name
     ? `${user.first_name} ${user.last_name || ""}`.trim()
     : user?.username || "Colleague";
 
-  const [selectedColleagueId, setSelectedColleagueId] = useState<string>(
-    SAMPLE_TEAM_MEMBERS[0]?.id || "usr-1"
-  );
+  const [selectedColleagueId, setSelectedColleagueId] = useState<string>("");
+  const [colleagueDropdownOpen, setColleagueDropdownOpen] = useState(false);
+  const [colleagueSearch, setColleagueSearch] = useState("");
+  const colleaguePickerRef = useRef<HTMLDivElement>(null);
+  const colleagueSearchInputRef = useRef<HTMLInputElement>(null);
   const [customEmail, setCustomEmail] = useState("");
   const [useCustomEmail, setUseCustomEmail] = useState(false);
   const [message, setMessage] = useState("");
@@ -48,11 +51,53 @@ export default function DocumentShareModal({
   const [notifyEmail, setNotifyEmail] = useState(true);
   const [sharing, setSharing] = useState(false);
 
+  useEffect(() => {
+    if (!selectedColleagueId && colleagues.length > 0) {
+      setSelectedColleagueId(colleagues[0].id);
+    }
+  }, [colleagues, selectedColleagueId]);
+
+  const filteredColleagues = useMemo(() => {
+    const q = colleagueSearch.trim().toLowerCase();
+    if (!q) return colleagues;
+    return colleagues.filter(
+      (m) =>
+        m.name.toLowerCase().includes(q) ||
+        (m.email || "").toLowerCase().includes(q) ||
+        (m.role || "").toLowerCase().includes(q)
+    );
+  }, [colleagueSearch, colleagues]);
+
+  useEffect(() => {
+    if (!colleagueDropdownOpen) return;
+    colleagueSearchInputRef.current?.focus();
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        colleaguePickerRef.current &&
+        !colleaguePickerRef.current.contains(event.target as Node)
+      ) {
+        setColleagueDropdownOpen(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.stopPropagation();
+        setColleagueDropdownOpen(false);
+      }
+    };
+    window.addEventListener("mousedown", handleClickOutside);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [colleagueDropdownOpen]);
+
   if (!isOpen || !document) return null;
 
-  const selectedColleague = SAMPLE_TEAM_MEMBERS.find(
-    (m) => m.id === selectedColleagueId
-  ) || SAMPLE_TEAM_MEMBERS[0];
+  const selectedColleague =
+    colleagues.find((m) => m.id === selectedColleagueId) || colleagues[0] || null;
 
   const recipientName = useCustomEmail
     ? customEmail.split("@")[0] || "Colleague"
@@ -192,10 +237,15 @@ export default function DocumentShareModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-950/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-neutral-200/90 overflow-hidden">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Share Document"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-950/60 backdrop-blur-xs animate-in fade-in duration-200"
+    >
+      <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-neutral-200/90">
         {/* Header */}
-        <div className="px-6 py-5 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50">
+        <div className="px-6 py-5 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50 rounded-t-2xl">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0 shadow-xs">
               <Share2 className="h-5 w-5" />
@@ -286,17 +336,114 @@ export default function DocumentShareModal({
               </div>
             ) : (
               <div className="space-y-2">
-                <SelectBox
-                  value={selectedColleagueId}
-                  onChange={(e) => setSelectedColleagueId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-xs bg-neutral-50 border border-neutral-200 rounded-xl outline-none transition font-medium text-neutral-800 focus:bg-white focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
-                >
-                  {SAMPLE_TEAM_MEMBERS.map((member) => (
-                    <option key={member.id} value={member.id}>
-                      {member.name} • {member.role} ({member.email})
-                    </option>
-                  ))}
-                </SelectBox>
+                <div ref={colleaguePickerRef} className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setColleagueDropdownOpen((prev) => !prev)}
+                    aria-expanded={colleagueDropdownOpen}
+                    aria-haspopup="listbox"
+                    className={`w-full flex items-center justify-between gap-2 px-3.5 py-2.5 text-xs bg-neutral-50 border rounded-xl outline-none transition font-medium text-neutral-800 text-left ${
+                      colleagueDropdownOpen
+                        ? "bg-white border-[#ff6900] ring-2 ring-[#ff6900]/15"
+                        : "border-neutral-200 hover:border-neutral-300"
+                    }`}
+                  >
+                    <span className="truncate">
+                      {selectedColleague
+                        ? `${selectedColleague.name} • ${selectedColleague.role} (${selectedColleague.email})`
+                        : "Select a colleague..."}
+                    </span>
+                    <ChevronDown
+                      className={`h-4 w-4 text-neutral-400 shrink-0 transition-transform duration-150 ${
+                        colleagueDropdownOpen ? "rotate-180 text-[#ff6900]" : ""
+                      }`}
+                    />
+                  </button>
+
+                  {colleagueDropdownOpen && (
+                    <div
+                      role="listbox"
+                      className="absolute left-0 right-0 mt-1.5 z-30 rounded-xl bg-white border border-neutral-200 shadow-lg overflow-hidden"
+                    >
+                      <div className="p-2 border-b border-neutral-100 bg-neutral-50/70">
+                        <div className="relative">
+                          <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-400" />
+                          <input
+                            ref={colleagueSearchInputRef}
+                            type="text"
+                            value={colleagueSearch}
+                            onChange={(e) => setColleagueSearch(e.target.value)}
+                            placeholder="Search by name, role, or email..."
+                            className="w-full pl-8 pr-7 py-1.5 text-xs bg-white border border-neutral-200 rounded-lg text-neutral-900 placeholder:text-neutral-400 outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
+                          />
+                          {colleagueSearch && (
+                            <button
+                              type="button"
+                              onClick={() => setColleagueSearch("")}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-neutral-400 hover:text-neutral-700"
+                              aria-label="Clear colleague search"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="max-h-52 overflow-y-auto py-1 overscroll-contain">
+                        {filteredColleagues.length === 0 ? (
+                          <div className="px-3 py-5 text-center text-xs text-neutral-500">
+                            No matching colleagues found
+                          </div>
+                        ) : (
+                          filteredColleagues.map((member) => {
+                            const isSelected = member.id === selectedColleagueId;
+                            return (
+                              <button
+                                key={member.id}
+                                type="button"
+                                role="option"
+                                aria-selected={isSelected}
+                                onClick={() => {
+                                  setSelectedColleagueId(member.id);
+                                  setColleagueDropdownOpen(false);
+                                  setColleagueSearch("");
+                                }}
+                                className={`w-full px-3 py-2 flex items-center justify-between gap-2.5 text-left transition-colors ${
+                                  isSelected
+                                    ? "bg-orange-50/70 text-neutral-900"
+                                    : "hover:bg-neutral-50 text-neutral-800"
+                                }`}
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <div
+                                    className={`w-7 h-7 rounded-full flex items-center justify-center font-medium text-[11px] shrink-0 ${
+                                      isSelected
+                                        ? "bg-[#ff6900] text-white"
+                                        : "bg-neutral-100 text-neutral-700"
+                                    }`}
+                                  >
+                                    {member.avatar || "U"}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="text-xs font-medium text-neutral-900 truncate">
+                                      {member.name}
+                                    </p>
+                                    <p className="text-[11px] text-neutral-500 truncate">
+                                      {member.role} • {member.email}
+                                    </p>
+                                  </div>
+                                </div>
+                                {isSelected && (
+                                  <Check className="h-3.5 w-3.5 text-[#ff6900] shrink-0" />
+                                )}
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 {/* Selected Colleague Preview Badge */}
                 {selectedColleague && (

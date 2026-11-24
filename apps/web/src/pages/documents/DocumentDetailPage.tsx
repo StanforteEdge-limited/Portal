@@ -7,7 +7,9 @@ import { useToast, PageHeader } from "@/shared";
 import { useCachedQuery, documentApi } from "@/shared/lib/core";
 import DocumentSlideOver from "./DocumentSlideOver";
 import DocumentShareModal from "./DocumentShareModal";
-import { INITIAL_DOCUMENTS, type DocumentItem, type DocumentSharedRecord } from "./types";
+import { CollaborativeDocumentWorkspace } from "./DocumentEditor";
+import { FilePreviewModal } from "@/shared/components/media/FilePreviewModal";
+import { type DocumentComment, type DocumentItem, type DocumentSharedRecord } from "./types";
 import {
   FileText,
   Calendar,
@@ -22,7 +24,7 @@ import {
   Share2,
   Paperclip,
   Download,
-  ExternalLink,
+  Eye,
   Mail,
   MessageSquare,
   Users,
@@ -39,6 +41,8 @@ export default function DocumentDetailPage() {
   const [submittingSign, setSubmittingSign] = useState(false);
   const [editingDoc, setEditingDoc] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [savingContent, setSavingContent] = useState(false);
   const [localRefresh, setLocalRefresh] = useState(0);
 
   const { data: apiRecord, loading, refetch } = useCachedQuery(
@@ -60,12 +64,6 @@ export default function DocumentDetailPage() {
     } catch {}
 
     if (raw?.id) return raw;
-
-    // Check INITIAL_DOCUMENTS
-    const foundInitial = INITIAL_DOCUMENTS.find(
-      (d) => d.id === id || d.slug === id
-    );
-    if (foundInitial) return foundInitial;
 
     return null;
   }, [apiRecord, id, localRefresh]);
@@ -175,6 +173,48 @@ export default function DocumentDetailPage() {
     }
   }
 
+  async function handleSaveEditor(payload: {
+    content_html: string;
+    tags: string[];
+    comments: DocumentComment[];
+  }) {
+    if (!documentRecord) return;
+    setSavingContent(true);
+    try {
+      try {
+        await documentApi.update(documentRecord.id, {
+          content_html: payload.content_html,
+        });
+      } catch {
+        // Seeded/local catalog documents still persist below
+      }
+
+      const saved: DocumentItem[] = JSON.parse(
+        localStorage.getItem("portal_documents_catalog") || "[]",
+      );
+      const updatedRecord: DocumentItem = {
+        ...documentRecord,
+        content_html: payload.content_html,
+        tags: payload.tags,
+        comments: payload.comments,
+        updated_at: new Date().toISOString(),
+      };
+      const exists = saved.some((d) => d.id === documentRecord.id);
+      const next = exists
+        ? saved.map((d) => (d.id === documentRecord.id ? updatedRecord : d))
+        : [updatedRecord, ...saved];
+      localStorage.setItem("portal_documents_catalog", JSON.stringify(next));
+      setLocalRefresh((c) => c + 1);
+      showToast({
+        tone: "success",
+        title: "Document Updated",
+        message: "Changes saved to the collaborative document.",
+      });
+    } finally {
+      setSavingContent(false);
+    }
+  }
+
   if (loading && !documentRecord) {
     return (
       <PortalLayout activeNav="Documents">
@@ -224,6 +264,13 @@ export default function DocumentDetailPage() {
           iconColor="bg-orange-50 text-[#ff6900]"
           actions={
             <div className="flex items-center gap-2.5">
+              <Link
+                to={`/documents/${documentRecord.id}/edit`}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-xs font-medium transition shadow-xs"
+              >
+                <Edit3 className="h-3.5 w-3.5 text-[#ff6900]" />
+                <span>Open in Editor</span>
+              </Link>
               <button
                 type="button"
                 onClick={() => setShareModalOpen(true)}
@@ -354,17 +401,23 @@ export default function DocumentDetailPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              {documentRecord.file.public_url && (
-                <a
-                  href={documentRecord.file.public_url}
-                  target="_blank"
-                  rel="noreferrer"
+              {(documentRecord.file.id || documentRecord.file.public_url) && (
+                <button
+                  type="button"
+                  onClick={() => setPreviewOpen(true)}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-medium transition shadow-xs"
                 >
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  <span>Preview / Download</span>
-                </a>
+                  <Eye className="h-3.5 w-3.5" />
+                  <span>View File</span>
+                </button>
               )}
+              <Link
+                to={`/documents/${documentRecord.id}/edit`}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-xs font-medium transition shadow-xs"
+              >
+                <Edit3 className="h-3.5 w-3.5 text-[#ff6900]" />
+                <span>Open in Editor</span>
+              </Link>
               <button
                 type="button"
                 onClick={() => setShareModalOpen(true)}
@@ -376,31 +429,6 @@ export default function DocumentDetailPage() {
             </div>
           </div>
         )}
-
-        {/* Document Content View */}
-        <div className="p-8 rounded-2xl bg-white border border-neutral-200/80 shadow-sm space-y-6">
-          <div className="flex items-center justify-between pb-4 border-b border-neutral-100">
-            <div>
-              <h3 className="text-sm font-medium text-neutral-900 font-headline">
-                Document Body & Directives
-              </h3>
-              <p className="text-xs text-neutral-400 mt-0.5">
-                Authored by {documentRecord.author_name || "Enterprise Operations"}
-              </p>
-            </div>
-          </div>
-
-          <div className="prose prose-sm max-w-none text-neutral-800 leading-relaxed font-sans">
-            {documentRecord.content_html ? (
-              <div
-                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(documentRecord.content_html) }}
-                className="space-y-4"
-              />
-            ) : (
-              <p className="text-neutral-400 italic">No textual content provided for this document.</p>
-            )}
-          </div>
-        </div>
 
         {/* Sharing History & Notifications Card */}
         <div className="p-6 rounded-2xl bg-white border border-neutral-200/80 shadow-sm space-y-4">
@@ -572,6 +600,14 @@ export default function DocumentDetailPage() {
         isOpen={shareModalOpen}
         onClose={() => setShareModalOpen(false)}
         onShared={handleDocumentShared}
+      />
+
+      {/* In-Platform File Preview Modal */}
+      <FilePreviewModal
+        file={documentRecord.file ?? null}
+        isOpen={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        fallbackHtml={documentRecord.content_html}
       />
     </PortalLayout>
   );

@@ -20,6 +20,7 @@ import { buildAppNavigation, buildAppMobileNav } from "@/shared/navigation";
 import { getWorkspaceProfile } from "@/shared/api/workspace-api";
 import { formatFileSize } from "@stanforte/shared";
 import { uploadFileAsset } from "./files-api";
+import { FilePreviewModal, type PreviewableFile } from "@/shared/components/media/FilePreviewModal";
 
 type ViewMode = "grid" | "list";
 
@@ -43,6 +44,7 @@ export default function FilesPage() {
   const [totalCount, setTotalCount] = useState(0);
 
   const [uploading, setUploading] = useState(false);
+  const [previewFile, setPreviewFile] = useState<PreviewableFile | null>(null);
 
   const { data: filesData, loading, refetch } = useCachedQuery(
     `user:files:${listKey}:${search}:${fileType}:${page}:${perPage}`,
@@ -106,7 +108,7 @@ export default function FilesPage() {
     {
       header: "Actions",
       cell: (file: any) => (
-        <Button variant="ghost" size="sm" onClick={() => window.open(file.public_url || "#", "_blank")}>
+        <Button variant="ghost" size="sm" onClick={() => setPreviewFile(file)}>
           <Icon name="visibility" />
         </Button>
       )
@@ -231,7 +233,8 @@ export default function FilesPage() {
               {files.map((file: any) => (
                 <div
                   key={file.id}
-                  className="group relative bg-white border border-neutral-200 rounded-xl p-3 hover:shadow-md transition-shadow"
+                  onClick={() => setPreviewFile(file)}
+                  className="group relative cursor-pointer bg-white border border-neutral-200 rounded-xl p-3 hover:shadow-md transition-shadow"
                 >
                   <div className="aspect-square bg-neutral-50 rounded-lg flex items-center justify-center mb-2 overflow-hidden">
                     {file.mime_type?.startsWith("image/") ? (
@@ -288,6 +291,12 @@ export default function FilesPage() {
           )}
         </SectionCard>
       </div>
+
+      <FilePreviewModal
+        file={previewFile}
+        isOpen={Boolean(previewFile)}
+        onClose={() => setPreviewFile(null)}
+      />
     </AppShell>
   );
 }

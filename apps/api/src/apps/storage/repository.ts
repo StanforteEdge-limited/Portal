@@ -165,6 +165,9 @@ export class StorageService {
   }
 
   private async findFileAssetById(id: string) {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+      return null;
+    }
     const [row] = await this.db.client
       .select()
       .from(fileAsset)
@@ -386,7 +389,7 @@ export class StorageService {
     return { ...result, public_url: this.s3PublicUrl(result.key) };
   }
 
-  async presignDownload(id: string, expiresInSeconds?: number) {
+  async presignDownload(id: string, expiresInSeconds?: number, inline = false) {
     const file = await this.findFileAssetById(id);
     if (!file) throw new NotFoundException('File not found');
     if (file.storageDisk === 's3') {
@@ -394,7 +397,8 @@ export class StorageService {
         key: file.storagePath,
         fileName: file.fileName,
         contentType: file.mimeType ?? undefined,
-        expiresInSeconds
+        expiresInSeconds,
+        inline
       });
       return { id: file.id, file_name: file.fileName, presigned_url: url };
     }

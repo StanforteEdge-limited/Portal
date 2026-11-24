@@ -86,12 +86,17 @@ export const StorageRoutes: FastifyPluginAsync = async (fastify) => {
     return inTenant(request, () => storage().deleteFolder(id));
   });
 
-  // File download presign
+  // File download / inline preview presign
   fastify.get('/:id/presign-download', { preHandler: auth }, async (request) => {
     const { id } = request.params as { id: string };
-    const query = requestQuery<{ expires_in_seconds?: number }>(request);
+    const query = requestQuery<{ expires_in_seconds?: number; inline?: string | boolean }>(request);
+    const inline = query.inline === true || query.inline === 'true' || query.inline === '1';
     return inTenant(request, () =>
-      storage().presignDownload(id, query.expires_in_seconds ? Number(query.expires_in_seconds) : undefined)
+      storage().presignDownload(
+        id,
+        query.expires_in_seconds ? Number(query.expires_in_seconds) : undefined,
+        inline
+      )
     );
   });
 

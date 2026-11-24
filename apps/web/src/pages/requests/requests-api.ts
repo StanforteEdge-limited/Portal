@@ -292,7 +292,7 @@ export async function updateCategory(
   },
 ) {
   const res = await httpRequest<any>(`/requests/categories/${id}`, {
-    method: "PATCH",
+    method: "PUT",
     body: payload,
   });
   return res;

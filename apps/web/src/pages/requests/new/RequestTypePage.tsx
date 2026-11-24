@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, useCallback, useEffect } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { PortalLayout } from "@/components/layout/PortalLayout";
 import { PageHeader } from "@/shared";
@@ -10,85 +10,110 @@ import {
   type RequestCategoryOption,
 } from "@/pages/requests/requests-api";
 import {
-  FileText,
-  CreditCard,
-  Calendar,
-  Building2,
-  ChevronRight,
   ArrowRight,
-  CheckCircle2,
   Clock,
-  HelpCircle,
-  FolderPlus,
-  Send,
-  Layers,
-  ShieldCheck,
+  Search,
+  X,
+  FileText,
 } from "lucide-react";
+
+const WORKFLOW_LABELS: Record<string, string> = {
+  payment: "Payment",
+  leave: "Leave",
+  loan: "Loan",
+  other: "Operations",
+};
+
+function formatLimit(raw: unknown): string | null {
+  if (raw === null || raw === undefined || raw === "") return null;
+  const num = Number(raw);
+  if (!Number.isFinite(num) || num <= 0) return null;
+  return `Up to ₦${num.toLocaleString("en-NG", { maximumFractionDigits: 0 })}`;
+}
 
 export default function RequestTypePage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const categoryIdParam = searchParams.get("categoryId");
+  const categoryIdParam = searchParams.get("categoryId") || "all";
   const teamIdParam = searchParams.get("team_id");
   const orgIdParam = searchParams.get("organization_id");
+
+  const [query, setQuery] = useState("");
 
   const { data: requestTypes, loading: typesLoading, error: typesError } = useCachedQuery(
     "requests:types:all",
     () => listRequestTypes(),
-    { ttlMs: 1000 * 60 * 5, storage: "memory" }
+    { ttlMs: 1000 * 60 * 5, storage: "memory" },
   );
 
   const { data: categories, loading: categoriesLoading } = useCachedQuery(
     "requests:categories:all",
     () => listCategories(),
-    { ttlMs: 1000 * 60 * 5, storage: "memory" }
+    { ttlMs: 1000 * 60 * 5, storage: "memory" },
   );
 
   const loading = typesLoading || categoriesLoading;
+  const allTypes = (requestTypes ?? []) as RequestTypeOption[];
+  const allCategories = (categories ?? []) as RequestCategoryOption[];
 
-  const categoryCards = useMemo(() => {
-    const list = categories ?? [];
-    const cards = list.map((c) => ({
-      category: c,
-      key: c.id,
-      name: c.name,
-      description: c.description || "Operational workflow and approval chain.",
-    }));
-    cards.push({
-      category: null as any,
-      key: "others",
-      name: "Others",
-      description: "Miscellaneous administrative workflows.",
-    });
-    return cards;
-  }, [categories]);
-
-  const selectedTypes = useMemo(() => {
-    if (!categoryIdParam || !requestTypes) return [];
-    if (categoryIdParam === "others") {
-      return (requestTypes as RequestTypeOption[]).filter(
-        (t) => !t.categoryId && !t.category_id
-      );
-    }
-    return (requestTypes as RequestTypeOption[]).filter(
-      (t) => t.categoryId === categoryIdParam || t.category_id === categoryIdParam
-    );
-  }, [categoryIdParam, requestTypes]);
+  const categoryNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    allCategories.forEach((c) => map.set(c.id, c.name));
+    return map;
+  }, [allCategories]);
 
   const typeCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    (requestTypes ?? []).forEach((t: RequestTypeOption) => {
+    const counts: Record<string, number> = { all: allTypes.length };
+    allTypes.forEach((t) => {
       const catId = t.categoryId ?? t.category_id ?? "others";
       counts[catId] = (counts[catId] ?? 0) + 1;
     });
     return counts;
-  }, [requestTypes]);
+  }, [allTypes]);
 
-  const selectedCategory: RequestCategoryOption | null = useMemo(() => {
-    if (!categoryIdParam || categoryIdParam === "others") return null;
-    return categories?.find((c) => c.id === categoryIdParam) ?? null;
-  }, [categoryIdParam, categories]);
+  const railCategories = useMemo(() => {
+    const items: Array<{ key: string; name: string; count: number }> = [
+      { key: "all", name: "All workflows", count: typeCounts.all ?? 0 },
+      ...allCategories.map((c) => ({
+        key: c.id,
+        name: c.name,
+        count: typeCounts[c.id] ?? 0,
+      })),
+    ];
+    if ((typeCounts.others ?? 0) > 0) {
+      items.push({ key: "others", name: "Uncategorized", count: typeCounts.others });
+    }
+    return items;
+  }, [allCategories, typeCounts]);
 
-  const selectedCategoryLabel = selectedCategory?.name ?? "Others";
+  const visibleTypes = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return allTypes.filter((t) => {
+      const catId = t.categoryId ?? t.category_id ?? "others";
+      const matchesCategory =
+        categoryIdParam === "all" ||
+        (categoryIdParam === "others" ? !t.categoryId && !t.category_id : catId === categoryIdParam);
+      if (!matchesCategory) return false;
+      if (!q) return true;
+      const prefix = String(t.codePrefix ?? t.code_prefix ?? "").toLowerCase();
+      const handler = String(
+        t.handler_role_label ?? (t as any).handlerRoleLabel ?? "",
+      ).toLowerCase();
+      const catName = (categoryNameById.get(catId) ?? "").toLowerCase();
+      return (
+        t.name.toLowerCase().includes(q) ||
+        (t.description ?? "").toLowerCase().includes(q) ||
+        prefix.includes(q) ||
+        handler.includes(q) ||
+        catName.includes(q)
+      );
+    });
+  }, [allTypes, categoryIdParam, query, categoryNameById]);
+
+  const activeCategoryName = useMemo(() => {
+    if (categoryIdParam === "all") return "All workflows";
+    if (categoryIdParam === "others") return "Uncategorized";
+    return categoryNameById.get(categoryIdParam) ?? "All workflows";
+  }, [categoryIdParam, categoryNameById]);
 
   const formLinkParams = useMemo(() => {
     const p = new URLSearchParams();
@@ -102,275 +127,254 @@ export default function RequestTypePage() {
     return formLinkParams ? `${base}&${formLinkParams}` : base;
   };
 
-  const handleCategoryClick = useCallback(
+  const handleSelectCategory = useCallback(
     (key: string) => {
       const next = new URLSearchParams(searchParams);
-      if (next.get("categoryId") === key) {
+      if (key === "all") {
         next.delete("categoryId");
       } else {
         next.set("categoryId", key);
       }
       setSearchParams(next);
     },
-    [searchParams, setSearchParams]
+    [searchParams, setSearchParams],
   );
 
   return (
     <PortalLayout activeNav="My Requests">
       <div className="space-y-6">
-        {/* Modern Unified Page Header (No Breadcrumbs) */}
         <PageHeader
-          title="Create New Request"
-          description="Select the designated request category and workflow subtype to initiate formal sign-off."
-          icon={FolderPlus}
-          iconColor="bg-orange-50 text-[#ff6900]"
+          title="New request"
+          description="Pick a workflow to start a finance, HR, procurement, or operations request"
           actions={
             <Link
               to="/requests"
-              className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-neutral-200 bg-white text-xs font-medium text-neutral-700 hover:bg-neutral-50 transition shadow-xs self-start sm:self-auto"
+              className="button-secondary h-9 px-3.5 text-sm"
             >
-              <Clock className="h-4 w-4 text-neutral-400" />
-              <span>My Submitted Requests</span>
+              <Clock className="h-4 w-4 text-neutral-500" strokeWidth={1.5} />
+              <span>Submitted requests</span>
             </Link>
           }
         />
 
-        {/* 4 KPI Metric Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
-                <Layers className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="text-xs font-semibold text-neutral-500">Categories</div>
-                <div className="text-xl font-semibold text-neutral-900 mt-0.5">
-                  {categories?.length || 0}
-                </div>
-              </div>
-            </div>
-            <div className="text-xs font-medium text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
-              Standard
-            </div>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
-              <FileText className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="text-xs font-semibold text-neutral-500">Available Subtypes</div>
-              <div className="text-xl font-semibold text-neutral-900 mt-0.5">
-                {requestTypes?.length || 0}
-              </div>
-            </div>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-              <CheckCircle2 className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="text-xs font-semibold text-neutral-500">Approval Chains</div>
-              <div className="text-xl font-semibold text-emerald-600 mt-0.5">Multi-tier</div>
-            </div>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
-              <ShieldCheck className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="text-xs font-semibold text-neutral-500">Draft Auto-save</div>
-              <div className="text-xl font-semibold text-neutral-700 mt-0.5">Enabled</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Step 1: Request Categories Carousel / Grid */}
-        <div className="space-y-3">
-          <h2 className="text-xs font-medium text-neutral-500">
-            Step 1: Select Request Category
-          </h2>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {categoryCards.map((card) => {
-              const active = categoryIdParam === card.key;
-              const count = typeCounts[card.key] ?? 0;
-
-              return (
-                <button
-                  key={card.key}
-                  type="button"
-                  onClick={() => handleCategoryClick(card.key)}
-                  className={`p-5 rounded-2xl border text-left transition-colors duration-200 flex flex-col justify-between group ${
-                    active
-                      ? "bg-[#0a1128] text-white border-[#0a1128] shadow-lg shadow-navy-900/20 scale-[1.01]"
-                      : "bg-white text-neutral-900 border-neutral-200/80 hover:border-[#ff6900]/50 hover:shadow-md"
-                  }`}
-                >
-                  <div>
-                    <div className="flex items-center justify-between gap-2 mb-3">
-                      <div
-                        className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
-                          active
-                            ? "bg-[#ff6900] text-white"
-                            : "bg-orange-50 text-[#ff6900] group-hover:bg-[#ff6900] group-hover:text-white"
-                        }`}
-                      >
-                        <FolderPlus className="h-5 w-5" />
-                      </div>
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                          active
-                            ? "bg-white/10 text-orange-400 border border-white/10"
-                            : "bg-neutral-100 text-neutral-600"
-                        }`}
-                      >
-                        {count} {count === 1 ? "workflow" : "workflows"}
-                      </span>
-                    </div>
-
-                    <h3 className="font-semibold text-sm mb-1">{card.name}</h3>
-                    <p
-                      className={`text-xs line-clamp-2 ${
-                        active ? "text-neutral-300" : "text-neutral-500"
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Left rail: Category index + compact submission note */}
+          <aside className="lg:col-span-3 space-y-6">
+            <div className="rounded-2xl bg-white border border-neutral-900/[0.08] p-4 shadow-xs">
+              <p className="px-2 pb-2 text-xs font-medium text-neutral-500">
+                Categories
+              </p>
+              <nav className="space-y-1" aria-label="Request categories">
+                {railCategories.map((item) => {
+                  const active = categoryIdParam === item.key;
+                  return (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => handleSelectCategory(item.key)}
+                      className={`w-full h-9 px-2.5 rounded-lg flex items-center justify-between gap-2 text-sm transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30 ${
+                        active
+                          ? "bg-neutral-100 text-neutral-900 font-medium"
+                          : "text-neutral-600 font-normal hover:bg-neutral-50 hover:text-neutral-900"
                       }`}
                     >
-                      {card.description}
-                    </p>
-                  </div>
+                      <span className="flex items-center gap-2 min-w-0">
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full shrink-0 ${
+                            active ? "bg-[#ff6900]" : "bg-transparent"
+                          }`}
+                        />
+                        <span className="truncate">{item.name}</span>
+                      </span>
+                      <span
+                        className={`font-mono text-xs tabular-nums shrink-0 ${
+                          active ? "text-[#c2410c]" : "text-neutral-400"
+                        }`}
+                      >
+                        {item.count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
 
-                  <div className="pt-4 mt-3 border-t border-neutral-100/10 flex items-center justify-between text-xs font-medium">
-                    <span className={active ? "text-orange-400" : "text-[#ff6900]"}>
-                      {active ? "Selected Category" : "Choose Category"}
-                    </span>
-                    <ArrowRight
-                      className={`h-3.5 w-3.5 transition-transform  ${
-                        active ? "text-orange-400" : "text-[#ff6900]"
-                      }`}
-                    />
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+            <div className="rounded-2xl bg-white border border-neutral-900/[0.08] p-4 shadow-xs space-y-3">
+              <p className="text-xs font-medium text-neutral-900">
+                Before you submit
+              </p>
+              <ol className="space-y-2.5 text-xs text-neutral-500 leading-relaxed">
+                <li className="flex gap-2.5">
+                  <span className="font-mono text-neutral-400 tabular-nums shrink-0">01</span>
+                  <span>Choose the workflow that matches your expense, leave, or equipment need</span>
+                </li>
+                <li className="flex gap-2.5">
+                  <span className="font-mono text-neutral-400 tabular-nums shrink-0">02</span>
+                  <span>Attach quotes or supporting receipts for finance and procurement requests</span>
+                </li>
+                <li className="flex gap-2.5">
+                  <span className="font-mono text-neutral-400 tabular-nums shrink-0">03</span>
+                  <span>Your request routes automatically to your line manager and approvers</span>
+                </li>
+              </ol>
+            </div>
+          </aside>
 
-        {/* Step 2: Request Subtypes List & Guidance Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          <div className="lg:col-span-8 space-y-4">
-            <h2 className="text-xs font-medium text-neutral-500">
-              Step 2: Choose Workflow Subtype
-            </h2>
+          {/* Right column: Search + Workflow ledger */}
+          <section className="lg:col-span-9 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-baseline gap-2.5 min-w-0">
+                <h2 className="font-headline text-base font-medium tracking-tight text-neutral-900 truncate">
+                  {activeCategoryName}
+                </h2>
+                <span className="font-mono text-xs text-neutral-500 tabular-nums shrink-0">
+                  {visibleTypes.length}
+                </span>
+              </div>
 
-            {!categoryIdParam ? (
-              <div className="p-12 text-center bg-white rounded-2xl border border-neutral-200/80 shadow-sm">
-                <Layers className="h-8 w-8 text-neutral-300 mx-auto mb-2" />
-                <p className="text-xs font-medium text-neutral-700">Choose a Category First</p>
-                <p className="text-xs text-neutral-400 mt-0.5">
-                  Click on one of the category cards above to display its corresponding workflow forms.
-                </p>
-              </div>
-            ) : loading ? (
-              <div className="p-12 text-center bg-white rounded-2xl border border-neutral-200/80 text-xs font-medium text-neutral-400">
-                Loading request forms...
-              </div>
-            ) : selectedTypes.length === 0 ? (
-              <div className="p-12 text-center bg-white rounded-2xl border border-neutral-200/80 shadow-sm">
-                <FileText className="h-8 w-8 text-neutral-300 mx-auto mb-2" />
-                <p className="text-xs font-medium text-neutral-700">No Request Types Available</p>
-                <p className="text-xs text-neutral-400 mt-0.5">
-                  This category currently has no active form templates configured.
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {selectedTypes.map((type) => (
-                  <Link
-                    key={type.id}
-                    to={formLink(type.id)}
-                    className="p-5 rounded-2xl bg-white border border-neutral-200/80 hover:border-[#ff6900]/50 hover:shadow-md transition-colors duration-200 flex flex-col justify-between group cursor-pointer"
+              <div className="relative w-full sm:w-72">
+                <Search
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400"
+                  strokeWidth={1.5}
+                />
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search request types"
+                  className="w-full h-9 pl-9 pr-8 rounded-lg border border-neutral-900/[0.12] bg-white text-sm text-neutral-900 placeholder:text-neutral-400 outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15 transition-colors duration-150"
+                />
+                {query && (
+                  <button
+                    type="button"
+                    onClick={() => setQuery("")}
+                    aria-label="Clear search"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-neutral-400 hover:text-neutral-700"
                   >
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="w-2 h-2 rounded-full bg-[#ff6900]" />
-                        <h3 className="font-semibold text-neutral-900 group-hover:text-[#ff6900] transition-colors text-sm">
-                          {type.name}
-                        </h3>
-                      </div>
-                      <p className="text-xs text-neutral-500 line-clamp-3 leading-relaxed">
-                        {type.description ||
-                          "Launch this workflow with verified fields and automated stage routing."}
-                      </p>
-                    </div>
-
-                    <div className="pt-4 mt-4 border-t border-neutral-100 flex items-center justify-between text-xs">
-                      <span className="text-xs font-medium text-neutral-400">
-                        Code: {(type as any).code || "STD"}
-                      </span>
-                      <span className="font-medium text-[#ff6900] flex items-center gap-1 transition-transform">
-                        <span>Open Form</span>
-                        <ArrowRight className="h-3 w-3" />
-                      </span>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Right 4 Columns: Process SLA & Protocol Card */}
-          <div className="lg:col-span-4 space-y-4">
-            <h2 className="text-xs font-medium text-neutral-500">
-              Submission Guidelines
-            </h2>
-
-            <div className="p-5 rounded-2xl bg-white border border-neutral-200/80 shadow-sm space-y-4">
-              <div className="flex items-center gap-2.5 pb-3 border-b border-neutral-100">
-                <HelpCircle className="h-4 w-4 text-[#ff6900]" />
-                <h3 className="text-xs font-medium text-neutral-900">Standard Request Protocol</h3>
-              </div>
-
-              <div className="space-y-3 text-xs text-neutral-600">
-                <div className="flex items-start gap-2.5">
-                  <div className="w-5 h-5 rounded-full bg-neutral-100 text-neutral-700 font-medium text-xs flex items-center justify-center shrink-0 mt-0.5">
-                    1
-                  </div>
-                  <div>
-                    <p className="font-medium text-neutral-800">Select Category & Subtype</p>
-                    <p className="text-xs text-neutral-400">
-                      Match the budget line item or leave category.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-2.5">
-                  <div className="w-5 h-5 rounded-full bg-neutral-100 text-neutral-700 font-medium text-xs flex items-center justify-center shrink-0 mt-0.5">
-                    2
-                  </div>
-                  <div>
-                    <p className="font-medium text-neutral-800">Attach Quotes & Justifications</p>
-                    <p className="text-xs text-neutral-400">
-                      Required for financial or procurement requests.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-2.5">
-                  <div className="w-5 h-5 rounded-full bg-neutral-100 text-neutral-700 font-medium text-xs flex items-center justify-center shrink-0 mt-0.5">
-                    3
-                  </div>
-                  <div>
-                    <p className="font-medium text-neutral-800">Manager & Audit Sign-off</p>
-                    <p className="text-xs text-neutral-400">
-                      Automated routing with notifications and timeline tracking.
-                    </p>
-                  </div>
-                </div>
+                    <X className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  </button>
+                )}
               </div>
             </div>
-          </div>
+
+            {typesError ? (
+              <div className="rounded-2xl bg-white border border-neutral-900/[0.08] p-8 text-center">
+                <p className="text-sm font-medium text-neutral-900">Unable to load workflows</p>
+                <p className="mt-1 text-xs text-neutral-500">Refresh the page to try again</p>
+              </div>
+            ) : loading ? (
+              <div className="rounded-2xl bg-white border border-neutral-900/[0.08] divide-y divide-neutral-900/[0.06] overflow-hidden">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="px-5 py-4 flex items-center gap-4">
+                    <div className="w-16 h-6 rounded bg-neutral-100 shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <div className="w-44 h-4 rounded bg-neutral-100" />
+                      <div className="w-80 max-w-full h-3 rounded bg-neutral-100" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : visibleTypes.length === 0 ? (
+              <div className="rounded-2xl bg-white border border-neutral-900/[0.08] px-6 py-12 text-center space-y-2">
+                <FileText className="h-5 w-5 text-neutral-400 mx-auto" strokeWidth={1.5} />
+                <p className="text-sm font-medium text-neutral-900">No matching request types</p>
+                <p className="text-xs text-neutral-500">
+                  {query
+                    ? "Try a different keyword or clear the search filter"
+                    : "No active workflows are configured in this category yet"}
+                </p>
+                {(query || categoryIdParam !== "all") && (
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setQuery("");
+                        handleSelectCategory("all");
+                      }}
+                      className="button-secondary h-8 px-3 text-xs"
+                    >
+                      Show all workflows
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs divide-y divide-neutral-900/[0.06] overflow-hidden">
+                {visibleTypes.map((type) => {
+                  const prefix = (
+                    type.codePrefix ??
+                    type.code_prefix ??
+                    (type as any).code ??
+                    "REQ"
+                  ).toUpperCase();
+                  const handler =
+                    type.handler_role_label ?? (type as any).handlerRoleLabel ?? null;
+                  const wfKey = String(
+                    type.workflow_type ?? (type as any).workflowType ?? "",
+                  ).toLowerCase();
+                  const wfLabel = WORKFLOW_LABELS[wfKey] ?? null;
+                  const limitLabel = formatLimit(
+                    (type as any).approvalLimit ?? (type as any).approval_limit,
+                  );
+                  const catId = type.categoryId ?? type.category_id ?? "";
+                  const catName = categoryNameById.get(catId);
+
+                  return (
+                    <Link
+                      key={type.id}
+                      to={formLink(type.id)}
+                      className="group flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 px-5 py-4 hover:bg-neutral-50 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#ff6900]/30"
+                    >
+                      {/* Signature filing-prefix column */}
+                      <div className="w-16 shrink-0">
+                        <span className="inline-flex items-center justify-center min-w-[52px] px-2 py-1 rounded-md font-mono text-xs font-medium tabular-nums bg-neutral-100 text-neutral-700 border border-neutral-900/[0.06] group-hover:bg-orange-50 group-hover:text-[#c2410c] group-hover:border-orange-200/70 transition-colors duration-150">
+                          {prefix}
+                        </span>
+                      </div>
+
+                      {/* Name + description */}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-sm font-medium text-neutral-900 group-hover:text-[#c2410c] transition-colors duration-150">
+                            {type.name}
+                          </h3>
+                          {categoryIdParam === "all" && catName && (
+                            <span className="text-xs text-neutral-400">
+                              {catName}
+                            </span>
+                          )}
+                        </div>
+                        {type.description && (
+                          <p className="mt-0.5 text-xs text-neutral-500 line-clamp-1 leading-relaxed">
+                            {type.description}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Right metadata + quiet action */}
+                      <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0 text-xs">
+                        <div className="flex flex-wrap items-center gap-3 text-neutral-500">
+                          {handler && <span className="truncate max-w-[160px]">{handler}</span>}
+                          {limitLabel && (
+                            <span className="font-mono tabular-nums text-neutral-600">
+                              {limitLabel}
+                            </span>
+                          )}
+                          {!limitLabel && wfLabel && (
+                            <span className="text-neutral-400">{wfLabel}</span>
+                          )}
+                        </div>
+                        <ArrowRight
+                          className="h-4 w-4 text-neutral-400 group-hover:text-[#ff6900] transition-colors duration-150 shrink-0"
+                          strokeWidth={1.5}
+                        />
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </section>
         </div>
       </div>
     </PortalLayout>

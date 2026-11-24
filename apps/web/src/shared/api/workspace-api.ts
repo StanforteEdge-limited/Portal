@@ -25,7 +25,9 @@ export type WorkspaceProfile = {
     code: string;
     is_primary?: boolean;
     logo_url?: string | null;
+    logo_file_id?: string | null;
     theme?: string;
+    primary_color?: string | null;
   }>;
   groups?: Array<{ id: string; name: string; type: string; role: string; is_primary?: boolean }>;
   employee_profile?: {
@@ -45,6 +47,15 @@ export type WorkspaceProfile = {
     status?: string;
   } | null;
   signature_url?: string | null;
+  settings?: {
+    theme_mode?: "light" | "dark" | "system" | null;
+    [key: string]: unknown;
+  };
+  tenant_default_theme_mode?: "light" | "dark" | "system" | null;
+  tenant_name?: string | null;
+  tenant_primary_color?: string | null;
+  tenant_logo_file_id?: string | null;
+  tenant_logo_url?: string | null;
 };
 
 export type WorkspaceNotification = {
@@ -84,6 +95,10 @@ export async function updateWorkspaceProfile(payload: {
   lga?: string;
   marital_status?: string;
   signature_file_id?: string;
+  settings?: {
+    theme_mode?: "light" | "dark" | "system" | null;
+    [key: string]: unknown;
+  };
 }) {
   const res = await httpRequest<any>("/profile", {
     method: "PATCH",

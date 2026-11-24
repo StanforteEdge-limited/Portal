@@ -93,9 +93,12 @@ export default defineConfig(({ mode }) => {
     base,
     plugins: [react(), versionManifestPlugin()],
     resolve: {
+      dedupe: ["react", "react-dom"],
       alias: {
         "@": fileURLToPath(new URL("./src", import.meta.url)),
         "@stanforte/shared": fileURLToPath(new URL("../shared/src/index.ts", import.meta.url)),
+        react: fileURLToPath(new URL("./node_modules/react", import.meta.url)),
+        "react-dom": fileURLToPath(new URL("./node_modules/react-dom", import.meta.url)),
         "react-router-dom": fileURLToPath(new URL("./src/shared/router-adapter.tsx", import.meta.url)),
         "react-router": fileURLToPath(new URL("./src/shared/router-adapter.tsx", import.meta.url)),
       },

@@ -23,7 +23,7 @@ import { TenantContext } from '$core/auth/tenant-context';
 import { TenantContextService } from '$core/auth/tenant-context.service';
 import { profile, type Profile } from '$apps/identity/users/model';
 import { organization as organizationTable, profileOrganization } from '$apps/hr/organizations/model';
-import { tenantMembership, tenantOrganization } from '$apps/tenancy/model';
+import { tenant as tenantTable, tenantMembership, tenantOrganization } from '$apps/tenancy/model';
 import { role as roleTable, userRole as userRoleTable } from '$apps/identity/rbac/model';
 import { group as groupTable, groupUser } from '$apps/communication/groups/model';
 import { project as projectTable, projectMember } from '$apps/hr/projects/model';
@@ -43,12 +43,64 @@ export class UsersService {
     private readonly auth: AuthService
   ) {}
 
-async getMyProfile(profileId: string, tenant?: TenantContext) {
-    const user = await this.enrichProfile(toBigInt(profileId));
-    if (!tenant) return this.serializeProfile(user);
+  private async getTenantBranding(tenant?: TenantContext): Promise<{
+    defaultThemeMode: 'light' | 'dark' | 'system' | null;
+    name: string | null;
+    primaryColor: string | null;
+    logoFileId: string | null;
+    logoUrl: string | null;
+  }> {
+    if (!tenant?.tenantId) {
+      return {
+        defaultThemeMode: null,
+        name: null,
+        primaryColor: null,
+        logoFileId: null,
+        logoUrl: null,
+      };
+    }
+    const [row] = await this.db.client
+      .select({ name: tenantTable.name, metadata: tenantTable.metadata })
+      .from(tenantTable)
+      .where(eq(tenantTable.id, tenant.tenantId))
+      .limit(1);
+    const meta =
+      row?.metadata && typeof row.metadata === 'object'
+        ? (row.metadata as Record<string, unknown>)
+        : null;
+    const themeVal = meta?.default_theme_mode;
+    const primaryColor =
+      typeof meta?.primary_color === 'string' && /^#[0-9a-fA-F]{6}$/.test(meta.primary_color.trim())
+        ? meta.primary_color.trim()
+        : null;
+    const logoFileId =
+      typeof meta?.logo_file_id === 'string' && meta.logo_file_id.trim()
+        ? meta.logo_file_id.trim()
+        : null;
+    const logoUrl =
+      typeof meta?.logo_url === 'string' && meta.logo_url.trim()
+        ? meta.logo_url.trim()
+        : null;
+    return {
+      defaultThemeMode:
+        themeVal === 'light' || themeVal === 'dark' || themeVal === 'system' ? themeVal : null,
+      name: typeof row?.name === 'string' ? row.name : null,
+      primaryColor,
+      logoFileId,
+      logoUrl,
+    };
+  }
+
+  async getMyProfile(profileId: string, tenant?: TenantContext) {
+    const [user, tenantBranding] = await Promise.all([
+      this.enrichProfile(toBigInt(profileId)),
+      this.getTenantBranding(tenant),
+    ]);
+    if (!tenant) return this.serializeProfile({ ...user, tenantBranding });
 
     return this.serializeProfile({
       ...user,
+      tenantBranding,
       organizations: (user.organizations ?? []).filter((item: any) => item.tenantId === tenant.tenantId),
       groups: (user.groups ?? []).filter((item: any) => item.group?.tenantId === tenant.tenantId),
       projectMemberships: (user.projectMemberships ?? []).filter(
@@ -101,10 +153,24 @@ async getMyProfile(profileId: string, tenant?: TenantContext) {
         ...(dto.signature_file_id !== undefined
           ? { signatureFileId: dto.signature_file_id || null }
           : {}),
+        ...(dto.settings !== undefined
+          ? {
+              settings: {
+                ...(existing.settings && typeof existing.settings === 'object'
+                  ? (existing.settings as Record<string, unknown>)
+                  : {}),
+                ...dto.settings,
+              },
+            }
+          : {}),
       })
       .where(eq(profile.id, existing.id));
 
-    return this.serializeProfile(await this.enrichProfile(existing.id));
+    const [enriched, tenantBranding] = await Promise.all([
+      this.enrichProfile(existing.id),
+      this.getTenantBranding(tenant),
+    ]);
+    return this.serializeProfile({ ...enriched, tenantBranding });
   }
 
   async listUsers(filters: UsersListQuery, tenant?: TenantContext) {
@@ -961,6 +1027,20 @@ async inviteUser(userId: string, dto: InviteUser, tenantId?: bigint) {
       bio: user.bio ?? null,
       occupation: user.occupation ?? null,
       avatar: user.avatar ?? null,
+      settings:
+        user.settings && typeof user.settings === 'object'
+          ? (user.settings as Record<string, unknown>)
+          : {},
+      tenant_default_theme_mode:
+        user.tenantBranding?.defaultThemeMode === 'light' ||
+        user.tenantBranding?.defaultThemeMode === 'dark' ||
+        user.tenantBranding?.defaultThemeMode === 'system'
+          ? user.tenantBranding.defaultThemeMode
+          : null,
+      tenant_name: user.tenantBranding?.name ?? null,
+      tenant_primary_color: user.tenantBranding?.primaryColor ?? null,
+      tenant_logo_file_id: user.tenantBranding?.logoFileId ?? null,
+      tenant_logo_url: user.tenantBranding?.logoUrl ?? null,
       primary_organization_id: user.primaryOrganizationId ? user.primaryOrganizationId.toString() : null,
       created_at: user.createdAt,
       updated_at: user.updatedAt,
@@ -977,7 +1057,9 @@ async inviteUser(userId: string, dto: InviteUser, tenantId?: bigint) {
           code: item.organization.code,
           is_primary: item.isPrimary,
           logo_url: typeof metadata.logo_url === 'string' ? metadata.logo_url : null,
+          logo_file_id: typeof metadata.logo_file_id === 'string' ? metadata.logo_file_id : null,
           theme: typeof metadata.theme === 'string' ? metadata.theme : 'ocean',
+          primary_color: typeof metadata.primary_color === 'string' ? metadata.primary_color : null,
         };
       }),
       groups: groupMemberships.filter((item: any) => String(item.type).toLowerCase() !== 'project'),

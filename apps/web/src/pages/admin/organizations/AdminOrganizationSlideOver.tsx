@@ -14,7 +14,12 @@ import {
 } from "@/shared";
 import { httpRequest } from "@/shared/lib/core";
 import { BRAND_THEMES } from "@stanforte/shared";
-import { uploadFileAsset } from "@/pages/files/files-api";
+import { uploadFileAsset, getPresignedFileUrl } from "@/pages/files/files-api";
+import {
+  DEFAULT_PRIMARY_COLOR,
+  dispatchBrandingUpdate,
+  normalizeHexColor,
+} from "@/shared/branding/BrandingProvider";
 
 type Props = {
   org?: any | null;
@@ -26,6 +31,7 @@ export function AdminOrganizationSlideOver({ org, onClose, onSaved }: Props) {
   const { showToast } = useToast();
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement | null>(null);
   const [form, setForm] = useState({
     name: "",
@@ -34,6 +40,8 @@ export function AdminOrganizationSlideOver({ org, onClose, onSaved }: Props) {
     is_active: true,
     parent_organization_id: "",
     theme: "ocean",
+    primary_color: "",
+    logo_file_id: "",
     logo_url: "",
     address: "",
     phone: "",
@@ -58,6 +66,8 @@ export function AdminOrganizationSlideOver({ org, onClose, onSaved }: Props) {
 
     if (org) {
       const metadata = org.metadata && typeof org.metadata === "object" ? org.metadata : {};
+      const logoFileId = typeof metadata.logo_file_id === "string" ? metadata.logo_file_id : "";
+      const logoUrl = typeof metadata.logo_url === "string" ? metadata.logo_url : "";
       setForm({
         name: org.name ?? "",
         code: org.code ?? "",
@@ -65,12 +75,21 @@ export function AdminOrganizationSlideOver({ org, onClose, onSaved }: Props) {
         is_active: org.isActive ?? true,
         parent_organization_id: org.parentOrganizationId ? String(org.parentOrganizationId) : "",
         theme: metadata.theme ?? "ocean",
-        logo_url: metadata.logo_url ?? "",
+        primary_color: typeof metadata.primary_color === "string" ? metadata.primary_color : "",
+        logo_file_id: logoFileId,
+        logo_url: logoUrl,
         address: metadata.address ?? "",
         phone: metadata.phone ?? "",
         website: metadata.website ?? "",
         signature_template: metadata.signature_template ?? "",
       });
+      if (logoFileId) {
+        getPresignedFileUrl(logoFileId, { inline: true, expiresInSeconds: 3600 })
+          .then((url) => setLogoPreviewUrl(url || logoUrl || null))
+          .catch(() => setLogoPreviewUrl(logoUrl || null));
+      } else {
+        setLogoPreviewUrl(logoUrl || null);
+      }
     }
   }, [org]);
 
@@ -83,7 +102,12 @@ export function AdminOrganizationSlideOver({ org, onClose, onSaved }: Props) {
         organization_id: org ? String(org.id) : undefined,
         metadata: { purpose: "branding_logo" },
       });
-      setForm((p) => ({ ...p, logo_url: asset.public_url ?? "" }));
+      setForm((p) => ({ ...p, logo_file_id: asset.id, logo_url: asset.public_url ?? "" }));
+      const preview = await getPresignedFileUrl(asset.id, {
+        inline: true,
+        expiresInSeconds: 3600,
+      }).catch(() => asset.public_url ?? null);
+      setLogoPreviewUrl(preview);
       showToast({
         tone: "success",
         title: "Logo uploaded",
@@ -104,6 +128,17 @@ export function AdminOrganizationSlideOver({ org, onClose, onSaved }: Props) {
       showToast({ tone: "danger", title: "Error", message: "Name and Code are required." });
       return;
     }
+    const normalizedColor = form.primary_color.trim()
+      ? normalizeHexColor(form.primary_color)
+      : null;
+    if (form.primary_color.trim() && !normalizedColor) {
+      showToast({
+        tone: "danger",
+        title: "Invalid color",
+        message: "Primary color must be a valid 6-digit hex code (e.g. #2563eb).",
+      });
+      return;
+    }
     setSaving(true);
 
     const payload = {
@@ -113,7 +148,9 @@ export function AdminOrganizationSlideOver({ org, onClose, onSaved }: Props) {
       is_active: form.is_active,
       parent_organization_id: form.parent_organization_id || undefined,
       metadata: {
-        logo_url: form.logo_url,
+        logo_file_id: form.logo_file_id || null,
+        logo_url: form.logo_url || null,
+        primary_color: normalizedColor,
         theme: form.theme,
         address: form.address,
         phone: form.phone,
@@ -136,6 +173,11 @@ export function AdminOrganizationSlideOver({ org, onClose, onSaved }: Props) {
         });
         showToast({ tone: "success", title: "Success", message: "Organization created successfully." });
       }
+      dispatchBrandingUpdate({
+        primaryColor: normalizedColor ?? undefined,
+        logoFileId: form.logo_file_id || null,
+        logoUrl: form.logo_url || null,
+      });
       onSaved();
     } catch (err) {
       showToast({ tone: "danger", title: "Error", message: "Failed to save organization." });
@@ -213,11 +255,50 @@ export function AdminOrganizationSlideOver({ org, onClose, onSaved }: Props) {
                 ))}
               </SelectField>
               <div>
+                <span className="field-label">Primary Brand Color</span>
+                <div className="flex items-center gap-2.5">
+                  <label className="relative h-9 w-11 rounded-lg border border-neutral-200 overflow-hidden cursor-pointer shrink-0">
+                    <input
+                      type="color"
+                      value={normalizeHexColor(form.primary_color) ?? DEFAULT_PRIMARY_COLOR}
+                      onChange={(e) => setForm((p) => ({ ...p, primary_color: e.target.value }))}
+                      aria-label="Pick organization primary color"
+                      className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                    />
+                    <span
+                      className="block h-full w-full"
+                      style={{
+                        backgroundColor:
+                          normalizeHexColor(form.primary_color) ?? DEFAULT_PRIMARY_COLOR,
+                      }}
+                    />
+                  </label>
+                  <input
+                    type="text"
+                    value={form.primary_color}
+                    onChange={(e) => setForm((p) => ({ ...p, primary_color: e.target.value }))}
+                    placeholder="#ff6900 (inherits workspace default)"
+                    maxLength={7}
+                    className="input-base font-mono text-sm"
+                  />
+                  {form.primary_color && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setForm((p) => ({ ...p, primary_color: "" }))}
+                    >
+                      Clear
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <div>
                 <span className="field-label">Logo</span>
                 <div className="flex items-center gap-3">
-                  {form.logo_url ? (
+                  {logoPreviewUrl ? (
                     <img
-                      src={form.logo_url}
+                      src={logoPreviewUrl}
                       alt="Organization logo"
                       className="h-12 w-12 rounded-xl border border-neutral-200 bg-white object-contain p-1"
                     />
@@ -236,12 +317,15 @@ export function AdminOrganizationSlideOver({ org, onClose, onSaved }: Props) {
                     >
                       {uploadingLogo ? "Uploading..." : "Upload Logo"}
                     </Button>
-                    {form.logo_url ? (
+                    {form.logo_file_id || form.logo_url ? (
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={() => setForm((p) => ({ ...p, logo_url: "" }))}
+                        onClick={() => {
+                          setForm((p) => ({ ...p, logo_file_id: "", logo_url: "" }));
+                          setLogoPreviewUrl(null);
+                        }}
                       >
                         Remove
                       </Button>

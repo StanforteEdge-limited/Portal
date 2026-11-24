@@ -1,5 +1,5 @@
 import { SelectBox } from "@/components/ui/select";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
 import { PortalLayout } from "@/components/layout/PortalLayout";
 import { PageHeader } from "@/shared";
@@ -41,6 +41,9 @@ import {
   Clock,
   Calendar,
   RotateCcw,
+  Upload,
+  Palette,
+  Image as ImageIcon,
 } from "lucide-react";
 import {
   useLocalization,
@@ -51,6 +54,22 @@ import {
   formatDisplayTime,
   formatDisplayDateLocalized,
 } from "@/shared/lib/localization";
+import { setTenantDefaultThemeMode, type ThemeMode } from "@/shared/lib/theme";
+import { uploadFileAsset, getPresignedFileUrl } from "@/pages/files/files-api";
+import {
+  DEFAULT_PRIMARY_COLOR,
+  dispatchBrandingUpdate,
+  normalizeHexColor,
+} from "@/shared/branding/BrandingProvider";
+
+const BRAND_COLOR_PRESETS = [
+  { label: "Orange (Default)", hex: "#ff6900" },
+  { label: "Royal Blue", hex: "#2563eb" },
+  { label: "Emerald", hex: "#059669" },
+  { label: "Violet", hex: "#7c3aed" },
+  { label: "Rose", hex: "#e11d48" },
+  { label: "Slate", hex: "#334155" },
+];
 
 type ActiveTab = "types" | "categories" | "general" | "localization" | "security" | "taxonomy";
 
@@ -71,7 +90,24 @@ export default function AdminSettingsPage() {
   const [taxonomies, setTaxonomies] = useState<ManagedTaxonomy[]>([]);
   const [editingTaxonomy, setEditingTaxonomy] = useState<ManagedTaxonomy | null | boolean>(false);
   const [tenant, setTenant] = useState<any>(null);
-  const [tenantForm, setTenantForm] = useState({ name: "", plan: "trial" });
+  const [tenantForm, setTenantForm] = useState<{
+    name: string;
+    plan: string;
+    default_theme_mode: ThemeMode;
+    primary_color: string;
+    logo_file_id: string;
+    logo_url: string;
+  }>({
+    name: "",
+    plan: "trial",
+    default_theme_mode: "light",
+    primary_color: DEFAULT_PRIMARY_COLOR,
+    logo_file_id: "",
+    logo_url: "",
+  });
+  const [tenantLogoPreview, setTenantLogoPreview] = useState<string | null>(null);
+  const [uploadingTenantLogo, setUploadingTenantLogo] = useState(false);
+  const tenantLogoInputRef = useRef<HTMLInputElement | null>(null);
   const [tenantSaving, setTenantSaving] = useState(false);
   const [securityOverview, setSecurityOverview] = useState<any>(null);
   const [toastMsg, setToastMsg] = useState<{ text: string; tone: "success" | "error" } | null>(null);
@@ -132,15 +168,68 @@ export default function AdminSettingsPage() {
       const res = await httpRequest<any>("/tenants/current");
       if (res?.data) {
         setTenant(res.data);
+        const meta =
+          res.data?.metadata && typeof res.data.metadata === "object"
+            ? res.data.metadata
+            : {};
+        const savedTheme = meta.default_theme_mode;
+        const savedPrimary = normalizeHexColor(meta.primary_color) ?? DEFAULT_PRIMARY_COLOR;
+        const savedLogoFileId = typeof meta.logo_file_id === "string" ? meta.logo_file_id : "";
+        const savedLogoUrl = typeof meta.logo_url === "string" ? meta.logo_url : "";
         setTenantForm({
           name: res.data.name || "",
           plan: res.data.plan || "trial",
+          default_theme_mode:
+            savedTheme === "dark" || savedTheme === "system" || savedTheme === "light"
+              ? savedTheme
+              : "light",
+          primary_color: savedPrimary,
+          logo_file_id: savedLogoFileId,
+          logo_url: savedLogoUrl,
         });
+        if (savedLogoFileId) {
+          getPresignedFileUrl(savedLogoFileId, { inline: true, expiresInSeconds: 3600 })
+            .then((url) => setTenantLogoPreview(url || savedLogoUrl || null))
+            .catch(() => setTenantLogoPreview(savedLogoUrl || null));
+        } else {
+          setTenantLogoPreview(savedLogoUrl || null);
+        }
       }
     } catch {
       // tenant fallback
     }
   };
+
+  async function handleTenantLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      notify("Please select an image file (PNG, SVG, JPG, or WebP).", "error");
+      return;
+    }
+    setUploadingTenantLogo(true);
+    try {
+      const asset = await uploadFileAsset(file, {
+        metadata: { purpose: "tenant_branding_logo" },
+      });
+      setTenantForm((p) => ({
+        ...p,
+        logo_file_id: asset.id,
+        logo_url: asset.public_url ?? "",
+      }));
+      const previewUrl = await getPresignedFileUrl(asset.id, {
+        inline: true,
+        expiresInSeconds: 3600,
+      }).catch(() => asset.public_url ?? null);
+      setTenantLogoPreview(previewUrl);
+      notify("Logo uploaded. Click Save workspace changes to apply it globally.");
+    } catch {
+      notify("Failed to upload organization logo.", "error");
+    } finally {
+      setUploadingTenantLogo(false);
+      if (tenantLogoInputRef.current) tenantLogoInputRef.current.value = "";
+    }
+  }
 
   const loadSecurity = async () => {
     try {
@@ -223,13 +312,37 @@ export default function AdminSettingsPage() {
   }
 
   async function handleSaveTenant() {
+    const validatedColor = normalizeHexColor(tenantForm.primary_color);
+    if (!validatedColor) {
+      notify("Primary color must be a valid 6-digit hex code (e.g. #ff6900).", "error");
+      return;
+    }
     setTenantSaving(true);
     try {
+      const existingMetadata =
+        tenant?.metadata && typeof tenant.metadata === "object" ? tenant.metadata : {};
       await httpRequest("/tenants/current", {
         method: "PATCH",
-        body: tenantForm,
+        body: {
+          name: tenantForm.name,
+          plan: tenantForm.plan,
+          metadata: {
+            ...existingMetadata,
+            default_theme_mode: tenantForm.default_theme_mode,
+            primary_color: validatedColor,
+            logo_file_id: tenantForm.logo_file_id || null,
+            logo_url: tenantForm.logo_url || null,
+          },
+        },
       });
-      notify("Workspace updated.");
+      setTenantDefaultThemeMode(tenantForm.default_theme_mode);
+      dispatchBrandingUpdate({
+        primaryColor: validatedColor,
+        logoFileId: tenantForm.logo_file_id || null,
+        logoUrl: tenantForm.logo_url || null,
+        brandName: tenantForm.name || null,
+      });
+      notify("Workspace branding and profile updated.");
       void loadTenant();
     } catch {
       notify("Failed to save workspace details.", "error");
@@ -727,6 +840,171 @@ export default function AdminSettingsPage() {
                   <option value="standard">Standard growth plan</option>
                   <option value="enterprise">Enterprise OS dedicated</option>
                 </SelectBox>
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-xs font-medium text-neutral-700 mb-1.5">
+                  Default workspace theme
+                </label>
+                <SelectBox
+                  value={tenantForm.default_theme_mode}
+                  onChange={(e) =>
+                    setTenantForm((p) => ({
+                      ...p,
+                      default_theme_mode: e.target.value as ThemeMode,
+                    }))
+                  }
+                  className="w-full md:max-w-xs h-9 px-3 rounded-lg bg-white border border-neutral-900/[0.12] text-sm text-neutral-900 outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
+                >
+                  <option value="light">Light (default)</option>
+                  <option value="dark">Dark</option>
+                  <option value="system">Match user&apos;s OS setting</option>
+                </SelectBox>
+                <p className="text-xs text-neutral-500 mt-1">
+                  Applied globally to all workspace members unless they choose a personal theme in their profile.
+                </p>
+              </div>
+            </div>
+
+            {/* Organization Branding: Logo & Primary Color */}
+            <div className="pt-5 border-t border-neutral-900/[0.08] space-y-5">
+              <div>
+                <h3 className="text-sm font-medium text-neutral-900 font-headline">Organization branding</h3>
+                <p className="text-xs text-neutral-500 mt-0.5">
+                  Customize the portal logo and primary brand color shown to all members across your workspace.
+                </p>
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-2">
+                {/* Organization Logo */}
+                <div className="space-y-2.5">
+                  <label className="block text-xs font-medium text-neutral-700">Organization logo</label>
+                  <div className="flex items-center gap-4">
+                    {tenantLogoPreview ? (
+                      <div className="h-14 w-14 rounded-xl border border-neutral-900/[0.1] bg-white p-1.5 flex items-center justify-center shrink-0 overflow-hidden">
+                        <img
+                          src={tenantLogoPreview}
+                          alt="Organization logo preview"
+                          className="h-full w-full object-contain"
+                        />
+                      </div>
+                    ) : (
+                      <div className="h-14 w-14 rounded-xl border border-dashed border-neutral-900/[0.15] bg-neutral-50 flex items-center justify-center text-neutral-400 shrink-0">
+                        <ImageIcon className="h-5 w-5" strokeWidth={1.5} />
+                      </div>
+                    )}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => tenantLogoInputRef.current?.click()}
+                        disabled={uploadingTenantLogo}
+                        className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg border border-neutral-900/[0.12] bg-white hover:bg-neutral-50 text-sm font-medium text-neutral-800 transition-colors disabled:opacity-50"
+                      >
+                        <Upload className="h-3.5 w-3.5" strokeWidth={1.5} />
+                        <span>{uploadingTenantLogo ? "Uploading..." : "Upload logo"}</span>
+                      </button>
+                      {(tenantForm.logo_file_id || tenantForm.logo_url) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTenantForm((p) => ({ ...p, logo_file_id: "", logo_url: "" }));
+                            setTenantLogoPreview(null);
+                          }}
+                          className="inline-flex items-center h-9 px-3 rounded-lg text-xs font-medium text-rose-600 hover:bg-rose-50 transition-colors"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <input
+                    ref={tenantLogoInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                    className="hidden"
+                    onChange={(e) => void handleTenantLogoUpload(e)}
+                  />
+                  <p className="text-xs text-neutral-500">
+                    Recommended: square or horizontal transparent PNG/SVG (max 5 MB).
+                  </p>
+                </div>
+
+                {/* Primary Brand Color */}
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-medium text-neutral-700">Primary brand color</label>
+                    {tenantForm.primary_color.toLowerCase() !== DEFAULT_PRIMARY_COLOR && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setTenantForm((p) => ({ ...p, primary_color: DEFAULT_PRIMARY_COLOR }))
+                        }
+                        className="inline-flex items-center gap-1 text-xs text-neutral-500 hover:text-neutral-900"
+                      >
+                        <RotateCcw className="h-3 w-3" />
+                        Reset default
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <label className="relative h-9 w-11 rounded-lg border border-neutral-900/[0.14] overflow-hidden cursor-pointer shrink-0 shadow-xs">
+                      <input
+                        type="color"
+                        value={normalizeHexColor(tenantForm.primary_color) ?? DEFAULT_PRIMARY_COLOR}
+                        onChange={(e) =>
+                          setTenantForm((p) => ({ ...p, primary_color: e.target.value }))
+                        }
+                        aria-label="Pick primary brand color"
+                        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                      />
+                      <span
+                        className="block h-full w-full"
+                        style={{
+                          backgroundColor:
+                            normalizeHexColor(tenantForm.primary_color) ?? DEFAULT_PRIMARY_COLOR,
+                        }}
+                      />
+                    </label>
+                    <div className="relative flex-1 max-w-[160px]">
+                      <Palette className="h-3.5 w-3.5 text-neutral-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input
+                        type="text"
+                        value={tenantForm.primary_color}
+                        onChange={(e) =>
+                          setTenantForm((p) => ({ ...p, primary_color: e.target.value }))
+                        }
+                        placeholder="#ff6900"
+                        maxLength={7}
+                        className="w-full h-9 pl-8 pr-3 rounded-lg bg-white border border-neutral-900/[0.12] font-mono text-sm text-neutral-900 outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                    {BRAND_COLOR_PRESETS.map((preset) => {
+                      const active =
+                        tenantForm.primary_color.toLowerCase() === preset.hex.toLowerCase();
+                      return (
+                        <button
+                          key={preset.hex}
+                          type="button"
+                          title={preset.label}
+                          onClick={() =>
+                            setTenantForm((p) => ({ ...p, primary_color: preset.hex }))
+                          }
+                          className={`h-6 w-6 rounded-full border transition-transform hover:scale-110 ${
+                            active
+                              ? "ring-2 ring-offset-2 ring-neutral-900 border-white"
+                              : "border-black/15"
+                          }`}
+                          style={{ backgroundColor: preset.hex }}
+                        />
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-neutral-500">
+                    Used for primary buttons, active tabs, badges, and interactive highlights.
+                  </p>
+                </div>
               </div>
             </div>
 

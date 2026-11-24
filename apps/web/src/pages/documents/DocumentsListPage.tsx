@@ -6,7 +6,7 @@ import { PageHeader } from "@/shared";
 import { useCachedQuery, documentApi } from "@/shared/lib/core";
 import DocumentSlideOver from "./DocumentSlideOver";
 import DocumentShareModal from "./DocumentShareModal";
-import { INITIAL_DOCUMENTS, type DocumentItem, type DocumentSharedRecord } from "./types";
+import { type DocumentItem, type DocumentSharedRecord } from "./types";
 import {
   FileText,
   BookOpen,
@@ -62,7 +62,6 @@ export default function DocumentsListPage() {
 
     // Combine into a map to guarantee uniqueness by ID
     const map = new Map<string, any>();
-    INITIAL_DOCUMENTS.forEach((doc) => map.set(doc.id, doc));
     apiItems.forEach((doc) => map.set(String(doc.id), doc));
     localDocs.forEach((doc) => map.set(String(doc.id), doc));
 
@@ -126,14 +125,13 @@ export default function DocumentsListPage() {
           icon={FileText}
           iconColor="bg-orange-50 text-[#ff6900]"
           actions={
-            <button
-              type="button"
-              onClick={() => setEditingDoc(true)}
+            <Link
+              to="/documents/new"
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] active:scale-[0.98] text-white text-xs font-medium shadow-sm transition"
             >
               <Plus className="h-4 w-4" />
               <span>Create Document</span>
-            </button>
+            </Link>
           }
         />
 

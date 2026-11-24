@@ -5,7 +5,13 @@
 @layer base {
   :root {
     color-scheme: light;
-    accent-color: #ff6900;
+    --primary-color: #ff6900;
+    --primary-hover: #ea580c;
+    --primary-dark: #c2410c;
+    --primary-rgb: 255 105 0;
+    --primary-soft: rgba(255, 105, 0, 0.12);
+    --primary-ring: rgba(255, 105, 0, 0.18);
+    accent-color: var(--primary-color);
     --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
     --brand-50: 255 247 237;
     --brand-100: 255 237 213;
@@ -21,6 +27,20 @@
 
   html {
     @apply bg-[#fafafa] text-neutral-900;
+    scrollbar-gutter: stable;
+  }
+
+  /* Lock background scroll & prevent scroll chaining whenever any modal, dialog, or slide-over is open */
+  html:has([aria-modal="true"], [role="dialog"], .fixed.inset-0),
+  html:has([aria-modal="true"], [role="dialog"], .fixed.inset-0) body {
+    overflow: hidden !important;
+    overscroll-behavior: none;
+  }
+
+  [aria-modal="true"],
+  [role="dialog"],
+  .fixed.inset-0 {
+    overscroll-behavior: contain;
   }
 
   body {
@@ -32,7 +52,7 @@
   }
 
   ::selection {
-    background: #ff6900;
+    background: var(--primary-color);
     color: #ffffff;
   }
 
@@ -80,13 +100,13 @@
     textarea
   ):focus {
     outline: none;
-    border-color: #ff6900;
-    box-shadow: 0 0 0 2px rgba(255, 105, 0, 0.16);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px var(--primary-ring);
   }
 
   input[type="checkbox"],
   input[type="radio"] {
-    accent-color: #ff6900;
+    accent-color: var(--primary-color);
     border-radius: 0.25rem;
     border-color: rgba(23, 23, 23, 0.22);
   }
@@ -106,7 +126,8 @@
   }
 
   .section-kicker {
-    @apply text-xs font-medium text-[#c2410c];
+    @apply text-xs font-medium;
+    color: var(--primary-dark);
   }
 
   .page-title {
@@ -130,7 +151,12 @@
   }
 
   .button-primary {
-    @apply button-base bg-[#ff6900] px-4 py-2 text-sm text-white hover:bg-[#ea580c] active:scale-[0.98];
+    @apply button-base px-4 py-2 text-sm text-white active:scale-[0.98];
+    background-color: var(--primary-color);
+  }
+
+  .button-primary:hover {
+    background-color: var(--primary-hover);
   }
 
   .button-secondary {
@@ -178,4 +204,374 @@
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
+}
+
+/* ==========================================================================
+   Global Dark Mode (activated via html.dark from user profile or tenant default)
+   ========================================================================== */
+html.dark {
+  color-scheme: dark;
+  background-color: #0c0c0f;
+  color: #f5f5f5;
+}
+
+html.dark body,
+html.dark .app-shell {
+  background-color: #0c0c0f !important;
+  color: #f5f5f5;
+}
+
+/* Primary surfaces & cards */
+html.dark .bg-white,
+html.dark .bg-white\/80,
+html.dark .bg-white\/85,
+html.dark .bg-white\/90,
+html.dark .bg-white\/95,
+html.dark .bg-surface-container-lowest,
+html.dark .bg-surface-container-lowest\/95,
+html.dark .shell-panel,
+html.dark .section-card,
+html.dark .stat-card {
+  background-color: #141418 !important;
+  color: #f5f5f5;
+}
+
+html.dark .bg-white\/40,
+html.dark .bg-white\/60 {
+  background-color: rgba(20, 20, 24, 0.55) !important;
+  color: #f5f5f5;
+}
+
+html.dark .bg-\[\#fafafa\],
+html.dark .bg-\[\#f0f2f5\],
+html.dark .bg-\[\#f4f5f7\],
+html.dark .bg-\[\#f8f9fa\] {
+  background-color: #0c0c0f !important;
+}
+
+html.dark .bg-neutral-50,
+html.dark .bg-neutral-50\/50,
+html.dark .bg-neutral-50\/60,
+html.dark .bg-neutral-50\/70,
+html.dark .bg-neutral-50\/75,
+html.dark .bg-neutral-50\/80,
+html.dark .bg-neutral-100,
+html.dark .bg-neutral-100\/50,
+html.dark .bg-neutral-100\/60,
+html.dark .bg-neutral-100\/70,
+html.dark .bg-neutral-100\/80,
+html.dark .bg-gray-100,
+html.dark .bg-slate-100,
+html.dark .bg-surface-container-low {
+  background-color: #1c1c22 !important;
+}
+
+html.dark .bg-neutral-200,
+html.dark .bg-neutral-200\/40,
+html.dark .bg-neutral-200\/50,
+html.dark .bg-neutral-200\/60,
+html.dark .bg-neutral-200\/70,
+html.dark .bg-neutral-200\/80,
+html.dark .bg-neutral-300,
+html.dark .bg-neutral-300\/80,
+html.dark .bg-surface-container-high {
+  background-color: #26262f !important;
+}
+
+/* Soft tinted surfaces in dark mode */
+html.dark .bg-orange-50,
+html.dark .bg-orange-50\/10,
+html.dark .bg-orange-50\/20,
+html.dark .bg-orange-50\/30,
+html.dark .bg-orange-50\/40,
+html.dark .bg-orange-50\/50,
+html.dark .bg-orange-50\/60,
+html.dark .bg-orange-50\/70,
+html.dark .bg-orange-50\/80,
+html.dark .bg-orange-100,
+html.dark .bg-orange-100\/70,
+html.dark .bg-orange-100\/90,
+html.dark .bg-orange-200,
+html.dark .bg-brand-50,
+html.dark .bg-brand-100 {
+  background-color: var(--primary-soft) !important;
+}
+
+html.dark .bg-emerald-50,
+html.dark .bg-emerald-50\/30,
+html.dark .bg-emerald-50\/40,
+html.dark .bg-emerald-100,
+html.dark .bg-green-50,
+html.dark .bg-green-100 {
+  background-color: rgba(16, 185, 129, 0.14) !important;
+}
+
+html.dark .bg-amber-50,
+html.dark .bg-amber-50\/15,
+html.dark .bg-amber-50\/30,
+html.dark .bg-amber-100,
+html.dark .bg-yellow-100 {
+  background-color: rgba(245, 158, 11, 0.14) !important;
+}
+
+html.dark .bg-rose-50,
+html.dark .bg-rose-50\/50,
+html.dark .bg-rose-100,
+html.dark .bg-red-50,
+html.dark .bg-red-100 {
+  background-color: rgba(239, 68, 68, 0.14) !important;
+}
+
+/* Readable semantic text colors on dark surfaces */
+html.dark .text-orange-700,
+html.dark .text-orange-900,
+html.dark .text-brand-700,
+html.dark .text-brand-800,
+html.dark .text-brand-900 {
+  color: color-mix(in srgb, var(--primary-color) 78%, white) !important;
+}
+
+html.dark .text-amber-700,
+html.dark .text-amber-800,
+html.dark .text-amber-900,
+html.dark .text-yellow-700 {
+  color: #fcd34d !important;
+}
+
+html.dark .text-emerald-700,
+html.dark .text-emerald-800,
+html.dark .text-emerald-900,
+html.dark .text-green-700,
+html.dark .text-green-900 {
+  color: #6ee7b7 !important;
+}
+
+html.dark .text-rose-700,
+html.dark .text-rose-800,
+html.dark .text-rose-900,
+html.dark .text-red-700 {
+  color: #fda4af !important;
+}
+
+html.dark .text-blue-900 {
+  color: #93c5fd !important;
+}
+
+html.dark .text-gray-700 {
+  color: #d4d4d8 !important;
+}
+
+html.dark .text-gray-600 {
+  color: #a3a3a3 !important;
+}
+
+/* Soft semantic borders in dark mode */
+html.dark .border-orange-100,
+html.dark .border-orange-200,
+html.dark .border-orange-200\/60,
+html.dark .border-orange-200\/70,
+html.dark .border-orange-200\/80,
+html.dark .border-brand-100,
+html.dark .border-brand-200 {
+  border-color: color-mix(in srgb, var(--primary-color) 35%, transparent) !important;
+}
+
+html.dark .border-amber-100,
+html.dark .border-amber-200,
+html.dark .border-amber-200\/60,
+html.dark .border-amber-200\/70,
+html.dark .border-amber-200\/80,
+html.dark .border-amber-300,
+html.dark .border-yellow-200 {
+  border-color: rgba(245, 158, 11, 0.3) !important;
+}
+
+html.dark .border-emerald-100,
+html.dark .border-emerald-100\/50,
+html.dark .border-emerald-200,
+html.dark .border-emerald-200\/50,
+html.dark .border-emerald-200\/60,
+html.dark .border-emerald-200\/70,
+html.dark .border-emerald-200\/80,
+html.dark .border-emerald-300,
+html.dark .border-green-200 {
+  border-color: rgba(16, 185, 129, 0.3) !important;
+}
+
+html.dark .border-rose-100,
+html.dark .border-rose-200,
+html.dark .border-rose-200\/60,
+html.dark .border-rose-200\/70,
+html.dark .border-red-200 {
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+html.dark .border-white {
+  border-color: #141418 !important;
+}
+
+html.dark .text-\[\#c2410c\],
+html.dark .section-kicker {
+  color: color-mix(in srgb, var(--primary-color) 82%, white) !important;
+}
+
+/* Text colors */
+html.dark .text-neutral-950,
+html.dark .text-neutral-900 {
+  color: #f5f5f5 !important;
+}
+
+html.dark .text-neutral-800,
+html.dark .text-neutral-700 {
+  color: #e5e5e5 !important;
+}
+
+html.dark .text-neutral-600,
+html.dark .text-neutral-500 {
+  color: #a3a3a3 !important;
+}
+
+html.dark .text-neutral-400 {
+  color: #8a8a93 !important;
+}
+
+/* Borders & dividers */
+html.dark .border-gray-200,
+html.dark .border-neutral-100,
+html.dark .border-neutral-200,
+html.dark .border-neutral-200\/50,
+html.dark .border-neutral-200\/60,
+html.dark .border-neutral-200\/70,
+html.dark .border-neutral-200\/80,
+html.dark .border-neutral-200\/90,
+html.dark .border-neutral-300,
+html.dark .border-neutral-900\/\[0\.06\],
+html.dark .border-neutral-900\/\[0\.08\],
+html.dark .border-neutral-900\/\[0\.10\],
+html.dark .border-neutral-900\/\[0\.12\],
+html.dark .hover\:border-neutral-900\/\[0\.20\]:hover {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html.dark .divide-neutral-100 > :not([hidden]) ~ :not([hidden]),
+html.dark .divide-neutral-200 > :not([hidden]) ~ :not([hidden]),
+html.dark .divide-neutral-900\/\[0\.06\] > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Hover states */
+html.dark .hover\:bg-neutral-50:hover,
+html.dark .hover\:bg-neutral-50\/70:hover,
+html.dark .hover\:bg-neutral-50\/80:hover,
+html.dark .hover\:bg-neutral-100:hover,
+html.dark .hover\:bg-neutral-100\/80:hover,
+html.dark .hover\:bg-neutral-200\/60:hover,
+html.dark .hover\:bg-neutral-200\/70:hover {
+  background-color: #24242c !important;
+}
+
+html.dark .hover\:text-neutral-900:hover,
+html.dark .hover\:text-neutral-800:hover,
+html.dark .hover\:text-neutral-700:hover {
+  color: #ffffff !important;
+}
+
+/* Form controls */
+html.dark input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="color"]):not([type="range"]):not([type="file"]),
+html.dark select,
+html.dark textarea,
+html.dark .input-base {
+  background-color: #18181f !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  color: #f5f5f5 !important;
+}
+
+html.dark select option {
+  background-color: #18181f;
+  color: #f5f5f5;
+}
+
+html.dark .button-secondary {
+  background-color: #1c1c22 !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  color: #f5f5f5 !important;
+}
+
+html.dark .button-secondary:hover {
+  background-color: #26262f !important;
+}
+
+html.dark .button-ghost {
+  color: #d4d4d8 !important;
+}
+
+html.dark .button-ghost:hover {
+  background-color: #24242c !important;
+}
+
+html.dark .chip-neutral,
+html.dark .chip-pending {
+  background-color: #24242c !important;
+  color: #e5e5e5 !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html.dark .chip-success {
+  background-color: rgba(16, 185, 129, 0.16) !important;
+  color: #6ee7b7 !important;
+}
+
+html.dark .chip-warning {
+  background-color: rgba(245, 158, 11, 0.16) !important;
+  color: #fcd34d !important;
+}
+
+html.dark .chip-danger {
+  background-color: rgba(239, 68, 68, 0.16) !important;
+  color: #fca5a5 !important;
+}
+
+/* ==========================================================================
+   Dynamic Organization / Workspace Primary Brand Color
+   Maps hardcoded #ff6900 / #ea580c / #c2410c accents to CSS custom properties
+   so Super Admin brand color changes apply globally across the portal.
+   ========================================================================== */
+.bg-\[\#ff6900\] {
+  background-color: var(--primary-color) !important;
+}
+
+.hover\:bg-\[\#ea580c\]:hover,
+.bg-\[\#ea580c\] {
+  background-color: var(--primary-hover) !important;
+}
+
+.hover\:bg-\[\#ff6900\]:hover {
+  background-color: var(--primary-color) !important;
+}
+
+.bg-\[\#ff6900\]\/10,
+.bg-\[\#ff6900\]\/15 {
+  background-color: var(--primary-soft) !important;
+}
+
+.text-\[\#ff6900\],
+.hover\:text-\[\#ff6900\]:hover {
+  color: var(--primary-color) !important;
+}
+
+.text-\[\#c2410c\],
+.text-\[\#ea580c\],
+.hover\:text-\[\#ea580c\]:hover {
+  color: var(--primary-dark) !important;
+}
+
+.border-\[\#ff6900\],
+.hover\:border-\[\#ff6900\]:hover,
+.focus\:border-\[\#ff6900\]:focus {
+  border-color: var(--primary-color) !important;
+}
+
+.border-\[\#ff6900\]\/30,
+.border-\[\#ff6900\]\/20 {
+  border-color: color-mix(in srgb, var(--primary-color) 30%, transparent) !important;
 }

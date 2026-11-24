@@ -19,7 +19,7 @@ import { SlideOver, SlideOverHeader, SlideOverContent, SlideOverFooter } from "@
 import { useAuth } from "@/shared/context/AuthProvider";
 import { useToast } from "@/shared";
 import type { TaskItem, TaskStatus, TaskPriority, TaskAssignee } from "./types";
-import { SAMPLE_TEAM_MEMBERS } from "./types";
+import { useColleagues } from "@/shared/hooks/useColleagues";
 
 export interface TaskDetailSlideOverProps {
   task?: TaskItem;
@@ -102,10 +102,12 @@ export function TaskDetailSlideOver({
     showToast("Progress update posted successfully", "success");
   };
 
+  const { colleagues } = useColleagues();
+
   // Tag a colleague
   const handleTagColleague = (colleagueId: string) => {
     if (!colleagueId) return;
-    const colleague = SAMPLE_TEAM_MEMBERS.find((m) => m.id === colleagueId);
+    const colleague = colleagues.find((m) => m.id === colleagueId);
     if (!colleague) return;
 
     if (currentTask.assignees.some((a) => a.id === colleagueId)) {
@@ -259,7 +261,7 @@ export function TaskDetailSlideOver({
                     className="text-xs font-semibold bg-neutral-50 border border-neutral-200 rounded-xl px-2.5 py-1.5 text-neutral-700 outline-none hover:bg-neutral-100"
                   >
                     <option value="">+ Reassign / Tag Colleague...</option>
-                    {SAMPLE_TEAM_MEMBERS.map((m) => (
+                    {colleagues.map((m) => (
                       <option key={m.id} value={m.id}>
                         {m.name} ({m.role})
                       </option>
@@ -328,7 +330,7 @@ export function TaskDetailSlideOver({
                   <span className="text-neutral-400 font-semibold flex items-center gap-0.5 mr-1">
                     <AtSign className="h-3 w-3" /> Mention:
                   </span>
-                  {SAMPLE_TEAM_MEMBERS.slice(0, 4).map((m) => (
+                  {colleagues.slice(0, 4).map((m) => (
                     <button
                       key={m.id}
                       type="button"

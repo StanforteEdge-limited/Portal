@@ -96,6 +96,10 @@ export const RequestsRoutes: FastifyPluginAsync = async (fastify) => {
     requests().updateCategory(id(request), requestBody<UpdateCategory>(request)),
   );
 
+  fastify.patch('/categories/:id', { preHandler: write, schema: { params: RequestsIdParamsSchema, body: UpdateCategorySchema } }, async (request) =>
+    requests().updateCategory(id(request), requestBody<UpdateCategory>(request)),
+  );
+
   fastify.delete('/categories/:id', { preHandler: write, schema: { params: RequestsIdParamsSchema } }, async (request) =>
     requests().deleteCategory(id(request)),
   );

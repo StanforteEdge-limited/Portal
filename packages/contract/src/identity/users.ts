@@ -122,6 +122,21 @@ export const UpdateUserSchema = Type.Object({
 });
 export type UpdateUser = Static<typeof UpdateUserSchema>;
 
+export const ThemeModeSchema = Type.Union([
+  Type.Literal('light'),
+  Type.Literal('dark'),
+  Type.Literal('system'),
+]);
+export type ThemeMode = Static<typeof ThemeModeSchema>;
+
+export const ProfileSettingsSchema = Type.Object(
+  {
+    theme_mode: Type.Optional(Type.Union([ThemeModeSchema, Type.Null()])),
+  },
+  { additionalProperties: true },
+);
+export type ProfileSettings = Static<typeof ProfileSettingsSchema>;
+
 export const UpdateProfileSchema = Type.Object({
   first_name: Type.Optional(Type.String({ minLength: 2, maxLength: 100 })),
   last_name: Type.Optional(Type.String({ minLength: 2, maxLength: 100 })),
@@ -137,6 +152,7 @@ export const UpdateProfileSchema = Type.Object({
   bio: Type.Optional(LongTextSchema),
   occupation: Type.Optional(Type.String({ maxLength: 100 })),
   signature_file_id: Type.Optional(UuidSchema),
+  settings: Type.Optional(ProfileSettingsSchema),
 });
 export type UpdateProfile = Static<typeof UpdateProfileSchema>;
 
@@ -202,6 +218,10 @@ export const OrganizationRefSchema = Type.Object({
   name: Type.String(),
   code: Type.Optional(Type.String()),
   is_primary: Type.Optional(Type.Boolean()),
+  logo_url: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  logo_file_id: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  theme: Type.Optional(Type.String()),
+  primary_color: Type.Optional(Type.Union([Type.String(), Type.Null()])),
 });
 export type OrganizationRef = Static<typeof OrganizationRefSchema>;
 
@@ -294,5 +314,11 @@ export const ProfileResponseSchema = Type.Object({
   employee_profile: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
   onboarding_progress: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
   signature_url: Type.Union([Type.String(), Type.Null()], { default: null }),
+  settings: Type.Optional(ProfileSettingsSchema),
+  tenant_default_theme_mode: Type.Optional(Type.Union([ThemeModeSchema, Type.Null()])),
+  tenant_name: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  tenant_primary_color: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  tenant_logo_file_id: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  tenant_logo_url: Type.Optional(Type.Union([Type.String(), Type.Null()])),
 });
 export type ProfileResponse = Static<typeof ProfileResponseSchema>;

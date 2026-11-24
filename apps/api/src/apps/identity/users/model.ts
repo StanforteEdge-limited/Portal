@@ -24,6 +24,7 @@ export const profile = pgTable("sta_profiles", {
   employmentType: varchar("employment_type", { length: 20 }),
   primaryOrganizationId: bigint("primary_organization_id", { mode: 'bigint' }),
   signatureFileId: uuid("signature_file_id"),
+  settings: jsonb("settings").$type<Record<string, unknown>>().default({}).notNull(),
   lastLogin: timestamp("last_login", { mode: 'date', precision: 6 }),
   failedLoginAttempts: integer("failed_login_attempts").default(0).notNull(),
   lockoutUntil: timestamp("lockout_until", { mode: 'date', precision: 6 }),

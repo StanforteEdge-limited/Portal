@@ -7,8 +7,9 @@ import {
   Send,
   Paperclip,
   FileText,
+  Film,
+  Eye,
   Image as ImageIcon,
-  Download,
   X,
   Hash,
   CheckCircle2,
@@ -16,8 +17,11 @@ import {
   Clock,
   MoreVertical,
   ChevronDown,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { useAuth } from "@/shared/context/AuthProvider";
+import { useThemeMode } from "@/shared/lib/theme";
 import { useToast } from "@/shared";
 import { formatDisplayTime, formatDisplayDate } from "@/shared/lib/localization";
 import { uploadFileAsset, type FileAssetRecord } from "@/pages/files/files-api";
@@ -32,47 +36,12 @@ import {
   type ChatMessageAttachment,
 } from "./chat-api";
 import { NewConversationModal } from "./NewConversationModal";
-
-const DEFAULT_CHAT_CONVERSATIONS: ChatConversation[] = [
-  {
-    id: "conv-1",
-    type: "direct",
-    name: "Amina Yusuf",
-    description: "Product Design Lead",
-    member_count: 2,
-    unread_count: 1,
-    last_message: {
-      id: "msg-1",
-      body: "📄 Shared Document: Stanforte Code of Business Conduct & Ethics 2026",
-      sender_profile_id: "usr-1",
-      sender_name: "Amina Yusuf",
-      created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
-    },
-    created_at: new Date(Date.now() - 86400000).toISOString(),
-    updated_at: new Date(Date.now() - 3600000 * 2).toISOString(),
-  },
-  {
-    id: "conv-2",
-    type: "group",
-    name: "General & Announcements",
-    description: "All-company general discussion & announcements",
-    member_count: 28,
-    unread_count: 0,
-    last_message: {
-      id: "msg-2",
-      body: "Welcome everyone to Q1 operations! Check the updated handbook in /documents.",
-      sender_profile_id: "usr-admin",
-      sender_name: "Operations Lead",
-      created_at: new Date(Date.now() - 3600000 * 6).toISOString(),
-    },
-    created_at: new Date(Date.now() - 86400000 * 7).toISOString(),
-    updated_at: new Date(Date.now() - 3600000 * 6).toISOString(),
-  },
-];
+import { FilePreviewModal, type PreviewableFile } from "@/shared/components/media/FilePreviewModal";
 
 export default function ChatPage() {
   const { user } = useAuth();
   const { showToast } = useToast();
+  const { isDark, toggleLightDark } = useThemeMode();
 
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<ChatConversation | null>(null);
@@ -88,6 +57,7 @@ export default function ChatPage() {
   const [inputText, setInputText] = useState("");
   const [pendingAttachments, setPendingAttachments] = useState<FileAssetRecord[]>([]);
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  const [previewFile, setPreviewFile] = useState<PreviewableFile | null>(null);
 
   // Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -106,8 +76,8 @@ export default function ChatPage() {
   const loadConversations = useCallback(async (selectFirst = false) => {
     try {
       let data = await listConversations().catch(() => []);
-      if (!Array.isArray(data) || data.length === 0) {
-        data = DEFAULT_CHAT_CONVERSATIONS;
+      if (!Array.isArray(data)) {
+        data = [];
       }
 
       // Check for document share notifications
@@ -290,14 +260,25 @@ export default function ChatPage() {
               </div>
               <h1 className="text-base font-medium text-neutral-900 dark:text-neutral-100">Team Chat</h1>
             </div>
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="p-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white shadow-sm transition flex items-center gap-1.5 text-xs font-semibold"
-              title="New Message or Channel"
-            >
-              <Plus className="w-4 h-4" />
-              <span>New</span>
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={toggleLightDark}
+                className="p-2 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-700 transition"
+                title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+                aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+              >
+                {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              </button>
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="p-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white shadow-sm transition flex items-center gap-1.5 text-xs font-semibold"
+                title="New Message or Channel"
+              >
+                <Plus className="w-4 h-4" />
+                <span>New</span>
+              </button>
+            </div>
           </div>
 
           {/* Search bar */}
@@ -541,50 +522,62 @@ export default function ChatPage() {
                           <div className={`space-y-2 ${msg.body ? "mt-2 pt-2 border-t" : ""} ${isMe ? "border-white/20" : "border-neutral-200 dark:border-neutral-700"}`}>
                             {msg.attachments.map((att) => {
                               const isImage = att.mime_type?.startsWith("image/");
-                              const fileUrl = att.public_url || "";
+                              const isVideo =
+                                att.mime_type?.startsWith("video/") ||
+                                /\.(mp4|webm|mov|m4v|ogv)$/i.test(att.file_name || "");
+                              const openPreview = () =>
+                                setPreviewFile({
+                                  id: att.file_asset_id,
+                                  file_name: att.file_name || "Attachment",
+                                  mime_type: att.mime_type,
+                                  file_size: att.file_size ? Number(att.file_size) : null,
+                                  public_url: att.public_url,
+                                });
 
-                              if (isImage && fileUrl) {
+                              if (isImage) {
                                 return (
-                                  <div key={att.id} className="rounded-xl overflow-hidden max-w-xs group relative">
-                                    <img
-                                      src={fileUrl}
-                                      alt={att.file_name || "Image"}
-                                      className="w-full max-h-48 object-cover rounded-xl border border-neutral-200/40"
-                                      loading="lazy"
-                                    />
-                                    <a
-                                      href={fileUrl}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs font-semibold gap-1"
-                                    >
-                                      <Download className="w-4 h-4" /> View Full
-                                    </a>
-                                  </div>
+                                  <button
+                                    key={att.id}
+                                    type="button"
+                                    onClick={openPreview}
+                                    className={`w-full text-left flex items-center gap-2.5 p-2 rounded-xl border transition ${
+                                      isMe
+                                        ? "bg-orange-700/60 hover:bg-orange-700 border-orange-500/30 text-white"
+                                        : "bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100"
+                                    }`}
+                                  >
+                                    <div className="w-8 h-8 rounded-lg bg-orange-500/10 text-orange-500 flex items-center justify-center shrink-0">
+                                      <ImageIcon className="w-4 h-4" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="font-semibold truncate text-xs">{att.file_name || "Image"}</div>
+                                      <div className="text-xs opacity-75">Click to preview</div>
+                                    </div>
+                                    <Eye className="w-3.5 h-3.5 shrink-0 opacity-70" />
+                                  </button>
                                 );
                               }
 
                               return (
-                                <a
+                                <button
                                   key={att.id}
-                                  href={fileUrl || "#"}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className={`flex items-center gap-2.5 p-2 rounded-xl border transition ${
+                                  type="button"
+                                  onClick={openPreview}
+                                  className={`w-full text-left flex items-center gap-2.5 p-2 rounded-xl border transition ${
                                     isMe
                                       ? "bg-orange-700/60 hover:bg-orange-700 border-orange-500/30 text-white"
                                       : "bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100"
                                   }`}
                                 >
                                   <div className="w-8 h-8 rounded-lg bg-orange-500/10 text-orange-500 flex items-center justify-center shrink-0">
-                                    <FileText className="w-4 h-4" />
+                                    {isVideo ? <Film className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
                                   </div>
                                   <div className="flex-1 min-w-0">
                                     <div className="font-semibold truncate text-xs">{att.file_name || "Attachment"}</div>
                                     <div className="text-xs opacity-75">{att.mime_type || "File"}</div>
                                   </div>
-                                  <Download className="w-3.5 h-3.5 shrink-0 opacity-70" />
-                                </a>
+                                  <Eye className="w-3.5 h-3.5 shrink-0 opacity-70" />
+                                </button>
                               );
                             })}
                           </div>
@@ -706,6 +699,13 @@ export default function ChatPage() {
           setSelectedConversation(conv);
           showToast({ tone: "success", title: "Conversation Started", message: `Connected to ${conv.name || "chat"}` });
         }}
+      />
+
+      {/* In-Platform File Preview Modal */}
+      <FilePreviewModal
+        file={previewFile}
+        isOpen={Boolean(previewFile)}
+        onClose={() => setPreviewFile(null)}
       />
     </div>
   );

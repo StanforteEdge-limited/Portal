@@ -37,7 +37,7 @@ import {
   GripVertical,
 } from "lucide-react";
 import { getMyAttendance, clockIn, clockOut, type MyAttendanceResponse } from "@/pages/hr/attendance/attendance-api";
-import { INITIAL_TASKS, type TaskItem } from "@/pages/tasks/types";
+import { type TaskItem } from "@/pages/tasks/types";
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -86,7 +86,7 @@ export default function DashboardPage() {
       const saved = localStorage.getItem("portal_tasks_data");
       if (saved) return JSON.parse(saved);
     } catch {}
-    return INITIAL_TASKS;
+    return [];
   });
   const [draggedDashboardTaskId, setDraggedDashboardTaskId] = useState<string | null>(null);
   const [dragOverDashboardTaskId, setDragOverDashboardTaskId] = useState<string | null>(null);

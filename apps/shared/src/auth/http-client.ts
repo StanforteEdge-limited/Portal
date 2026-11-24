@@ -48,7 +48,11 @@ export function createHttpClient(config: {
     })
       .then(async (response) => {
         if (!response.ok) {
-          throw new Error(`Token refresh failed with ${response.status}`);
+          const err = new Error(`Token refresh failed with ${response.status}`) as Error & {
+            status?: number;
+          };
+          err.status = response.status;
+          throw err;
         }
 
         const json = await response.json();
@@ -61,9 +65,14 @@ export function createHttpClient(config: {
         // sentinel so the caller knows the refresh succeeded and should retry.
         return tokens.access_token || "cookie";
       })
-      .catch(() => {
-        session?.clearSession();
-        notifyAuthInvalidated("refresh_failed");
+      .catch((err: unknown) => {
+        const status = (err as { status?: number } | null)?.status;
+        // Only invalidate the session when the server explicitly rejects the refresh token.
+        // Network failures or 5xx errors (e.g. server restarting/temporarily down) must NOT log the user out.
+        if (status === 401 || status === 403) {
+          session?.clearSession();
+          notifyAuthInvalidated("refresh_failed");
+        }
         return null;
       })
       .finally(() => {
@@ -93,7 +102,9 @@ export function createHttpClient(config: {
         (payload as any)?.data?.message ??
         nestedError?.details?.code ??
         `Request failed with status ${response.status}`;
-      throw new Error(String(errorMessage));
+      const error = new Error(String(errorMessage)) as Error & { status?: number };
+      error.status = response.status;
+      throw error;
     }
 
     // Only preserve envelope for paginated responses: { success, data: { items, meta } }

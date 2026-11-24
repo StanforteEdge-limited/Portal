@@ -6,6 +6,7 @@ import { useAuth } from "@/shared/context/AuthProvider";
 import { useCachedQuery, resourceApi } from "@/shared/lib/core";
 import { useToast, PageHeader } from "@/shared";
 import { formatFileSize } from "@stanforte/shared";
+import { FilePreviewModal, type PreviewableFile } from "@/shared/components/media/FilePreviewModal";
 import {
   FolderOpen,
   Upload,
@@ -19,7 +20,7 @@ import {
   Video,
   File,
   ChevronRight,
-  ExternalLink,
+  Eye,
   CheckCircle2,
   Database,
   Paperclip,
@@ -42,6 +43,7 @@ export default function AdminFilesPage() {
 
   const [uploading, setUploading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [previewFile, setPreviewFile] = useState<PreviewableFile | null>(null);
 
   const { data: filesData, loading, refetch } = useCachedQuery(
     `admin:files:${listKey}:${search}:${fileType}:${page}:${perPage}`,
@@ -261,7 +263,8 @@ export default function AdminFilesPage() {
             {files.map((file: any) => (
               <div
                 key={file.id}
-                className="group relative bg-white border border-neutral-900/[0.08] rounded-2xl p-3 hover:border-neutral-900/[0.16] shadow-xs transition-colors duration-150 flex flex-col justify-between"
+                onClick={() => setPreviewFile(file)}
+                className="group relative cursor-pointer bg-white border border-neutral-900/[0.08] rounded-2xl p-3 hover:border-neutral-900/[0.16] shadow-xs transition-colors duration-150 flex flex-col justify-between"
               >
                 <div className="aspect-square bg-neutral-50 rounded-xl flex items-center justify-center mb-2.5 overflow-hidden border border-neutral-900/[0.06]">
                   {file.mime_type?.startsWith("image/") && file.public_url ? (
@@ -291,7 +294,10 @@ export default function AdminFilesPage() {
 
                 <button
                   type="button"
-                  onClick={() => void handleDelete(file.id, file.file_name)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void handleDelete(file.id, file.file_name);
+                  }}
                   disabled={deletingId === file.id}
                   className="absolute top-2 right-2 h-7 w-7 inline-flex items-center justify-center rounded-lg bg-white text-neutral-500 hover:text-rose-600 hover:bg-rose-50 shadow-xs border border-neutral-900/[0.10] opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-150"
                   title="Delete file"
@@ -353,17 +359,14 @@ export default function AdminFilesPage() {
                       </td>
                       <td className="py-3.5 px-5 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          {file.public_url && (
-                            <a
-                              href={file.public_url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="h-8 w-8 inline-flex items-center justify-center rounded-lg text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30 transition-colors duration-150"
-                              title="Open file"
-                            >
-                              <ExternalLink className="h-4 w-4" strokeWidth={1.5} />
-                            </a>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => setPreviewFile(file)}
+                            className="h-8 w-8 inline-flex items-center justify-center rounded-lg text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30 transition-colors duration-150"
+                            title="Preview file"
+                          >
+                            <Eye className="h-4 w-4" strokeWidth={1.5} />
+                          </button>
                           <button
                             type="button"
                             onClick={() => void handleDelete(file.id, file.file_name)}
@@ -411,6 +414,12 @@ export default function AdminFilesPage() {
           </div>
         )}
       </div>
+
+      <FilePreviewModal
+        file={previewFile}
+        isOpen={Boolean(previewFile)}
+        onClose={() => setPreviewFile(null)}
+      />
     </PortalLayout>
   );
 }

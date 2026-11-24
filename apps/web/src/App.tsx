@@ -91,6 +91,7 @@ import VendorDashboard from "@/pages/vendor-portal/dashboard";
 import VendorOrderDetail from "@/pages/vendor-portal/detail";
 import DocumentsListPage from "@/pages/documents/DocumentsListPage";
 import DocumentDetailPage from "@/pages/documents/DocumentDetailPage";
+import DocumentEditorPage from "@/pages/documents/DocumentEditorPage";
 import PoliciesListPage from "@/pages/documents/PoliciesListPage";
 
 import {
@@ -414,6 +415,8 @@ export default function App() {
            <Route path="/files" element={<FilesPage />} />
           <Route path="/mail" element={<MailPage />} />
           <Route path="/documents" element={<DocumentsListPage />} />
+          <Route path="/documents/new" element={<DocumentEditorPage />} />
+          <Route path="/documents/:id/edit" element={<DocumentEditorPage />} />
           <Route path="/documents/:id" element={<DocumentDetailPage />} />
           <Route path="/policies" element={<PoliciesListPage />} />
         </Route>

@@ -14,7 +14,7 @@ import { SlideOver, SlideOverHeader, SlideOverContent, SlideOverFooter } from "@
 import { useAuth } from "@/shared/context/AuthProvider";
 import { useToast } from "@/shared";
 import type { TaskItem, TaskStatus, TaskPriority, TaskAssignee } from "./types";
-import { SAMPLE_TEAM_MEMBERS } from "./types";
+import { useColleagues } from "@/shared/hooks/useColleagues";
 
 interface NewTaskSlideOverProps {
   isOpen: boolean;
@@ -32,6 +32,7 @@ export function NewTaskSlideOver({
   onCreateTask,
 }: NewTaskSlideOverProps) {
   const { user } = useAuth();
+  const { colleagues } = useColleagues();
   const { showToast } = useToast();
 
   const [title, setTitle] = useState("");
@@ -238,7 +239,7 @@ export function NewTaskSlideOver({
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-44 overflow-y-auto p-1 border border-neutral-200 rounded-xl bg-neutral-50/50">
-                  {SAMPLE_TEAM_MEMBERS.map((member) => {
+                  {colleagues.map((member) => {
                     const isSelected = selectedAssignees.some((a) => a.id === member.id);
                     return (
                       <button

@@ -37,6 +37,7 @@ export async function buildServer(): Promise<FastifyInstance> {
       return cb(null, false);
     },
     credentials: true,
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   });
   server.register(dbPlugin);
   server.register(redisPlugin);

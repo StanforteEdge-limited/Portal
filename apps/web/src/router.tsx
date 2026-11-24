@@ -173,6 +173,7 @@ const ProcurementIndex = lazy(() => import("@/pages/procurement/index"));
 // Documents & Media
 const DocumentsListPage = lazy(() => import("@/pages/documents/DocumentsListPage"));
 const DocumentDetailPage = lazy(() => import("@/pages/documents/DocumentDetailPage"));
+const DocumentEditorPage = lazy(() => import("@/pages/documents/DocumentEditorPage"));
 const PoliciesListPage = lazy(() => import("@/pages/documents/PoliciesListPage"));
 const FilesPage = lazy(() => import("@/pages/files/FilesPage"));
 const MailPage = lazy(() => import("@/pages/mail"));
@@ -677,6 +678,18 @@ const documentsRoute = createRoute({
   component: DocumentsListPage,
 });
 
+const documentNewRoute = createRoute({
+  getParentRoute: () => protectedLayoutRoute,
+  path: "/documents/new",
+  component: DocumentEditorPage,
+});
+
+const documentEditRoute = createRoute({
+  getParentRoute: () => protectedLayoutRoute,
+  path: "/documents/$id/edit",
+  component: DocumentEditorPage,
+});
+
 const documentDetailRoute = createRoute({
   getParentRoute: () => protectedLayoutRoute,
   path: "/documents/$id",
@@ -983,6 +996,8 @@ const routeTree = rootRoute.addChildren([
 
     // Documents & Media
     documentsRoute,
+    documentNewRoute,
+    documentEditRoute,
     documentDetailRoute,
     policiesRoute,
     filesRoute,

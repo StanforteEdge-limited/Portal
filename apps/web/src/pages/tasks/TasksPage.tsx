@@ -20,7 +20,7 @@ import {
   User,
 } from "lucide-react";
 import type { TaskItem, TaskStatus, TaskPriority } from "./types";
-import { INITIAL_TASKS, SAMPLE_TEAM_MEMBERS } from "./types";
+import { useColleagues } from "@/shared/hooks/useColleagues";
 import { TaskKanbanView } from "./TaskKanbanView";
 import { TaskTableView } from "./TaskTableView";
 import { TaskDetailSlideOver } from "./TaskDetailSlideOver";
@@ -32,6 +32,7 @@ type ScopeFilter = "all" | "assigned" | "personal";
 
 export default function TasksPage() {
   const { user } = useAuth();
+  const { colleagues } = useColleagues();
   const { mode, isAdmin } = useWorkspace();
   const isAdminView = mode === "admin" && isAdmin;
   const [searchParams, setSearchParams] = useSearchParams();
@@ -40,13 +41,12 @@ export default function TasksPage() {
     ? `${user.first_name} ${user.last_name || ""}`.trim()
     : user?.username || "Colleague";
 
-  // Load from local storage or fallback to INITIAL_TASKS
   const [tasks, setTasks] = useState<TaskItem[]>(() => {
     try {
       const saved = localStorage.getItem("portal_tasks_data");
       if (saved) return JSON.parse(saved);
     } catch {}
-    return INITIAL_TASKS;
+    return [];
   });
 
   const saveTasks = (newTasks: TaskItem[]) => {
@@ -399,7 +399,7 @@ export default function TasksPage() {
                   className="text-xs font-semibold bg-neutral-50 border border-neutral-200 rounded-xl px-2.5 py-1.5 text-neutral-700 outline-none hover:bg-neutral-100"
                 >
                   <option value="all">All Staff Members</option>
-                  {SAMPLE_TEAM_MEMBERS.map((member) => (
+                  {colleagues.map((member) => (
                     <option key={member.id} value={member.name}>
                       {member.name} ({member.role})
                     </option>
