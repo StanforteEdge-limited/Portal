@@ -20,6 +20,12 @@ import {
   User,
 } from "lucide-react";
 import type { TaskItem, TaskStatus, TaskPriority } from "./types";
+import {
+  loadStoredTasks,
+  saveStoredTasks,
+  isUserPartOfTask,
+  TASKS_UPDATED_EVENT,
+} from "./task-store";
 import { useColleagues } from "@/shared/hooks/useColleagues";
 import { resourceApi, useCachedQuery } from "@/shared/lib/core";
 import { TaskKanbanView } from "./TaskKanbanView";
@@ -42,20 +48,23 @@ export default function TasksPage() {
     ? `${user.first_name} ${user.last_name || ""}`.trim()
     : user?.username || "Colleague";
 
-  const [tasks, setTasks] = useState<TaskItem[]>(() => {
-    try {
-      const saved = localStorage.getItem("portal_tasks_data");
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return [];
-  });
+  const [tasks, setTasks] = useState<TaskItem[]>(() => loadStoredTasks());
 
   const saveTasks = (newTasks: TaskItem[]) => {
     setTasks(newTasks);
-    try {
-      localStorage.setItem("portal_tasks_data", JSON.stringify(newTasks));
-    } catch {}
+    saveStoredTasks(newTasks);
   };
+
+  // Stay synced when tasks are created or marked completed from a Project page
+  useEffect(() => {
+    const sync = () => setTasks(loadStoredTasks());
+    window.addEventListener(TASKS_UPDATED_EVENT, sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener(TASKS_UPDATED_EVENT, sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
 
   // View Mode: Kanban vs Table vs Daily Log
   const [viewMode, setViewMode] = useState<ViewMode>(
@@ -120,29 +129,23 @@ export default function TasksPage() {
 
   // Filter tasks based on active workspace mode:
   // - Admin Mode (isAdminView): see all staff work items across the organization (not personal to-dos)
-  // - Personal Workplace (!isAdminView): see only personal tasks and tasks assigned to the user
+  // - Personal Workplace (!isAdminView): strict visibility — users ONLY see tasks they own or are assigned to
   const scopedTasks = useMemo(() => {
     if (isAdminView) {
       return tasks.filter((t) => !t.is_personal);
     }
 
     return tasks.filter((t) => {
-      const isPersonal = Boolean(t.is_personal) || t.owner_name?.toLowerCase() === currentUserName.toLowerCase();
-      const isAssigned =
-        t.assignees?.some(
-          (a) =>
-            a.name.toLowerCase() === currentUserName.toLowerCase() ||
-            a.id === user?.id ||
-            (user?.email && a.email === user.email)
-        ) ||
-        // Demo initial tasks assigned to technical staff
-        t.assignees?.some((a) => a.name === "Chinedu Eze" || a.name === "Folake Adeleke" || a.name === "Amina Yusuf");
+      if (!isUserPartOfTask(t, user)) return false;
+
+      const isPersonal = Boolean(t.is_personal);
+      const isAssigned = !isPersonal;
 
       if (scopeFilter === "personal") return isPersonal;
-      if (scopeFilter === "assigned") return isAssigned && !isPersonal;
-      return isPersonal || isAssigned;
+      if (scopeFilter === "assigned") return isAssigned;
+      return true;
     });
-  }, [tasks, isAdminView, currentUserName, user, scopeFilter]);
+  }, [tasks, isAdminView, user, scopeFilter]);
 
   // Metrics based on scoped tasks
   const inProgressCount = scopedTasks.filter((t) => t.status === "in_progress").length;

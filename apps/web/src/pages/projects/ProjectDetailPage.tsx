@@ -1,16 +1,32 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@/shared/router-adapter";
-import { PortalLayout } from "@/components/layout/PortalLayout";
+import { PortalLayout, useWorkspace } from "@/components/layout/PortalLayout";
 import { formatDate } from "@stanforte/shared";
 import { useAuth } from "@/shared/context/AuthProvider";
-import { useCachedQuery, financeApi, resourceApi, workApi } from "@/shared/lib/core";
+import { useCachedQuery, financeApi, httpRequest, resourceApi, workApi } from "@/shared/lib/core";
 import { getWorkspaceProfile } from "@/shared/api/workspace-api";
 import { useParams } from "react-router";
 import BudgetWorkspace from "@/features/budgets/BudgetWorkspace";
+import { useToast } from "@/shared";
+import { useColleagues } from "@/shared/hooks/useColleagues";
+import { uploadFileAsset } from "@/pages/files/files-api";
+import { FilePreviewModal } from "@/shared/components/media/FilePreviewModal";
+import { SelectBox } from "@/components/ui/select";
+import { DateInput } from "@/components/ui/date-picker";
+import type { TaskAssignee, TaskItem, TaskPriority, TaskStatus } from "@/pages/tasks/types";
+import {
+  isUserPartOfTask,
+  loadStoredTasks,
+  TASKS_UPDATED_EVENT,
+  updateStoredTaskStatus,
+  upsertStoredTask,
+} from "@/pages/tasks/task-store";
+import type { ProjectAttachment } from "./CreateProjectSlideOver";
 import {
   FolderKanban,
   Calendar,
   CheckCircle2,
+  Circle,
   Clock,
   Users,
   Layers,
@@ -25,13 +41,21 @@ import {
   Handshake,
   HeartHandshake,
   User,
-  Shield,
   Tag,
+  Plus,
+  Upload,
+  Eye,
+  UserPlus,
 } from "lucide-react";
 
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const { mode, isAdmin } = useWorkspace();
+  const isAdminView = mode === "admin" && isAdmin;
+  const { showToast } = useToast();
+  const { colleagues } = useColleagues();
+  const docInputRef = useRef<HTMLInputElement | null>(null);
 
   const { data: profile } = useCachedQuery(
     "user:profile",
@@ -39,7 +63,7 @@ export default function ProjectDetailPage() {
     { ttlMs: 1000 * 60, storage: "memory" }
   );
 
-  const { data: project, loading } = useCachedQuery(
+  const { data: project, loading, refetch: refetchProject } = useCachedQuery(
     `project:detail:${id}`,
     () => (id ? resourceApi.getProject(id) : Promise.resolve(null)),
     { ttlMs: 1000 * 60 * 5, storage: "memory" }
@@ -47,9 +71,36 @@ export default function ProjectDetailPage() {
 
   const { data: projectTasks, loading: projectTasksLoading } = useCachedQuery(
     `project:tasks:${id}`,
-    () => (id ? workApi.listTeamWorkItems({ project_id: id }) : Promise.resolve([])),
+    () => (id ? workApi.listTeamWorkItems({ project_id: id }).catch(() => []) : Promise.resolve([])),
     { ttlMs: 30_000, storage: "memory" }
   );
+
+  // Synced project tasks from shared portal_tasks_data store
+  const [storedTasks, setStoredTasks] = useState<TaskItem[]>(() => loadStoredTasks());
+  useEffect(() => {
+    const sync = () => setStoredTasks(loadStoredTasks());
+    window.addEventListener(TASKS_UPDATED_EVENT, sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener(TASKS_UPDATED_EVENT, sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
+
+  // Add Task form state on Project page
+  const [showAddTask, setShowAddTask] = useState(false);
+  const [taskTitle, setTaskTitle] = useState("");
+  const [taskDesc, setTaskDesc] = useState("");
+  const [taskPriority, setTaskPriority] = useState<TaskPriority>("medium");
+  const [taskDueDate, setTaskDueDate] = useState("");
+  const [taskTagsInput, setTaskTagsInput] = useState("");
+  const [taskAssignees, setTaskAssignees] = useState<TaskAssignee[]>([]);
+
+  // Documents & Member management state
+  const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [previewDoc, setPreviewDoc] = useState<ProjectAttachment | null>(null);
+  const [addingMemberId, setAddingMemberId] = useState("");
+  const [addingMember, setAddingMember] = useState(false);
 
   const { data: projectFinance, loading: projectFinanceLoading } = useCachedQuery(
     `project:finance:${id}`,
@@ -86,11 +137,12 @@ export default function ProjectDetailPage() {
 
   const tabs = useMemo(() => [
     { id: "overview", label: "Overview", icon: Layers },
+    { id: "tasks", label: "Tasks", icon: CheckSquare },
+    { id: "documents", label: "Documents", icon: FileText },
+    { id: "members", label: "Members", icon: Users },
     { id: "activities", label: "Activities", icon: Activity },
     ...(canSeeInternalProjectTabs
       ? [
-          { id: "tasks", label: "Tasks", icon: CheckSquare },
-          { id: "members", label: "Members", icon: Users },
           { id: "requests", label: "Requests", icon: FileText },
           { id: "budgets", label: "Budgets", icon: PieChart },
           { id: "funds", label: "Funds / Spend", icon: Wallet },
@@ -99,6 +151,177 @@ export default function ProjectDetailPage() {
         ]
       : []),
   ], [canSeeInternalProjectTabs]);
+
+  // Project-scoped tasks visible to current user (strict: non-assigned users only see tasks they are part of unless admin)
+  const visibleProjectTasks = useMemo(() => {
+    if (!project) return [];
+    const projId = String(project.id);
+    const projName = String(project.name || "").trim().toLowerCase();
+
+    const localMatching = storedTasks.filter((t) => {
+      const matchesProject =
+        (Boolean(t.project_id) && String(t.project_id) === projId) ||
+        (Boolean(projName) && (t.project_name || "").trim().toLowerCase() === projName);
+      if (!matchesProject) return false;
+      return isAdminView || isUserPartOfTask(t, user);
+    });
+
+    const apiItems: TaskItem[] = (Array.isArray(projectTasks) ? projectTasks : [])
+      .filter((item: any) => !localMatching.some((lt) => lt.id === String(item.id)))
+      .map((item: any) => ({
+        id: String(item.id),
+        title: item.title,
+        description: item.description,
+        status: (item.status || "planned") as TaskStatus,
+        priority: (item.priority || "medium") as TaskPriority,
+        due_date: item.due_date ? String(item.due_date).slice(0, 10) : undefined,
+        project_id: projId,
+        project_name: project.name,
+        assignees: item.assignee
+          ? [{ id: String(item.assignee.id), name: item.assignee.name || item.assignee.email || "Assignee", email: item.assignee.email }]
+          : [],
+        tags: Array.isArray(item.tags) ? item.tags : [],
+        updates: [],
+      }))
+      .filter((t) => isAdminView || isUserPartOfTask(t, user));
+
+    return [...localMatching, ...apiItems];
+  }, [project, storedTasks, projectTasks, isAdminView, user]);
+
+  const projectMetadata = (project as any)?.metadata && typeof (project as any).metadata === "object"
+    ? ((project as any).metadata as Record<string, any>)
+    : {};
+  const projectTags: string[] = Array.isArray(projectMetadata.tags) ? projectMetadata.tags : [];
+  const projectDocuments: ProjectAttachment[] = Array.isArray(projectMetadata.documents)
+    ? projectMetadata.documents
+    : [];
+
+  const handleCreateProjectTask = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!project || !taskTitle.trim()) return;
+    const authorName = user?.first_name
+      ? `${user.first_name} ${user.last_name || ""}`.trim()
+      : user?.username || "Colleague";
+    const parsedTags = Array.from(
+      new Set([
+        ...projectTags,
+        ...taskTagsInput
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean),
+      ]),
+    );
+    const assignees: TaskAssignee[] =
+      taskAssignees.length > 0
+        ? taskAssignees
+        : [
+            {
+              id: user?.id ? String(user.id) : "usr-self",
+              name: authorName,
+              email: user?.email,
+              avatar: authorName.slice(0, 2).toUpperCase(),
+            },
+          ];
+
+    const newTask: TaskItem = {
+      id: `task-${Date.now()}`,
+      title: taskTitle.trim(),
+      description: taskDesc.trim() || undefined,
+      status: "planned",
+      priority: taskPriority,
+      due_date: taskDueDate || undefined,
+      created_at: new Date().toISOString(),
+      owner_id: user?.id ? String(user.id) : undefined,
+      owner_name: authorName,
+      is_personal: false,
+      project_id: String(project.id),
+      project_name: project.name,
+      assignees,
+      tags: parsedTags.length > 0 ? parsedTags : ["Project"],
+      updates: [
+        {
+          id: `upd-${Date.now()}`,
+          author: authorName,
+          avatar: authorName.slice(0, 2).toUpperCase(),
+          text: `Task created under project "${project.name}".`,
+          created_at: "Just now",
+        },
+      ],
+    };
+
+    const next = upsertStoredTask(newTask);
+    setStoredTasks(next);
+    setTaskTitle("");
+    setTaskDesc("");
+    setTaskDueDate("");
+    setTaskTagsInput("");
+    setTaskAssignees([]);
+    setShowAddTask(false);
+    showToast({ tone: "success", title: "Task added", message: "Task added and synced to Tasks page." });
+  };
+
+  const handleChangeProjectTaskStatus = (taskId: string, nextStatus: TaskStatus) => {
+    const next = updateStoredTaskStatus(taskId, nextStatus);
+    setStoredTasks(next);
+    showToast({
+      tone: "success",
+      title: nextStatus === "completed" ? "Task completed" : "Status updated",
+      message: `Marked as ${nextStatus.replace("_", " ")}.`,
+    });
+  };
+
+  const handleAttachProjectDocument = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length || !project) return;
+    setUploadingDoc(true);
+    try {
+      const uploaded: ProjectAttachment[] = [];
+      for (const file of files) {
+        const asset = await uploadFileAsset(file, { metadata: { purpose: "project_document", project_id: String(project.id) } });
+        uploaded.push({
+          file_id: asset.id,
+          file_name: asset.file_name || file.name,
+          mime_type: asset.mime_type || file.type || null,
+          file_size: Number(asset.file_size ?? file.size ?? 0),
+          uploaded_at: new Date().toISOString(),
+        });
+      }
+      await httpRequest(`/projects/${project.id}`, {
+        method: "PUT",
+        body: {
+          metadata: {
+            ...projectMetadata,
+            documents: [...projectDocuments, ...uploaded],
+          },
+        },
+      });
+      await refetchProject();
+      showToast({ tone: "success", title: "Document attached", message: `${uploaded.length} document(s) added to project.` });
+    } catch {
+      showToast({ tone: "danger", title: "Upload failed", message: "Could not attach document to project." });
+    } finally {
+      setUploadingDoc(false);
+      if (docInputRef.current) docInputRef.current.value = "";
+    }
+  };
+
+  const handleAddProjectMember = async () => {
+    if (!project || !addingMemberId) return;
+    setAddingMember(true);
+    try {
+      await httpRequest(`/projects/${project.id}/members`, {
+        method: "POST",
+        body: { user_id: addingMemberId, role: "member" },
+      });
+      setAddingMemberId("");
+      await refetchProject();
+      showToast({ tone: "success", title: "Member assigned", message: "Added to project roster." });
+    } catch {
+      showToast({ tone: "danger", title: "Error", message: "Failed to assign member." });
+    } finally {
+      setAddingMember(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -301,39 +524,276 @@ export default function ProjectDetailPage() {
           </div>
         )}
 
-        {/* Tab 3: Tasks */}
+        {/* Tab 3: Tasks (Interactive — Add Task, Assignees, Tags, Mark Completed) */}
         {activeTab === "tasks" && (
-          <div className="rounded-2xl bg-white border border-neutral-200/80 shadow-sm overflow-hidden">
-            <div className="px-5 py-3.5 border-b border-neutral-100 flex items-center justify-between">
-              <h3 className="text-xs font-medium text-neutral-500">
-                Work Items & Deliverables ({projectTasks?.length || 0})
-              </h3>
-            </div>
-            {projectTasksLoading ? (
-              <div className="p-8 text-center text-xs font-medium text-neutral-400">
-                Loading tasks...
+          <div className="space-y-4">
+            <div className="rounded-2xl bg-white border border-neutral-200/80 shadow-sm overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-neutral-100 flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-xs font-medium text-neutral-700">
+                    Project Tasks &amp; Deliverables ({visibleProjectTasks.length})
+                  </h3>
+                  <p className="text-[11px] text-neutral-400 mt-0.5">
+                    Tasks added here sync automatically to the Tasks page and are only visible to assigned members.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowAddTask((v) => !v)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-medium transition shrink-0"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>{showAddTask ? "Close Form" : "Add Task"}</span>
+                </button>
               </div>
-            ) : !projectTasks?.length ? (
+
+              {showAddTask && (
+                <form onSubmit={handleCreateProjectTask} className="p-5 bg-neutral-50/70 border-b border-neutral-100 space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="sm:col-span-2">
+                      <label className="text-xs font-medium text-neutral-700 block mb-1">Task Title *</label>
+                      <input
+                        type="text"
+                        required
+                        value={taskTitle}
+                        onChange={(e) => setTaskTitle(e.target.value)}
+                        placeholder="e.g., Finalize architecture specification"
+                        className="w-full text-xs border border-neutral-200 rounded-xl px-3 py-2 bg-white text-neutral-900 focus:outline-none focus:border-[#ff6900]"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-neutral-700 block mb-1">Priority</label>
+                      <SelectBox
+                        value={taskPriority}
+                        onChange={(e) => setTaskPriority(e.target.value as TaskPriority)}
+                        className="w-full text-xs border border-neutral-200 rounded-xl px-2.5 py-2 bg-white text-neutral-800"
+                      >
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                        <option value="critical">Critical</option>
+                      </SelectBox>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-medium text-neutral-700 block mb-1">Due Date</label>
+                      <DateInput
+                        value={taskDueDate}
+                        onChange={(e) => setTaskDueDate(e.target.value)}
+                        className="w-full text-xs border border-neutral-200 rounded-xl px-2.5 py-2 bg-white text-neutral-800"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-neutral-700 block mb-1">Tags (comma separated)</label>
+                      <input
+                        type="text"
+                        value={taskTagsInput}
+                        onChange={(e) => setTaskTagsInput(e.target.value)}
+                        placeholder={projectTags.length ? `Inherits: ${projectTags.join(", ")}` : "Design, API, Sprint 1"}
+                        className="w-full text-xs border border-neutral-200 rounded-xl px-3 py-2 bg-white text-neutral-800 focus:outline-none focus:border-[#ff6900]"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-medium text-neutral-700 block mb-1">Description</label>
+                    <textarea
+                      rows={2}
+                      value={taskDesc}
+                      onChange={(e) => setTaskDesc(e.target.value)}
+                      placeholder="Details and acceptance criteria..."
+                      className="w-full text-xs border border-neutral-200 rounded-xl p-2.5 bg-white text-neutral-800 focus:outline-none focus:border-[#ff6900]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-medium text-neutral-700 block mb-1.5">
+                      Assign People ({taskAssignees.length} selected — only assigned people see this task)
+                    </label>
+                    <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto p-2 rounded-xl border border-neutral-200 bg-white">
+                      {colleagues.map((member) => {
+                        const selected = taskAssignees.some((a) => a.id === member.id);
+                        return (
+                          <button
+                            key={member.id}
+                            type="button"
+                            onClick={() =>
+                              setTaskAssignees((prev) =>
+                                selected ? prev.filter((a) => a.id !== member.id) : [...prev, member],
+                              )
+                            }
+                            className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition ${
+                              selected
+                                ? "bg-orange-50 border-[#ff6900] text-[#ff6900]"
+                                : "bg-neutral-50 border-neutral-200 text-neutral-700 hover:bg-neutral-100"
+                            }`}
+                          >
+                            {member.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowAddTask(false)}
+                      className="px-3.5 py-1.5 rounded-xl border border-neutral-200 bg-white text-xs font-medium text-neutral-700"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-1.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-medium"
+                    >
+                      Save Project Task
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {projectTasksLoading && visibleProjectTasks.length === 0 ? (
+                <div className="p-8 text-center text-xs font-medium text-neutral-400">
+                  Loading tasks...
+                </div>
+              ) : visibleProjectTasks.length === 0 ? (
+                <div className="p-12 text-center">
+                  <CheckSquare className="h-8 w-8 text-neutral-300 mx-auto mb-2" />
+                  <p className="text-xs font-medium text-neutral-700">No tasks assigned to you in this project</p>
+                  <p className="text-xs text-neutral-400 mt-0.5">
+                    Click Add Task above to attach deliverables and assign teammates.
+                  </p>
+                </div>
+              ) : (
+                <div className="divide-y divide-neutral-100">
+                  {visibleProjectTasks.map((task) => {
+                    const isDone = task.status === "completed";
+                    return (
+                      <div key={task.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-neutral-50/80 transition">
+                        <div className="flex items-start gap-3 min-w-0">
+                          <button
+                            type="button"
+                            onClick={() => handleChangeProjectTaskStatus(task.id, isDone ? "in_progress" : "completed")}
+                            title={isDone ? "Reopen task" : "Mark as completed"}
+                            className={`mt-0.5 shrink-0 transition-colors ${
+                              isDone ? "text-emerald-600" : "text-neutral-400 hover:text-[#ff6900]"
+                            }`}
+                          >
+                            {isDone ? <CheckCircle2 className="h-4.5 w-4.5" /> : <Circle className="h-4.5 w-4.5" />}
+                          </button>
+                          <div className="min-w-0">
+                            <p className={`text-xs font-medium ${isDone ? "line-through text-neutral-400" : "text-neutral-900"}`}>
+                              {task.title}
+                            </p>
+                            {task.description && (
+                              <p className="text-xs text-neutral-500 mt-0.5 line-clamp-1">{task.description}</p>
+                            )}
+                            <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                              {task.tags?.map((tag) => (
+                                <span
+                                  key={tag}
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600 text-[11px] font-mono"
+                                >
+                                  <Tag className="h-2.5 w-2.5" />
+                                  {tag}
+                                </span>
+                              ))}
+                              {task.assignees?.length > 0 && (
+                                <span className="text-[11px] text-neutral-400">
+                                  • {task.assignees.map((a) => a.name).join(", ")}
+                                </span>
+                              )}
+                              {task.due_date && (
+                                <span className="text-[11px] text-neutral-400">• Due {task.due_date}</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600 capitalize">
+                            {task.priority || "medium"}
+                          </span>
+                          <SelectBox
+                            value={task.status}
+                            onChange={(e) => handleChangeProjectTaskStatus(task.id, e.target.value as TaskStatus)}
+                            className="text-xs font-medium bg-white border border-neutral-200 rounded-lg px-2 py-1 text-neutral-800"
+                          >
+                            <option value="planned">Planned</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="blocked">Under Review</option>
+                            <option value="completed">Completed</option>
+                          </SelectBox>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Tab: Project Documents */}
+        {activeTab === "documents" && (
+          <div className="rounded-2xl bg-white border border-neutral-200/80 shadow-sm overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-neutral-100 flex items-center justify-between gap-3">
+              <h3 className="text-xs font-medium text-neutral-700">
+                Attached Project Documents ({projectDocuments.length})
+              </h3>
+              <div>
+                <button
+                  type="button"
+                  onClick={() => docInputRef.current?.click()}
+                  disabled={uploadingDoc}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-medium disabled:opacity-50"
+                >
+                  <Upload className="h-3.5 w-3.5" />
+                  <span>{uploadingDoc ? "Uploading..." : "Attach Document"}</span>
+                </button>
+                <input
+                  ref={docInputRef}
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => void handleAttachProjectDocument(e)}
+                />
+              </div>
+            </div>
+            {projectDocuments.length === 0 ? (
               <div className="p-12 text-center">
-                <CheckSquare className="h-8 w-8 text-neutral-300 mx-auto mb-2" />
-                <p className="text-xs font-medium text-neutral-700">No tasks linked</p>
+                <FileText className="h-8 w-8 text-neutral-300 mx-auto mb-2" />
+                <p className="text-xs font-medium text-neutral-700">No documents attached yet</p>
                 <p className="text-xs text-neutral-400 mt-0.5">
-                  Tasks created for this project will appear here.
+                  Upload specs, briefs, or deliverables so the project team has everything in one place.
                 </p>
               </div>
             ) : (
               <div className="divide-y divide-neutral-100">
-                {projectTasks.map((task: any) => (
-                  <div key={task.id} className="p-4 flex items-center justify-between gap-4 hover:bg-neutral-50 transition">
-                    <div>
-                      <p className="text-xs font-medium text-neutral-900">{task.title}</p>
-                      <p className="text-xs text-neutral-400 capitalize mt-0.5">
-                        {String(task.status || "planned").replaceAll("_", " ")}
-                      </p>
+                {projectDocuments.map((doc) => (
+                  <div key={doc.file_id} className="p-4 flex items-center justify-between gap-4 hover:bg-neutral-50 transition">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-lg bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
+                        <FileText className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium text-neutral-900 truncate">{doc.file_name}</p>
+                        <p className="text-[11px] text-neutral-400">
+                          {doc.mime_type || "Document"} • Added {formatDate(doc.uploaded_at)}
+                        </p>
+                      </div>
                     </div>
-                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600 capitalize">
-                      {task.priority || "medium"}
-                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewDoc(doc)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50 text-xs font-medium text-neutral-700"
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                      <span>Preview</span>
+                    </button>
                   </div>
                 ))}
               </div>
@@ -344,10 +804,33 @@ export default function ProjectDetailPage() {
         {/* Tab 4: Members */}
         {activeTab === "members" && (
           <div className="rounded-2xl bg-white border border-neutral-200/80 shadow-sm overflow-hidden">
-            <div className="px-5 py-3.5 border-b border-neutral-100 flex items-center justify-between">
+            <div className="px-5 py-3.5 border-b border-neutral-100 flex flex-wrap items-center justify-between gap-3">
               <h3 className="text-xs font-medium text-neutral-500">
-                Project Roster & Assignments ({(project as any).members?.length || 0})
+                Project Roster &amp; Assignments ({(project as any).members?.length || 0})
               </h3>
+              <div className="flex items-center gap-2">
+                <SelectBox
+                  value={addingMemberId}
+                  onChange={(e) => setAddingMemberId(e.target.value)}
+                  className="text-xs bg-white border border-neutral-200 rounded-lg px-2.5 py-1.5 text-neutral-800"
+                >
+                  <option value="">Select colleague to assign...</option>
+                  {colleagues.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} ({c.role})
+                    </option>
+                  ))}
+                </SelectBox>
+                <button
+                  type="button"
+                  onClick={() => void handleAddProjectMember()}
+                  disabled={!addingMemberId || addingMember}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-medium disabled:opacity-50"
+                >
+                  <UserPlus className="h-3.5 w-3.5" />
+                  <span>{addingMember ? "Adding..." : "Assign"}</span>
+                </button>
+              </div>
             </div>
             {!(project as any).members?.length ? (
               <div className="p-12 text-center">
@@ -478,6 +961,19 @@ export default function ProjectDetailPage() {
           </div>
         )}
       </div>
+
+      {previewDoc && (
+        <FilePreviewModal
+          isOpen={Boolean(previewDoc)}
+          file={{
+            id: previewDoc.file_id,
+            file_name: previewDoc.file_name,
+            mime_type: previewDoc.mime_type ?? undefined,
+            file_size: previewDoc.file_size ?? undefined,
+          }}
+          onClose={() => setPreviewDoc(null)}
+        />
+      )}
     </PortalLayout>
   );
 }

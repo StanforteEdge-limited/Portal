@@ -97,6 +97,7 @@ export function NewTaskSlideOver({
       priority,
       due_date: dueDate || undefined,
       created_at: new Date().toISOString(),
+      owner_id: user?.id ? String(user.id) : undefined,
       owner_name: authorName,
       is_personal: !isAdmin,
       assignees,
