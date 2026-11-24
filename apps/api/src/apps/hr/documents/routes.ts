@@ -57,6 +57,17 @@ export const DocumentsRoutes: FastifyPluginAsync = async (fastify) => {
   );
 
   fastify.post(
+    '/:id/share',
+    { preHandler: self, schema: { params: documentsIdParamsSchema } },
+    async (request) => {
+      const body = requestBody<{ user_id: string; message?: string }>(request);
+      return inTenant(request, () =>
+        documents().share(id(request), actor(request), body.user_id, body.message),
+      );
+    },
+  );
+
+  fastify.post(
     '/:id/acknowledge',
     { preHandler: self, schema: { params: documentsIdParamsSchema, body: AcknowledgeDocumentSchema } },
     async (request) =>

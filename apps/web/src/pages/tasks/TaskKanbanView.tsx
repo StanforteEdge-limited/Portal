@@ -8,6 +8,7 @@ import {
   GripVertical,
 } from "lucide-react";
 import type { TaskItem, TaskStatus, TaskPriority } from "./types";
+import { stripHtml } from "@/shared/components/ui/RichTextEditor";
 
 interface TaskKanbanViewProps {
   tasks: TaskItem[];
@@ -211,7 +212,7 @@ export function TaskKanbanView({
                         {/* Description snippet */}
                         {task.description && (
                           <p className="text-xs text-neutral-500 line-clamp-2 leading-relaxed mb-3">
-                            {task.description}
+                            {stripHtml(task.description)}
                           </p>
                         )}
 

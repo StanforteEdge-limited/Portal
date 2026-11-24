@@ -23,6 +23,7 @@ import {
   upsertStoredTask,
 } from "@/pages/tasks/task-store";
 import type { ProjectAttachment } from "./CreateProjectSlideOver";
+import { RichTextEditor, RichTextViewer, stripHtml } from "@/shared/components/ui/RichTextEditor";
 import {
   FolderKanban,
   Calendar,
@@ -478,11 +479,11 @@ export default function ProjectDetailPage() {
 
             {/* Description & Metadata Section */}
             <div className="p-6 rounded-2xl bg-white border border-neutral-200/80 shadow-sm space-y-4">
-              <h3 className="text-sm font-medium text-neutral-900">Project Mission & Scope</h3>
-              <p className="text-xs text-neutral-600 leading-relaxed">
-                {project.description ||
-                  "No detailed description provided for this project workspace. Governance guidelines recommend documenting objectives and deliverable milestones."}
-              </p>
+              <h3 className="text-sm font-medium text-neutral-900">Project Mission &amp; Scope</h3>
+              <RichTextViewer
+                content={project.description}
+                placeholder="No detailed description provided for this project workspace. Governance guidelines recommend documenting objectives and deliverable milestones."
+              />
 
               <div className="pt-4 border-t border-neutral-100 grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
@@ -600,12 +601,11 @@ export default function ProjectDetailPage() {
 
                   <div>
                     <label className="text-xs font-medium text-neutral-700 block mb-1">Description</label>
-                    <textarea
-                      rows={2}
+                    <RichTextEditor
                       value={taskDesc}
-                      onChange={(e) => setTaskDesc(e.target.value)}
+                      onChange={setTaskDesc}
                       placeholder="Details and acceptance criteria..."
-                      className="w-full text-xs border border-neutral-200 rounded-xl p-2.5 bg-white text-neutral-800 focus:outline-none focus:border-[#ff6900]"
+                      minHeightClass="min-h-[90px]"
                     />
                   </div>
 
@@ -675,7 +675,7 @@ export default function ProjectDetailPage() {
                               {task.title}
                             </p>
                             {task.description && (
-                              <p className="text-xs text-neutral-500 mt-0.5 line-clamp-1">{task.description}</p>
+                              <p className="text-xs text-neutral-500 mt-0.5 line-clamp-1">{stripHtml(task.description)}</p>
                             )}
                             <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                               {task.tags?.map((tag) => (

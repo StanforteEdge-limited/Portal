@@ -14,7 +14,9 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { useToast } from "@/shared";
+import { httpRequest } from "@/shared/lib/core";
 import { useColleagues } from "@/shared/hooks/useColleagues";
+import { RichTextEditor } from "@/shared/components/ui/RichTextEditor";
 import { createConversation, sendChatMessage } from "@/pages/chat/chat-api";
 import type { DocumentItem, DocumentSharedRecord } from "./types";
 
@@ -175,6 +177,17 @@ export default function DocumentShareModal({
           existing.unshift(chatNotification);
           localStorage.setItem("portal_doc_shares", JSON.stringify(existing));
         } catch {}
+      }
+
+      // Trigger API share & notification dispatch (smart online in-app vs offline email)
+      if (document?.id && selectedColleague?.id) {
+        httpRequest(`/documents/${document.id}/share`, {
+          method: "POST",
+          body: {
+            user_id: selectedColleague.id,
+            message: message.trim() || undefined,
+          },
+        }).catch(() => {});
       }
 
       // 2. Email Notification
@@ -470,12 +483,11 @@ export default function DocumentShareModal({
             <label className="block text-xs font-medium text-neutral-700 mb-1.5">
               Personal Note <span className="text-neutral-400 font-normal">(optional)</span>
             </label>
-            <textarea
+            <RichTextEditor
               value={message}
-              onChange={(e) => setMessage(e.target.value)}
+              onChange={setMessage}
               placeholder="e.g. Please review section 3 before the end of the sprint..."
-              rows={3}
-              className="w-full px-3.5 py-2.5 text-xs bg-neutral-50 border border-neutral-200 rounded-xl outline-none transition resize-none focus:bg-white focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+              minHeightClass="min-h-[90px]"
             />
           </div>
 

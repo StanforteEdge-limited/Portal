@@ -3,6 +3,11 @@ import { Link, useNavigate, useLocation } from "@/shared/router-adapter";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { useThemeMode } from "@/shared/lib/theme";
 import { StanforteLogo } from "@/components/brand/StanforteLogo";
+import { API_BASE_URL } from "@/shared/lib/env";
+import { playNotificationSound } from "@/shared/lib/sound";
+import { getWorkspaceUnreadNotificationCount } from "@/shared/api/workspace-api";
+import { useToast } from "@/shared";
+import { useUserPresence } from "@/shared/hooks/useUserPresence";
 import {
   LayoutDashboard,
   Home,
@@ -48,6 +53,7 @@ import {
   PanelLeft,
   ExternalLink,
   ShieldCheck,
+  Check,
   ArrowRight,
   Globe,
   SlidersHorizontal,
@@ -626,6 +632,7 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDrawerOpen, setUserDrawerOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [statusMenuOpen, setStatusMenuOpen] = useState(false);
   const userDropdownRef = useRef<HTMLDivElement>(null);
   const [appLauncherOpen, setAppLauncherOpen] = useState(false);
 
@@ -678,6 +685,53 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  const { showToast } = useToast();
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+
+  // Initial fetch of unread notification count
+  useEffect(() => {
+    if (!user) return;
+    let mounted = true;
+    getWorkspaceUnreadNotificationCount()
+      .then((count) => {
+        if (mounted) setUnreadNotifications(count);
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, [user]);
+
+  // Global Realtime SSE Listener & Sound Chime for In-App Notifications
+  useEffect(() => {
+    if (!user) return;
+    const streamUrl = `${API_BASE_URL.replace(/\/+$/, "")}/chat/stream`;
+    const es = new EventSource(streamUrl, { withCredentials: true });
+
+    const handleNotification = (ev: MessageEvent) => {
+      try {
+        const payload = JSON.parse(ev.data);
+        // Play notification sound
+        playNotificationSound();
+        // Increment unread count badge
+        setUnreadNotifications((prev) => prev + 1);
+        // Display toast popup
+        showToast({
+          tone: "info",
+          title: payload.title || "New Notification",
+          message: payload.message || "You have a new update.",
+        });
+      } catch {}
+    };
+
+    es.addEventListener("notification:new", handleNotification);
+
+    return () => {
+      es.removeEventListener("notification:new", handleNotification);
+      es.close();
+    };
+  }, [user, showToast]);
+
   // Search
   const [searchQuery, setSearchQuery] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
@@ -708,6 +762,7 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
 
   // Determine User Role, Admin Authority & Active Workspace Mode
   const { mode: workspaceMode, isAdmin, switchMode: switchWorkspaceMode } = useWorkspace();
+  const { status: userPresenceStatus, setStatus: setUserPresenceStatus, currentConfig: userPresenceConfig, options: presenceOptions } = useUserPresence();
   const currentPath = location?.pathname || "";
 
   const userName = user?.first_name
@@ -1269,9 +1324,15 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
               title="Notifications"
             >
               <Bell className="h-4 w-4" strokeWidth={1.5} />
+              {unreadNotifications > 0 && (
+                <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#ff6900] opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[#ff6900]" />
+                </span>
+              )}
             </Link>
 
-            {isAdmin && (
+            {isAdmin && workspaceMode === "admin" && (
               <button
                 type="button"
                 onClick={() => setAppLauncherOpen(true)}
@@ -1288,46 +1349,103 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
                 onClick={() => setUserDropdownOpen((v) => !v)}
                 className={`flex items-center gap-1.5 p-1 pr-2 rounded-lg transition-colors duration-150 border ${
                   userDropdownOpen
-                    ? "bg-neutral-100 border-neutral-300"
-                    : "hover:bg-neutral-100 border-neutral-900/[0.08]"
+                    ? "bg-neutral-100 dark:bg-neutral-800 border-neutral-300 dark:border-neutral-700"
+                    : "hover:bg-neutral-100 dark:hover:bg-neutral-800 border-neutral-900/[0.08] dark:border-neutral-800"
                 }`}
-                title="Account"
+                title={`Account (${userPresenceConfig.label})`}
               >
-                <div className="w-7 h-7 rounded-md bg-neutral-900 text-white font-medium text-xs flex items-center justify-center">
-                  {initials || "US"}
+                <div className="relative w-7 h-7 shrink-0">
+                  <div className="w-7 h-7 rounded-md bg-neutral-900 text-white font-medium text-xs flex items-center justify-center">
+                    {initials || "US"}
+                  </div>
+                  <span
+                    className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full ring-2 ring-white dark:ring-neutral-900 ${userPresenceConfig.dotColor}`}
+                  />
                 </div>
                 <ChevronDown
                   className={`h-3.5 w-3.5 text-neutral-500 transition-transform duration-150 ${
-                    userDropdownOpen ? "rotate-180 text-neutral-900" : ""
+                    userDropdownOpen ? "rotate-180 text-neutral-900 dark:text-neutral-100" : ""
                   }`}
                   strokeWidth={1.5}
                 />
               </button>
 
               {userDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-soft border border-neutral-900/[0.08] py-2 z-50">
+                <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-neutral-900 rounded-xl shadow-soft border border-neutral-900/[0.08] dark:border-neutral-800 py-2 z-50">
                   {/* User Profile Header */}
-                  <div className="px-4 py-3 border-b border-neutral-100">
+                  <div className="px-4 py-3 border-b border-neutral-100 dark:border-neutral-800">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-[#ff6900] text-white font-medium text-sm flex items-center justify-center shrink-0 shadow-sm">
-                        {initials || "AD"}
+                      <div className="relative shrink-0 w-10 h-10">
+                        <div className="w-10 h-10 rounded-full bg-[#ff6900] text-white font-medium text-sm flex items-center justify-center shadow-sm">
+                          {initials || "AD"}
+                        </div>
+                        <span
+                          className={`absolute bottom-0 right-0 w-3 h-3 rounded-full ring-2 ring-white dark:ring-neutral-900 ${userPresenceConfig.dotColor}`}
+                        />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="text-xs font-medium text-neutral-900 truncate">
+                        <div className="text-xs font-medium text-neutral-900 dark:text-neutral-100 truncate">
                           {userName}
                         </div>
-                        <div className="text-xs text-neutral-400 truncate">
+                        <div className="text-xs text-neutral-400 dark:text-neutral-500 truncate">
                           {user?.email || "staff@stanforteedge.com"}
                         </div>
                         <div className="mt-1 flex items-center gap-1.5 flex-wrap">
-                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-orange-50 text-[#ff6900] border border-orange-200/60">
+                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-orange-50 dark:bg-orange-950/40 text-[#ff6900] dark:text-orange-300 border border-orange-200/60 dark:border-orange-800/60">
                             {userRole}
                           </span>
-                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-neutral-100 text-neutral-600">
+                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">
                             {workspaceMode === "admin" ? "Admin Mode" : "Staff Mode"}
                           </span>
                         </div>
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Presence Status Dropdown */}
+                  <div className="px-4 py-2.5 border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/40 flex items-center justify-between gap-3">
+                    <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
+                      Status
+                    </span>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setStatusMenuOpen((v) => !v)}
+                        className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 border border-neutral-200 dark:border-neutral-700 shadow-2xs hover:bg-neutral-50 dark:hover:bg-neutral-700/80 transition-colors"
+                      >
+                        <span className={`w-2 h-2 rounded-full shrink-0 ${userPresenceConfig.dotColor}`} />
+                        <span>{userPresenceConfig.label}</span>
+                        <ChevronDown className={`h-3 w-3 text-neutral-400 transition-transform ${statusMenuOpen ? "rotate-180" : ""}`} />
+                      </button>
+
+                      {statusMenuOpen && (
+                        <div className="absolute right-0 mt-1 w-40 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 shadow-xl py-1 z-50 animate-in fade-in zoom-in-95">
+                          {presenceOptions.map((opt) => {
+                            const isSelected = userPresenceStatus === opt.id;
+                            return (
+                              <button
+                                key={opt.id}
+                                type="button"
+                                onClick={() => {
+                                  setUserPresenceStatus(opt.id);
+                                  setStatusMenuOpen(false);
+                                }}
+                                className={`w-full flex items-center justify-between px-3 py-1.5 text-xs text-left transition-colors ${
+                                  isSelected
+                                    ? "bg-orange-50 dark:bg-orange-950/40 text-neutral-900 dark:text-white font-semibold"
+                                    : "text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700/60 font-medium"
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className={`w-2 h-2 rounded-full shrink-0 ${opt.dotColor}`} />
+                                  <span className="truncate">{opt.label}</span>
+                                </div>
+                                {isSelected && <Check className="h-3 w-3 text-[#ff6900] shrink-0" strokeWidth={2.5} />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   </div>
 

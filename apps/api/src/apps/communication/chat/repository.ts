@@ -14,6 +14,7 @@ import { profile } from '$apps/identity/users/model';
 import { fileAsset } from '$apps/storage/model';
 import { tenantMembership } from '$apps/tenancy/model';
 import { BadRequestException, NotFoundException } from '$core/errors';
+import type { NotificationsService } from '$apps/hr/notifications/repository';
 
 const PROFILE_SELECT = {
   id: profile.id,
@@ -27,7 +28,8 @@ export class ChatService {
   constructor(
     private readonly db: DbService,
     private readonly tenantContext: TenantContextService,
-    private readonly realtime: ChatRealtimeService
+    private readonly realtime: ChatRealtimeService,
+    private readonly notifications?: NotificationsService,
   ) {}
 
   private displayName(profile: { firstName?: string | null; lastName?: string | null; email?: string | null; username?: string | null }): string {
@@ -480,6 +482,62 @@ export class ChatService {
       created_at: message.createdAt,
     };
     this.realtime.emitConversation(conversationId, 'message:new', payload);
+
+    const senderName = payload.sender_name || 'Someone';
+    if (this.notifications) {
+      const members = await this.db.client
+        .select({ profileId: chatConversationMember.profileId })
+        .from(chatConversationMember)
+        .where(
+          and(
+            eq(chatConversationMember.conversationId, conversationId),
+            tid ? eq(chatConversationMember.tenantId, tid) : undefined,
+          )
+        );
+      const otherMembers = members.filter((m) => m.profileId !== me);
+      if (otherMembers.length > 0) {
+        const bodyText = message.body || '';
+        const mentionMatches = bodyText.match(/@([a-zA-Z0-9_.-]+)/g)?.map((m) => m.slice(1).toLowerCase()) || [];
+        const isDirect = otherMembers.length === 1;
+
+        for (const member of otherMembers) {
+          const targetIdStr = member.profileId.toString();
+          let isTagged = isDirect;
+          if (!isTagged && mentionMatches.length > 0) {
+            if (mentionMatches.includes('all') || mentionMatches.includes('channel')) {
+              isTagged = true;
+            } else {
+              const memProfile = (await this.db.client
+                .select({ username: profile.username, firstName: profile.firstName })
+                .from(profile)
+                .where(eq(profile.id, member.profileId))
+                .limit(1))[0];
+              if (
+                memProfile &&
+                (mentionMatches.includes(memProfile.username?.toLowerCase() ?? '') ||
+                  mentionMatches.includes(memProfile.firstName?.toLowerCase() ?? ''))
+              ) {
+                isTagged = true;
+              }
+            }
+          }
+
+          if (isTagged) {
+            this.notifications.notifyTagged({
+              targetUserId: targetIdStr,
+              actorId: profileId,
+              actorName: senderName,
+              context: 'chat',
+              title: `${senderName} tagged you in chat`,
+              message: bodyText ? `"${bodyText.slice(0, 120)}"` : 'Shared a file in chat',
+              link: `/chat`,
+              metadata: { conversationId: conversationId.toString(), messageId: message.id.toString() },
+            }).catch(() => {});
+          }
+        }
+      }
+    }
+
     return payload;
   }
 

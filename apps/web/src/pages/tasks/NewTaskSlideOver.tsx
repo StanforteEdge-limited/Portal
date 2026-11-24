@@ -11,6 +11,7 @@ import { useToast } from "@/shared";
 import type { TaskItem, TaskStatus, TaskPriority, TaskAssignee } from "./types";
 import { useColleagues } from "@/shared/hooks/useColleagues";
 import { ColleagueMultiSelect } from "@/shared/components/ui/ColleagueMultiSelect";
+import { RichTextEditor } from "@/shared/components/ui/RichTextEditor";
 
 interface NewTaskSlideOverProps {
   isOpen: boolean;
@@ -220,12 +221,11 @@ export function NewTaskSlideOver({
               <label className="text-xs font-medium text-neutral-700 block">
                 Deliverables &amp; Details
               </label>
-              <textarea
-                rows={3}
+              <RichTextEditor
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={setDescription}
                 placeholder="Outline specific tasks, deliverables, and acceptance criteria..."
-                className="w-full text-xs text-neutral-700 border border-neutral-200 rounded-xl p-3 focus:outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+                minHeightClass="min-h-[110px]"
               />
             </div>
 

@@ -14,6 +14,7 @@ import { profile } from '$apps/identity/users/model';
 import { requestInstance } from '$apps/hr/requests/model';
 import { project, projectGovernance, projectMember } from './model';
 import { BadRequestException, NotFoundException } from '$core/errors';
+import type { NotificationsService } from '$apps/hr/notifications/repository';
 
 /**
  * Owns project metadata only: the project record, its governance block, and its
@@ -24,6 +25,7 @@ export class ProjectsService {
   constructor(
     private readonly db: DbService,
     private readonly tenantContext: TenantContextService,
+    private readonly notifications?: NotificationsService,
   ) {}
 
   private tenantCond(column: any): SQL {
@@ -130,6 +132,18 @@ export class ProjectsService {
 
       return created;
     });
+
+    if (this.notifications && ownerId !== createdById) {
+      this.notifications.notifyTagged({
+        targetUserId: ownerId.toString(),
+        actorId: createdBy,
+        context: 'project',
+        title: `Tagged on Project "${dto.name}"`,
+        message: `You were assigned as lead on project "${dto.name}".`,
+        link: `/projects/${createdProject.id.toString()}`,
+        metadata: { entityId: createdProject.id.toString() },
+      }).catch(() => {});
+    }
 
     return this.serializeProject(await this.findProjectWithDetails(createdProject.id));
   }
@@ -259,6 +273,21 @@ export class ProjectsService {
         target: [projectMember.projectId, projectMember.userId],
         set: { role, addedBy: actor },
       });
+
+    const projectDetails = await this.findProjectWithDetails(projectId);
+    const projName = projectDetails?.name || 'Project';
+
+    if (this.notifications && userId.toString() !== actorId) {
+      this.notifications.notifyTagged({
+        targetUserId: userId.toString(),
+        actorId,
+        context: 'project',
+        title: `Tagged on Project "${projName}"`,
+        message: `You were tagged and added as a team member on project "${projName}".`,
+        link: `/projects/${id}`,
+        metadata: { entityId: id, role },
+      }).catch(() => {});
+    }
 
     return this.get(id);
   }

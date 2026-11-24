@@ -53,6 +53,7 @@ import { CrmOpportunitiesService } from "$apps/crm/opportunities/repository";
 import { CrmPipelinesService } from "$apps/crm/pipelines/repository";
 
 import { ChatRealtimeService } from "$apps/communication/chat/realtime";
+import { PresenceService } from "$apps/communication/chat/presence/repository";
 import { ChatService } from "$apps/communication/chat/repository";
 import { GroupsService } from "$apps/communication/groups/repository";
 import { MailCryptoService } from "$apps/communication/mail/crypto";
@@ -206,6 +207,14 @@ export class Container {
     );
   }
 
+  get presence(): PresenceService {
+    return this.provide("presence", () => {
+      const p = new PresenceService(this.chatRealtime);
+      p.onModuleInit().catch(() => {});
+      return p;
+    });
+  }
+
   get notifications(): NotificationsService {
     return this.provide(
       "notifications",
@@ -214,6 +223,9 @@ export class Container {
           this.db,
           this.tenantContext,
           this.queues.get("notifications"),
+          this.mailQueue,
+          this.chatRealtime,
+          this.presence,
         ),
     );
   }
@@ -357,7 +369,7 @@ export class Container {
   get documents(): DocumentsService {
     return this.provide(
       "documents",
-      () => new DocumentsService(this.db, this.tenantContext),
+      () => new DocumentsService(this.db, this.tenantContext, this.notifications),
     );
   }
 
@@ -371,7 +383,7 @@ export class Container {
   get projects(): ProjectsService {
     return this.provide(
       "projects",
-      () => new ProjectsService(this.db, this.tenantContext),
+      () => new ProjectsService(this.db, this.tenantContext, this.notifications),
     );
   }
 
@@ -399,7 +411,7 @@ export class Container {
   get tasks(): TasksService {
     return this.provide(
       "tasks",
-      () => new TasksService(this.db, this.tenantContext, this.timesheets),
+      () => new TasksService(this.db, this.tenantContext, this.timesheets, this.notifications),
     );
   }
 
@@ -459,7 +471,7 @@ export class Container {
   get chat(): ChatService {
     return this.provide(
       "chat",
-      () => new ChatService(this.db, this.tenantContext, this.chatRealtime),
+      () => new ChatService(this.db, this.tenantContext, this.chatRealtime, this.notifications),
     );
   }
 

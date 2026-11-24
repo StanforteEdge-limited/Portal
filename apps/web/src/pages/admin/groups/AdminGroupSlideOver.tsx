@@ -8,6 +8,7 @@ import {
   SlideOverFooter,
 } from "@/shared/components/ui/SlideOver";
 import { resourceApi } from "@/shared/lib/core";
+import { RichTextEditor } from "@/shared/components/ui/RichTextEditor";
 import type { TeamOption, OrganizationItem } from "@stanforte/shared";
 import { Users, Building2, Check, X } from "lucide-react";
 
@@ -165,12 +166,12 @@ export default function AdminGroupSlideOver({ group, types = [], onClose, onSave
               <label className="block text-xs font-medium text-neutral-700 mb-1">
                 Description / Scope
               </label>
-              <textarea
+              <RichTextEditor
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={setDescription}
                 placeholder="Brief summary of this group's primary operational focus..."
-                rows={3}
-                className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                minHeightClass="min-h-[100px]"
+                enableMentions={false}
               />
             </div>
           </div>

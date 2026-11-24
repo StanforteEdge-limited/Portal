@@ -77,6 +77,11 @@ export class ChatRealtimeService {
     return Boolean(this.server) || this.clients.size >= 0;
   }
 
+  isProfileConnected(profileId: string): boolean {
+    const room = this.rooms.get(`profile:${profileId}`);
+    return Boolean(room && room.size > 0);
+  }
+
   subscribeSse(opts: {
     profileId: string;
     conversationIds: string[];

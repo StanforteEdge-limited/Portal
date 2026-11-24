@@ -209,6 +209,7 @@ export class PresenceService {
   }
 
   async isOnline(tenantId: string, profileId: string): Promise<boolean> {
+    if (this.realtime?.isProfileConnected(profileId)) return true;
     if (!this.enabled || !this.pub) return false;
     try {
       const exists = await this.pub.exists(this.onlineKey(tenantId, profileId));

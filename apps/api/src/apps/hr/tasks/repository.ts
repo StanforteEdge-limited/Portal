@@ -13,6 +13,7 @@ import { SQL, and, asc, desc, eq, gte, ilike, inArray, lte, notInArray, or, sql 
 import { DbService } from '$core/db';
 import { TenantContextService } from '$core/auth/tenant-context.service';
 import { paginatedResponse } from '$core/pagination';
+import type { NotificationsService } from '$apps/hr/notifications/repository';
 
 import {
   NewWorkItem,
@@ -61,6 +62,7 @@ export class TasksService {
     private readonly db: DbService,
     private readonly tenantContext: TenantContextService,
     private readonly timesheets: TimesheetsService,
+    private readonly notifications?: NotificationsService,
   ) {}
 
   private tenantOrgTeamScope(orgCol: any, teamCol: any, tid: bigint): SQL {
@@ -345,6 +347,17 @@ const teamIds = [...new Set(primaryTeams.map((row) => row.groupId))] as bigint[]
     const projectId = targetProjectId ?? null;
     await this.validateItemLinks(parentId, sprintId, projectId);
     const [created] = await this.db.client.insert(workItem).values(this.mapItemDto(dto, userId)).returning({ id: workItem.id });
+    if (this.notifications && dto.assigned_to_id && String(dto.assigned_to_id) !== actorId) {
+      this.notifications.notifyTagged({
+        targetUserId: String(dto.assigned_to_id),
+        actorId,
+        context: 'project',
+        title: `Assigned task: ${dto.title}`,
+        message: `You were assigned the task "${dto.title}".`,
+        link: `/tasks`,
+        metadata: { entityId: created.id },
+      }).catch(() => {});
+    }
     return this.getItem(actorId, created.id);
   }
 

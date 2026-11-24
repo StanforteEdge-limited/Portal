@@ -16,12 +16,33 @@ import { fileAsset } from '$apps/storage/model';
 import { organization } from '$apps/hr/organizations/model';
 import { profile } from '$apps/identity/users/model';
 import { BadRequestException, NotFoundException } from '$core/errors';
+import type { NotificationsService } from '$apps/hr/notifications/repository';
 
 export class DocumentsService {
   constructor(
     private readonly db: DbService,
     private readonly tenantContext: TenantContextService,
+    private readonly notifications?: NotificationsService,
   ) {}
+
+  async share(documentId: string, actorId: string, targetUserId: string, userMessage?: string) {
+    const doc = await this.findDocumentWithDetails(documentId);
+    if (!doc) throw new NotFoundException('Document not found');
+
+    if (this.notifications && targetUserId !== actorId) {
+      await this.notifications.notifyTagged({
+        targetUserId,
+        actorId,
+        context: 'document',
+        title: `Tagged on Document "${doc.title}"`,
+        message: userMessage?.trim() || `You were tagged on document "${doc.title}".`,
+        link: `/documents/${documentId}`,
+        metadata: { entityId: documentId },
+      }).catch(() => {});
+    }
+
+    return { success: true, document_id: documentId, shared_with: targetUserId };
+  }
 
   async list(profileId: string, query: Record<string, any>) {
     const page = Math.max(1, Number(query.page ?? 1));

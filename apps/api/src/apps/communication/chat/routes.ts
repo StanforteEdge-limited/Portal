@@ -57,6 +57,10 @@ export const ChatRoutes: FastifyPluginAsync = async (fastify) => {
       reply.raw.write(`event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`);
     };
 
+    const tenantIdStr = String((request.user as any)?.tenantId ?? currentTenant(request)?.tenantId ?? '');
+    const connId = `sse-${profileId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    fastify.container.presence.register(connId, tenantIdStr, profileId, convIds.map(String)).catch(() => {});
+
     const subscription = fastify.container.chatRealtime.subscribeSse({
       profileId,
       conversationIds: convIds.map((id) => id.toString()),
@@ -78,12 +82,14 @@ export const ChatRoutes: FastifyPluginAsync = async (fastify) => {
     const heartbeat = setInterval(() => {
       if (reply.raw.writableEnded || reply.raw.destroyed) return;
       reply.raw.write(': ping\n\n');
+      fastify.container.presence.heartbeat(tenantIdStr, profileId).catch(() => {});
     }, 25_000);
     heartbeat.unref?.();
 
     const cleanup = () => {
       clearInterval(heartbeat);
       subscription.unsubscribe();
+      fastify.container.presence.unregister(connId).catch(() => {});
     };
     request.raw.on('close', cleanup);
     request.raw.on('error', cleanup);

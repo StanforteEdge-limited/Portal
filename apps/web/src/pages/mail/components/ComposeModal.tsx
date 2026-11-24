@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { mailApi } from '@/shared/lib/core';
+import { RichTextEditor } from '@/shared/components/ui/RichTextEditor';
 import type { MailHeader, SendMessageDto } from '@stanforte/shared';
 
 type Mode = 'compose' | 'reply' | 'forward';
@@ -81,13 +82,15 @@ export function ComposeModal({ accountId, mode, originalHeader, onClose, onSent 
             placeholder="Subject"
             style={{ border: '1px solid #e5e7eb', borderRadius: 6, padding: '7px 10px', fontSize: 13, outline: 'none' }}
           />
-          <textarea
-            value={body}
-            onChange={e => setBody(e.target.value)}
-            placeholder="Write your message…"
-            rows={10}
-            style={{ border: '1px solid #e5e7eb', borderRadius: 6, padding: '7px 10px', fontSize: 13, resize: 'vertical', outline: 'none', fontFamily: 'inherit' }}
-          />
+          <div className="flex-1 min-h-[220px]">
+            <RichTextEditor
+              value={body}
+              onChange={setBody}
+              placeholder="Write your message…"
+              minHeightClass="min-h-[200px]"
+              enableMentions={false}
+            />
+          </div>
           {error && <div style={{ color: '#dc2626', fontSize: 12 }}>{error}</div>}
         </div>
 

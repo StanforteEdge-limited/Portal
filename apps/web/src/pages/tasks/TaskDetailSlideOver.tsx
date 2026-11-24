@@ -20,6 +20,7 @@ import { useAuth } from "@/shared/context/AuthProvider";
 import { useToast } from "@/shared";
 import type { TaskItem, TaskStatus, TaskPriority, TaskAssignee } from "./types";
 import { useColleagues } from "@/shared/hooks/useColleagues";
+import { RichTextEditor } from "@/shared/components/ui/RichTextEditor";
 
 export interface TaskDetailSlideOverProps {
   task?: TaskItem;
@@ -233,12 +234,11 @@ export function TaskDetailSlideOver({
             <label className="text-xs font-medium text-neutral-500 block">
               Deliverables &amp; Technical Requirements
             </label>
-            <textarea
-              rows={3}
+            <RichTextEditor
               value={currentTask.description || ""}
-              onChange={(e) => setCurrentTask({ ...currentTask, description: e.target.value })}
+              onChange={(val) => setCurrentTask({ ...currentTask, description: val })}
               placeholder="Outline specific objectives, acceptance criteria, or key dependencies..."
-              className="w-full text-xs text-neutral-700 border border-neutral-200 rounded-xl p-3 focus:outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+              minHeightClass="min-h-[110px]"
             />
           </div>
 

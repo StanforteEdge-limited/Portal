@@ -7,6 +7,7 @@ import { httpRequest, resourceApi } from "@/shared/lib/core";
 import { useColleagues } from "@/shared/hooks/useColleagues";
 import { ColleagueMultiSelect } from "@/shared/components/ui/ColleagueMultiSelect";
 import { uploadFileAsset } from "@/pages/files/files-api";
+import { RichTextEditor } from "@/shared/components/ui/RichTextEditor";
 import { FolderKanban, Users, Upload, FileText, Trash2, Tag } from "lucide-react";
 
 export interface ProjectAttachment {
@@ -163,12 +164,11 @@ export function CreateProjectSlideOver({ open, onClose, onCreated }: CreateProje
 
             <div>
               <label className="text-xs font-medium text-neutral-700 block mb-1">Description &amp; Scope</label>
-              <textarea
-                rows={3}
+              <RichTextEditor
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={setDescription}
                 placeholder="Describe project goals, deliverables, milestones, and success criteria..."
-                className="w-full text-xs text-neutral-700 border border-neutral-200 rounded-xl p-3 focus:outline-none focus:border-[#ff6900]"
+                minHeightClass="min-h-[120px]"
               />
             </div>
 

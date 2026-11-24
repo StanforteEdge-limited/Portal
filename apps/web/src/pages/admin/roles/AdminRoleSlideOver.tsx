@@ -14,6 +14,7 @@ import {
   type Role,
   type RolePermission,
 } from "./admin-roles-api";
+import { RichTextEditor } from "@/shared/components/ui/RichTextEditor";
 import { Shield, Key, AlertTriangle, Check, Trash2, X } from "lucide-react";
 
 type Props = {
@@ -183,12 +184,12 @@ export default function AdminRoleSlideOver({ role, onClose, onSaved }: Props) {
               <label className="block text-xs font-medium text-neutral-700 mb-1">
                 Description / Purpose
               </label>
-              <textarea
+              <RichTextEditor
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={setDescription}
                 placeholder="Scope of responsibility and authority for this role..."
-                rows={2}
-                className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                minHeightClass="min-h-[100px]"
+                enableMentions={false}
               />
             </div>
 

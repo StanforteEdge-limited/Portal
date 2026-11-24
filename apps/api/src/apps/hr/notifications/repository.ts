@@ -8,6 +8,31 @@ import { profile } from '$apps/identity/users/model';
 import { tenantMembership } from '$apps/tenancy/model';
 import { BadRequestException } from '$core/errors';
 import { Logger } from '$core/logger';
+import type { MailQueueService } from '$app/jobs/queues';
+import type { ChatRealtimeService } from '$apps/communication/chat/realtime';
+import type { PresenceService } from '$apps/communication/chat/presence';
+
+function escapeHtml(str: string): string {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+export type NotifyTaggedInput = {
+  targetUserId: string | bigint;
+  actorId?: string | bigint;
+  actorName?: string;
+  context: 'project' | 'document' | 'chat';
+  title: string;
+  message: string;
+  link: string;
+  metadata?: Record<string, unknown>;
+  emailSubject?: string;
+  emailHtml?: string;
+};
 
 type NotificationInput = {
   userId: string | bigint;
@@ -35,6 +60,9 @@ export class NotificationsService {
     private readonly db: DbService,
     private readonly tenantContext: TenantContextService,
     private readonly queue: Queue,
+    private readonly mailQueue?: MailQueueService,
+    private readonly realtime?: ChatRealtimeService,
+    private readonly presence?: PresenceService,
   ) {}
 
   private resolveEmailPortalUrl(input: NotificationInput): string | undefined {
@@ -177,7 +205,119 @@ private notificationConditions(userId: string | bigint): SQL[] {
     return created;
   }
 
-async listForUser(userId: string, status?: 'read' | 'unread') {
+  async notifyTagged(input: NotifyTaggedInput) {
+    const targetUserId = input.targetUserId.toString();
+    const actorIdStr = input.actorId ? input.actorId.toString() : undefined;
+    if (actorIdStr && targetUserId === actorIdStr) {
+      return undefined;
+    }
+
+    const targetId = toBigInt(input.targetUserId);
+    const context = this.tenantContext.get();
+    let tenantId = context && context.scope !== 'system' ? context.tenantId : undefined;
+    if (!tenantId) {
+      const [membership] = await this.db.client
+        .select({ tenantId: tenantMembership.tenantId })
+        .from(tenantMembership)
+        .where(and(eq(tenantMembership.profileId, targetId), eq(tenantMembership.status, 'active')))
+        .orderBy(asc(tenantMembership.isOwner))
+        .limit(1);
+      tenantId = membership?.tenantId;
+    }
+
+    const [targetProfile] = await this.db.client
+      .select({
+        id: profile.id,
+        email: profile.email,
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+        username: profile.username,
+      })
+      .from(profile)
+      .where(eq(profile.id, targetId))
+      .limit(1);
+
+    if (!targetProfile) {
+      this.logger.warn(`Cannot notify tagged user ${targetUserId}: profile not found`);
+      return undefined;
+    }
+
+    const isConnectedLocally = this.realtime?.isProfileConnected(targetUserId) ?? false;
+    const isOnlineInPresence = this.presence
+      ? await this.presence.isOnline(tenantId ? String(tenantId) : '', targetUserId)
+      : false;
+    const isOnline = isConnectedLocally || isOnlineInPresence;
+
+    const [created] = await this.db.client
+      .insert(notification)
+      .values({
+        tenantId,
+        userId: targetId,
+        type: `${input.context}_tag`,
+        title: input.title,
+        message: input.message,
+        link: input.link,
+        data: {
+          context: input.context,
+          actorId: actorIdStr,
+          actorName: input.actorName,
+          ...(input.metadata ?? {}),
+        },
+        sentVia: isOnline ? ['in-app'] : ['email'],
+        notifiableType: input.context,
+        notifiableId: input.metadata?.entityId ? toBigInt(input.metadata.entityId as any) : undefined,
+      })
+      .returning();
+
+    if (isOnline) {
+      const realtimePayload = {
+        id: created.id.toString(),
+        type: created.type,
+        title: created.title,
+        message: created.message,
+        link: created.link,
+        data: created.data,
+        status: 'unread',
+        createdAt: created.createdAt.toISOString(),
+        sound: true,
+      };
+      this.realtime?.emitProfile(targetUserId, 'notification:new', realtimePayload);
+      this.logger.log(`In-app notification sent to online user ${targetUserId} (${input.context})`);
+    } else {
+      if (this.mailQueue && targetProfile.email) {
+        const portalBaseUrl = (process.env.APP_BASE_URL || 'http://localhost:5173').replace(/\/$/, '');
+        const fullLink = input.link.startsWith('http')
+          ? input.link
+          : `${portalBaseUrl}${input.link.startsWith('/') ? '' : '/'}${input.link}`;
+
+        const subject = input.emailSubject || input.title;
+
+        await this.mailQueue.enqueue({
+          to: targetProfile.email,
+          subject,
+          text: `${input.title}\n\n${input.message}\n\nView here: ${fullLink}`,
+          template: 'mention_notification',
+          templateContext: {
+            subject,
+            title: input.title,
+            message: input.message,
+            portalUrl: fullLink,
+            ctaLabel: 'View in Portal',
+            context: input.context,
+          },
+          portalUrl: fullLink,
+          ctaLabel: 'View in Portal',
+          userId: targetUserId,
+          notifiableType: input.context,
+        });
+        this.logger.log(`Offline notification email queued for user ${targetProfile.email} (${input.context})`);
+      }
+    }
+
+    return created;
+  }
+
+  async listForUser(userId: string, status?: 'read' | 'unread') {
     const conditions = this.notificationConditions(userId);
     if (status) conditions.push(eq(notification.status, status));
     return this.db.client

@@ -10,6 +10,7 @@ const SUPPORTED_TEMPLATE_FILES: Record<string, string> = {
   welcome: 'welcome.hbs',
   reset_password: 'reset-password.hbs',
   verify_email: 'verify-email.hbs',
+  mention_notification: 'mention-notification.hbs',
 };
 
 export type SendMailInput = {
