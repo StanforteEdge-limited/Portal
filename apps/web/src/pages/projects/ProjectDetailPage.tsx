@@ -9,6 +9,7 @@ import { useParams } from "react-router";
 import BudgetWorkspace from "@/features/budgets/BudgetWorkspace";
 import { useToast } from "@/shared";
 import { useColleagues } from "@/shared/hooks/useColleagues";
+import { ColleagueMultiSelect } from "@/shared/components/ui/ColleagueMultiSelect";
 import { uploadFileAsset } from "@/pages/files/files-api";
 import { FilePreviewModal } from "@/shared/components/media/FilePreviewModal";
 import { SelectBox } from "@/components/ui/select";
@@ -612,29 +613,14 @@ export default function ProjectDetailPage() {
                     <label className="text-xs font-medium text-neutral-700 block mb-1.5">
                       Assign People ({taskAssignees.length} selected — only assigned people see this task)
                     </label>
-                    <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto p-2 rounded-xl border border-neutral-200 bg-white">
-                      {colleagues.map((member) => {
-                        const selected = taskAssignees.some((a) => a.id === member.id);
-                        return (
-                          <button
-                            key={member.id}
-                            type="button"
-                            onClick={() =>
-                              setTaskAssignees((prev) =>
-                                selected ? prev.filter((a) => a.id !== member.id) : [...prev, member],
-                              )
-                            }
-                            className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition ${
-                              selected
-                                ? "bg-orange-50 border-[#ff6900] text-[#ff6900]"
-                                : "bg-neutral-50 border-neutral-200 text-neutral-700 hover:bg-neutral-100"
-                            }`}
-                          >
-                            {member.name}
-                          </button>
-                        );
-                      })}
-                    </div>
+                    <ColleagueMultiSelect
+                      colleagues={colleagues}
+                      selectedIds={taskAssignees.map((a) => a.id)}
+                      onChange={(ids) =>
+                        setTaskAssignees(colleagues.filter((c) => ids.includes(c.id)))
+                      }
+                      placeholder="Search staff by name, email, or role..."
+                    />
                   </div>
 
                   <div className="flex justify-end gap-2">

@@ -10,6 +10,7 @@ import { useAuth } from "@/shared/context/AuthProvider";
 import { useToast } from "@/shared";
 import type { TaskItem, TaskStatus, TaskPriority, TaskAssignee } from "./types";
 import { useColleagues } from "@/shared/hooks/useColleagues";
+import { ColleagueMultiSelect } from "@/shared/components/ui/ColleagueMultiSelect";
 
 interface NewTaskSlideOverProps {
   isOpen: boolean;

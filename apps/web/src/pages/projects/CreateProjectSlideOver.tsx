@@ -5,6 +5,7 @@ import { SlideOver, SlideOverHeader, SlideOverContent, SlideOverFooter } from "@
 import { useToast } from "@/shared";
 import { httpRequest, resourceApi } from "@/shared/lib/core";
 import { useColleagues } from "@/shared/hooks/useColleagues";
+import { ColleagueMultiSelect } from "@/shared/components/ui/ColleagueMultiSelect";
 import { uploadFileAsset } from "@/pages/files/files-api";
 import { FolderKanban, Users, Upload, FileText, Trash2, Tag } from "lucide-react";
 
@@ -224,41 +225,14 @@ export function CreateProjectSlideOver({ open, onClose, onCreated }: CreateProje
                   <Users className="h-3.5 w-3.5 text-[#ff6900]" />
                   <span>Assign Team Members ({selectedMemberIds.length})</span>
                 </label>
-                <span className="text-xs text-neutral-400">Select people working on this project</span>
+                <span className="text-xs text-neutral-400">Search &amp; select staff working on this project</span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-44 overflow-y-auto p-1.5 border border-neutral-200 rounded-xl bg-neutral-50/50">
-                {colleagues.length === 0 ? (
-                  <p className="text-xs text-neutral-400 p-2">No colleagues available to assign.</p>
-                ) : (
-                  colleagues.map((member) => {
-                    const selected = selectedMemberIds.includes(member.id);
-                    return (
-                      <button
-                        key={member.id}
-                        type="button"
-                        onClick={() => toggleMember(member.id)}
-                        className={`flex items-center gap-2.5 p-2 rounded-xl text-left border transition ${
-                          selected
-                            ? "bg-orange-50 border-[#ff6900] text-neutral-900"
-                            : "bg-white border-neutral-200/80 text-neutral-700 hover:bg-neutral-100"
-                        }`}
-                      >
-                        <div
-                          className={`w-7 h-7 rounded-full text-white text-xs font-semibold flex items-center justify-center shrink-0 ${
-                            selected ? "bg-[#ff6900]" : "bg-neutral-800"
-                          }`}
-                        >
-                          {member.avatar || member.name.slice(0, 2).toUpperCase()}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="text-xs font-medium truncate">{member.name}</div>
-                          <div className="text-xs text-neutral-400 truncate">{member.role}</div>
-                        </div>
-                      </button>
-                    );
-                  })
-                )}
-              </div>
+              <ColleagueMultiSelect
+                colleagues={colleagues}
+                selectedIds={selectedMemberIds}
+                onChange={setSelectedMemberIds}
+                placeholder="Search staff by name, email, or role..."
+              />
             </div>
 
             {/* Document Attachments */}
