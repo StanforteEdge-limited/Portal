@@ -49,13 +49,17 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
+    image: portal-api:latest
     restart: unless-stopped
     init: true
+    stop_grace_period: 30s
     env_file:
       - path: ./apps/api/.env
         required: false
     environment:
       NODE_ENV: ${NODE_ENV:-development}
+      RUN_EMBEDDED_WORKERS: "false"
+      GRACEFUL_SHUTDOWN_TIMEOUT_MS: "20000"
       DATABASE_URL: postgresql://${POSTGRES_USER:-stanforte}:${POSTGRES_PASSWORD:-stanforte-dev}@postgres:5432/${POSTGRES_DB:-stanforte}?schema=public
       REDIS_HOST: redis
       REDIS_PORT: "6379"
@@ -95,10 +99,12 @@ services:
       FILE_UPLOAD_MAX_MB: "10"
       REALTIME_ENABLED: "true"
       PRESENCE_ENABLED: "true"
-      NOTIFICATION_WORKER_ENABLED: "true"
-      NOTIFICATION_SCHEDULER_ENABLED: "true"
+      NOTIFICATION_WORKER_ENABLED: "false"
+      NOTIFICATION_SCHEDULER_ENABLED: "false"
     ports:
       - "${API_PORT:-3000}:3000"
+    volumes:
+      - ./apps/api/dist:/app/apps/api/dist:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -106,6 +112,58 @@ services:
         condition: service_healthy
       mailpit:
         condition: service_healthy
+
+  worker:
+    image: portal-api:latest
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 30s
+    command: ["node", "-r", "./path-alias-register.cjs", "dist/worker.js"]
+    volumes:
+      - ./apps/api/dist:/app/apps/api/dist:ro
+    env_file:
+      - path: ./apps/api/.env
+        required: false
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      GRACEFUL_SHUTDOWN_TIMEOUT_MS: "25000"
+      DATABASE_URL: postgresql://${POSTGRES_USER:-stanforte}:${POSTGRES_PASSWORD:-stanforte-dev}@postgres:5432/${POSTGRES_DB:-stanforte}?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      CACHE_TTL_SECONDS: "300"
+      JWT_SECRET: ${JWT_SECRET:-change-me}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-change-me-too}
+      APP_BASE_URL: http://localhost:3000
+      APP_URL: http://localhost:3000
+      PWA_URL: http://localhost:5173
+      FILE_BASE_URL: http://localhost:3000
+      EMAIL_NOTIFICATIONS_ENABLED: "true"
+      MAIL_FROM: no-reply@stanforteedge.com
+      MAIL_SUPPORT_EMAIL: support@stanforteedge.com
+      MAIL_MESSAGE_ID_DOMAIN: stanforteedge.com
+      MAIL_ENCRYPTION_KEY: ${MAIL_ENCRYPTION_KEY:-dev-mail-encryption-key-change-in-production}
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      SMTP_USER: ""
+      SMTP_PASS: ""
+      SMTP_SECURE: "false"
+      PDF_BROWSER_PATH: /usr/bin/chromium-browser
+      DB_POOL_MAX: ${WORKER_DB_POOL_MAX:-10}
+      MAIL_WORKER_CONCURRENCY: ${MAIL_WORKER_CONCURRENCY:-5}
+      BG_WORKER_CONCURRENCY: ${BG_WORKER_CONCURRENCY:-2}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f 'dist/worker.js' > /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   web:
     build:

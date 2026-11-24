@@ -301,30 +301,34 @@ export class AuthService {
   }
 
   async listTenants(userId: string) {
-    const memberships = await this.db.client
-      .select()
+    const rows = await this.db.client
+      .select({
+        id: tenantTable.id,
+        name: tenantTable.name,
+        slug: tenantTable.slug,
+        plan: tenantTable.plan,
+        isOwner: tenantMembershipTable.isOwner,
+        joinedAt: tenantMembershipTable.joinedAt,
+      })
       .from(tenantMembershipTable)
-      .where(and(eq(tenantMembershipTable.profileId, toBigInt(userId)), eq(tenantMembershipTable.status, 'active')))
+      .innerJoin(tenantTable, eq(tenantTable.id, tenantMembershipTable.tenantId))
+      .where(
+        and(
+          eq(tenantMembershipTable.profileId, toBigInt(userId)),
+          eq(tenantMembershipTable.status, 'active'),
+          eq(tenantTable.status, 'active'),
+        ),
+      )
       .orderBy(asc(tenantMembershipTable.joinedAt));
-    const tenants = await Promise.all(
-      memberships.map(async (membership) => {
-        const [tenant] = await this.db.client
-          .select()
-          .from(tenantTable)
-          .where(eq(tenantTable.id, membership.tenantId))
-          .limit(1);
-        if (!tenant || tenant.status !== 'active') return null;
-        return {
-          id: tenant.id.toString(),
-          name: tenant.name,
-          slug: tenant.slug,
-          plan: tenant.plan,
-          isOwner: membership.isOwner,
-          joinedAt: membership.joinedAt,
-        };
-      }),
-    );
-    return tenants.filter((tenant): tenant is NonNullable<typeof tenant> => tenant !== null);
+
+    return rows.map((row) => ({
+      id: row.id.toString(),
+      name: row.name,
+      slug: row.slug,
+      plan: row.plan,
+      isOwner: row.isOwner,
+      joinedAt: row.joinedAt,
+    }));
   }
 
   async switchTenant(userId: string, tenantIdValue: string, res?: ServiceResponse) {
@@ -688,18 +692,17 @@ export class AuthService {
     const key = AuthService.rbacCacheKey(profileId, tenantId);
     const now = Date.now();
     const cached = this.rbacStateCache.get(key);
-    if (cached && cached.expiresAt > now) return Promise.resolve(cached);
-
-    for (const [cachedKey, entry] of this.rbacStateCache) {
-      if (entry.expiresAt <= now) this.rbacStateCache.delete(cachedKey);
+    if (cached) {
+      if (cached.expiresAt > now) return Promise.resolve(cached);
+      this.rbacStateCache.delete(key);
     }
 
     return this.resolveRbacState(profileId, tenantId).then((entry) => {
       if (!entry) return null;
+      // O(1) bounded FIFO eviction instead of scanning the entire Map on every miss
       if (this.rbacStateCache.size >= this.maxRbacCacheEntries) {
-        const overflow = this.rbacStateCache.size - this.maxRbacCacheEntries + 1;
-        const toEvict = Array.from(this.rbacStateCache.keys()).slice(0, Math.max(1, overflow));
-        for (const evictKey of toEvict) this.rbacStateCache.delete(evictKey);
+        const oldestKey = this.rbacStateCache.keys().next().value;
+        if (oldestKey !== undefined) this.rbacStateCache.delete(oldestKey);
       }
       this.rbacStateCache.set(key, entry);
       return entry;

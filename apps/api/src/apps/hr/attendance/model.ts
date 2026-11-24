@@ -20,6 +20,7 @@ export const attendanceEntry = pgTable("sta_attendance_entries", {
   createdAt: timestamp("created_at", { mode: 'date', precision: 6 }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: 'date', precision: 6 }).notNull().$onUpdate(() => new Date()),
 }, (table) => [
+    index("attendanceEntry_index_tenantId_userId_workDate").on(table.tenantId, table.userId, table.workDate, table.entryAt),
     index("attendanceEntry_index_userId_workDate").on(table.userId, table.workDate),
     index("attendanceEntry_index_entryType_entryAt").on(table.entryType, table.entryAt),
 ]);
@@ -50,6 +51,7 @@ export const attendanceDaily = pgTable("sta_attendance_daily", {
   updatedAt: timestamp("updated_at", { mode: 'date', precision: 6 }).notNull().$onUpdate(() => new Date()),
 }, (table) => [
     uniqueIndex("unique_attendance_daily").on(table.userId, table.workDate),
+    index("attendanceDaily_index_tenantId_workDate_status").on(table.tenantId, table.workDate, table.status),
     index("attendanceDaily_index_status").on(table.status),
 ]);
 

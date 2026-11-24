@@ -27,8 +27,9 @@ export class DbService {
     connectionTimeoutMillis: Number(process.env.DB_CONNECTION_TIMEOUT_MS || 5000),
     idleTimeoutMillis: Number(process.env.DB_IDLE_TIMEOUT_MS || 30000),
     application_name: process.env.DB_APPLICATION_NAME || 'portal-api-fastify',
-    ...(process.env.DB_STATEMENT_TIMEOUT_MS ? { statement_timeout: Number(process.env.DB_STATEMENT_TIMEOUT_MS) } : {}),
-    ...(process.env.DB_QUERY_TIMEOUT_MS ? { query_timeout: Number(process.env.DB_QUERY_TIMEOUT_MS) } : {}),
+    statement_timeout: Number(process.env.DB_STATEMENT_TIMEOUT_MS || 15000),
+    query_timeout: Number(process.env.DB_QUERY_TIMEOUT_MS || 20000),
+    options: `-c idle_in_transaction_session_timeout=${Number(process.env.DB_IDLE_TX_TIMEOUT_MS || 15000)}`,
     ...(DbService.sslConfig() ? { ssl: DbService.sslConfig() } : {}),
   });
 

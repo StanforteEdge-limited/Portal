@@ -17,7 +17,7 @@ import {
   type UpsertOfficeLocation,
   type attendanceIdParams,
 } from '@stanforte/contract';
-import { composeGuards, requireAuth, requirePermissions } from '$core/auth/guards';
+import { composeGuards, currentTenant, requireAuth, requirePermissions } from '$core/auth/guards';
 import { requestBody, requestParams, requestQuery } from '$core/routes';
 import { attendancePermissions } from './permissions';
 
@@ -29,6 +29,8 @@ export const AttendanceRoutes: FastifyPluginAsync = async (fastify) => {
   const authenticated = composeGuards(requireAuth);
   const actor = (request: { user?: { id?: string } }) => request.user?.id as string;
   const id = (request: FastifyRequest) => requestParams<attendanceIdParams>(request).id;
+  const inTenant = <T>(request: FastifyRequest, op: () => Promise<T> | T) =>
+    fastify.container.tenantContext.run(currentTenant(request), op);
 
   fastify.get('/status', { preHandler: authenticated }, async (request) =>
     attendance().getAttendanceStatus(actor(request)),
@@ -45,20 +47,24 @@ export const AttendanceRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post('/clock-in', { preHandler: authenticated, schema: { body: ClockAttendanceSchema } }, async (request) => {
     const body = requestBody<ClockAttendance>(request);
     // Strip client-controlled source/at so staff cannot spoof source='import' or backdate timestamps
-    return attendance().clockIn(actor(request), request, {
-      ...body,
-      source: 'web',
-      at: undefined,
-    });
+    return inTenant(request, () =>
+      attendance().clockIn(actor(request), request, {
+        ...body,
+        source: 'web',
+        at: undefined,
+      }),
+    );
   });
 
   fastify.post('/clock-out', { preHandler: authenticated, schema: { body: ClockAttendanceSchema } }, async (request) => {
     const body = requestBody<ClockAttendance>(request);
-    return attendance().clockOut(actor(request), request, {
-      ...body,
-      source: 'web',
-      at: undefined,
-    });
+    return inTenant(request, () =>
+      attendance().clockOut(actor(request), request, {
+        ...body,
+        source: 'web',
+        at: undefined,
+      }),
+    );
   });
 
   fastify.get('/records', { preHandler: read, schema: { querystring: AttendanceListQuerySchema } }, async (request) =>

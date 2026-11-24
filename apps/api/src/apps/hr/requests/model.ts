@@ -80,6 +80,8 @@ export const requestInstance = pgTable("sta_request_instances", {
   createdAt: timestamp("created_at", { mode: 'date', precision: 6 }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: 'date', precision: 6 }).notNull().$onUpdate(() => new Date()),
 }, (table) => [
+    index("requestInstance_index_tenantId_status_createdAt").on(table.tenantId, table.status, table.createdAt),
+    index("requestInstance_index_tenantId_createdBy_createdAt").on(table.tenantId, table.createdBy, table.createdAt),
     index("requestInstance_index_requestTypeId").on(table.requestTypeId),
     index("requestInstance_index_groupId").on(table.groupId),
     index("requestInstance_index_createdBy").on(table.createdBy),

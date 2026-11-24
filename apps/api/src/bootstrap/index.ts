@@ -17,6 +17,8 @@ export async function buildServer(): Promise<FastifyInstance> {
     logger: { level: config.logLevel },
     trustProxy: config.trustProxy,
     bodyLimit: Number(process.env.MAX_BODY_SIZE_BYTES || 2 * 1024 * 1024),
+    connectionTimeout: Number(process.env.HTTP_CONNECTION_TIMEOUT_MS || 10_000),
+    requestTimeout: Number(process.env.HTTP_REQUEST_TIMEOUT_MS || 30_000),
   });
 
   server.register(fastifyHelmet, {
@@ -28,12 +30,6 @@ export async function buildServer(): Promise<FastifyInstance> {
     },
     crossOriginResourcePolicy: { policy: 'cross-origin' },
   });
-  if (config.env !== 'test') {
-    server.register(fastifyRateLimit, {
-      max: config.rateLimit.global.max,
-      timeWindow: config.rateLimit.global.windowMs,
-    });
-  }
   server.register(fastifyCookie);
   server.register(fastifyCors, {
     origin: (origin, cb) => {
@@ -45,7 +41,14 @@ export async function buildServer(): Promise<FastifyInstance> {
     methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   });
   server.register(dbPlugin);
-  server.register(redisPlugin);
+  await server.register(redisPlugin);
+  if (config.env !== 'test') {
+    server.register(fastifyRateLimit, {
+      max: config.rateLimit.global.max,
+      timeWindow: config.rateLimit.global.windowMs,
+      ...(server.redis ? { redis: server.redis } : {}),
+    });
+  }
   server.register(httpPlugin);
 
   for (const { prefix, plugin } of appRoutes) {

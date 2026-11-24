@@ -24,10 +24,16 @@ export const httpPlugin: FastifyPluginAsync = fp(async (fastify) => {
   fastify.decorate('container', container);
 
   await container.cache.connect();
-  if ((fastify as any).redis) {
-    container.mailWorker.start();
+  const runEmbeddedWorkers = String(process.env.RUN_EMBEDDED_WORKERS || 'false').toLowerCase() === 'true';
+  if (runEmbeddedWorkers) {
+    if ((fastify as any).redis) {
+      container.mailWorker.start();
+      logger.log('Embedded BullMQ mail worker started inside API process');
+    } else {
+      logger.warn('Redis is unavailable; embedded BullMQ mail worker was not started');
+    }
   } else {
-    logger.warn('Redis is unavailable; BullMQ mail worker was not started');
+    logger.log('Embedded BullMQ workers disabled (handled by standalone worker process)');
   }
   fastify.addHook('onClose', async () => {
     if (container.isProvided('mailWorker')) await container.mailWorker.close();

@@ -402,7 +402,7 @@ private tenantCond(column: any): SQL | undefined {
     const userId = query.user_id ? toBigInt(String(query.user_id)) : null;
     const search = query.search ? String(query.search).trim().toLowerCase() : '';
     const page = query.page ? Math.max(1, parseInt(String(query.page), 10)) : 1;
-    const limit = query.per_page ? Math.max(1, parseInt(String(query.per_page), 10)) : 25;
+    const limit = query.per_page ? Math.min(100, Math.max(1, parseInt(String(query.per_page), 10) || 25)) : 25;
     const skip = (page - 1) * limit;
 
     const orgId = query.org_id ? toBigInt(String(query.org_id)) : null;
@@ -725,7 +725,7 @@ const conds: SQL[] = [
     const toDate = query.to ? this.toWorkDate(new Date(String(query.to))) : undefined;
 
     const page = query.page ? Math.max(1, parseInt(String(query.page), 10)) : 1;
-    const limit = query.per_page ? Math.max(1, parseInt(String(query.per_page), 10)) : 25;
+    const limit = query.per_page ? Math.min(100, Math.max(1, parseInt(String(query.per_page), 10) || 25)) : 25;
     const skip = (page - 1) * limit;
 
 const conds: SQL[] = [this.tenantCond(attendanceCorrection.tenantId)];

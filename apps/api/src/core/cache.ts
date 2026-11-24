@@ -43,6 +43,7 @@ export class CacheService implements CacheLike {
   private readonly logger = new Logger(CacheService.name);
   private readonly defaultTtlSeconds: number;
   private readonly prefix: string;
+  private readonly inFlight = new Map<string, Promise<unknown>>();
   private connected = false;
 
   readonly store: CacheStoreLike = {
@@ -100,6 +101,31 @@ export class CacheService implements CacheLike {
       this.logger.debug(`cache set failed for ${key}: ${(error as Error)?.message}`);
       return undefined;
     }
+  }
+
+  /**
+   * Single-flight cache helper with 10% TTL jitter to prevent thundering-herd
+   * cache stampedes during traffic spikes.
+   */
+  async getOrSet<T>(key: string, ttlSeconds: number, loader: () => Promise<T>): Promise<T> {
+    const hit = await this.get<T>(key);
+    if (hit !== undefined) return hit;
+
+    const pending = this.inFlight.get(key) as Promise<T> | undefined;
+    if (pending) return pending;
+
+    const jitter = Math.floor(ttlSeconds * 0.1 * Math.random());
+    const promise = loader()
+      .then(async (value) => {
+        await this.set(key, value, ttlSeconds + jitter);
+        return value;
+      })
+      .finally(() => {
+        this.inFlight.delete(key);
+      });
+
+    this.inFlight.set(key, promise);
+    return promise;
   }
 
   async del(key: string): Promise<void> {

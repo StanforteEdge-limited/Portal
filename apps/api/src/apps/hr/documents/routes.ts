@@ -11,7 +11,7 @@ import {
   type UpdateDocument,
   type documentsIdParams,
 } from '@stanforte/contract';
-import { composeGuards, requireAuth, requirePermissions } from '$core/auth/guards';
+import { composeGuards, currentTenant, requireAuth, requirePermissions } from '$core/auth/guards';
 import { requestBody, requestParams, requestQuery } from '$core/routes';
 import { documentsPermissions } from './permissions';
 
@@ -29,33 +29,39 @@ export const DocumentsRoutes: FastifyPluginAsync = async (fastify) => {
   const write = composeGuards(requireAuth, requirePermissions(documentsPermissions.write));
   const id = (request: FastifyRequest) => requestParams<documentsIdParams>(request).id;
   const actor = (request: { user?: { id?: string } }) => request.user?.id as string;
+  const inTenant = <T>(request: FastifyRequest, op: () => Promise<T> | T) =>
+    fastify.container.tenantContext.run(currentTenant(request), op);
 
   fastify.get('/', { preHandler: read, schema: { querystring: DocumentsListQuerySchema } }, async (request) =>
-    documents().list(actor(request), requestQuery<DocumentsListQuery>(request)),
+    inTenant(request, () => documents().list(actor(request), requestQuery<DocumentsListQuery>(request))),
   );
 
   fastify.post('/', { preHandler: write, schema: { body: CreateDocumentSchema } }, async (request) =>
-    documents().create(requestBody<CreateDocument>(request), actor(request)),
+    inTenant(request, () => documents().create(requestBody<CreateDocument>(request), actor(request))),
   );
 
   fastify.get('/:id', { preHandler: self, schema: { params: documentsIdParamsSchema } }, async (request) =>
-    documents().get(actor(request), id(request)),
+    inTenant(request, () => documents().get(actor(request), id(request))),
   );
 
   fastify.put('/:id', { preHandler: write, schema: { params: documentsIdParamsSchema, body: UpdateDocumentSchema } }, async (request) =>
-    documents().update(id(request), requestBody<UpdateDocument>(request), actor(request)),
+    inTenant(request, () => documents().update(id(request), requestBody<UpdateDocument>(request), actor(request))),
   );
 
   /** Static segment registered before `/:id` so it is not read as a document id. */
   fastify.get(
     '/:id/acknowledgements',
     { preHandler: read, schema: { params: documentsIdParamsSchema, querystring: DocumentsListQuerySchema } },
-    async (request) => documents().listAcknowledgements(id(request), requestQuery<DocumentsListQuery>(request)),
+    async (request) =>
+      inTenant(request, () => documents().listAcknowledgements(id(request), requestQuery<DocumentsListQuery>(request))),
   );
 
   fastify.post(
     '/:id/acknowledge',
     { preHandler: self, schema: { params: documentsIdParamsSchema, body: AcknowledgeDocumentSchema } },
-    async (request) => documents().acknowledge(id(request), actor(request), request, requestBody<AcknowledgeDocument>(request)),
+    async (request) =>
+      inTenant(request, () =>
+        documents().acknowledge(id(request), actor(request), request, requestBody<AcknowledgeDocument>(request)),
+      ),
   );
 };

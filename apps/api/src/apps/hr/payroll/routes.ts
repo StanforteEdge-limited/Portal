@@ -36,7 +36,7 @@ import {
   type UpsertPayrollTaxTable,
   type UpsertPayrollWorker,
 } from '@stanforte/contract';
-import { composeGuards, requireAuth, requirePermissions } from '$core/auth/guards';
+import { composeGuards, currentTenant, requireAuth, requirePermissions } from '$core/auth/guards';
 import { requestBody, requestParams, requestQuery } from '$core/routes';
 import { payrollPermissions } from './permissions';
 
@@ -66,6 +66,8 @@ export const PayrollRoutes: FastifyPluginAsync = async (fastify) => {
   const actor = (request: { user?: { id?: string } }) => request.user?.id as string;
   const permissions = (request: { user?: { permissions?: string[] } }) => request.user?.permissions ?? [];
   const id = (request: FastifyRequest) => requestParams<PayrollIdParams>(request).id;
+  const inTenant = <T>(request: FastifyRequest, op: () => Promise<T> | T) =>
+    fastify.container.tenantContext.run(currentTenant(request), op);
 
   fastify.get('/summary', { preHandler: read, schema: { querystring: PayrollListQuerySchema } }, async (request) =>
     payroll().summary(requestQuery<PayrollListQuery>(request)),
@@ -179,7 +181,7 @@ export const PayrollRoutes: FastifyPluginAsync = async (fastify) => {
   );
 
   fastify.get('/runs/:id', { preHandler: read, schema: { params: PayrollIdParamsSchema } }, async (request) =>
-    payroll().getRun(id(request)),
+    inTenant(request, () => payroll().getRun(id(request))),
   );
 
   fastify.post('/runs/:id', { preHandler: write, schema: { params: PayrollIdParamsSchema, body: CreatePayrollRunSchema } }, async (request) =>

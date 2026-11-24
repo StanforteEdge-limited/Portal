@@ -33,6 +33,7 @@ export const employeeProfile = pgTable("sta_employee_profiles", {
   designationId: bigint("designation_id", { mode: 'bigint' }),
 }, (table) => [
     index("employeeProfile_index_tenantId").on(table.tenantId),
+    index("employeeProfile_index_tenantId_status_createdAt").on(table.tenantId, table.employmentStatus, table.createdAt),
     index("employeeProfile_index_managerUserId").on(table.managerUserId),
     index("employeeProfile_index_employmentStatus").on(table.employmentStatus),
 ]);

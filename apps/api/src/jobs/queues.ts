@@ -57,6 +57,10 @@ export class MailQueueWorker {
       },
       {
         concurrency: Math.max(1, Number(process.env.MAIL_WORKER_CONCURRENCY || 5)),
+        limiter: {
+          max: Math.max(1, Number(process.env.MAIL_WORKER_RATE_MAX || 20)),
+          duration: Math.max(100, Number(process.env.MAIL_WORKER_RATE_DURATION_MS || 1000)),
+        },
       },
     );
   }
