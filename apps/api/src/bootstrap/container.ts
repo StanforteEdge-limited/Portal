@@ -122,7 +122,7 @@ export class Container {
   }
 
   get chatRealtime(): ChatRealtimeService {
-    return this.provide("chatRealtime", () => new ChatRealtimeService());
+    return this.provide("chatRealtime", () => new ChatRealtimeService(this.redis));
   }
 
   get mail(): MailService {

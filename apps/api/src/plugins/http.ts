@@ -36,6 +36,7 @@ export const httpPlugin: FastifyPluginAsync = fp(async (fastify) => {
     logger.log('Embedded BullMQ workers disabled (handled by standalone worker process)');
   }
   fastify.addHook('onClose', async () => {
+    if (container.isProvided('chatRealtime')) await container.chatRealtime.close();
     if (container.isProvided('mailWorker')) await container.mailWorker.close();
     if (container.isProvided('queues')) await container.queues.close();
   });

@@ -2,13 +2,8 @@ import { DateInput } from "@/components/ui/date-picker";
 import { SelectBox } from "@/components/ui/select";
 import React, { useState } from "react";
 import {
-  X,
   Users,
-  Calendar,
   AlertCircle,
-  FolderKanban,
-  Tag,
-  Plus,
 } from "lucide-react";
 import { SlideOver, SlideOverHeader, SlideOverContent, SlideOverFooter } from "@/shared/components/ui/SlideOver";
 import { useAuth } from "@/shared/context/AuthProvider";
@@ -20,6 +15,7 @@ interface NewTaskSlideOverProps {
   isOpen: boolean;
   defaultStatus?: TaskStatus;
   isAdmin?: boolean;
+  projects?: Array<{ id: string; name: string }>;
   onClose: () => void;
   onCreateTask: (newTask: TaskItem) => void;
 }
@@ -28,6 +24,7 @@ export function NewTaskSlideOver({
   isOpen,
   defaultStatus = "planned",
   isAdmin = false,
+  projects = [],
   onClose,
   onCreateTask,
 }: NewTaskSlideOverProps) {
@@ -40,7 +37,7 @@ export function NewTaskSlideOver({
   const [status, setStatus] = useState<TaskStatus>(defaultStatus);
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [dueDate, setDueDate] = useState("");
-  const [projectName, setProjectName] = useState("Portal Modernization");
+  const [selectedProjectId, setSelectedProjectId] = useState("");
   const [tagsInput, setTagsInput] = useState("");
   const [selectedAssignees, setSelectedAssignees] = useState<TaskAssignee[]>([]);
 
@@ -90,6 +87,8 @@ export function NewTaskSlideOver({
 
     const assignees = !isAdmin ? [selfAssignee] : selectedAssignees;
 
+    const selectedProject = projects.find((p) => p.id === selectedProjectId);
+
     const newTask: TaskItem = {
       id: `task-${Date.now()}`,
       title: title.trim(),
@@ -102,7 +101,8 @@ export function NewTaskSlideOver({
       is_personal: !isAdmin,
       assignees,
       tags: tags.length > 0 ? tags : ["Deliverable"],
-      project_name: projectName.trim() || undefined,
+      project_id: selectedProject && !selectedProject.id.startsWith("name:") ? selectedProject.id : undefined,
+      project_name: selectedProject?.name || undefined,
       updates: [
         {
           id: `upd-${Date.now()}`,
@@ -110,11 +110,10 @@ export function NewTaskSlideOver({
           avatar: authorName.slice(0, 2).toUpperCase(),
           text: !isAdmin
             ? "Personal task created and added to your schedule."
-            : `Task created and assigned to ${
-                assignees.length > 0
-                  ? assignees.map((a) => a.name).join(", ")
-                  : "backlog"
-              }.`,
+            : `Task created and assigned to ${assignees.length > 0
+              ? assignees.map((a) => a.name).join(", ")
+              : "backlog"
+            }.`,
           created_at: "Just now",
         },
       ],
@@ -126,6 +125,7 @@ export function NewTaskSlideOver({
     setTitle("");
     setDescription("");
     setDueDate("");
+    setSelectedProjectId("");
     setTagsInput("");
     setSelectedAssignees([]);
     onClose();
@@ -205,7 +205,7 @@ export function NewTaskSlideOver({
                   Due Date
                 </label>
                 <DateInput
-                  
+
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
                   className="w-full text-xs font-medium bg-white border border-neutral-200 rounded-xl px-2.5 py-2 text-neutral-800 outline-none focus:border-[#ff6900]"
@@ -246,15 +246,13 @@ export function NewTaskSlideOver({
                         key={member.id}
                         type="button"
                         onClick={() => handleToggleAssignee(member)}
-                        className={`flex items-center gap-2.5 p-2 rounded-xl text-left border transition ${
-                          isSelected
+                        className={`flex items-center gap-2.5 p-2 rounded-xl text-left border transition ${isSelected
                             ? "bg-orange-50 border-[#ff6900] text-neutral-900 shadow-xs"
                             : "bg-white border-neutral-200/80 text-neutral-700 hover:bg-neutral-100"
-                        }`}
+                          }`}
                       >
-                        <div className={`w-7 h-7 rounded-full text-white text-xs font-semibold flex items-center justify-center shrink-0 ${
-                          isSelected ? "bg-[#ff6900]" : "bg-neutral-800"
-                        }`}>
+                        <div className={`w-7 h-7 rounded-full text-white text-xs font-semibold flex items-center justify-center shrink-0 ${isSelected ? "bg-[#ff6900]" : "bg-neutral-800"
+                          }`}>
                           {member.avatar || member.name.slice(0, 2).toUpperCase()}
                         </div>
                         <div className="min-w-0 flex-1">
@@ -292,15 +290,20 @@ export function NewTaskSlideOver({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-neutral-100">
               <div>
                 <label className="text-xs font-medium text-neutral-500 block mb-1">
-                  Linked Project
+                  Project <span className="text-neutral-400 font-normal">(optional)</span>
                 </label>
-                <input
-                  type="text"
-                  value={projectName}
-                  onChange={(e) => setProjectName(e.target.value)}
-                  placeholder="e.g. Portal Modernization"
-                  className="w-full text-xs font-semibold text-neutral-800 border border-neutral-200 rounded-xl px-3 py-2 outline-none focus:border-[#ff6900]"
-                />
+                <SelectBox
+                  value={selectedProjectId}
+                  onChange={(e) => setSelectedProjectId(e.target.value)}
+                  className="w-full text-xs font-medium bg-white border border-neutral-200 rounded-xl px-2.5 py-2 text-neutral-800 outline-none focus:border-[#ff6900]"
+                >
+                  <option value="">No project</option>
+                  {projects.map((proj) => (
+                    <option key={proj.id} value={proj.id}>
+                      {proj.name}
+                    </option>
+                  ))}
+                </SelectBox>
               </div>
 
               <div>

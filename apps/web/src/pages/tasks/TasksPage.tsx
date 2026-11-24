@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import type { TaskItem, TaskStatus, TaskPriority } from "./types";
 import { useColleagues } from "@/shared/hooks/useColleagues";
+import { resourceApi, useCachedQuery } from "@/shared/lib/core";
 import { TaskKanbanView } from "./TaskKanbanView";
 import { TaskTableView } from "./TaskTableView";
 import { TaskDetailSlideOver } from "./TaskDetailSlideOver";
@@ -71,7 +72,35 @@ export default function TasksPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [assigneeFilter, setAssigneeFilter] = useState<string>("all");
+  const [projectFilter, setProjectFilter] = useState<string>("all");
   const [scopeFilter, setScopeFilter] = useState<ScopeFilter>("all");
+
+  // Load workspace projects for filtering and optional task project linking
+  const { data: projectsData } = useCachedQuery(
+    "tasks:projects",
+    () => resourceApi.listProjects({ active_only: true }).catch(() => ({ items: [] })),
+  );
+
+  const projectOptions = useMemo(() => {
+    const raw = Array.isArray(projectsData)
+      ? projectsData
+      : ((projectsData as any)?.items ?? (projectsData as any)?.data?.items ?? (projectsData as any)?.data ?? []);
+    const byKey = new Map<string, { id: string; name: string }>();
+    for (const p of raw) {
+      if (!p?.id || !p?.name) continue;
+      byKey.set(String(p.id), { id: String(p.id), name: String(p.name) });
+    }
+    // Also include any legacy project_name strings already attached to tasks
+    for (const t of tasks) {
+      if (t.project_name && !Array.from(byKey.values()).some((p) => p.name === t.project_name)) {
+        const key = t.project_id ? String(t.project_id) : `name:${t.project_name}`;
+        if (!byKey.has(key)) {
+          byKey.set(key, { id: key, name: t.project_name });
+        }
+      }
+    }
+    return Array.from(byKey.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [projectsData, tasks]);
 
   // Slide-over states
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
@@ -145,9 +174,21 @@ export default function TasksPage() {
         assigneeFilter === "all" ||
         task.assignees.some((a) => a.id === assigneeFilter || a.name === assigneeFilter);
 
-      return matchesSearch && matchesStatus && matchesPriority && matchesAssignee;
+      // Project
+      let matchesProject = true;
+      if (projectFilter === "none") {
+        matchesProject = !task.project_id && !task.project_name;
+      } else if (projectFilter !== "all") {
+        const selectedProj = projectOptions.find((p) => p.id === projectFilter);
+        matchesProject =
+          (Boolean(task.project_id) && String(task.project_id) === projectFilter) ||
+          (Boolean(selectedProj) && task.project_name === selectedProj!.name) ||
+          task.project_name === projectFilter;
+      }
+
+      return matchesSearch && matchesStatus && matchesPriority && matchesAssignee && matchesProject;
     });
-  }, [scopedTasks, searchQuery, statusFilter, priorityFilter, assigneeFilter]);
+  }, [scopedTasks, searchQuery, statusFilter, priorityFilter, assigneeFilter, projectFilter, projectOptions]);
 
   // Task Actions
   const handleUpdateStatus = (taskId: string, newStatus: TaskStatus) => {
@@ -407,6 +448,21 @@ export default function TasksPage() {
                 </SelectBox>
               )}
 
+              {/* Project Filter */}
+              <SelectBox
+                value={projectFilter}
+                onChange={(e) => setProjectFilter(e.target.value)}
+                className="text-xs font-semibold bg-neutral-50 border border-neutral-200 rounded-xl px-2.5 py-1.5 text-neutral-700 outline-none hover:bg-neutral-100"
+              >
+                <option value="all">All Projects</option>
+                <option value="none">No Project</option>
+                {projectOptions.map((proj) => (
+                  <option key={proj.id} value={proj.id}>
+                    {proj.name}
+                  </option>
+                ))}
+              </SelectBox>
+
               {/* Status Filter */}
               <SelectBox
                 value={statusFilter}
@@ -482,6 +538,7 @@ export default function TasksPage() {
             isOpen={isNewTaskOpen}
             defaultStatus={newTaskDefaultStatus}
             isAdmin={isAdminView}
+            projects={projectOptions}
             onClose={() => setIsNewTaskOpen(false)}
             onCreateTask={handleCreateTask}
           />

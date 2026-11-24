@@ -21,6 +21,7 @@ import {
   Moon,
 } from "lucide-react";
 import { useAuth } from "@/shared/context/AuthProvider";
+import { API_BASE_URL } from "@/shared/lib/env";
 import { useThemeMode } from "@/shared/lib/theme";
 import { useToast } from "@/shared";
 import { formatDisplayTime, formatDisplayDate } from "@/shared/lib/localization";
@@ -119,10 +120,97 @@ export default function ChatPage() {
     }
   }, []);
 
+  const lastMsgIdRef = useRef<string | null>(null);
+  const [sseConnected, setSseConnected] = useState(false);
+
+  // Initial conversation load + fallback sync only when SSE is disconnected
   useEffect(() => {
-    loadConversations(true);
-    const interval = setInterval(() => loadConversations(false), 5000);
-    return () => clearInterval(interval);
+    void loadConversations(true);
+    const fallbackInterval = setInterval(() => {
+      if (!document.hidden && !sseConnected) {
+        void loadConversations(false);
+      }
+    }, 60_000);
+    const onVisible = () => {
+      if (!document.hidden) void loadConversations(false);
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(fallbackInterval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [loadConversations, sseConnected]);
+
+  // Realtime Server-Sent Events (SSE) subscription — replaces HTTP polling
+  useEffect(() => {
+    const streamUrl = `${API_BASE_URL.replace(/\/+$/, "")}/chat/stream`;
+    const es = new EventSource(streamUrl, { withCredentials: true });
+
+    const onConnected = () => setSseConnected(true);
+    const onError = () => setSseConnected(false);
+
+    const onMessageNew = (ev: MessageEvent) => {
+      try {
+        const incoming = JSON.parse(ev.data) as ChatMessage;
+        const convId = String(incoming.conversation_id);
+
+        if (activeConvIdRef.current === convId) {
+          setMessages((prev) => {
+            if (prev.some((m) => String(m.id) === String(incoming.id))) return prev;
+            return [...prev, incoming];
+          });
+          lastMsgIdRef.current = String(incoming.id);
+          setTimeout(() => scrollToBottom(true), 60);
+          markChatRead(convId).catch(() => {});
+        }
+
+        setConversations((prev) => {
+          const exists = prev.some((c) => String(c.id) === convId);
+          if (!exists) {
+            void loadConversations(false);
+            return prev;
+          }
+          const updated = prev.map((c) => {
+            if (String(c.id) !== convId) return c;
+            const isViewing = activeConvIdRef.current === convId;
+            return {
+              ...c,
+              updated_at: incoming.created_at,
+              unread_count: isViewing ? 0 : (c.unread_count || 0) + 1,
+              last_message: {
+                id: incoming.id,
+                body: incoming.body,
+                sender_profile_id: incoming.sender_profile_id,
+                sender_name: incoming.sender_name,
+                created_at: incoming.created_at,
+              },
+            };
+          });
+          return updated.sort(
+            (a, b) => new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime(),
+          );
+        });
+      } catch {
+        // ignore malformed SSE payload
+      }
+    };
+
+    const onConversationChange = () => {
+      void loadConversations(false);
+    };
+
+    es.addEventListener("connected", onConnected);
+    es.addEventListener("message:new", onMessageNew as EventListener);
+    es.addEventListener("conversation:new", onConversationChange);
+    es.addEventListener("conversation:created", onConversationChange);
+    es.addEventListener("member:added", onConversationChange);
+    es.onopen = onConnected;
+    es.onerror = onError;
+
+    return () => {
+      setSseConnected(false);
+      es.close();
+    };
   }, [loadConversations]);
 
   // Load messages for selected conversation
@@ -155,12 +243,18 @@ export default function ChatPage() {
         }
       } catch {}
 
+      const newestId = msgs.length > 0 ? String(msgs[msgs.length - 1].id) : null;
+      const hasNewMessages = newestId !== null && newestId !== lastMsgIdRef.current;
+      lastMsgIdRef.current = newestId;
+
       setMessages(msgs);
       if (!silent) {
         setTimeout(() => scrollToBottom(false), 100);
       }
-      // Mark read
-      markChatRead(convId).catch(() => {});
+      // Only write markRead on initial open or when a new message actually arrived
+      if (!silent || hasNewMessages) {
+        markChatRead(convId).catch(() => {});
+      }
     } catch (err: any) {
       console.error("Failed to load messages", err);
     } finally {
@@ -170,16 +264,20 @@ export default function ChatPage() {
 
   useEffect(() => {
     if (!selectedConversation) return;
-    loadMessages(selectedConversation.id);
+    lastMsgIdRef.current = null;
+    void loadMessages(selectedConversation.id);
 
-    const interval = setInterval(() => {
-      if (activeConvIdRef.current === selectedConversation.id) {
-        loadMessages(selectedConversation.id, true);
+    // Fallback sync only if SSE is temporarily disconnected
+    const fallbackInterval = setInterval(() => {
+      if (!document.hidden && !sseConnected && activeConvIdRef.current === selectedConversation.id) {
+        void loadMessages(selectedConversation.id, true);
       }
-    }, 3500);
+    }, 30_000);
 
-    return () => clearInterval(interval);
-  }, [selectedConversation?.id, loadMessages]);
+    return () => {
+      clearInterval(fallbackInterval);
+    };
+  }, [selectedConversation?.id, loadMessages, sseConnected]);
 
   // Filter conversations
   const filteredConversations = conversations.filter((c) => {

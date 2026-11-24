@@ -5,6 +5,7 @@ import fastifyHelmet from '@fastify/helmet';
 import fastifyRateLimit from '@fastify/rate-limit';
 import { appRoutes } from './routes';
 import { config } from '../config';
+import { extractAccessToken } from '$core/auth/guards';
 import { dbPlugin } from '$plugins/db';
 import { httpPlugin, logger } from '$plugins/http';
 import { redisPlugin } from '$plugins/redis';
@@ -47,6 +48,24 @@ export async function buildServer(): Promise<FastifyInstance> {
       max: config.rateLimit.global.max,
       timeWindow: config.rateLimit.global.windowMs,
       ...(server.redis ? { redis: server.redis } : {}),
+      keyGenerator: (request) => {
+        const token = extractAccessToken(request);
+        if (token && (server as any).container?.jwt) {
+          try {
+            const payload = (server as any).container.jwt.verify(token, {
+              algorithms: ['HS256'],
+              issuer: 'stanforte-api',
+              audience: 'portal-user',
+            });
+            if (payload?.sub) {
+              return `user:${String(payload.sub)}`;
+            }
+          } catch {
+            // Invalid/expired token falls back to IP-based limiting
+          }
+        }
+        return `ip:${request.ip}`;
+      },
     });
   }
   server.register(httpPlugin);

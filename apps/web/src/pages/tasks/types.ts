@@ -29,6 +29,7 @@ export interface TaskItem {
   owner_name?: string;
   assignees: TaskAssignee[];
   tags: string[];
+  project_id?: string;
   project_name?: string;
   is_personal?: boolean;
   updates: TaskUpdate[];

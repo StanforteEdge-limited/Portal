@@ -8,6 +8,7 @@ import {
   type UpdateChatMember,
 } from '@stanforte/contract';
 import { composeGuards, currentTenant, requireAuth } from '$core/auth/guards';
+import { config } from '$config/index';
 import { requestBody, requestQuery } from '$core/routes';
 
 export const ChatRoutes: FastifyPluginAsync = async (fastify) => {
@@ -22,6 +23,71 @@ export const ChatRoutes: FastifyPluginAsync = async (fastify) => {
       return operation();
     }
   };
+
+  // Server-Sent Events (SSE) realtime chat stream (replaces HTTP polling)
+  fastify.get('/stream', { preHandler: auth }, async (request, reply) => {
+    const profileId = actor(request);
+    const convIds = await inTenant(request, () => chat().membershipIds(profileId));
+
+    reply.hijack();
+    request.raw.setTimeout(0);
+    reply.raw.setTimeout(0);
+
+    const origin = request.headers.origin;
+    const allowOrigin =
+      origin && (!config.isProduction || config.corsOrigins.includes(origin))
+        ? origin
+        : undefined;
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    };
+    if (allowOrigin) {
+      headers['Access-Control-Allow-Origin'] = allowOrigin;
+      headers['Access-Control-Allow-Credentials'] = 'true';
+    }
+
+    reply.raw.writeHead(200, headers);
+
+    const writeEvent = (event: string, payload: unknown) => {
+      if (reply.raw.writableEnded || reply.raw.destroyed) return;
+      reply.raw.write(`event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`);
+    };
+
+    const subscription = fastify.container.chatRealtime.subscribeSse({
+      profileId,
+      conversationIds: convIds.map((id) => id.toString()),
+      send: (event, payload) => {
+        if (
+          (event === 'conversation:created' || event === 'conversation:new' || event === 'member:added') &&
+          payload &&
+          typeof payload === 'object' &&
+          'id' in payload
+        ) {
+          subscription.addConversation(String((payload as { id: unknown }).id));
+        }
+        writeEvent(event, payload);
+      },
+    });
+
+    writeEvent('connected', { ok: true, conversations: convIds.length });
+
+    const heartbeat = setInterval(() => {
+      if (reply.raw.writableEnded || reply.raw.destroyed) return;
+      reply.raw.write(': ping\n\n');
+    }, 25_000);
+    heartbeat.unref?.();
+
+    const cleanup = () => {
+      clearInterval(heartbeat);
+      subscription.unsubscribe();
+    };
+    request.raw.on('close', cleanup);
+    request.raw.on('error', cleanup);
+  });
 
   // List my conversations
   fastify.get('/conversations', { preHandler: auth }, async (request) => {
