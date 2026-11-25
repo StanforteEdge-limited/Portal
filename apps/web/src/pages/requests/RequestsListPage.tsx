@@ -221,37 +221,37 @@ export function RequestsListPage() {
         />
 
         {/* 4 Compact Stat Cards — Numbers Only */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <article className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
-            <p className="text-xs text-neutral-500">In progress</p>
-            <p className="text-[28px] leading-none font-medium text-[#c2410c] font-headline tabular-nums">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+          <article className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs flex flex-col justify-between gap-1 sm:space-y-2">
+            <p className="text-[11px] sm:text-xs text-neutral-500 truncate">In progress</p>
+            <p className="text-xl sm:text-[28px] leading-tight sm:leading-none font-medium text-[#c2410c] font-headline tabular-nums">
               {pendingCount}
             </p>
-            <p className="text-xs text-neutral-500">Awaiting review</p>
+            <p className="text-[10px] sm:text-xs text-neutral-400 truncate hidden sm:block">Awaiting review</p>
           </article>
 
-          <article className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
-            <p className="text-xs text-neutral-500">Approved</p>
-            <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+          <article className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs flex flex-col justify-between gap-1 sm:space-y-2">
+            <p className="text-[11px] sm:text-xs text-neutral-500 truncate">Approved</p>
+            <p className="text-xl sm:text-[28px] leading-tight sm:leading-none font-medium text-neutral-900 font-headline tabular-nums">
               {approvedCount}
             </p>
-            <p className="text-xs text-neutral-500">Settled submissions</p>
+            <p className="text-[10px] sm:text-xs text-neutral-400 truncate hidden sm:block">Settled submissions</p>
           </article>
 
-          <article className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
-            <p className="text-xs text-neutral-500">Rejected or returned</p>
-            <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+          <article className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs flex flex-col justify-between gap-1 sm:space-y-2">
+            <p className="text-[11px] sm:text-xs text-neutral-500 truncate">Rejected / returned</p>
+            <p className="text-xl sm:text-[28px] leading-tight sm:leading-none font-medium text-neutral-900 font-headline tabular-nums">
               {rejectedCount}
             </p>
-            <p className="text-xs text-neutral-500">Requires revision</p>
+            <p className="text-[10px] sm:text-xs text-neutral-400 truncate hidden sm:block">Requires revision</p>
           </article>
 
-          <article className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
-            <p className="text-xs text-neutral-500">Total requested</p>
-            <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+          <article className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs flex flex-col justify-between gap-1 sm:space-y-2">
+            <p className="text-[11px] sm:text-xs text-neutral-500 truncate">Total requested</p>
+            <p className="text-xl sm:text-[28px] leading-tight sm:leading-none font-medium text-neutral-900 font-headline tabular-nums truncate">
               {formatCurrency(totalFinancialAmount, "NGN")}
             </p>
-            <p className="text-xs text-neutral-500">Financial requisitions</p>
+            <p className="text-[10px] sm:text-xs text-neutral-400 truncate hidden sm:block">Financial requisitions</p>
           </article>
         </div>
 

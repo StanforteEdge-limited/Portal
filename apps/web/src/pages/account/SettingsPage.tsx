@@ -104,7 +104,7 @@ export default function SettingsPage() {
               ) : null
             }
           >
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
               {(
                 [
                   { id: "light", label: "Light", hint: "Bright neutral canvas", icon: Sun },
@@ -119,21 +119,21 @@ export default function SettingsPage() {
                     key={option.id}
                     type="button"
                     onClick={() => setThemeMode(option.id)}
-                    className={`p-4 rounded-xl border text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30 ${
+                    className={`p-2.5 sm:p-4 rounded-xl border text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30 ${
                       active
                         ? "border-[#ff6900] bg-orange-50/60"
                         : "border-neutral-900/[0.08] bg-neutral-50 hover:bg-neutral-100"
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center justify-between gap-1">
                       <Icon
                         className={`h-4 w-4 ${active ? "text-[#ff6900]" : "text-neutral-500"}`}
                         strokeWidth={1.5}
                       />
-                      {active && <span className="h-2 w-2 rounded-full bg-[#ff6900]" />}
+                      {active && <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-[#ff6900]" />}
                     </div>
-                    <p className="mt-3 text-sm font-medium text-neutral-900">{option.label}</p>
-                    <p className="mt-0.5 text-xs text-neutral-500">{option.hint}</p>
+                    <p className="mt-2 text-xs sm:text-sm font-medium text-neutral-900">{option.label}</p>
+                    <p className="mt-0.5 text-[10px] sm:text-xs text-neutral-500 hidden sm:block">{option.hint}</p>
                   </button>
                 );
               })}

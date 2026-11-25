@@ -207,29 +207,29 @@ export default function AdminPayrollRunAuthorizePage() {
         />
 
         {/* 3 Compact Numbers-Only KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <article className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
-            <p className="text-xs text-neutral-500">Run status</p>
-            <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline capitalize">
+        <div className="grid grid-cols-3 gap-2 sm:gap-4">
+          <article className="p-3 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs flex flex-col justify-between gap-1 sm:space-y-2">
+            <p className="text-[11px] sm:text-xs text-neutral-500 truncate">Run status</p>
+            <p className="text-base sm:text-[28px] leading-tight sm:leading-none font-medium text-neutral-900 font-headline capitalize truncate">
               {run.status}
             </p>
-            <p className="text-xs text-neutral-500 font-mono tabular-nums">{period}</p>
+            <p className="text-[10px] sm:text-xs text-neutral-400 font-mono tabular-nums truncate hidden sm:block">{period}</p>
           </article>
 
-          <article className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
-            <p className="text-xs text-neutral-500">Enrolled workers</p>
-            <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+          <article className="p-3 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs flex flex-col justify-between gap-1 sm:space-y-2">
+            <p className="text-[11px] sm:text-xs text-neutral-500 truncate">Enrolled</p>
+            <p className="text-base sm:text-[28px] leading-tight sm:leading-none font-medium text-neutral-900 font-headline tabular-nums truncate">
               {(run.worker_count ?? items.length).toLocaleString()}
             </p>
-            <p className="text-xs text-neutral-500">Included in this cycle</p>
+            <p className="text-[10px] sm:text-xs text-neutral-400 truncate hidden sm:block">Included in this cycle</p>
           </article>
 
-          <article className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
-            <p className="text-xs text-neutral-500">Total net payout</p>
-            <p className="text-[28px] leading-none font-medium text-[#c2410c] font-headline tabular-nums">
+          <article className="p-3 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs flex flex-col justify-between gap-1 sm:space-y-2">
+            <p className="text-[11px] sm:text-xs text-neutral-500 truncate">Net payout</p>
+            <p className="text-base sm:text-[28px] leading-tight sm:leading-none font-medium text-[#c2410c] font-headline tabular-nums truncate">
               {run.net_total != null ? `${run.currency} ${run.net_total.toLocaleString()}` : "—"}
             </p>
-            <p className="text-xs text-neutral-500">Reconciled net disbursement</p>
+            <p className="text-[10px] sm:text-xs text-neutral-400 truncate hidden sm:block">Reconciled net disbursement</p>
           </article>
         </div>
 

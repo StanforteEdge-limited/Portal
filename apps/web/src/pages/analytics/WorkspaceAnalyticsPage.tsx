@@ -169,37 +169,37 @@ export default function WorkspaceAnalyticsPage() {
         </header>
 
         {/* Compact KPI Row — Numbers Only */}
-        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <article className="bg-white rounded-2xl border border-neutral-900/[0.08] shadow-xs p-5 space-y-2">
-            <p className="text-xs text-neutral-500">Active workforce</p>
-            <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+        <section className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+          <article className="bg-white rounded-xl sm:rounded-2xl border border-neutral-900/[0.08] shadow-xs p-3.5 sm:p-5 flex flex-col justify-between gap-1 sm:space-y-2">
+            <p className="text-[11px] sm:text-xs text-neutral-500 truncate">Active workforce</p>
+            <p className="text-xl sm:text-[28px] leading-tight sm:leading-none font-medium text-neutral-900 font-headline tabular-nums">
               {loading ? "—" : totalEmployees.toLocaleString()}
             </p>
-            <p className="text-xs text-neutral-500">Registered employee records</p>
+            <p className="text-[10px] sm:text-xs text-neutral-400 truncate hidden sm:block">Registered employee records</p>
           </article>
 
-          <article className="bg-white rounded-2xl border border-neutral-900/[0.08] shadow-xs p-5 space-y-2">
-            <p className="text-xs text-neutral-500">Total requests</p>
-            <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+          <article className="bg-white rounded-xl sm:rounded-2xl border border-neutral-900/[0.08] shadow-xs p-3.5 sm:p-5 flex flex-col justify-between gap-1 sm:space-y-2">
+            <p className="text-[11px] sm:text-xs text-neutral-500 truncate">Total requests</p>
+            <p className="text-xl sm:text-[28px] leading-tight sm:leading-none font-medium text-neutral-900 font-headline tabular-nums">
               {loading ? "—" : totalRequests.toLocaleString()}
             </p>
-            <p className="text-xs text-neutral-500">Tracked across all workflows</p>
+            <p className="text-[10px] sm:text-xs text-neutral-400 truncate hidden sm:block">Tracked across all workflows</p>
           </article>
 
-          <article className="bg-white rounded-2xl border border-neutral-900/[0.08] shadow-xs p-5 space-y-2">
-            <p className="text-xs text-neutral-500">Pending approvals</p>
-            <p className="text-[28px] leading-none font-medium text-[#c2410c] font-headline tabular-nums">
+          <article className="bg-white rounded-xl sm:rounded-2xl border border-neutral-900/[0.08] shadow-xs p-3.5 sm:p-5 flex flex-col justify-between gap-1 sm:space-y-2">
+            <p className="text-[11px] sm:text-xs text-neutral-500 truncate">Pending approvals</p>
+            <p className="text-xl sm:text-[28px] leading-tight sm:leading-none font-medium text-[#c2410c] font-headline tabular-nums">
               {loading ? "—" : pendingApprovals.toLocaleString()}
             </p>
-            <p className="text-xs text-neutral-500">Awaiting review action</p>
+            <p className="text-[10px] sm:text-xs text-neutral-400 truncate hidden sm:block">Awaiting review action</p>
           </article>
 
-          <article className="bg-white rounded-2xl border border-neutral-900/[0.08] shadow-xs p-5 space-y-2">
-            <p className="text-xs text-neutral-500">Approval rate</p>
-            <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+          <article className="bg-white rounded-xl sm:rounded-2xl border border-neutral-900/[0.08] shadow-xs p-3.5 sm:p-5 flex flex-col justify-between gap-1 sm:space-y-2">
+            <p className="text-[11px] sm:text-xs text-neutral-500 truncate">Approval rate</p>
+            <p className="text-xl sm:text-[28px] leading-tight sm:leading-none font-medium text-neutral-900 font-headline tabular-nums">
               {loading ? "—" : approvalRate}
             </p>
-            <p className="text-xs text-neutral-500">Share of decided requests</p>
+            <p className="text-[10px] sm:text-xs text-neutral-400 truncate hidden sm:block">Share of decided requests</p>
           </article>
         </section>
 

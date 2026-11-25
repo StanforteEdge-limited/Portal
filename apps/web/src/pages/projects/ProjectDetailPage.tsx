@@ -427,50 +427,70 @@ export default function ProjectDetailPage() {
         {activeTab === "overview" && (
           <div className="space-y-6">
             {/* 4 Metric Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                  <CheckCircle2 className="h-5 w-5" />
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+              <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2.5 sm:gap-3">
+                <div className="flex items-center justify-between gap-1.5">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5" />
+                  </div>
+                  <span className="text-[10px] sm:text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full shrink-0 capitalize">
+                    {status.replace("_", " ")}
+                  </span>
                 </div>
-                <div>
-                  <div className="text-xs font-semibold text-neutral-500">Lifecycle Status</div>
-                  <div className="text-base font-semibold text-neutral-900 capitalize mt-0.5">
+                <div className="min-w-0">
+                  <div className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Lifecycle Status</div>
+                  <div className="text-base sm:text-lg font-semibold text-neutral-900 capitalize mt-0.5 tracking-tight truncate">
                     {status.replace("_", " ")}
                   </div>
                 </div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
-                  <Calendar className="h-5 w-5" />
+              <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2.5 sm:gap-3">
+                <div className="flex items-center justify-between gap-1.5">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
+                    <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
+                  </div>
+                  <span className="text-[10px] sm:text-xs font-medium text-neutral-500 bg-neutral-100 px-2 py-0.5 rounded-full shrink-0">
+                    Start
+                  </span>
                 </div>
-                <div>
-                  <div className="text-xs font-semibold text-neutral-500">Start Date</div>
-                  <div className="text-base font-semibold text-neutral-900 mt-0.5">
+                <div className="min-w-0">
+                  <div className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Start Date</div>
+                  <div className="text-base sm:text-lg font-semibold text-neutral-900 mt-0.5 tracking-tight truncate">
                     {formatDate(project.governance?.start_date) || "TBD"}
                   </div>
                 </div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
-                  <Clock className="h-5 w-5" />
+              <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2.5 sm:gap-3">
+                <div className="flex items-center justify-between gap-1.5">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
+                    <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
+                  </div>
+                  <span className="text-[10px] sm:text-xs font-medium text-neutral-500 bg-neutral-100 px-2 py-0.5 rounded-full shrink-0">
+                    Target
+                  </span>
                 </div>
-                <div>
-                  <div className="text-xs font-semibold text-neutral-500">Target Completion</div>
-                  <div className="text-base font-semibold text-neutral-900 mt-0.5">
+                <div className="min-w-0">
+                  <div className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Target Completion</div>
+                  <div className="text-base sm:text-lg font-semibold text-neutral-900 mt-0.5 tracking-tight truncate">
                     {formatDate(project.governance?.end_date) || "Ongoing"}
                   </div>
                 </div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-                  <User className="h-5 w-5" />
+              <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2.5 sm:gap-3">
+                <div className="flex items-center justify-between gap-1.5">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                    <User className="h-4 w-4 sm:h-5 sm:w-5" />
+                  </div>
+                  <span className="text-[10px] sm:text-xs font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full shrink-0">
+                    Lead
+                  </span>
                 </div>
-                <div>
-                  <div className="text-xs font-semibold text-neutral-500">Governance Lead</div>
-                  <div className="text-base font-semibold text-neutral-900 mt-0.5">
+                <div className="min-w-0">
+                  <div className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Governance Lead</div>
+                  <div className="text-base sm:text-lg font-semibold text-neutral-900 mt-0.5 tracking-tight truncate">
                     {project.governance?.owner_user_id ? "Assigned" : "Unassigned"}
                   </div>
                 </div>

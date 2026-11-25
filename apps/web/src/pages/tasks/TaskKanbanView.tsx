@@ -84,7 +84,7 @@ export function TaskKanbanView({
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-start">
+    <div className="flex md:grid md:grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4 overflow-x-auto md:overflow-x-visible snap-x snap-mandatory pb-4 md:pb-0 items-start no-scrollbar -mx-4 px-4 md:mx-0 md:px-0">
       {COLUMNS.map((col) => {
         const colTasks = tasks.filter((t) => t.status === col.status);
         const isLaneTarget = dragOverLane === col.status && draggedTaskId !== null;
@@ -99,7 +99,7 @@ export function TaskKanbanView({
               }
             }}
             onDrop={(e) => handleLaneDrop(e, col.status)}
-            className={`rounded-2xl p-3 flex flex-col min-h-[500px] border transition-colors duration-150 ${
+            className={`w-[82vw] sm:w-[320px] md:w-auto shrink-0 snap-center md:shrink rounded-2xl p-3 flex flex-col min-h-[400px] sm:min-h-[500px] border transition-colors duration-150 ${
               isLaneTarget
                 ? "bg-orange-50/40 border-[#ff6900]/50"
                 : "bg-neutral-100/70 border-neutral-900/[0.08]"

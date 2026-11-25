@@ -482,59 +482,59 @@ export default function HrLeavePage() {
           icon={Calendar}
           iconColor="bg-orange-50 text-[#ff6900]"
           actions={
-            <div className="flex items-center gap-2.5">
+            <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
               <button
                 type="button"
                 onClick={handleExportCsv}
                 disabled={exportingCsv}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 text-xs font-medium shadow-2xs transition cursor-pointer"
+                className="inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 text-xs font-medium shadow-2xs transition cursor-pointer text-center"
               >
-                <Download className="h-4 w-4 text-neutral-400" />
-                <span>{exportingCsv ? "Exporting..." : "Export Leave Roster"}</span>
+                <Download className="h-4 w-4 text-neutral-400 shrink-0" />
+                <span className="truncate">Export<span className="hidden sm:inline"> Leave</span> Roster</span>
               </button>
               <Link
                 to="/requests/approvals"
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-medium shadow-sm transition"
+                className="inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-medium shadow-sm transition text-center"
               >
-                <FileCheck className="h-4 w-4" />
-                <span>All Workflow Approvals</span>
+                <FileCheck className="h-4 w-4 shrink-0" />
+                <span className="truncate">Approvals<span className="hidden sm:inline"> Queue</span></span>
               </Link>
             </div>
           }
         />
 
         {/* 4 Compact Numbers-Only KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <article className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
-            <p className="text-xs text-neutral-500">Pending review</p>
-            <p className="text-[28px] leading-none font-medium text-[#c2410c] font-headline tabular-nums">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+          <article className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs flex flex-col justify-between gap-1 sm:space-y-2">
+            <p className="text-[11px] sm:text-xs text-neutral-500 truncate">Pending review</p>
+            <p className="text-xl sm:text-[28px] leading-tight sm:leading-none font-medium text-[#c2410c] font-headline tabular-nums">
               {pendingApprovals.length}
             </p>
-            <p className="text-xs text-neutral-500">Awaiting approval action</p>
+            <p className="text-[10px] sm:text-xs text-neutral-400 truncate hidden sm:block">Awaiting approval action</p>
           </article>
 
-          <article className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
-            <p className="text-xs text-neutral-500">Currently on leave</p>
-            <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+          <article className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs flex flex-col justify-between gap-1 sm:space-y-2">
+            <p className="text-[11px] sm:text-xs text-neutral-500 truncate">Currently on leave</p>
+            <p className="text-xl sm:text-[28px] leading-tight sm:leading-none font-medium text-neutral-900 font-headline tabular-nums">
               {currentlyOnLeave.length}
             </p>
-            <p className="text-xs text-neutral-500">Approved overlapping today</p>
+            <p className="text-[10px] sm:text-xs text-neutral-400 truncate hidden sm:block">Approved overlapping today</p>
           </article>
 
-          <article className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
-            <p className="text-xs text-neutral-500">Total requests</p>
-            <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+          <article className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs flex flex-col justify-between gap-1 sm:space-y-2">
+            <p className="text-[11px] sm:text-xs text-neutral-500 truncate">Total requests</p>
+            <p className="text-xl sm:text-[28px] leading-tight sm:leading-none font-medium text-neutral-900 font-headline tabular-nums">
               {allLeaveRequests.length}
             </p>
-            <p className="text-xs text-neutral-500">Across all leave types</p>
+            <p className="text-[10px] sm:text-xs text-neutral-400 truncate hidden sm:block">Across all leave types</p>
           </article>
 
-          <article className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
-            <p className="text-xs text-neutral-500">Historical records</p>
-            <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+          <article className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs flex flex-col justify-between gap-1 sm:space-y-2">
+            <p className="text-[11px] sm:text-xs text-neutral-500 truncate">Historical records</p>
+            <p className="text-xl sm:text-[28px] leading-tight sm:leading-none font-medium text-neutral-900 font-headline tabular-nums">
               {historyTotalCount}
             </p>
-            <p className="text-xs text-neutral-500">Completed leave entries</p>
+            <p className="text-[10px] sm:text-xs text-neutral-400 truncate hidden sm:block">Completed leave entries</p>
           </article>
         </div>
 

@@ -144,37 +144,37 @@ export default function AdminFilesPage() {
         />
 
         {/* 4 Compact Numbers-Only KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <article className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
-            <p className="text-xs text-neutral-500">Cataloged files</p>
-            <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+          <article className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs flex flex-col justify-between gap-1 sm:space-y-2">
+            <p className="text-[11px] sm:text-xs text-neutral-500 truncate">Cataloged files</p>
+            <p className="text-xl sm:text-[28px] leading-tight sm:leading-none font-medium text-neutral-900 font-headline tabular-nums">
               {(totalCount || files.length).toLocaleString()}
             </p>
-            <p className="text-xs text-neutral-500">Stored in object vault</p>
+            <p className="text-[10px] sm:text-xs text-neutral-400 truncate hidden sm:block">Stored in object vault</p>
           </article>
 
-          <article className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
-            <p className="text-xs text-neutral-500">Attached in workflows</p>
-            <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+          <article className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs flex flex-col justify-between gap-1 sm:space-y-2">
+            <p className="text-[11px] sm:text-xs text-neutral-500 truncate">Attached in workflows</p>
+            <p className="text-xl sm:text-[28px] leading-tight sm:leading-none font-medium text-neutral-900 font-headline tabular-nums">
               {attachedCount.toLocaleString()}
             </p>
-            <p className="text-xs text-neutral-500">Referenced by records</p>
+            <p className="text-[10px] sm:text-xs text-neutral-400 truncate hidden sm:block">Referenced by records</p>
           </article>
 
-          <article className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
-            <p className="text-xs text-neutral-500">Standalone assets</p>
-            <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+          <article className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs flex flex-col justify-between gap-1 sm:space-y-2">
+            <p className="text-[11px] sm:text-xs text-neutral-500 truncate">Standalone assets</p>
+            <p className="text-xl sm:text-[28px] leading-tight sm:leading-none font-medium text-neutral-900 font-headline tabular-nums">
               {Math.max(0, files.length - attachedCount).toLocaleString()}
             </p>
-            <p className="text-xs text-neutral-500">Unlinked uploads</p>
+            <p className="text-[10px] sm:text-xs text-neutral-400 truncate hidden sm:block">Unlinked uploads</p>
           </article>
 
-          <article className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
-            <p className="text-xs text-neutral-500">Upload pipeline</p>
-            <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline">
+          <article className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs flex flex-col justify-between gap-1 sm:space-y-2">
+            <p className="text-[11px] sm:text-xs text-neutral-500 truncate">Upload pipeline</p>
+            <p className="text-xl sm:text-[28px] leading-tight sm:leading-none font-medium text-neutral-900 font-headline">
               Presigned
             </p>
-            <p className="text-xs text-neutral-500">Direct S3 relay enabled</p>
+            <p className="text-[10px] sm:text-xs text-neutral-400 truncate hidden sm:block">Direct S3 relay</p>
           </article>
         </div>
 
@@ -299,7 +299,7 @@ export default function AdminFilesPage() {
                     void handleDelete(file.id, file.file_name);
                   }}
                   disabled={deletingId === file.id}
-                  className="absolute top-2 right-2 h-7 w-7 inline-flex items-center justify-center rounded-lg bg-white text-neutral-500 hover:text-rose-600 hover:bg-rose-50 shadow-xs border border-neutral-900/[0.10] opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-150"
+                  className="absolute top-2 right-2 h-8 w-8 inline-flex items-center justify-center rounded-lg bg-white/95 dark:bg-neutral-800 text-neutral-500 hover:text-rose-600 hover:bg-rose-50 shadow-xs border border-neutral-900/[0.10] opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-150"
                   title="Delete file"
                 >
                   <Trash2 className="h-4 w-4" strokeWidth={1.5} />

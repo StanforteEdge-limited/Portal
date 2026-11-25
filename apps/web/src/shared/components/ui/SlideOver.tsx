@@ -105,10 +105,10 @@ export function SlideOverHeader({ title, subtitle, onClose }: SlideOverHeaderPro
       <button
         type="button"
         onClick={onClose}
-        className="p-2 shrink-0 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-200/60 rounded-lg transition-colors duration-150"
+        className="min-h-[44px] min-w-[44px] -mr-2 p-2.5 shrink-0 inline-flex items-center justify-center text-neutral-500 hover:text-neutral-900 hover:bg-neutral-200/60 rounded-lg transition-colors duration-150"
         aria-label="Close panel"
       >
-        <X className="w-4 h-4" strokeWidth={1.5} />
+        <X className="w-5 h-5" strokeWidth={1.5} />
       </button>
     </div>
   );

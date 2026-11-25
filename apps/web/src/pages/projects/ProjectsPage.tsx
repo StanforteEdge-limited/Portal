@@ -92,55 +92,55 @@ export default function ProjectsPage() {
         />
 
         {/* 4 KPI Metric Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
           {/* Card 1: Active Projects */}
-          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
-                <FolderKanban className="h-5 w-5" />
+          <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2 sm:gap-3">
+            <div className="flex items-center justify-between gap-1.5">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
+                <FolderKanban className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
-              <div>
-                <div className="text-xs font-semibold text-neutral-500">Active Projects</div>
-                <div className="text-xl font-semibold text-neutral-900 mt-0.5">{activeCount}</div>
+              <div className="text-[10px] sm:text-xs font-medium text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                <TrendingUp className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> Live
               </div>
             </div>
-            <div className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-0.5">
-              <TrendingUp className="h-3 w-3" /> Live
+            <div>
+              <div className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Active Projects</div>
+              <div className="text-lg sm:text-xl font-semibold text-neutral-900 mt-0.5">{activeCount}</div>
             </div>
           </div>
 
           {/* Card 2: Total Projects */}
-          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
-              <Layers className="h-5 w-5" />
+          <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2 sm:gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
+              <Layers className="h-4 w-4 sm:h-5 sm:w-5" />
             </div>
             <div>
-              <div className="text-xs font-semibold text-neutral-500">Total Enrolled</div>
-              <div className="text-xl font-semibold text-neutral-900 mt-0.5">{projects.length}</div>
+              <div className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Total Enrolled</div>
+              <div className="text-lg sm:text-xl font-semibold text-neutral-900 mt-0.5">{projects.length}</div>
             </div>
           </div>
 
           {/* Card 3: Governance Compliant */}
-          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-              <CheckCircle2 className="h-5 w-5" />
+          <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2 sm:gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+              <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5" />
             </div>
             <div>
-              <div className="text-xs font-semibold text-neutral-500">Governance Ready</div>
-              <div className="text-xl font-semibold text-emerald-600 mt-0.5">
+              <div className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Governance Ready</div>
+              <div className="text-lg sm:text-xl font-semibold text-emerald-600 mt-0.5">
                 {projects.filter((p: any) => p.governance?.project_code).length}
               </div>
             </div>
           </div>
 
           {/* Card 4: Archive Ratio */}
-          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-neutral-100 text-neutral-600 flex items-center justify-center shrink-0">
-              <Clock className="h-5 w-5" />
+          <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2 sm:gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-neutral-100 text-neutral-600 flex items-center justify-center shrink-0">
+              <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
             </div>
             <div>
-              <div className="text-xs font-semibold text-neutral-500">Archived / Closed</div>
-              <div className="text-xl font-semibold text-neutral-700 mt-0.5">
+              <div className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Archived / Closed</div>
+              <div className="text-lg sm:text-xl font-semibold text-neutral-700 mt-0.5">
                 {projects.length - activeCount}
               </div>
             </div>

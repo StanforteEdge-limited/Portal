@@ -153,48 +153,68 @@ export default function TeamDetailPage() {
         {/* Tab 1: Overview */}
         {activeTab === "overview" && (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
-                  <Building2 className="h-5 w-5" />
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+              <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2.5 sm:gap-3">
+                <div className="flex items-center justify-between gap-1.5">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
+                    <Building2 className="h-4 w-4 sm:h-5 sm:w-5" />
+                  </div>
+                  <span className="text-[10px] sm:text-xs font-medium text-neutral-500 bg-neutral-100 px-2 py-0.5 rounded-full shrink-0 capitalize">
+                    {team?.type || "Unit"}
+                  </span>
                 </div>
-                <div>
-                  <div className="text-xs font-semibold text-neutral-500">Classification</div>
-                  <div className="text-base font-semibold text-neutral-900 capitalize mt-0.5">
+                <div className="min-w-0">
+                  <div className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Classification</div>
+                  <div className="text-base sm:text-lg font-semibold text-neutral-900 capitalize mt-0.5 tracking-tight truncate">
                     {team?.type || "General Unit"}
                   </div>
                 </div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
-                  <Shield className="h-5 w-5" />
+              <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2.5 sm:gap-3">
+                <div className="flex items-center justify-between gap-1.5">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
+                    <Shield className="h-4 w-4 sm:h-5 sm:w-5" />
+                  </div>
+                  <span className="text-[10px] sm:text-xs font-medium text-neutral-700 bg-neutral-100 px-2 py-0.5 rounded-full shrink-0 capitalize">
+                    {role}
+                  </span>
                 </div>
-                <div>
-                  <div className="text-xs font-semibold text-neutral-500">Your Authority</div>
-                  <div className="text-base font-semibold text-neutral-900 capitalize mt-0.5">{role}</div>
+                <div className="min-w-0">
+                  <div className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Your Authority</div>
+                  <div className="text-base sm:text-lg font-semibold text-neutral-900 capitalize mt-0.5 tracking-tight truncate">{role}</div>
                 </div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
-                  <Users className="h-5 w-5" />
+              <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2.5 sm:gap-3">
+                <div className="flex items-center justify-between gap-1.5">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
+                    <Users className="h-4 w-4 sm:h-5 sm:w-5" />
+                  </div>
+                  <span className="text-[10px] sm:text-xs font-medium text-neutral-500 bg-neutral-100 px-2 py-0.5 rounded-full shrink-0">
+                    Members
+                  </span>
                 </div>
-                <div>
-                  <div className="text-xs font-semibold text-neutral-500">Enrolled Members</div>
-                  <div className="text-base font-semibold text-neutral-900 mt-0.5">
+                <div className="min-w-0">
+                  <div className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Enrolled Members</div>
+                  <div className="text-base sm:text-lg font-semibold text-neutral-900 mt-0.5 tracking-tight truncate">
                     {team?.members?.length || "—"}
                   </div>
                 </div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                  <CheckSquare className="h-5 w-5" />
+              <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2.5 sm:gap-3">
+                <div className="flex items-center justify-between gap-1.5">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                    <CheckSquare className="h-4 w-4 sm:h-5 sm:w-5" />
+                  </div>
+                  <span className="text-[10px] sm:text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full shrink-0">
+                    Active
+                  </span>
                 </div>
-                <div>
-                  <div className="text-xs font-semibold text-neutral-500">Active Tasks</div>
-                  <div className="text-base font-semibold text-neutral-900 mt-0.5">
+                <div className="min-w-0">
+                  <div className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Active Tasks</div>
+                  <div className="text-base sm:text-lg font-semibold text-neutral-900 mt-0.5 tracking-tight truncate">
                     {groupTasks?.length || 0}
                   </div>
                 </div>

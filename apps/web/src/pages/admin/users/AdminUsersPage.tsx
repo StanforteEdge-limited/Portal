@@ -100,39 +100,39 @@ export default function AdminUsersPage() {
         />
 
         {/* 4 Compact Numbers-Only KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <article className="bg-white p-5 rounded-2xl border border-neutral-900/[0.08] shadow-xs space-y-2">
-            <p className="text-xs text-neutral-500">Total workforce</p>
-            <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+          <article className="bg-white p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-neutral-900/[0.08] shadow-xs flex flex-col justify-between gap-1 sm:space-y-2">
+            <p className="text-[11px] sm:text-xs text-neutral-500 truncate">Total workforce</p>
+            <p className="text-xl sm:text-[28px] leading-tight sm:leading-none font-medium text-neutral-900 font-headline tabular-nums">
               {total.toLocaleString()}
             </p>
-            <p className="text-xs text-neutral-500">Registered user accounts</p>
+            <p className="text-[10px] sm:text-xs text-neutral-400 truncate hidden sm:block">Registered user accounts</p>
           </article>
 
-          <article className="bg-white p-5 rounded-2xl border border-neutral-900/[0.08] shadow-xs space-y-2">
-            <p className="text-xs text-neutral-500">Active members</p>
-            <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+          <article className="bg-white p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-neutral-900/[0.08] shadow-xs flex flex-col justify-between gap-1 sm:space-y-2">
+            <p className="text-[11px] sm:text-xs text-neutral-500 truncate">Active members</p>
+            <p className="text-xl sm:text-[28px] leading-tight sm:leading-none font-medium text-neutral-900 font-headline tabular-nums">
               {active.toLocaleString()}
             </p>
-            <p className="text-xs text-neutral-500 tabular-nums">
+            <p className="text-[10px] sm:text-xs text-neutral-400 tabular-nums truncate hidden sm:block">
               {activePercent}% of directory active
             </p>
           </article>
 
-          <article className="bg-white p-5 rounded-2xl border border-neutral-900/[0.08] shadow-xs space-y-2">
-            <p className="text-xs text-neutral-500">Pending invites</p>
-            <p className="text-[28px] leading-none font-medium text-[#c2410c] font-headline tabular-nums">
+          <article className="bg-white p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-neutral-900/[0.08] shadow-xs flex flex-col justify-between gap-1 sm:space-y-2">
+            <p className="text-[11px] sm:text-xs text-neutral-500 truncate">Pending invites</p>
+            <p className="text-xl sm:text-[28px] leading-tight sm:leading-none font-medium text-[#c2410c] font-headline tabular-nums">
               {pending.toLocaleString()}
             </p>
-            <p className="text-xs text-neutral-500">Awaiting activation</p>
+            <p className="text-[10px] sm:text-xs text-neutral-400 truncate hidden sm:block">Awaiting activation</p>
           </article>
 
-          <article className="bg-white p-5 rounded-2xl border border-neutral-900/[0.08] shadow-xs space-y-2">
-            <p className="text-xs text-neutral-500">Suspended or inactive</p>
-            <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+          <article className="bg-white p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-neutral-900/[0.08] shadow-xs flex flex-col justify-between gap-1 sm:space-y-2">
+            <p className="text-[11px] sm:text-xs text-neutral-500 truncate">Suspended / inactive</p>
+            <p className="text-xl sm:text-[28px] leading-tight sm:leading-none font-medium text-neutral-900 font-headline tabular-nums">
               {suspended.toLocaleString()}
             </p>
-            <p className="text-xs text-neutral-500">Requires access review</p>
+            <p className="text-[10px] sm:text-xs text-neutral-400 truncate hidden sm:block">Requires access review</p>
           </article>
         </div>
 

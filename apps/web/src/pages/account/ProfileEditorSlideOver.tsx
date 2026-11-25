@@ -1,7 +1,7 @@
 import { DateInput } from "@/components/ui/date-picker";
 import { SelectBox } from "@/components/ui/select";
 import { useState, useEffect } from "react";
-import { X, Save, User, MapPin, Briefcase, Phone, Calendar } from "lucide-react";
+import { X, Save, User, MapPin, Briefcase } from "lucide-react";
 import { updateWorkspaceProfile } from "@/shared/api/workspace-api";
 import { useToast } from "@/shared";
 
@@ -132,14 +132,14 @@ export default function ProfileEditorSlideOver({
                 <span>Personal Identity</span>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-neutral-700 mb-1">First Name</label>
                   <input
                     type="text"
                     value={form.first_name}
                     onChange={(e) => setForm({ ...form, first_name: e.target.value })}
-                    className="w-full px-3 py-2 text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+                    className="w-full px-3 py-2 text-base sm:text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
                     required
                   />
                 </div>
@@ -150,20 +150,20 @@ export default function ProfileEditorSlideOver({
                     type="text"
                     value={form.last_name}
                     onChange={(e) => setForm({ ...form, last_name: e.target.value })}
-                    className="w-full px-3 py-2 text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+                    className="w-full px-3 py-2 text-base sm:text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
                     required
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-neutral-700 mb-1">Date of Birth</label>
                   <DateInput
-                    
+
                     value={form.date_of_birth}
                     onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })}
-                    className="w-full px-3 py-2 text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+                    className="w-full px-3 py-2 text-base sm:text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
                   />
                 </div>
 
@@ -172,7 +172,7 @@ export default function ProfileEditorSlideOver({
                   <SelectBox
                     value={form.gender}
                     onChange={(e) => setForm({ ...form, gender: e.target.value })}
-                    className="w-full px-3 py-2 text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+                    className="w-full px-3 py-2 text-base sm:text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
                   >
                     <option value="">Prefer not to say</option>
                     <option value="male">Male</option>
@@ -181,13 +181,13 @@ export default function ProfileEditorSlideOver({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-neutral-700 mb-1">Marital Status</label>
                   <SelectBox
                     value={form.marital_status}
                     onChange={(e) => setForm({ ...form, marital_status: e.target.value })}
-                    className="w-full px-3 py-2 text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+                    className="w-full px-3 py-2 text-base sm:text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
                   >
                     <option value="">Select status...</option>
                     <option value="single">Single</option>
@@ -204,7 +204,7 @@ export default function ProfileEditorSlideOver({
                     placeholder="e.g. +234 801 234 5678"
                     value={form.phone}
                     onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                    className="w-full px-3 py-2 text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+                    className="w-full px-3 py-2 text-base sm:text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
                   />
                 </div>
               </div>
@@ -224,11 +224,11 @@ export default function ProfileEditorSlideOver({
                   placeholder="Street address, city"
                   value={form.address}
                   onChange={(e) => setForm({ ...form, address: e.target.value })}
-                  className="w-full px-3 py-2 text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+                  className="w-full px-3 py-2 text-base sm:text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-neutral-700 mb-1">State</label>
                   <input
@@ -236,7 +236,7 @@ export default function ProfileEditorSlideOver({
                     placeholder="e.g. Lagos"
                     value={form.state}
                     onChange={(e) => setForm({ ...form, state: e.target.value })}
-                    className="w-full px-3 py-2 text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+                    className="w-full px-3 py-2 text-base sm:text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
                   />
                 </div>
 
@@ -247,7 +247,7 @@ export default function ProfileEditorSlideOver({
                     placeholder="e.g. Ikeja"
                     value={form.lga}
                     onChange={(e) => setForm({ ...form, lga: e.target.value })}
-                    className="w-full px-3 py-2 text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+                    className="w-full px-3 py-2 text-base sm:text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
                   />
                 </div>
 
@@ -258,7 +258,7 @@ export default function ProfileEditorSlideOver({
                     placeholder="e.g. Nigerian"
                     value={form.nationality}
                     onChange={(e) => setForm({ ...form, nationality: e.target.value })}
-                    className="w-full px-3 py-2 text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+                    className="w-full px-3 py-2 text-base sm:text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
                   />
                 </div>
               </div>
@@ -278,7 +278,7 @@ export default function ProfileEditorSlideOver({
                   placeholder="e.g. Senior Financial Analyst"
                   value={form.occupation}
                   onChange={(e) => setForm({ ...form, occupation: e.target.value })}
-                  className="w-full px-3 py-2 text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+                  className="w-full px-3 py-2 text-base sm:text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
                 />
               </div>
 
@@ -289,18 +289,18 @@ export default function ProfileEditorSlideOver({
                   placeholder="Brief personal background, expertise, or responsibilities..."
                   value={form.bio}
                   onChange={(e) => setForm({ ...form, bio: e.target.value })}
-                  className="w-full px-3 py-2 text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+                  className="w-full px-3 py-2 text-base sm:text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
                 />
               </div>
             </div>
           </form>
 
           {/* Sticky Footer */}
-          <div className="p-5 border-t border-neutral-200 bg-neutral-50 flex items-center justify-between">
+          <div className="p-4 sm:p-5 border-t border-neutral-200 bg-neutral-50 flex items-center justify-between gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-neutral-600 hover:text-neutral-800 transition"
+              className="min-h-[44px] px-4 py-2 text-xs font-semibold text-neutral-600 hover:text-neutral-800 transition"
             >
               Cancel
             </button>
@@ -309,7 +309,7 @@ export default function ProfileEditorSlideOver({
               type="submit"
               form="profile-editor-form"
               disabled={saving}
-              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] active:scale-[0.98] text-white font-medium text-xs shadow-sm transition disabled:opacity-50"
+              className="min-h-[44px] inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] active:scale-[0.98] text-white font-medium text-xs shadow-sm transition disabled:opacity-50"
             >
               <Save className="w-3.5 h-3.5" />
               <span>{saving ? "Saving Changes..." : "Save Profile Details"}</span>

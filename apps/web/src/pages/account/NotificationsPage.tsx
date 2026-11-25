@@ -166,55 +166,55 @@ export default function NotificationsPage() {
         </div>
 
         {/* 4 KPI Cards */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-2xl border border-neutral-200/80 bg-white p-5 shadow-sm transition-colors hover:border-neutral-300">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-neutral-500">
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-4 xl:grid-cols-4">
+          <div className="rounded-xl sm:rounded-2xl border border-neutral-200/80 bg-white p-3.5 sm:p-5 shadow-sm transition-colors hover:border-neutral-300 flex flex-col justify-between gap-2.5 sm:gap-3">
+            <div className="flex items-center justify-between gap-1.5">
+              <span className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">
                 Total Notifications
               </span>
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-neutral-100 text-neutral-700">
+              <div className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl bg-neutral-100 text-neutral-700 shrink-0">
                 <Bell className="w-4 h-4" />
               </div>
             </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-2xl font-semibold tracking-tight text-neutral-900">
+            <div className="flex items-baseline gap-2 min-w-0">
+              <span className="text-lg sm:text-2xl font-semibold tracking-tight text-neutral-900 truncate">
                 {notifications.length}
               </span>
-              <span className="text-xs font-medium text-neutral-500">inbox records</span>
+              <span className="text-xs font-medium text-neutral-500 hidden sm:inline truncate">inbox records</span>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-amber-200/80 bg-amber-50/30 p-5 shadow-sm transition-colors hover:border-amber-300">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-amber-800">
+          <div className="rounded-xl sm:rounded-2xl border border-amber-200/80 bg-amber-50/30 p-3.5 sm:p-5 shadow-sm transition-colors hover:border-amber-300 flex flex-col justify-between gap-2.5 sm:gap-3">
+            <div className="flex items-center justify-between gap-1.5">
+              <span className="text-[11px] sm:text-xs font-semibold text-amber-800 truncate">
                 Unread Alerts
               </span>
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
+              <div className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl bg-amber-100 text-amber-700 shrink-0">
                 <AlertTriangle className="w-4 h-4" />
               </div>
             </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-2xl font-semibold tracking-tight text-amber-950">
+            <div className="flex items-baseline gap-2 min-w-0">
+              <span className="text-lg sm:text-2xl font-semibold tracking-tight text-amber-950 truncate">
                 {unreadCount}
               </span>
-              <span className="text-xs font-medium text-amber-700">requires attention</span>
+              <span className="text-xs font-medium text-amber-700 hidden sm:inline truncate">requires attention</span>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-neutral-200 bg-neutral-100 p-5 shadow-sm transition-colors hover:border-neutral-200">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-neutral-700">
+          <div className="rounded-xl sm:rounded-2xl border border-neutral-200 bg-neutral-100 p-3.5 sm:p-5 shadow-sm transition-colors hover:border-neutral-200 flex flex-col justify-between gap-2.5 sm:gap-3">
+            <div className="flex items-center justify-between gap-1.5">
+              <span className="text-[11px] sm:text-xs font-semibold text-neutral-700 truncate">
                 Action Items
               </span>
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-neutral-100 text-neutral-700">
+              <div className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl bg-neutral-100 text-neutral-700 shrink-0">
                 <ExternalLink className="w-4 h-4" />
               </div>
             </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-2xl font-semibold tracking-tight text-blue-950">
+            <div className="flex items-baseline gap-2 min-w-0">
+              <span className="text-lg sm:text-2xl font-semibold tracking-tight text-blue-950 truncate">
                 {actionItemsCount}
               </span>
-              <span className="text-xs font-medium text-neutral-700">linked tasks</span>
+              <span className="text-xs font-medium text-neutral-700 hidden sm:inline truncate">linked tasks</span>
             </div>
           </div>
 

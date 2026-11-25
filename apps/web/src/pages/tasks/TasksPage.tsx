@@ -271,124 +271,124 @@ export default function TasksPage() {
         />
 
         {/* 2. Top 4 Metric Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
           {/* Total Tasks */}
-          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
-                <CheckSquare className="h-5 w-5" />
+          <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2 sm:gap-3">
+            <div className="flex items-center justify-between gap-1.5">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
+                <CheckSquare className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
-              <div>
-                <div className="text-xs font-medium text-neutral-500">
-                  {isAdminView ? "All Staff Work Items" : "My Tasks"}
-                </div>
-                <div className="text-2xl font-semibold text-neutral-900 mt-0.5 font-headline">{scopedTasks.length}</div>
-              </div>
+              <span className="text-[10px] sm:text-xs font-medium px-1.5 py-0.5 rounded-full bg-neutral-100 text-neutral-600 truncate max-w-[80px] sm:max-w-none">
+                {isAdminView ? "Org Scope" : "Personal"}
+              </span>
             </div>
-            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600">
-              {isAdminView ? "Org Scope" : "Personal"}
-            </span>
+            <div>
+              <div className="text-[11px] sm:text-xs font-medium text-neutral-500 truncate">
+                {isAdminView ? "All Staff Work Items" : "My Tasks"}
+              </div>
+              <div className="text-lg sm:text-2xl font-semibold text-neutral-900 mt-0.5 font-headline">{scopedTasks.length}</div>
+            </div>
           </div>
 
           {/* In Progress */}
-          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
-                <Clock className="h-5 w-5" />
+          <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2 sm:gap-3">
+            <div className="flex items-center justify-between gap-1.5">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
+                <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
-              <div>
-                <div className="text-xs font-medium text-neutral-500">In Progress</div>
-                <div className="text-2xl font-semibold text-neutral-900 mt-0.5 font-headline">{inProgressCount}</div>
-              </div>
+              <span className="text-[10px] sm:text-xs font-medium px-1.5 py-0.5 rounded-full bg-neutral-100 text-neutral-700 border border-neutral-200">
+                Active
+              </span>
             </div>
-            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-700 border border-neutral-200">
-              Active
-            </span>
+            <div>
+              <div className="text-[11px] sm:text-xs font-medium text-neutral-500 truncate">In Progress</div>
+              <div className="text-lg sm:text-2xl font-semibold text-neutral-900 mt-0.5 font-headline">{inProgressCount}</div>
+            </div>
           </div>
 
           {/* Blocked / Under Review */}
-          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-                <AlertCircle className="h-5 w-5" />
+          <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2 sm:gap-3">
+            <div className="flex items-center justify-between gap-1.5">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
-              <div>
-                <div className="text-xs font-medium text-neutral-500">Under Review</div>
-                <div className="text-2xl font-semibold text-neutral-900 mt-0.5 font-headline">{blockedCount}</div>
-              </div>
+              <span className="text-[10px] sm:text-xs font-medium px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200/60">
+                Review
+              </span>
             </div>
-            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200/60">
-              Review
-            </span>
+            <div>
+              <div className="text-[11px] sm:text-xs font-medium text-neutral-500 truncate">Under Review</div>
+              <div className="text-lg sm:text-2xl font-semibold text-neutral-900 mt-0.5 font-headline">{blockedCount}</div>
+            </div>
           </div>
 
           {/* Completed Rate */}
-          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                <CheckCircle2 className="h-5 w-5" />
+          <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2 sm:gap-3">
+            <div className="flex items-center justify-between gap-1.5">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
-              <div>
-                <div className="text-xs font-medium text-neutral-500">Completed</div>
-                <div className="text-2xl font-semibold text-emerald-600 mt-0.5 font-headline">{completedCount}</div>
-              </div>
+              <span className="text-[10px] sm:text-xs font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-full border border-emerald-200/60">
+                {completionRate}% Done
+              </span>
             </div>
-            <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">
-              {completionRate}% Done
-            </span>
+            <div>
+              <div className="text-[11px] sm:text-xs font-medium text-neutral-500 truncate">Completed</div>
+              <div className="text-lg sm:text-2xl font-semibold text-emerald-600 mt-0.5 font-headline">{completedCount}</div>
+            </div>
           </div>
         </div>
 
         {/* 3. View Mode Switcher + Scope Filter & Search Toolbar */}
-        <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
-          {/* Left: View Mode Pills (Kanban Board vs Table vs Daily Log) */}
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1.5 p-1 bg-neutral-100 rounded-xl shrink-0">
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3.5 sm:gap-4">
+          {/* Left: View Mode Pills (Kanban Board vs Table vs Daily Log) + Scope Filters */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full md:w-auto">
+            <div className="flex items-center gap-1 p-1 bg-neutral-100 rounded-xl overflow-x-auto no-scrollbar max-w-full">
               <button
                 type="button"
                 onClick={() => handleSetViewMode("kanban")}
-                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition ${
+                className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium shrink-0 transition ${
                   viewMode === "kanban"
                     ? "bg-white text-neutral-900 shadow-xs"
                     : "text-neutral-600 hover:text-neutral-900"
                 }`}
               >
                 <LayoutGrid className={`h-4 w-4 ${viewMode === "kanban" ? "text-[#ff6900]" : "text-neutral-400"}`} />
-                <span>Kanban Board</span>
+                <span>Kanban<span className="hidden sm:inline"> Board</span></span>
               </button>
 
               <button
                 type="button"
                 onClick={() => handleSetViewMode("table")}
-                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition ${
+                className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium shrink-0 transition ${
                   viewMode === "table"
                     ? "bg-white text-neutral-900 shadow-xs"
                     : "text-neutral-600 hover:text-neutral-900"
                 }`}
               >
                 <TableIcon className={`h-4 w-4 ${viewMode === "table" ? "text-[#ff6900]" : "text-neutral-400"}`} />
-                <span>Table View</span>
+                <span>Table<span className="hidden sm:inline"> View</span></span>
               </button>
 
               {!isAdminView && (
                 <button
                   type="button"
                   onClick={() => handleSetViewMode("log")}
-                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition ${
+                  className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium shrink-0 transition ${
                     viewMode === "log"
                       ? "bg-white text-neutral-900 shadow-xs"
                       : "text-neutral-600 hover:text-neutral-900"
                   }`}
                 >
                   <Clock className={`h-4 w-4 ${viewMode === "log" ? "text-[#ff6900]" : "text-neutral-400"}`} />
-                  <span>Daily Log &amp; Standup</span>
+                  <span>Daily Log<span className="hidden sm:inline"> &amp; Standup</span></span>
                 </button>
               )}
             </div>
 
             {/* Scope Filter for Personal Workplace: All My Tasks / Assigned to Me / Personal Tasks */}
             {!isAdminView && viewMode !== "log" && (
-              <div className="flex items-center gap-1 p-1 bg-neutral-100 rounded-xl text-xs font-semibold">
+              <div className="flex items-center gap-1 p-1 bg-neutral-100 rounded-xl text-xs font-semibold shrink-0 self-start sm:self-auto">
                 <button
                   type="button"
                   onClick={() => setScopeFilter("all")}
@@ -422,75 +422,78 @@ export default function TasksPage() {
 
           {/* Right: Search & Filters (Shown for Kanban & Table) */}
           {viewMode !== "log" && (
-            <div className="flex flex-wrap items-center gap-2.5">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 w-full md:w-auto">
               {/* Search Box */}
-              <div className="relative flex-1 sm:w-64">
+              <div className="relative w-full sm:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-400" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={isAdminView ? "Search staff tasks, projects, or assignees..." : "Search my tasks or tags..."}
+                  placeholder={isAdminView ? "Search staff tasks..." : "Search my tasks or tags..."}
                   className="w-full pl-9 pr-3 py-1.5 text-xs bg-neutral-50 border border-neutral-200 rounded-xl text-neutral-800 placeholder-neutral-400 focus:outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
                 />
               </div>
 
-              {/* Staff Member Filter (Admin Console Only) */}
-              {isAdminView && (
+              {/* Filter Dropdowns Grid on Mobile: side-by-side instead of stacking 3-4 deep */}
+              <div className={`grid ${isAdminView ? "grid-cols-2" : "grid-cols-3"} sm:flex sm:items-center gap-2 w-full sm:w-auto`}>
+                {/* Staff Member Filter (Admin Console Only) */}
+                {isAdminView && (
+                  <SelectBox
+                    value={assigneeFilter}
+                    onChange={(e) => setAssigneeFilter(e.target.value)}
+                    className="h-9 text-xs font-medium bg-neutral-50 border border-neutral-200 rounded-xl px-2.5 py-1 text-neutral-700 outline-none hover:bg-neutral-100 truncate"
+                  >
+                    <option value="all">All Staff</option>
+                    {colleagues.map((member) => (
+                      <option key={member.id} value={member.name}>
+                        {member.name}
+                      </option>
+                    ))}
+                  </SelectBox>
+                )}
+
+                {/* Project Filter */}
                 <SelectBox
-                  value={assigneeFilter}
-                  onChange={(e) => setAssigneeFilter(e.target.value)}
-                  className="text-xs font-semibold bg-neutral-50 border border-neutral-200 rounded-xl px-2.5 py-1.5 text-neutral-700 outline-none hover:bg-neutral-100"
+                  value={projectFilter}
+                  onChange={(e) => setProjectFilter(e.target.value)}
+                  className="h-9 text-xs font-medium bg-neutral-50 border border-neutral-200 rounded-xl px-2.5 py-1 text-neutral-700 outline-none hover:bg-neutral-100 truncate"
                 >
-                  <option value="all">All Staff Members</option>
-                  {colleagues.map((member) => (
-                    <option key={member.id} value={member.name}>
-                      {member.name} ({member.role})
+                  <option value="all">All Projects</option>
+                  <option value="none">No Project</option>
+                  {projectOptions.map((proj) => (
+                    <option key={proj.id} value={proj.id}>
+                      {proj.name}
                     </option>
                   ))}
                 </SelectBox>
-              )}
 
-              {/* Project Filter */}
-              <SelectBox
-                value={projectFilter}
-                onChange={(e) => setProjectFilter(e.target.value)}
-                className="text-xs font-semibold bg-neutral-50 border border-neutral-200 rounded-xl px-2.5 py-1.5 text-neutral-700 outline-none hover:bg-neutral-100"
-              >
-                <option value="all">All Projects</option>
-                <option value="none">No Project</option>
-                {projectOptions.map((proj) => (
-                  <option key={proj.id} value={proj.id}>
-                    {proj.name}
-                  </option>
-                ))}
-              </SelectBox>
+                {/* Status Filter */}
+                <SelectBox
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="h-9 text-xs font-medium bg-neutral-50 border border-neutral-200 rounded-xl px-2.5 py-1 text-neutral-700 outline-none hover:bg-neutral-100 truncate"
+                >
+                  <option value="all">All Lanes</option>
+                  <option value="planned">Planned</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="blocked">Under Review</option>
+                  <option value="completed">Completed</option>
+                </SelectBox>
 
-              {/* Status Filter */}
-              <SelectBox
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="text-xs font-semibold bg-neutral-50 border border-neutral-200 rounded-xl px-2.5 py-1.5 text-neutral-700 outline-none hover:bg-neutral-100"
-              >
-                <option value="all">All Lanes</option>
-                <option value="planned">Planned</option>
-                <option value="in_progress">In Progress</option>
-                <option value="blocked">Under Review</option>
-                <option value="completed">Completed</option>
-              </SelectBox>
-
-              {/* Priority Filter */}
-              <SelectBox
-                value={priorityFilter}
-                onChange={(e) => setPriorityFilter(e.target.value)}
-                className="text-xs font-semibold bg-neutral-50 border border-neutral-200 rounded-xl px-2.5 py-1.5 text-neutral-700 outline-none hover:bg-neutral-100"
-              >
-                <option value="all">All Priorities</option>
-                <option value="critical">Critical</option>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
-              </SelectBox>
+                {/* Priority Filter */}
+                <SelectBox
+                  value={priorityFilter}
+                  onChange={(e) => setPriorityFilter(e.target.value)}
+                  className="h-9 text-xs font-medium bg-neutral-50 border border-neutral-200 rounded-xl px-2.5 py-1 text-neutral-700 outline-none hover:bg-neutral-100 truncate"
+                >
+                  <option value="all">All Priorities</option>
+                  <option value="critical">Critical</option>
+                  <option value="high">High</option>
+                  <option value="medium">Medium</option>
+                  <option value="low">Low</option>
+                </SelectBox>
+              </div>
             </div>
           )}
         </div>

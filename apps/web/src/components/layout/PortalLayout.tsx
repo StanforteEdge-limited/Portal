@@ -1355,11 +1355,11 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
                 title={`Account (${userPresenceConfig.label})`}
               >
                 <div className="relative w-7 h-7 shrink-0">
-                  <div className="w-7 h-7 rounded-md bg-neutral-900 text-white font-medium text-xs flex items-center justify-center">
+                  <div className="w-7 h-7 rounded-full bg-neutral-900 text-white font-medium text-xs flex items-center justify-center">
                     {initials || "US"}
                   </div>
                   <span
-                    className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full ring-2 ring-white dark:ring-neutral-900 ${userPresenceConfig.dotColor}`}
+                    className={`absolute bottom-0 right-0 w-2 h-2 rounded-full ring-2 ring-white dark:ring-neutral-900 ${userPresenceConfig.dotColor}`}
                   />
                 </div>
                 <ChevronDown

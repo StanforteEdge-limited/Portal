@@ -135,7 +135,7 @@
   }
 
   .input-base {
-    @apply w-full rounded-lg border border-neutral-900/[0.12] bg-white px-3 py-2 text-sm text-neutral-900 outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-neutral-500 focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15;
+    @apply w-full rounded-lg border border-neutral-900/[0.12] bg-white px-3 py-2 text-base sm:text-sm text-neutral-900 outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-neutral-500 focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15;
   }
 
   .field-label {
@@ -480,6 +480,7 @@ html.dark .hover\:text-neutral-700:hover {
 html.dark input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="color"]):not([type="range"]):not([type="file"]),
 html.dark select,
 html.dark textarea,
+html.dark [contenteditable="true"],
 html.dark .input-base {
   background-color: #18181f !important;
   border-color: rgba(255, 255, 255, 0.14) !important;

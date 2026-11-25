@@ -85,7 +85,7 @@ export function PaginationControls({
           onClick={() => onPageChange(1)}
           disabled={safePage <= 1}
           aria-label="First page"
-          className="px-2"
+          className="min-h-[36px] min-w-[36px] p-2 inline-flex items-center justify-center"
         >
           <ChevronsLeft className="h-4 w-4" />
         </Button>
@@ -95,7 +95,7 @@ export function PaginationControls({
           onClick={() => onPageChange(Math.max(1, safePage - 1))}
           disabled={safePage <= 1}
           aria-label="Previous page"
-          className="px-2"
+          className="min-h-[36px] min-w-[36px] p-2 inline-flex items-center justify-center"
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
@@ -110,7 +110,7 @@ export function PaginationControls({
                 size="sm"
                 onClick={() => onPageChange(pageNumber)}
                 disabled={pageNumber === safePage}
-                className="min-w-[32px] px-2.5"
+                className="min-h-[36px] min-w-[36px] sm:min-w-[32px] px-2 sm:px-2.5 inline-flex items-center justify-center text-xs"
               >
                 {pageNumber}
               </Button>
@@ -123,7 +123,7 @@ export function PaginationControls({
           onClick={() => onPageChange(Math.min(safeTotalPages, safePage + 1))}
           disabled={safePage >= safeTotalPages}
           aria-label="Next page"
-          className="px-2"
+          className="min-h-[36px] min-w-[36px] p-2 inline-flex items-center justify-center"
         >
           <ChevronRight className="h-4 w-4" />
         </Button>
@@ -133,7 +133,7 @@ export function PaginationControls({
           onClick={() => onPageChange(safeTotalPages)}
           disabled={safePage >= safeTotalPages}
           aria-label="Last page"
-          className="px-2"
+          className="min-h-[36px] min-w-[36px] p-2 inline-flex items-center justify-center"
         >
           <ChevronsRight className="h-4 w-4" />
         </Button>

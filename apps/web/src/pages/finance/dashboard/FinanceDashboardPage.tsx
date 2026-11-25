@@ -111,69 +111,77 @@ export default function FinanceDashboardPage() {
       </div>
 
       {/* 2. 4 Metric Cards (Matching the design spec screenshot) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-5">
         {/* Total Queue */}
-        <div className="bg-white p-5 rounded-2xl border border-neutral-200/80 shadow-sm flex items-center justify-between">
-          <div className="space-y-1.5">
-            <span className="text-xs font-semibold text-neutral-500">Finance Queue</span>
-            <div className="text-2xl font-semibold text-neutral-900 tracking-tight">
-              {totalCount}
-            </div>
-            <div className="flex items-center gap-1 text-xs font-medium text-emerald-600">
-              <TrendingUp className="h-3 w-3" />
-              <span>Active workflow pipeline</span>
+        <div className="bg-white p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2 sm:gap-3">
+          <div className="flex items-center justify-between gap-1.5">
+            <span className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Finance Queue</span>
+            <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-lg sm:rounded-2xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
+              <FolderOpen className="h-4 w-4 sm:h-6 sm:w-6" />
             </div>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
-            <FolderOpen className="h-6 w-6" />
+          <div>
+            <div className="text-lg sm:text-2xl font-semibold text-neutral-900 tracking-tight font-headline">
+              {totalCount}
+            </div>
+            <div className="hidden sm:flex items-center gap-1 text-xs font-medium text-emerald-600 mt-0.5">
+              <TrendingUp className="h-3 w-3" />
+              <span>Active pipeline</span>
+            </div>
           </div>
         </div>
 
         {/* Ready to Disburse */}
-        <div className="bg-white p-5 rounded-2xl border border-neutral-200/80 shadow-sm flex items-center justify-between">
-          <div className="space-y-1.5">
-            <span className="text-xs font-semibold text-neutral-500">Ready to Disburse</span>
-            <div className="text-2xl font-semibold text-neutral-900 tracking-tight">
-              {cleared}
-            </div>
-            <div className="text-xs font-medium text-amber-600">
-              Awaiting payout action
+        <div className="bg-white p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2 sm:gap-3">
+          <div className="flex items-center justify-between gap-1.5">
+            <span className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Ready to Disburse</span>
+            <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-lg sm:rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+              <CreditCard className="h-4 w-4 sm:h-6 sm:w-6" />
             </div>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-            <CreditCard className="h-6 w-6" />
+          <div>
+            <div className="text-lg sm:text-2xl font-semibold text-neutral-900 tracking-tight font-headline">
+              {cleared}
+            </div>
+            <div className="hidden sm:block text-xs font-medium text-amber-600 mt-0.5">
+              Awaiting payout action
+            </div>
           </div>
         </div>
 
         {/* Awaiting Retirement */}
-        <div className="bg-white p-5 rounded-2xl border border-neutral-200/80 shadow-sm flex items-center justify-between">
-          <div className="space-y-1.5">
-            <span className="text-xs font-semibold text-neutral-500">Awaiting Retirement</span>
-            <div className="text-2xl font-semibold text-neutral-900 tracking-tight">
-              {awaitingRetirement}
-            </div>
-            <div className="text-xs font-medium text-neutral-400">
-              Disbursed advances
+        <div className="bg-white p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2 sm:gap-3">
+          <div className="flex items-center justify-between gap-1.5">
+            <span className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Awaiting Retirement</span>
+            <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-lg sm:rounded-2xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
+              <Clock className="h-4 w-4 sm:h-6 sm:w-6" />
             </div>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
-            <Clock className="h-6 w-6" />
+          <div>
+            <div className="text-lg sm:text-2xl font-semibold text-neutral-900 tracking-tight font-headline">
+              {awaitingRetirement}
+            </div>
+            <div className="hidden sm:block text-xs font-medium text-neutral-400 mt-0.5">
+              Disbursed advances
+            </div>
           </div>
         </div>
 
         {/* Completed & Retired */}
-        <div className="bg-white p-5 rounded-2xl border border-neutral-200/80 shadow-sm flex items-center justify-between">
-          <div className="space-y-1.5">
-            <span className="text-xs font-semibold text-neutral-500">Completed & Closed</span>
-            <div className="text-2xl font-semibold text-neutral-900 tracking-tight">
-              {completed}
-            </div>
-            <div className="text-xs font-medium text-neutral-400">
-              Fully reconciled
+        <div className="bg-white p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2 sm:gap-3">
+          <div className="flex items-center justify-between gap-1.5">
+            <span className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Completed & Closed</span>
+            <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-lg sm:rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+              <CheckCircle2 className="h-4 w-4 sm:h-6 sm:w-6" />
             </div>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-            <CheckCircle2 className="h-6 w-6" />
+          <div>
+            <div className="text-lg sm:text-2xl font-semibold text-neutral-900 tracking-tight font-headline">
+              {completed}
+            </div>
+            <div className="hidden sm:block text-xs font-medium text-neutral-400 mt-0.5">
+              Fully reconciled
+            </div>
           </div>
         </div>
       </div>

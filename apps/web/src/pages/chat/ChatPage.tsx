@@ -17,6 +17,7 @@ import {
   Clock,
   MoreVertical,
   ChevronDown,
+  ChevronLeft,
   Sun,
   Moon,
 } from "lucide-react";
@@ -110,7 +111,8 @@ export default function ChatPage() {
       } catch {}
 
       setConversations(data);
-      if (selectFirst && data.length > 0 && !activeConvIdRef.current) {
+      const isMobileScreen = typeof window !== "undefined" && window.innerWidth < 768;
+      if (selectFirst && data.length > 0 && !activeConvIdRef.current && !isMobileScreen) {
         setSelectedConversation(data[0]);
       }
     } catch (err: any) {
@@ -348,7 +350,7 @@ export default function ChatPage() {
   return (
     <div className="flex h-[calc(100vh-5rem)] rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-sm">
       {/* LEFT SIDEBAR: Conversations List */}
-      <div className="w-80 md:w-96 flex flex-col border-r border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/60 shrink-0">
+      <div className={`${selectedConversation ? "hidden md:flex" : "flex"} w-full md:w-80 lg:w-96 flex-col border-r border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/60 shrink-0`}>
         {/* Top Header */}
         <div className="p-4 border-b border-neutral-200 dark:border-neutral-800 space-y-3">
           <div className="flex items-center justify-between">
@@ -512,10 +514,19 @@ export default function ChatPage() {
 
       {/* RIGHT PANEL: Message Thread & Composer */}
       {selectedConversation ? (
-        <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-neutral-900">
+        <div className="flex-1 flex flex-col min-w-0 w-full bg-white dark:bg-neutral-900">
           {/* Thread Header */}
-          <div className="px-6 py-3.5 border-b border-neutral-200 dark:border-neutral-800 flex items-center justify-between bg-white/60 dark:bg-neutral-900/60 backdrop-blur-md">
-            <div className="flex items-center gap-3 min-w-0">
+          <div className="px-3.5 sm:px-6 py-3.5 border-b border-neutral-200 dark:border-neutral-800 flex items-center justify-between bg-white/60 dark:bg-neutral-900/60 backdrop-blur-md">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              {/* Back button on mobile */}
+              <button
+                type="button"
+                onClick={() => setSelectedConversation(null)}
+                className="md:hidden p-2 -ml-1 rounded-xl text-neutral-500 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 transition shrink-0"
+                aria-label="Back to conversations"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
               <div
                 className={`w-9 h-9 rounded-xl flex items-center justify-center font-medium text-xs shrink-0 ${
                   selectedConversation.type === "group"
@@ -754,7 +765,7 @@ export default function ChatPage() {
                     }
                   }}
                   placeholder={`Message ${selectedConversation.type === "group" ? `#${selectedConversation.name}` : selectedConversation.name || "colleague"}...`}
-                  className="w-full px-4 py-2.5 text-xs rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 resize-none transition"
+                  className="w-full px-4 py-2.5 text-base sm:text-xs rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 resize-none transition"
                 />
               </div>
 
@@ -769,8 +780,8 @@ export default function ChatPage() {
           </div>
         </div>
       ) : (
-        /* Empty selection state */
-        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-white dark:bg-neutral-900">
+        /* Empty selection state - Hidden on mobile so conversation list fills viewport */
+        <div className="hidden md:flex flex-1 flex-col items-center justify-center p-8 text-center bg-white dark:bg-neutral-900">
           <div className="w-16 h-16 rounded-2xl bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-neutral-400 mb-4">
             <MessageSquare className="w-8 h-8" />
           </div>

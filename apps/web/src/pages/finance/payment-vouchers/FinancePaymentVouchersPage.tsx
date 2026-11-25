@@ -212,76 +212,76 @@ export default function FinancePaymentVouchersPage() {
         </div>
 
         {/* 4 Executive KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
           {/* Card 1: Total Vouchers */}
-          <div className="p-5 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center justify-between hover:border-neutral-300 transition">
-            <div className="space-y-1">
-              <span className="text-xs font-medium text-neutral-400 block">
-                Total Vouchers
-              </span>
-              <div className="text-2xl font-semibold text-neutral-900 tracking-tight font-headline">
-                {total}
-              </div>
-              <div className="text-xs font-medium text-neutral-500">
-                {formatCurrency(metrics.totalAmount, "NGN")} disbursed
+          <div className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2.5 sm:gap-3 hover:border-neutral-300 transition">
+            <div className="flex items-center justify-between gap-1.5">
+              <span className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Total Vouchers</span>
+              <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-lg sm:rounded-2xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
+                <Receipt className="h-4 w-4 sm:h-6 sm:w-6" />
               </div>
             </div>
-            <div className="w-12 h-12 rounded-2xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
-              <Receipt className="h-6 w-6" />
+            <div className="min-w-0">
+              <div className="text-lg sm:text-2xl font-semibold text-neutral-900 tracking-tight font-headline truncate">
+                {total}
+              </div>
+              <div className="hidden sm:block text-xs font-medium text-neutral-500 mt-0.5 truncate">
+                {formatCurrency(metrics.totalAmount, "NGN")} disbursed
+              </div>
             </div>
           </div>
 
           {/* Card 2: Pending Retirement */}
-          <div className="p-5 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center justify-between hover:border-neutral-300 transition">
-            <div className="space-y-1">
-              <span className="text-xs font-medium text-neutral-400 block">
-                Pending Retirement
-              </span>
-              <div className="text-2xl font-semibold text-amber-600 tracking-tight font-headline">
-                {metrics.pendingRetirement}
-              </div>
-              <div className="text-xs font-medium text-neutral-500">
-                Awaiting receipts & verification
+          <div className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2.5 sm:gap-3 hover:border-neutral-300 transition">
+            <div className="flex items-center justify-between gap-1.5">
+              <span className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Pending Retirement</span>
+              <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-lg sm:rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                <Clock className="h-4 w-4 sm:h-6 sm:w-6" />
               </div>
             </div>
-            <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-              <Clock className="h-6 w-6" />
+            <div className="min-w-0">
+              <div className="text-lg sm:text-2xl font-semibold text-amber-600 tracking-tight font-headline truncate">
+                {metrics.pendingRetirement}
+              </div>
+              <div className="hidden sm:block text-xs font-medium text-neutral-500 mt-0.5 truncate">
+                Awaiting verification
+              </div>
             </div>
           </div>
 
           {/* Card 3: Confirmed / Verified */}
-          <div className="p-5 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center justify-between hover:border-neutral-300 transition">
-            <div className="space-y-1">
-              <span className="text-xs font-medium text-neutral-400 block">
-                Confirmed & Verified
-              </span>
-              <div className="text-2xl font-semibold text-emerald-600 tracking-tight font-headline">
-                {metrics.confirmedCount}
-              </div>
-              <div className="text-xs font-medium text-neutral-500">
-                Audit sign-off completed
+          <div className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2.5 sm:gap-3 hover:border-neutral-300 transition">
+            <div className="flex items-center justify-between gap-1.5">
+              <span className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Confirmed & Verified</span>
+              <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-lg sm:rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <CheckCircle2 className="h-4 w-4 sm:h-6 sm:w-6" />
               </div>
             </div>
-            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-              <CheckCircle2 className="h-6 w-6" />
+            <div className="min-w-0">
+              <div className="text-lg sm:text-2xl font-semibold text-emerald-600 tracking-tight font-headline truncate">
+                {metrics.confirmedCount}
+              </div>
+              <div className="hidden sm:block text-xs font-medium text-neutral-500 mt-0.5 truncate">
+                Audit sign-off done
+              </div>
             </div>
           </div>
 
           {/* Card 4: Retirement Progress */}
-          <div className="p-5 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center justify-between hover:border-neutral-300 transition">
-            <div className="space-y-1">
-              <span className="text-xs font-medium text-neutral-400 block">
-                Retirement Rate
-              </span>
-              <div className="text-2xl font-semibold text-neutral-700 tracking-tight font-headline">
-                {metrics.retiredPct}%
-              </div>
-              <div className="text-xs font-medium text-neutral-500">
-                {formatCurrency(metrics.retiredAmount, "NGN")} documented
+          <div className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2.5 sm:gap-3 hover:border-neutral-300 transition">
+            <div className="flex items-center justify-between gap-1.5">
+              <span className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Retirement Rate</span>
+              <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-lg sm:rounded-2xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
+                <TrendingUp className="h-4 w-4 sm:h-6 sm:w-6" />
               </div>
             </div>
-            <div className="w-12 h-12 rounded-2xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
-              <TrendingUp className="h-6 w-6" />
+            <div className="min-w-0">
+              <div className="text-lg sm:text-2xl font-semibold text-neutral-700 tracking-tight font-headline truncate">
+                {metrics.retiredPct}%
+              </div>
+              <div className="hidden sm:block text-xs font-medium text-neutral-500 mt-0.5 truncate">
+                {formatCurrency(metrics.retiredAmount, "NGN")} documented
+              </div>
             </div>
           </div>
         </div>

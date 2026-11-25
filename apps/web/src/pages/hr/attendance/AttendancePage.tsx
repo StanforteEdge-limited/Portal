@@ -522,69 +522,77 @@ export function AttendancePage() {
       </div>
 
       {/* 3. 4 Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-5">
         {/* Present Days */}
-        <div className="bg-white p-5 rounded-2xl border border-neutral-100 shadow-2xs hover:border-neutral-200/80 transition-colors flex items-center justify-between">
-          <div className="space-y-1.5">
-            <span className="text-xs font-semibold text-neutral-500">Days Present</span>
-            <div className="text-2xl font-medium text-neutral-900 tracking-tight font-headline">
-              {stats.present}
-            </div>
-            <div className="flex items-center gap-1 text-xs font-medium text-emerald-600">
-              <TrendingUp className="h-3 w-3" />
-              <span>96% on-time record</span>
+        <div className="bg-white p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-neutral-100 shadow-2xs hover:border-neutral-200/80 transition-colors flex flex-col justify-between gap-2 sm:gap-3">
+          <div className="flex items-center justify-between gap-1.5">
+            <span className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Days Present</span>
+            <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-lg sm:rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+              <UserCheck className="h-4 w-4 sm:h-6 sm:w-6" />
             </div>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-            <UserCheck className="h-6 w-6" />
+          <div>
+            <div className="text-lg sm:text-2xl font-medium text-neutral-900 tracking-tight font-headline">
+              {stats.present}
+            </div>
+            <div className="flex items-center gap-1 text-[10px] sm:text-xs font-medium text-emerald-600 mt-0.5">
+              <TrendingUp className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+              <span>96% on-time</span>
+            </div>
           </div>
         </div>
 
         {/* Remote Days */}
-        <div className="bg-white p-5 rounded-2xl border border-neutral-100 shadow-2xs hover:border-neutral-200/80 transition-colors flex items-center justify-between">
-          <div className="space-y-1.5">
-            <span className="text-xs font-semibold text-neutral-500">Remote Days</span>
-            <div className="text-2xl font-medium text-neutral-900 tracking-tight font-headline">
-              {stats.remote}
-            </div>
-            <div className="text-xs font-medium text-neutral-400">
-              Approved flexible work
+        <div className="bg-white p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-neutral-100 shadow-2xs hover:border-neutral-200/80 transition-colors flex flex-col justify-between gap-2 sm:gap-3">
+          <div className="flex items-center justify-between gap-1.5">
+            <span className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Remote Days</span>
+            <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-lg sm:rounded-2xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
+              <Laptop className="h-4 w-4 sm:h-6 sm:w-6" />
             </div>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
-            <Laptop className="h-6 w-6" />
+          <div>
+            <div className="text-lg sm:text-2xl font-medium text-neutral-900 tracking-tight font-headline">
+              {stats.remote}
+            </div>
+            <div className="text-[10px] sm:text-xs font-medium text-neutral-400 mt-0.5 truncate">
+              Flexible work
+            </div>
           </div>
         </div>
 
         {/* Late Check-Ins */}
-        <div className="bg-white p-5 rounded-2xl border border-neutral-100 shadow-2xs hover:border-neutral-200/80 transition-colors flex items-center justify-between">
-          <div className="space-y-1.5">
-            <span className="text-xs font-semibold text-neutral-500">Late Check-Ins</span>
-            <div className="text-2xl font-medium text-neutral-900 tracking-tight font-headline">
-              {stats.late}
-            </div>
-            <div className="text-xs font-semibold text-amber-600">
-              Grace period exceeded
+        <div className="bg-white p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-neutral-100 shadow-2xs hover:border-neutral-200/80 transition-colors flex flex-col justify-between gap-2 sm:gap-3">
+          <div className="flex items-center justify-between gap-1.5">
+            <span className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Late Check-Ins</span>
+            <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-lg sm:rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+              <AlertTriangle className="h-4 w-4 sm:h-6 sm:w-6" />
             </div>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-            <AlertTriangle className="h-6 w-6" />
+          <div>
+            <div className="text-lg sm:text-2xl font-medium text-neutral-900 tracking-tight font-headline">
+              {stats.late}
+            </div>
+            <div className="text-[10px] sm:text-xs font-semibold text-amber-600 mt-0.5 truncate">
+              Grace exceeded
+            </div>
           </div>
         </div>
 
         {/* Absences / Off-Days */}
-        <div className="bg-white p-5 rounded-2xl border border-neutral-100 shadow-2xs hover:border-neutral-200/80 transition-colors flex items-center justify-between">
-          <div className="space-y-1.5">
-            <span className="text-xs font-semibold text-neutral-500">Absences / Off</span>
-            <div className="text-2xl font-medium text-neutral-900 tracking-tight font-headline">
-              {stats.absent}
-            </div>
-            <div className="text-xs font-medium text-neutral-400">
-              Scheduled rest / leave
+        <div className="bg-white p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-neutral-100 shadow-2xs hover:border-neutral-200/80 transition-colors flex flex-col justify-between gap-2 sm:gap-3">
+          <div className="flex items-center justify-between gap-1.5">
+            <span className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Absences / Off</span>
+            <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-lg sm:rounded-2xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
+              <Calendar className="h-4 w-4 sm:h-6 sm:w-6" />
             </div>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
-            <Clock className="h-6 w-6" />
+          <div>
+            <div className="text-lg sm:text-2xl font-medium text-neutral-900 tracking-tight font-headline">
+              {stats.absent}
+            </div>
+            <div className="text-[10px] sm:text-xs font-medium text-neutral-400 mt-0.5 truncate">
+              Scheduled rest
+            </div>
           </div>
         </div>
       </div>

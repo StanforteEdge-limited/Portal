@@ -18,12 +18,12 @@ type StatsGridProps = {
 export function StatsGrid({ items, cols }: StatsGridProps) {
   const colCount = cols ?? Math.min(items.length, 4);
   const gridColsClass = 
-    colCount === 2 ? "sm:grid-cols-2" :
-    colCount === 3 ? "sm:grid-cols-2 md:grid-cols-3" :
-    "sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4";
+    colCount === 2 ? "grid-cols-2" :
+    colCount === 3 ? "grid-cols-2 sm:grid-cols-3" :
+    "grid-cols-2 lg:grid-cols-4";
 
   return (
-    <div className={`grid gap-4 ${gridColsClass}`}>
+    <div className={`grid grid-cols-2 gap-2.5 sm:gap-4 ${gridColsClass}`}>
       {items.map((item, idx) => (
         <StatCard key={idx} {...item} />
       ))}

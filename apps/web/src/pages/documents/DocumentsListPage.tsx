@@ -136,49 +136,49 @@ export default function DocumentsListPage() {
         />
 
         {/* 4 KPI Metric Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
-                <FileText className="h-5 w-5" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+          <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2 sm:gap-3">
+            <div className="flex items-center justify-between gap-1.5">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
+                <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
-              <div>
-                <div className="text-xs font-semibold text-neutral-500">Total Documents</div>
-                <div className="text-xl font-semibold text-neutral-900 mt-0.5">{totalCount}</div>
+              <div className="text-[10px] sm:text-xs font-medium text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded-full">
+                Cataloged
               </div>
             </div>
-            <div className="text-xs font-medium text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
-              Cataloged
+            <div>
+              <div className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Total Documents</div>
+              <div className="text-lg sm:text-xl font-semibold text-neutral-900 mt-0.5">{totalCount}</div>
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
-              <FileCheck className="h-5 w-5" />
+          <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2 sm:gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
+              <FileCheck className="h-4 w-4 sm:h-5 sm:w-5" />
             </div>
             <div>
-              <div className="text-xs font-semibold text-neutral-500">Corporate Policies</div>
-              <div className="text-xl font-semibold text-neutral-900 mt-0.5">{policyCount}</div>
+              <div className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Corporate Policies</div>
+              <div className="text-lg sm:text-xl font-semibold text-neutral-900 mt-0.5">{policyCount}</div>
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
-              <BookOpen className="h-5 w-5" />
+          <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2 sm:gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
+              <BookOpen className="h-4 w-4 sm:h-5 sm:w-5" />
             </div>
             <div>
-              <div className="text-xs font-semibold text-neutral-500">Wikis & SOPs</div>
-              <div className="text-xl font-semibold text-neutral-700 mt-0.5">{wikiCount}</div>
+              <div className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Wikis & SOPs</div>
+              <div className="text-lg sm:text-xl font-semibold text-neutral-700 mt-0.5">{wikiCount}</div>
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-              <ShieldAlert className="h-5 w-5" />
+          <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2 sm:gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+              <ShieldAlert className="h-4 w-4 sm:h-5 sm:w-5" />
             </div>
             <div>
-              <div className="text-xs font-semibold text-neutral-500">Requires Sign-off</div>
-              <div className="text-xl font-semibold text-amber-600 mt-0.5">{reqAckCount}</div>
+              <div className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Requires Sign-off</div>
+              <div className="text-lg sm:text-xl font-semibold text-amber-600 mt-0.5">{reqAckCount}</div>
             </div>
           </div>
         </div>

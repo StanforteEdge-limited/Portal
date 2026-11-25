@@ -303,51 +303,70 @@ export default function DocumentDetailPage() {
         />
 
         {/* 4 Summary Stat Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
-              <FileText className="h-5 w-5" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+          <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2.5 sm:gap-3">
+            <div className="flex items-center justify-between gap-1.5">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
+                <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
+              </div>
+              <span className="text-[10px] sm:text-xs font-medium text-orange-700 bg-orange-50 px-2 py-0.5 rounded-full shrink-0">
+                Doc
+              </span>
             </div>
-            <div>
-              <div className="text-xs font-semibold text-neutral-500">Document Type</div>
-              <div className="text-base font-semibold text-neutral-900 capitalize mt-0.5">
+            <div className="min-w-0">
+              <div className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Document Type</div>
+              <div className="text-base sm:text-xl font-semibold text-neutral-900 capitalize mt-0.5 tracking-tight truncate">
                 {documentRecord.category || "General"}
               </div>
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
-              <Clock className="h-5 w-5" />
+          <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2.5 sm:gap-3">
+            <div className="flex items-center justify-between gap-1.5">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
+                <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
+              </div>
+              <span className="text-[10px] sm:text-xs font-medium text-neutral-600 bg-neutral-100 px-2 py-0.5 rounded-full shrink-0 font-mono">
+                {documentRecord.version || "v1.0"}
+              </span>
             </div>
-            <div>
-              <div className="text-xs font-semibold text-neutral-500">Revision</div>
-              <div className="text-base font-semibold text-neutral-900 mt-0.5 font-mono">
+            <div className="min-w-0">
+              <div className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Revision</div>
+              <div className="text-base sm:text-xl font-semibold text-neutral-900 mt-0.5 font-mono tracking-tight truncate">
                 {documentRecord.version || "v1.0"}
               </div>
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center gap-3">
-            <div
-              className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                isSigned
-                  ? "bg-emerald-50 text-emerald-600"
-                  : documentRecord.require_acknowledgement
-                  ? "bg-amber-50 text-amber-600"
-                  : "bg-neutral-100 text-neutral-600"
-              }`}
-            >
-              {isSigned ? (
-                <CheckCircle2 className="h-5 w-5" />
-              ) : (
-                <ShieldCheck className="h-5 w-5" />
-              )}
-            </div>
-            <div>
-              <div className="text-xs font-semibold text-neutral-500">Your Status</div>
+          <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2.5 sm:gap-3">
+            <div className="flex items-center justify-between gap-1.5">
               <div
-                className={`text-base font-semibold capitalize mt-0.5 ${
+                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 ${
+                  isSigned
+                    ? "bg-emerald-50 text-emerald-600"
+                    : documentRecord.require_acknowledgement
+                    ? "bg-amber-50 text-amber-600"
+                    : "bg-neutral-100 text-neutral-600"
+                }`}
+              >
+                {isSigned ? (
+                  <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5" />
+                ) : (
+                  <ShieldCheck className="h-4 w-4 sm:h-5 sm:w-5" />
+                )}
+              </div>
+              <span
+                className={`text-[10px] sm:text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${
+                  isSigned ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+                }`}
+              >
+                {isSigned ? "Verified" : "Pending"}
+              </span>
+            </div>
+            <div className="min-w-0">
+              <div className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Your Status</div>
+              <div
+                className={`text-base sm:text-xl font-semibold capitalize mt-0.5 tracking-tight truncate ${
                   isSigned
                     ? "text-emerald-600"
                     : documentRecord.require_acknowledgement
@@ -364,13 +383,18 @@ export default function DocumentDetailPage() {
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
-              <Users className="h-5 w-5" />
+          <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2.5 sm:gap-3">
+            <div className="flex items-center justify-between gap-1.5">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
+                <Users className="h-4 w-4 sm:h-5 sm:w-5" />
+              </div>
+              <span className="text-[10px] sm:text-xs font-medium text-neutral-700 bg-neutral-100 px-2 py-0.5 rounded-full shrink-0">
+                Sharing
+              </span>
             </div>
-            <div>
-              <div className="text-xs font-semibold text-neutral-500">Sharing Activity</div>
-              <div className="text-base font-semibold text-neutral-900 mt-0.5">
+            <div className="min-w-0">
+              <div className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Sharing Activity</div>
+              <div className="text-base sm:text-xl font-semibold text-neutral-900 mt-0.5 tracking-tight truncate">
                 {sharesList.length} Colleague{sharesList.length === 1 ? "" : "s"}
               </div>
             </div>

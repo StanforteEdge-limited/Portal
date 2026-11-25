@@ -188,72 +188,76 @@ export default function LeavePage() {
         />
 
         {/* 4 Metric Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-4 rounded-2xl bg-white border border-neutral-100 shadow-2xs hover:border-neutral-200/80 transition-colors flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                <Calendar className="h-5 w-5" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+          {/* Card 1: Available Days */}
+          <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-100 shadow-2xs hover:border-neutral-200/80 transition-colors flex flex-col justify-between gap-2 sm:gap-3">
+            <div className="flex items-center justify-between gap-1.5">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
-              <div>
-                <div className="text-xs font-semibold text-neutral-500">Available Days</div>
-                <div className="text-xl font-semibold text-neutral-900 mt-0.5">
-                  {loadingLeaveBalance ? "..." : (availableDays || 20)} <span className="text-xs font-normal text-neutral-400">days</span>
-                </div>
+              <div className="text-[10px] sm:text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full shrink-0">
+                {100 - percentUsed}% left
               </div>
             </div>
-            <div className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">
-              {100 - percentUsed}% left
-            </div>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-white border border-neutral-100 shadow-2xs hover:border-neutral-200/80 transition-colors flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center">
-                <Clock className="h-5 w-5" />
+            <div>
+              <div className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Available Days</div>
+              <div className="text-lg sm:text-xl font-semibold text-neutral-900 mt-0.5">
+                {loadingLeaveBalance ? "..." : (availableDays || 20)} <span className="text-[11px] sm:text-xs font-normal text-neutral-400">days</span>
               </div>
-              <div>
-                <div className="text-xs font-semibold text-neutral-500">Days Taken</div>
-                <div className="text-xl font-semibold text-neutral-900 mt-0.5">
-                  {loadingLeaveBalance ? "..." : usedDays} <span className="text-xs font-normal text-neutral-400">days</span>
-                </div>
-              </div>
-            </div>
-            <div className="text-xs font-medium text-neutral-700 bg-neutral-100 px-2 py-0.5 rounded-full">
-              {currentYear}
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-neutral-100 shadow-2xs hover:border-neutral-200/80 transition-colors flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-                <AlertCircle className="h-5 w-5" />
+          {/* Card 2: Days Taken */}
+          <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-100 shadow-2xs hover:border-neutral-200/80 transition-colors flex flex-col justify-between gap-2 sm:gap-3">
+            <div className="flex items-center justify-between gap-1.5">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
+                <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
-              <div>
-                <div className="text-xs font-semibold text-neutral-500">Pending Requests</div>
-                <div className="text-xl font-semibold text-amber-600 mt-0.5">
-                  {loadingRequests ? "..." : pendingCount}
-                </div>
+              <div className="text-[10px] sm:text-xs font-medium text-neutral-600 bg-neutral-100 px-2 py-0.5 rounded-full shrink-0">
+                {currentYear}
               </div>
             </div>
-            {pendingCount > 0 && (
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-            )}
+            <div>
+              <div className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Days Taken</div>
+              <div className="text-lg sm:text-xl font-semibold text-neutral-900 mt-0.5">
+                {loadingLeaveBalance ? "..." : usedDays} <span className="text-[11px] sm:text-xs font-normal text-neutral-400">days</span>
+              </div>
+            </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-neutral-100 shadow-2xs hover:border-neutral-200/80 transition-colors flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center">
-                <CheckCircle2 className="h-5 w-5" />
+          {/* Card 3: Pending Requests */}
+          <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-100 shadow-2xs hover:border-neutral-200/80 transition-colors flex flex-col justify-between gap-2 sm:gap-3">
+            <div className="flex items-center justify-between gap-1.5">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
-              <div>
-                <div className="text-xs font-semibold text-neutral-500">Approved History</div>
-                <div className="text-xl font-semibold text-neutral-900 mt-0.5">
-                  {loadingRequests ? "..." : approvedCount}
-                </div>
+              {pendingCount > 0 ? (
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-white shrink-0" />
+              ) : null}
+            </div>
+            <div>
+              <div className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Pending Requests</div>
+              <div className="text-lg sm:text-xl font-semibold text-amber-600 mt-0.5">
+                {loadingRequests ? "..." : pendingCount}
               </div>
             </div>
-            <div className="text-xs font-medium text-neutral-700 bg-neutral-100 px-2 py-0.5 rounded-full">
-              Verified
+          </div>
+
+          {/* Card 4: Approved History */}
+          <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-100 shadow-2xs hover:border-neutral-200/80 transition-colors flex flex-col justify-between gap-2 sm:gap-3">
+            <div className="flex items-center justify-between gap-1.5">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
+                <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5" />
+              </div>
+              <div className="text-[10px] sm:text-xs font-medium text-neutral-600 bg-neutral-100 px-2 py-0.5 rounded-full shrink-0">
+                Verified
+              </div>
+            </div>
+            <div>
+              <div className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Approved History</div>
+              <div className="text-lg sm:text-xl font-semibold text-neutral-900 mt-0.5">
+                {loadingRequests ? "..." : approvedCount}
+              </div>
             </div>
           </div>
         </div>
@@ -372,7 +376,72 @@ export default function LeavePage() {
             </div>
           )}
 
-          <div className="overflow-x-auto">
+          {/* Mobile Card List (< 768px) */}
+          <div className="block md:hidden divide-y divide-neutral-100">
+            {loadingRequests ? (
+              <div className="py-8 text-center text-xs text-neutral-400">Loading leave applications...</div>
+            ) : filteredRows.length > 0 ? (
+              filteredRows.map((row) => (
+                <div key={row.requestId} className="p-4 active:bg-neutral-50 transition flex flex-col gap-2.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="font-semibold text-neutral-900 text-sm">{row.type}</div>
+                      <div className="text-xs text-neutral-400 mt-0.5 flex items-center gap-1">
+                        <FileText className="h-3 w-3" />
+                        <span>{row.id}</span>
+                        <span>•</span>
+                        <span>{row.submittedOn}</span>
+                      </div>
+                    </div>
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-semibold text-[10px] shrink-0 ${
+                        row.tone === "success"
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                          : row.tone === "danger"
+                          ? "bg-rose-50 text-rose-700 border border-rose-100"
+                          : row.tone === "warning" || row.tone === "pending"
+                          ? "bg-amber-50 text-amber-700 border border-amber-100"
+                          : "bg-neutral-50 text-neutral-700 border border-neutral-200"
+                      }`}
+                    >
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          row.tone === "success"
+                            ? "bg-emerald-500"
+                            : row.tone === "danger"
+                            ? "bg-rose-500"
+                            : row.tone === "warning" || row.tone === "pending"
+                            ? "bg-amber-500"
+                            : "bg-neutral-400"
+                        }`}
+                      />
+                      {row.status.toUpperCase()}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs text-neutral-600 bg-neutral-50 px-3 py-2 rounded-xl">
+                    <span className="font-medium">{row.fromDate} – {row.toDate}</span>
+                    <span className="font-semibold text-neutral-800">{row.durationLabel}</span>
+                  </div>
+
+                  <div className="flex items-center justify-end pt-1">
+                    <Link
+                      to={`/requests/${row.requestId}`}
+                      className="min-h-[40px] px-3 inline-flex items-center gap-1 text-xs font-medium text-[#ff6900] hover:text-[#e05d00] transition"
+                    >
+                      <span>View Request Details</span>
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </Link>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="py-8 text-center text-xs text-neutral-400">No leave requests found.</div>
+            )}
+          </div>
+
+          {/* Desktop Table (>= 768px) */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-neutral-50/75 text-neutral-500 font-medium border-b border-neutral-100">
                 <tr>

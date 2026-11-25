@@ -97,65 +97,65 @@ export default function ProcurementIndex() {
         </div>
 
         {/* 4 Metric Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-                <Inbox className="h-5 w-5" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+          <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2.5 sm:gap-3">
+            <div className="flex items-center justify-between gap-1.5">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                <Inbox className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
-              <div>
-                <div className="text-xs font-semibold text-neutral-500">Intake Queue</div>
-                <div className="text-xl font-semibold text-amber-600 mt-0.5">{intake.length}</div>
-              </div>
+              {intake.length > 0 && <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0" />}
             </div>
-            {intake.length > 0 && <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />}
-          </div>
-
-          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center">
-                <ShoppingBag className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="text-xs font-semibold text-neutral-500">Active Requisitions</div>
-                <div className="text-xl font-semibold text-neutral-900 mt-0.5">{prs.length}</div>
-              </div>
-            </div>
-            <div className="text-xs font-medium text-neutral-700 bg-neutral-100 px-2 py-0.5 rounded-full">
-              Sourcing
+            <div className="min-w-0">
+              <div className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Intake Queue</div>
+              <div className="text-lg sm:text-2xl font-semibold text-amber-600 mt-0.5 tracking-tight truncate">{intake.length}</div>
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                <CreditCard className="h-5 w-5" />
+          <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2.5 sm:gap-3">
+            <div className="flex items-center justify-between gap-1.5">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
+                <ShoppingBag className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
-              <div>
-                <div className="text-xs font-semibold text-neutral-500">Estimated Total</div>
-                <div className="text-lg font-semibold text-neutral-900 mt-0.5">
-                  {formatCurrency(totalCommitted, "NGN")}
-                </div>
+              <div className="text-[10px] sm:text-xs font-medium text-neutral-700 bg-neutral-100 px-2 py-0.5 rounded-full shrink-0">
+                Sourcing
               </div>
             </div>
-            <div className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full">
-              Committed
+            <div className="min-w-0">
+              <div className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Active Requisitions</div>
+              <div className="text-lg sm:text-2xl font-semibold text-neutral-900 mt-0.5 tracking-tight truncate">{prs.length}</div>
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center">
-                <FileCheck className="h-5 w-5" />
+          <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2.5 sm:gap-3">
+            <div className="flex items-center justify-between gap-1.5">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <CreditCard className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
-              <div>
-                <div className="text-xs font-semibold text-neutral-500">Vendor Management</div>
-                <div className="text-sm font-semibold text-neutral-900 mt-0.5">Verified</div>
+              <div className="text-[10px] sm:text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full shrink-0">
+                Committed
               </div>
             </div>
-            <span className="text-xs font-medium text-neutral-700 bg-neutral-100 px-2 py-0.5 rounded-full">
-              Connected
-            </span>
+            <div className="min-w-0">
+              <div className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Estimated Total</div>
+              <div className="text-base sm:text-xl font-semibold text-neutral-900 mt-0.5 tracking-tight truncate">
+                {formatCurrency(totalCommitted, "NGN")}
+              </div>
+            </div>
+          </div>
+
+          <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2.5 sm:gap-3">
+            <div className="flex items-center justify-between gap-1.5">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
+                <FileCheck className="h-4 w-4 sm:h-5 sm:w-5" />
+              </div>
+              <span className="text-[10px] sm:text-xs font-medium text-neutral-700 bg-neutral-100 px-2 py-0.5 rounded-full shrink-0">
+                Connected
+              </span>
+            </div>
+            <div className="min-w-0">
+              <div className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Vendor Management</div>
+              <div className="text-base sm:text-xl font-semibold text-neutral-900 mt-0.5 tracking-tight truncate">Verified</div>
+            </div>
           </div>
         </div>
 

@@ -197,53 +197,68 @@ export default function HrEmployeesPage() {
         />
 
         {/* 4 KPI Metric Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-4 rounded-2xl bg-white border border-neutral-100 shadow-2xs hover:border-neutral-200/80 transition-colors flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
-                <Users className="h-5 w-5" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+          <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-100 shadow-2xs hover:border-neutral-200/80 transition-colors flex flex-col justify-between gap-2.5 sm:gap-3">
+            <div className="flex items-center justify-between gap-1.5">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
+                <Users className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
-              <div>
-                <div className="text-xs font-semibold text-neutral-500">Total Headcount</div>
-                <div className="text-xl font-semibold text-neutral-900 mt-0.5">{summary?.total ?? totalEmployees}</div>
+              <div className="text-[10px] sm:text-xs font-medium text-neutral-700 bg-neutral-100 px-2 py-0.5 rounded-full shrink-0">
+                Enrolled
               </div>
             </div>
-            <div className="text-xs font-medium text-neutral-700 bg-neutral-100 px-2 py-0.5 rounded-full">
-              Enrolled
+            <div className="min-w-0">
+              <div className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Total Headcount</div>
+              <div className="text-lg sm:text-2xl font-semibold text-neutral-900 mt-0.5 tracking-tight truncate">{summary?.total ?? totalEmployees}</div>
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-neutral-100 shadow-2xs hover:border-neutral-200/80 transition-colors flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-              <UserCheck className="h-5 w-5" />
+          <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-100 shadow-2xs hover:border-neutral-200/80 transition-colors flex flex-col justify-between gap-2.5 sm:gap-3">
+            <div className="flex items-center justify-between gap-1.5">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <UserCheck className="h-4 w-4 sm:h-5 sm:w-5" />
+              </div>
+              <div className="text-[10px] sm:text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full shrink-0">
+                Active
+              </div>
             </div>
-            <div>
-              <div className="text-xs font-semibold text-neutral-500">Full-Time Personnel</div>
-              <div className="text-xl font-semibold text-emerald-600 mt-0.5">
+            <div className="min-w-0">
+              <div className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Full-Time Personnel</div>
+              <div className="text-lg sm:text-2xl font-semibold text-emerald-600 mt-0.5 tracking-tight truncate">
                 {summary?.by_employment_type?.full_time ?? 0}
               </div>
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-neutral-100 shadow-2xs hover:border-neutral-200/80 transition-colors flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
-              <Briefcase className="h-5 w-5" />
+          <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-100 shadow-2xs hover:border-neutral-200/80 transition-colors flex flex-col justify-between gap-2.5 sm:gap-3">
+            <div className="flex items-center justify-between gap-1.5">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0">
+                <Briefcase className="h-4 w-4 sm:h-5 sm:w-5" />
+              </div>
+              <div className="text-[10px] sm:text-xs font-medium text-neutral-600 bg-neutral-100 px-2 py-0.5 rounded-full shrink-0">
+                Contract
+              </div>
             </div>
-            <div>
-              <div className="text-xs font-semibold text-neutral-500">Contract Staff</div>
-              <div className="text-xl font-semibold text-neutral-700 mt-0.5">
+            <div className="min-w-0">
+              <div className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Contract Staff</div>
+              <div className="text-lg sm:text-2xl font-semibold text-neutral-700 mt-0.5 tracking-tight truncate">
                 {summary?.by_employment_type?.contract ?? 0}
               </div>
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-neutral-100 shadow-2xs hover:border-neutral-200/80 transition-colors flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-              <GraduationCap className="h-5 w-5" />
+          <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-100 shadow-2xs hover:border-neutral-200/80 transition-colors flex flex-col justify-between gap-2.5 sm:gap-3">
+            <div className="flex items-center justify-between gap-1.5">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                <GraduationCap className="h-4 w-4 sm:h-5 sm:w-5" />
+              </div>
+              <div className="text-[10px] sm:text-xs font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full shrink-0">
+                Trainees
+              </div>
             </div>
-            <div>
-              <div className="text-xs font-semibold text-neutral-500">Interns & Trainees</div>
-              <div className="text-xl font-semibold text-amber-600 mt-0.5">
+            <div className="min-w-0">
+              <div className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Interns & Trainees</div>
+              <div className="text-lg sm:text-2xl font-semibold text-amber-600 mt-0.5 tracking-tight truncate">
                 {(summary?.by_employment_type?.intern ?? 0) + (summary?.by_employment_type?.consultant ?? 0)}
               </div>
             </div>

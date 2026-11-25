@@ -381,49 +381,49 @@ export default function DashboardPage() {
           </header>
 
           {/* Row 1: 4 Compact Numbers-Only KPI Cards */}
-          <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <section className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
             <Link
               to="/admin/users"
-              className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] hover:border-neutral-900/[0.18] shadow-xs transition-colors duration-150 space-y-2"
+              className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-neutral-900/[0.08] hover:border-neutral-900/[0.18] shadow-xs transition-colors duration-150 flex flex-col justify-between gap-1 sm:space-y-2"
             >
-              <p className="text-xs text-neutral-500">Active staff</p>
-              <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+              <p className="text-[11px] sm:text-xs text-neutral-500 truncate">Active staff</p>
+              <p className="text-xl sm:text-[28px] leading-tight sm:leading-none font-medium text-neutral-900 font-headline tabular-nums">
                 {adminLoading ? "—" : adminTotalEmployees.toLocaleString()}
               </p>
-              <p className="text-xs text-neutral-500">Registered directory members</p>
+              <p className="text-[10px] sm:text-xs text-neutral-400 truncate hidden sm:block">Registered directory members</p>
             </Link>
 
             <Link
               to="/requests/approvals"
-              className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] hover:border-neutral-900/[0.18] shadow-xs transition-colors duration-150 space-y-2"
+              className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-neutral-900/[0.08] hover:border-neutral-900/[0.18] shadow-xs transition-colors duration-150 flex flex-col justify-between gap-1 sm:space-y-2"
             >
-              <p className="text-xs text-neutral-500">Pending approvals</p>
-              <p className="text-[28px] leading-none font-medium text-[#c2410c] font-headline tabular-nums">
+              <p className="text-[11px] sm:text-xs text-neutral-500 truncate">Pending approvals</p>
+              <p className="text-xl sm:text-[28px] leading-tight sm:leading-none font-medium text-[#c2410c] font-headline tabular-nums">
                 {adminLoading ? "—" : adminPendingApprovalsCount.toLocaleString()}
               </p>
-              <p className="text-xs text-neutral-500">Awaiting review action</p>
+              <p className="text-[10px] sm:text-xs text-neutral-400 truncate hidden sm:block">Awaiting review action</p>
             </Link>
 
             <Link
               to="/requests"
-              className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] hover:border-neutral-900/[0.18] shadow-xs transition-colors duration-150 space-y-2"
+              className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-neutral-900/[0.08] hover:border-neutral-900/[0.18] shadow-xs transition-colors duration-150 flex flex-col justify-between gap-1 sm:space-y-2"
             >
-              <p className="text-xs text-neutral-500">Total requests</p>
-              <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+              <p className="text-[11px] sm:text-xs text-neutral-500 truncate">Total requests</p>
+              <p className="text-xl sm:text-[28px] leading-tight sm:leading-none font-medium text-neutral-900 font-headline tabular-nums">
                 {adminLoading ? "—" : adminTotalRequests.toLocaleString()}
               </p>
-              <p className="text-xs text-neutral-500">Tracked across all workflows</p>
+              <p className="text-[10px] sm:text-xs text-neutral-400 truncate hidden sm:block">Tracked across all workflows</p>
             </Link>
 
             <Link
               to="/tasks"
-              className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] hover:border-neutral-900/[0.18] shadow-xs transition-colors duration-150 space-y-2"
+              className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-neutral-900/[0.08] hover:border-neutral-900/[0.18] shadow-xs transition-colors duration-150 flex flex-col justify-between gap-1 sm:space-y-2"
             >
-              <p className="text-xs text-neutral-500">Staff tasks</p>
-              <p className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+              <p className="text-[11px] sm:text-xs text-neutral-500 truncate">Staff tasks</p>
+              <p className="text-xl sm:text-[28px] leading-tight sm:leading-none font-medium text-neutral-900 font-headline tabular-nums">
                 {orgTasks.length}
               </p>
-              <p className="text-xs text-neutral-500 tabular-nums">
+              <p className="text-[10px] sm:text-xs text-neutral-400 tabular-nums truncate hidden sm:block">
                 {orgTasksInProgress} in progress · {orgTasksBlocked} in review
               </p>
             </Link>
@@ -733,57 +733,57 @@ export default function DashboardPage() {
         </header>
 
         {/* Row 1: Compact Quick-Link Metric Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
           <Link
             to="/leave"
-            className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] hover:border-neutral-900/[0.18] shadow-xs transition-colors duration-150 flex items-center justify-between group"
+            className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-neutral-900/[0.08] hover:border-neutral-900/[0.18] shadow-xs transition-colors duration-150 flex items-center justify-between group"
           >
-            <div className="space-y-1.5">
-              <div className="text-xs text-neutral-500">Leave balance</div>
-              <div className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+            <div className="space-y-0.5 sm:space-y-1.5 min-w-0">
+              <div className="text-[11px] sm:text-xs text-neutral-500 truncate">Leave balance</div>
+              <div className="text-lg sm:text-[28px] leading-tight sm:leading-none font-medium text-neutral-900 font-headline tabular-nums">
                 View
               </div>
             </div>
-            <ChevronRight className="h-4 w-4 text-neutral-400 group-hover:text-neutral-700 transition-colors duration-150" strokeWidth={1.5} />
+            <ChevronRight className="h-4 w-4 text-neutral-400 group-hover:text-neutral-700 transition-colors duration-150 shrink-0" strokeWidth={1.5} />
           </Link>
 
           <Link
             to="/attendance"
-            className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] hover:border-neutral-900/[0.18] shadow-xs transition-colors duration-150 flex items-center justify-between group"
+            className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-neutral-900/[0.08] hover:border-neutral-900/[0.18] shadow-xs transition-colors duration-150 flex items-center justify-between group"
           >
-            <div className="space-y-1.5">
-              <div className="text-xs text-neutral-500">Attendance log</div>
-              <div className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+            <div className="space-y-0.5 sm:space-y-1.5 min-w-0">
+              <div className="text-[11px] sm:text-xs text-neutral-500 truncate">Attendance log</div>
+              <div className="text-lg sm:text-[28px] leading-tight sm:leading-none font-medium text-neutral-900 font-headline tabular-nums">
                 Today
               </div>
             </div>
-            <ChevronRight className="h-4 w-4 text-neutral-400 group-hover:text-neutral-700 transition-colors duration-150" strokeWidth={1.5} />
+            <ChevronRight className="h-4 w-4 text-neutral-400 group-hover:text-neutral-700 transition-colors duration-150 shrink-0" strokeWidth={1.5} />
           </Link>
 
           <Link
             to="/requests"
-            className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] hover:border-neutral-900/[0.18] shadow-xs transition-colors duration-150 flex items-center justify-between group"
+            className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-neutral-900/[0.08] hover:border-neutral-900/[0.18] shadow-xs transition-colors duration-150 flex items-center justify-between group"
           >
-            <div className="space-y-1.5">
-              <div className="text-xs text-neutral-500">Requests</div>
-              <div className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+            <div className="space-y-0.5 sm:space-y-1.5 min-w-0">
+              <div className="text-[11px] sm:text-xs text-neutral-500 truncate">Requests</div>
+              <div className="text-lg sm:text-[28px] leading-tight sm:leading-none font-medium text-neutral-900 font-headline tabular-nums">
                 Queue
               </div>
             </div>
-            <ChevronRight className="h-4 w-4 text-neutral-400 group-hover:text-neutral-700 transition-colors duration-150" strokeWidth={1.5} />
+            <ChevronRight className="h-4 w-4 text-neutral-400 group-hover:text-neutral-700 transition-colors duration-150 shrink-0" strokeWidth={1.5} />
           </Link>
 
           <Link
             to="/account/payslips"
-            className="p-5 rounded-2xl bg-white border border-neutral-900/[0.08] hover:border-neutral-900/[0.18] shadow-xs transition-colors duration-150 flex items-center justify-between group"
+            className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-neutral-900/[0.08] hover:border-neutral-900/[0.18] shadow-xs transition-colors duration-150 flex items-center justify-between group"
           >
-            <div className="space-y-1.5">
-              <div className="text-xs text-neutral-500">Payslips</div>
-              <div className="text-[28px] leading-none font-medium text-neutral-900 font-headline tabular-nums">
+            <div className="space-y-0.5 sm:space-y-1.5 min-w-0">
+              <div className="text-[11px] sm:text-xs text-neutral-500 truncate">Payslips</div>
+              <div className="text-lg sm:text-[28px] leading-tight sm:leading-none font-medium text-neutral-900 font-headline tabular-nums">
                 Records
               </div>
             </div>
-            <ChevronRight className="h-4 w-4 text-neutral-400 group-hover:text-neutral-700 transition-colors duration-150" strokeWidth={1.5} />
+            <ChevronRight className="h-4 w-4 text-neutral-400 group-hover:text-neutral-700 transition-colors duration-150 shrink-0" strokeWidth={1.5} />
           </Link>
         </div>
 
