@@ -4,7 +4,6 @@ import { PortalLayout, useWorkspace } from "@/components/layout/PortalLayout";
 import { PageHeader } from "@/shared";
 import { formatDate } from "@stanforte/shared";
 import { useCachedQuery, resourceApi } from "@/shared/lib/core";
-import { CreateProjectSlideOver } from "./CreateProjectSlideOver";
 import { stripHtml } from "@/shared/components/ui/RichTextEditor";
 import {
   FolderKanban,
@@ -27,7 +26,6 @@ export default function ProjectsPage() {
   const [listKey, setListKey] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [showCreate, setShowCreate] = useState(false);
 
   const { data: projectsData, loading: projectsLoading } = useCachedQuery(
     `user:projects:${listKey}`,
@@ -66,28 +64,17 @@ export default function ProjectsPage() {
           icon={FolderKanban}
           iconColor="bg-orange-50 text-[#ff6900]"
           actions={
-            <div className="flex items-center gap-2">
-              {isAdmin && (
-                <>
-                  <Link
-                    to="/admin/projects"
-                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-neutral-200/80 bg-white hover:bg-neutral-50 text-neutral-700 text-xs font-medium transition shadow-xs"
-                  >
-                    <Layers className="h-4 w-4 text-neutral-500" />
-                    <span>Admin Table</span>
-                  </Link>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowCreate(true)}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-medium shadow-md transition"
-                  >
-                    <Plus className="h-4 w-4" />
-                    <span>New Project</span>
-                  </button>
-                </>
-              )}
-            </div>
+            isAdmin ? (
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/admin/projects"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-neutral-200/80 bg-white hover:bg-neutral-50 text-neutral-700 text-xs font-medium transition shadow-xs"
+                >
+                  <Layers className="h-4 w-4 text-[#ff6900]" />
+                  <span>Admin Management</span>
+                </Link>
+              </div>
+            ) : null
           }
         />
 
@@ -293,13 +280,7 @@ export default function ProjectsPage() {
         </div>
       </div>
 
-      {isAdmin && (
-        <CreateProjectSlideOver
-          open={showCreate}
-          onClose={() => setShowCreate(false)}
-          onCreated={() => setListKey((k) => k + 1)}
-        />
-      )}
+
     </PortalLayout>
   );
 }

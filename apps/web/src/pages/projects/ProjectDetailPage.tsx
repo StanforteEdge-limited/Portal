@@ -22,7 +22,13 @@ import {
   updateStoredTaskStatus,
   upsertStoredTask,
 } from "@/pages/tasks/task-store";
-import type { ProjectAttachment } from "./CreateProjectSlideOver";
+export interface ProjectAttachment {
+  file_id: string;
+  file_name: string;
+  mime_type?: string | null;
+  file_size?: number | null;
+  uploaded_at: string;
+}
 import { RichTextEditor, RichTextViewer, stripHtml } from "@/shared/components/ui/RichTextEditor";
 import {
   FolderKanban,
