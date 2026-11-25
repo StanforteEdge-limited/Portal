@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { Navigate } from "react-router-dom";
 import { Link } from "@/shared/router-adapter";
 import { PortalLayout, useWorkspace } from "@/components/layout/PortalLayout";
 import { PageHeader } from "@/shared";
@@ -23,6 +24,11 @@ import {
 
 export default function ProjectsPage() {
   const { isAdmin } = useWorkspace();
+
+  if (!isAdmin) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   const [listKey, setListKey] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");

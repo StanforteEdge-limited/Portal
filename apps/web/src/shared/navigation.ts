@@ -62,7 +62,6 @@ export function buildAppNavigation(options?: {
       section: "Staff",
       children: [
         { key: "workspace-groups", label: "Groups", icon: "groups", path: "/teams" },
-        { key: "workspace-projects", label: "Projects", icon: "assignment", path: "/projects" },
         { key: "workspace-documents", label: "Documents", icon: "description", path: "/documents" },
       ],
     },

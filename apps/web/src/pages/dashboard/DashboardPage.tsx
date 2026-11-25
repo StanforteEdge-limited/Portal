@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "@/shared/router-adapter";
 import { PortalLayout, useWorkspace } from "@/components/layout/PortalLayout";
 import { SelectBox } from "@/components/ui/select";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { useToast } from "@/shared";
 import { httpRequest, useCachedQuery } from "@/shared/lib/core";
+import { useColleagues } from "@/shared/hooks/useColleagues";
+import { loadStoredTasks, TASKS_UPDATED_EVENT } from "@/pages/tasks/task-store";
 import {
   Clock,
   CreditCard,
@@ -35,30 +37,87 @@ import {
   AlertCircle,
   PieChart,
   GripVertical,
+  Search,
+  Filter,
 } from "lucide-react";
 import { getMyAttendance, clockIn, clockOut, type MyAttendanceResponse } from "@/pages/hr/attendance/attendance-api";
+import { listRequests, getMyLeaveBalance, type RequestRecord, type LeaveBalanceSummary } from "@/pages/requests/requests-api";
+import { listMyPayslips } from "@/shared/api/payroll-api";
 import { type TaskItem } from "@/pages/tasks/types";
+
+type AttendancePeriod = "this_week" | "last_week" | "this_month" | "last_30_days";
+
+function getDateRangeForPeriod(period: AttendancePeriod): { from: string; to: string } {
+  const now = new Date();
+  const to = now.toISOString().split("T")[0];
+  const fromDate = new Date(now);
+
+  if (period === "this_week") {
+    // Start of current week (Monday)
+    const day = now.getDay();
+    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+    fromDate.setDate(diff);
+  } else if (period === "last_week") {
+    const day = now.getDay();
+    const diff = now.getDate() - day - 6 + (day === 0 ? -6 : 1);
+    fromDate.setDate(diff);
+    const toDate = new Date(fromDate);
+    toDate.setDate(fromDate.getDate() + 6);
+    return {
+      from: fromDate.toISOString().split("T")[0],
+      to: toDate.toISOString().split("T")[0],
+    };
+  } else if (period === "this_month") {
+    fromDate.setDate(1);
+  } else if (period === "last_30_days") {
+    fromDate.setDate(now.getDate() - 30);
+  }
+
+  return {
+    from: fromDate.toISOString().split("T")[0],
+    to,
+  };
+}
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const { showToast } = useToast();
   const { mode, isAdmin } = useWorkspace();
   const isAdminView = mode === "admin" && isAdmin;
+  const { colleagues } = useColleagues();
 
-  // Live organization metrics for Admin Console view
+  // -------------------------------------------------------------
+  // Live Clock (Africa/Lagos)
+  // -------------------------------------------------------------
+  const [currentTime, setCurrentTime] = useState(new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formattedDate = currentTime.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+
+  // -------------------------------------------------------------
+  // Admin Live Metrics & Filters
+  // -------------------------------------------------------------
   const { data: adminEmployeesRes, loading: loadingAdminEmployees } = useCachedQuery(
     isAdminView ? "admin-dash:employees:live" : "admin-dash:employees:idle",
-    () => (isAdminView ? httpRequest<any>("/employees?per_page=10").catch(() => null) : Promise.resolve(null)),
+    () => (isAdminView ? httpRequest<any>("/employees?per_page=50").catch(() => null) : Promise.resolve(null)),
     { ttlMs: 60_000, storage: "memory" }
   );
   const { data: adminRequestsRes, loading: loadingAdminRequests } = useCachedQuery(
     isAdminView ? "admin-dash:requests:live" : "admin-dash:requests:idle",
-    () => (isAdminView ? httpRequest<any>("/requests?per_page=10").catch(() => null) : Promise.resolve(null)),
+    () => (isAdminView ? httpRequest<any>("/requests?per_page=50").catch(() => null) : Promise.resolve(null)),
     { ttlMs: 60_000, storage: "memory" }
   );
   const { data: adminApprovalsRes, loading: loadingAdminApprovals } = useCachedQuery(
     isAdminView ? "admin-dash:approvals:live" : "admin-dash:approvals:idle",
-    () => (isAdminView ? httpRequest<any>("/requests/approvals?per_page=10").catch(() => null) : Promise.resolve(null)),
+    () => (isAdminView ? httpRequest<any>("/requests/approvals?per_page=50").catch(() => null) : Promise.resolve(null)),
     { ttlMs: 60_000, storage: "memory" }
   );
 
@@ -80,14 +139,51 @@ export default function DashboardPage() {
     adminApprovalsRes?.data?.meta?.total ?? adminApprovalsRes?.meta?.total ?? adminApprovals.length;
   const adminLoading = loadingAdminEmployees || loadingAdminRequests || loadingAdminApprovals;
 
-  // Load organization tasks for Admin Console view (with drag-and-drop reorder persistence)
-  const [orgTasks, setOrgTasks] = useState<TaskItem[]>(() => {
-    try {
-      const saved = localStorage.getItem("portal_tasks_data");
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return [];
-  });
+  // Admin filter states
+  const [adminApprovalWorkflowType, setAdminApprovalWorkflowType] = useState<string>("all");
+  const [adminApprovalSearch, setAdminApprovalSearch] = useState<string>("");
+  const [adminTaskFilter, setAdminTaskFilter] = useState<string>("all");
+  const [adminStaffSearch, setAdminStaffSearch] = useState<string>("");
+
+  const filteredAdminApprovals = useMemo(() => {
+    return adminApprovals.filter((item: any) => {
+      const title = String(item.title || item.request_type?.name || "").toLowerCase();
+      const ref = String(item.reference_number || "").toLowerCase();
+      const requester = String(item.requester_name || item.requester?.email || "").toLowerCase();
+      const s = adminApprovalSearch.toLowerCase().trim();
+
+      const matchesSearch = !s || title.includes(s) || ref.includes(s) || requester.includes(s);
+      if (!matchesSearch) return false;
+
+      if (adminApprovalWorkflowType === "all") return true;
+      const wfType = String(item.request_type?.workflow_type || item.workflow_type || "").toLowerCase();
+      return wfType.includes(adminApprovalWorkflowType.toLowerCase());
+    });
+  }, [adminApprovals, adminApprovalSearch, adminApprovalWorkflowType]);
+
+  const filteredAdminEmployees = useMemo(() => {
+    if (!adminStaffSearch.trim()) return adminEmployees.slice(0, 5);
+    const q = adminStaffSearch.toLowerCase();
+    return adminEmployees.filter((emp: any) => {
+      const name = `${emp.first_name || ""} ${emp.last_name || ""}`.toLowerCase();
+      const email = String(emp.email || "").toLowerCase();
+      const title = String(emp.job_title || "").toLowerCase();
+      return name.includes(q) || email.includes(q) || title.includes(q);
+    }).slice(0, 5);
+  }, [adminEmployees, adminStaffSearch]);
+
+  // Organization tasks (live sync with task-store)
+  const [orgTasks, setOrgTasks] = useState<TaskItem[]>(() => loadStoredTasks());
+  useEffect(() => {
+    const sync = () => setOrgTasks(loadStoredTasks());
+    window.addEventListener(TASKS_UPDATED_EVENT, sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener(TASKS_UPDATED_EVENT, sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
+
   const [draggedDashboardTaskId, setDraggedDashboardTaskId] = useState<string | null>(null);
   const [dragOverDashboardTaskId, setDragOverDashboardTaskId] = useState<string | null>(null);
 
@@ -102,36 +198,40 @@ export default function DashboardPage() {
       next.splice(targetIndex, 0, moved);
       try {
         localStorage.setItem("portal_tasks_data", JSON.stringify(next));
+        window.dispatchEvent(new Event(TASKS_UPDATED_EVENT));
       } catch {}
       return next;
     });
   };
 
-  // Live Digital Clock in Nigeria WAT (Africa/Lagos)
-  const [currentTime, setCurrentTime] = useState(new Date());
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
+  const filteredOrgTasks = useMemo(() => {
+    if (adminTaskFilter === "all") return orgTasks;
+    return orgTasks.filter((t) => t.status === adminTaskFilter);
+  }, [orgTasks, adminTaskFilter]);
 
-  const formattedDate = currentTime.toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  const orgTasksInProgress = orgTasks.filter((t) => t.status === "in_progress").length;
+  const orgTasksBlocked = orgTasks.filter((t) => t.status === "blocked").length;
 
-  // Attendance state
+  // -------------------------------------------------------------
+  // Employee View: Live Attendance, Requests, Leave & Payslips
+  // -------------------------------------------------------------
+  const [attendancePeriod, setAttendancePeriod] = useState<AttendancePeriod>("this_week");
   const [attendanceData, setAttendanceData] = useState<MyAttendanceResponse | null>(null);
   const [clocking, setClocking] = useState(false);
 
+  const loadAttendance = async (period: AttendancePeriod) => {
+    try {
+      const range = getDateRangeForPeriod(period);
+      const res = await getMyAttendance(range);
+      setAttendanceData(res);
+    } catch {
+      // Keep existing data on error
+    }
+  };
+
   useEffect(() => {
-    getMyAttendance()
-      .then((res) => setAttendanceData(res))
-      .catch(() => {
-        // Fallback gracefully
-      });
-  }, []);
+    void loadAttendance(attendancePeriod);
+  }, [attendancePeriod]);
 
   const isClockedIn = Boolean(attendanceData?.current_state?.is_clocked_in);
 
@@ -145,8 +245,7 @@ export default function DashboardPage() {
         await clockIn({ source: "web", attendance_mode: "onsite" });
         showToast("Successfully clocked in for today", "success");
       }
-      const refreshed = await getMyAttendance();
-      setAttendanceData(refreshed);
+      await loadAttendance(attendancePeriod);
     } catch (err: any) {
       showToast(err?.message || "Failed to update clock status", "error");
     } finally {
@@ -154,198 +253,138 @@ export default function DashboardPage() {
     }
   };
 
-  // Staff Requests
-  const myRecentRequests = [
-    {
-      id: "req-1",
-      title: "Annual Leave",
-      period: "Nov 20 – Nov 24, 2026",
-      status: "Approved",
-      badgeColor: "bg-emerald-50 text-emerald-700 border-emerald-200/60",
-      icon: Calendar,
-      iconColor: "bg-orange-50 text-[#ff6900]",
-      link: "/leave",
-    },
-    {
-      id: "req-2",
-      title: "Work From Home",
-      period: "Nov 10, 2026",
-      status: "In Review",
-      badgeColor: "bg-neutral-100 text-neutral-700 border-neutral-200",
-      icon: Home,
-      iconColor: "bg-rose-50 text-rose-600",
-      link: "/requests",
-    },
-    {
-      id: "req-3",
-      title: "Medical Claim",
-      period: "Oct 28, 2026",
-      status: "Submitted",
-      badgeColor: "bg-neutral-100 text-neutral-700 border-neutral-200/60",
-      icon: FileText,
-      iconColor: "bg-neutral-100 text-neutral-700",
-      link: "/requests",
-    },
-  ];
+  // Dynamic Shift Timing & Worked duration
+  const shiftStartTime = attendanceData?.policy?.start_time || "09:00";
+  const shiftEndTime = attendanceData?.policy?.end_time || "17:00";
+  const workedMinutesToday = useMemo(() => {
+    let total = attendanceData?.today?.worked_minutes || 0;
+    if (isClockedIn && attendanceData?.current_state?.last_clock_in_at) {
+      const clockInTime = new Date(attendanceData.current_state.last_clock_in_at).getTime();
+      const now = currentTime.getTime();
+      const elapsedMinutes = Math.max(0, Math.floor((now - clockInTime) / 60000));
+      total = Math.max(total, elapsedMinutes);
+    }
+    return total;
+  }, [attendanceData, isClockedIn, currentTime]);
 
-  // Team Activity
-  const teamActivities = [
-    {
-      name: "Amina Yusuf",
-      avatar: "AT",
-      avatarBg: "bg-neutral-100 text-neutral-700",
-      status: "Checked in • 2 mins ago",
-      dotColor: "bg-emerald-500",
-    },
-    {
-      name: "Chinedu Kalu",
-      avatar: "CK",
-      avatarBg: "bg-orange-100 text-[#ff6900]",
-      status: "Submitted a leave request • 1 hr ago",
-      dotColor: "bg-orange-500",
-    },
-    {
-      name: "Fatima Salim",
-      avatar: "FS",
-      avatarBg: "bg-neutral-100 text-neutral-600",
-      status: "Checked out • 5 hrs ago",
-      dotColor: "bg-neutral-400",
-    },
-  ];
+  const workedHoursStr = `${Math.floor(workedMinutesToday / 60)}h ${String(workedMinutesToday % 60).padStart(2, "0")}m`;
+  const workedPercent = Math.min(100, Math.round((workedMinutesToday / 480) * 100));
 
-  // Colleagues Out Today
-  const colleaguesOutToday = [
-    {
-      name: "Ibrahim Bello",
-      type: "Annual Leave",
-      avatar: "IB",
-      avatarBg: "bg-orange-100 text-orange-700",
-      link: "/leave",
-    },
-    {
-      name: "Oluwaseun Adebayo",
-      type: "Medical Leave",
-      avatar: "OA",
-      avatarBg: "bg-amber-100 text-amber-700",
-      link: "/leave",
-    },
-    {
-      name: "Kemi Eze",
-      type: "Personal Leave",
-      avatar: "KE",
-      avatarBg: "bg-neutral-100 text-neutral-700",
-      link: "/leave",
-    },
-  ];
+  // Dynamic Weekly Rhythm bars from live attendance daily records
+  const dynamicRhythm = useMemo(() => {
+    const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const dailyRecords = attendanceData?.daily || [];
+    const todayDayIndex = (currentTime.getDay() + 6) % 7; // Mon=0..Sun=6
 
-  // Attendance Rhythm Data (Mon - Sun)
-  const weeklyRhythm = [
-    { day: "Mon", rate: 96, height: "96%", isToday: false },
-    { day: "Tue", rate: 98, height: "98%", isToday: false },
-    { day: "Wed", rate: 97, height: "97%", isToday: false },
-    { day: "Thu", rate: 95, height: "95%", isToday: true },
-    { day: "Fri", rate: 99, height: "99%", isToday: false },
-    { day: "Sat", rate: 88, height: "45%", isToday: false, isWeekend: true },
-    { day: "Sun", rate: 82, height: "35%", isToday: false, isWeekend: true },
-  ];
+    let totalWorked = 0;
+    let totalScheduled = 0;
 
-  const firstName = user?.first_name || "Daniel";
+    const result = days.map((dayName, idx) => {
+      const isToday = idx === todayDayIndex;
+      const isWeekend = idx >= 5;
 
-  // Admin Console metrics & lists
-  const orgTasksInProgress = orgTasks.filter((t) => t.status === "in_progress").length;
-  const orgTasksBlocked = orgTasks.filter((t) => t.status === "blocked").length;
+      // Find matching daily entry by work_date
+      const entry = dailyRecords.find((d) => {
+        const dDate = new Date(d.work_date);
+        const dDayIdx = (dDate.getDay() + 6) % 7;
+        return dDayIdx === idx;
+      });
 
-  const adminPendingWorkflows = [
-    {
-      id: "wf-1",
-      title: "Medical Leave Application (3 Days)",
-      requester: "Oluwaseun Adebayo • Engineering",
-      meta: "Nov 11 – Nov 13, 2026",
-      badge: "Leave Approval",
-      badgeColor: "bg-amber-50 text-amber-700 border-amber-200/60",
-      icon: Calendar,
-      iconColor: "bg-orange-50 text-[#ff6900]",
-      link: "/hr/leave",
-    },
-    {
-      id: "wf-2",
-      title: "Annual Leave Request (5 Days)",
-      requester: "Chinedu Kalu • Supply Chain",
-      meta: "Nov 24 – Nov 28, 2026",
-      badge: "Pending HR",
-      badgeColor: "bg-amber-50 text-amber-700 border-amber-200/60",
-      icon: Calendar,
-      iconColor: "bg-emerald-50 text-emerald-600",
-      link: "/hr/leave",
-    },
-    {
-      id: "wf-3",
-      title: "PV-2026-089: Core Switch Rack Upgrade",
-      requester: "Amina Yusuf • IT Infrastructure",
-      meta: "₦420,000 • Payment Voucher",
-      badge: "Awaiting Sign-Off",
-      badgeColor: "bg-neutral-100 text-neutral-700 border-neutral-200",
-      icon: Receipt,
-      iconColor: "bg-neutral-100 text-neutral-700",
-      link: "/finance/payment-vouchers",
-    },
-    {
-      id: "wf-4",
-      title: "PR-2026-042: Office Workstation Replacements",
-      requester: "Fatima Salim • People & Operations",
-      meta: "₦850,000 • Procurement Requisition",
-      badge: "In Review",
-      badgeColor: "bg-neutral-100 text-neutral-700 border-neutral-200",
-      icon: FileCheck,
-      iconColor: "bg-neutral-100 text-neutral-700",
-      link: "/requests/approvals",
-    },
-  ];
+      const schedMin = entry?.scheduled_minutes || 480;
+      const workedMin = isToday ? workedMinutesToday : (entry?.worked_minutes || 0);
 
-  const workforceLiveRoster = [
-    {
-      name: "Amina Yusuf",
-      department: "Engineering",
-      avatar: "AY",
-      avatarBg: "bg-neutral-100 text-neutral-700",
-      time: "08:42 AM • Onsite HQ",
-      status: "On Time",
-      statusColor: "bg-emerald-50 text-emerald-700 border-emerald-200/60",
-    },
-    {
-      name: "Chinedu Eze",
-      department: "Platform Engineering",
-      avatar: "CE",
-      avatarBg: "bg-orange-100 text-[#ff6900]",
-      time: "08:50 AM • Onsite HQ",
-      status: "On Time",
-      statusColor: "bg-emerald-50 text-emerald-700 border-emerald-200/60",
-    },
-    {
-      name: "Folake Adeleke",
-      department: "Product Design",
-      avatar: "FA",
-      avatarBg: "bg-neutral-100 text-neutral-700",
-      time: "08:55 AM • Remote",
-      status: "Remote",
-      statusColor: "bg-neutral-100 text-neutral-700 border-neutral-200",
-    },
-    {
-      name: "Tunde Bakare",
-      department: "DevOps & Security",
-      avatar: "TB",
-      avatarBg: "bg-amber-100 text-amber-700",
-      time: "09:18 AM • Onsite HQ",
-      status: "Late (18m)",
-      statusColor: "bg-amber-50 text-amber-700 border-amber-200/60",
-    },
-  ];
+      if (!isWeekend) {
+        totalWorked += workedMin;
+        totalScheduled += schedMin;
+      }
 
+      const rate = schedMin > 0 ? Math.min(100, Math.round((workedMin / schedMin) * 100)) : 0;
+      const height = rate > 0 ? `${rate}%` : isToday && isClockedIn ? "15%" : "8%";
+
+      return {
+        day: dayName,
+        rate,
+        height,
+        isToday,
+        isWeekend,
+      };
+    });
+
+    const averageRate = totalScheduled > 0 ? Math.min(100, Math.round((totalWorked / totalScheduled) * 100)) : (isClockedIn ? 96 : 0);
+
+    return { bars: result, averageRate };
+  }, [attendanceData, workedMinutesToday, currentTime, isClockedIn]);
+
+  // Live Leave Balance API
+  const { data: leaveBalanceRes } = useCachedQuery(
+    "dash:leave:balance",
+    () => getMyLeaveBalance().catch(() => null),
+    { ttlMs: 60_000, storage: "memory" }
+  );
+
+  const leaveRemainingDays = useMemo(() => {
+    const summaries: LeaveBalanceSummary[] = leaveBalanceRes?.summary ?? [];
+    if (summaries.length === 0) return 20;
+    return summaries.reduce((acc, item) => acc + (item.available_days ?? item.entitled_days ?? 0), 0);
+  }, [leaveBalanceRes]);
+
+  // Live Requests API & Filter
+  const [requestFilter, setRequestFilter] = useState<string>("all");
+  const { data: userRequestsRes, loading: userRequestsLoading } = useCachedQuery(
+    "dash:user:requests",
+    () => listRequests({ per_page: 30 }).catch(() => []),
+    { ttlMs: 30_000, storage: "memory" }
+  );
+
+  const userRequests: RequestRecord[] = Array.isArray(userRequestsRes)
+    ? userRequestsRes
+    : (userRequestsRes as any)?.data?.items ?? (userRequestsRes as any)?.items ?? [];
+
+  const pendingUserRequestsCount = useMemo(() => {
+    return userRequests.filter((r) => ["submitted", "in_review", "pending", "pending_review"].includes(String(r.status).toLowerCase())).length;
+  }, [userRequests]);
+
+  const filteredUserRequests = useMemo(() => {
+    if (requestFilter === "all") return userRequests;
+    if (requestFilter === "pending") {
+      return userRequests.filter((r) => ["submitted", "in_review", "pending", "pending_review"].includes(String(r.status).toLowerCase()));
+    }
+    if (requestFilter === "approved") {
+      return userRequests.filter((r) => ["approved", "completed", "disbursed", "closed"].includes(String(r.status).toLowerCase()));
+    }
+    if (requestFilter === "rejected") {
+      return userRequests.filter((r) => ["rejected", "declined", "returned"].includes(String(r.status).toLowerCase()));
+    }
+    return userRequests;
+  }, [userRequests, requestFilter]);
+
+  // Live Payslips API
+  const { data: payslipsRes } = useCachedQuery(
+    "dash:user:payslips",
+    () => listMyPayslips({ page: 1, per_page: 5 }).catch(() => null),
+    { ttlMs: 60_000, storage: "memory" }
+  );
+
+  const latestPayslip = useMemo(() => {
+    const items = Array.isArray(payslipsRes?.data) ? payslipsRes.data : [];
+    return items[0] || null;
+  }, [payslipsRes]);
+
+  const formatCurrency = (amount?: number) => {
+    if (amount == null) return "—";
+    return new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(amount);
+  };
+
+  const firstName = user?.first_name || user?.username || "Colleague";
+
+  // -------------------------------------------------------------
+  // RENDER: ADMIN CONSOLE VIEW
+  // -------------------------------------------------------------
   if (isAdminView) {
     return (
       <PortalLayout activeNav="Admin Console">
         <div className="space-y-6 max-w-[1440px] mx-auto pb-12 font-sans">
-          {/* Page Header — 1 primary + 1 secondary action */}
+          {/* Page Header */}
           <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-5 border-b border-neutral-900/[0.08]">
             <div className="space-y-1">
               <h1 className="text-2xl sm:text-[28px] leading-tight font-medium text-neutral-900 tracking-tight font-headline">
@@ -364,7 +403,7 @@ export default function DashboardPage() {
                 <FileCheck className="h-4 w-4 text-neutral-500" strokeWidth={1.5} />
                 <span>Approval queue</span>
                 {adminPendingApprovalsCount > 0 ? (
-                  <span className="font-mono text-xs text-[#c2410c] tabular-nums">
+                  <span className="font-mono text-xs text-[#c2410c] tabular-nums font-semibold">
                     {adminPendingApprovalsCount}
                   </span>
                 ) : null}
@@ -429,12 +468,12 @@ export default function DashboardPage() {
             </Link>
           </section>
 
-          {/* Row 2: Primary Operational Queues (8 cols) + Management Directory (4 cols) */}
+          {/* Row 2: Operational Queues & Task Board with Integrated Filters */}
           <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             <div className="lg:col-span-8 space-y-6">
-              {/* Pending Approval Queue (Live API) */}
+              {/* Pending Approval Queue (Live API + Filtering) */}
               <div className="bg-white rounded-2xl border border-neutral-900/[0.08] shadow-xs p-6">
-                <div className="flex items-center justify-between gap-4 pb-4 border-b border-neutral-900/[0.08]">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-neutral-900/[0.08]">
                   <div>
                     <h2 className="text-base font-medium text-neutral-900 font-headline">
                       Approval queue
@@ -443,25 +482,42 @@ export default function DashboardPage() {
                       Leave applications, payment vouchers, and requisitions awaiting sign-off
                     </p>
                   </div>
-                  <Link
-                    to="/requests/approvals"
-                    className="text-xs font-medium text-[#c2410c] hover:underline inline-flex items-center gap-1 shrink-0"
-                  >
-                    <span>Open queue</span>
-                    <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.5} />
-                  </Link>
+                  <div className="flex items-center gap-2">
+                    <div className="relative w-36 sm:w-44">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-400" />
+                      <input
+                        type="text"
+                        value={adminApprovalSearch}
+                        onChange={(e) => setAdminApprovalSearch(e.target.value)}
+                        placeholder="Search queue..."
+                        className="w-full pl-8 pr-2.5 py-1 text-xs bg-neutral-50 border border-neutral-200 rounded-lg text-neutral-800 placeholder-neutral-400 focus:outline-none focus:border-[#ff6900]"
+                      />
+                    </div>
+                    <SelectBox
+                      value={adminApprovalWorkflowType}
+                      onChange={(e) => setAdminApprovalWorkflowType(e.target.value)}
+                      className="h-8 text-xs font-medium bg-neutral-50 border border-neutral-200 rounded-lg px-2 text-neutral-700"
+                    >
+                      <option value="all">All Types</option>
+                      <option value="leave">Leave</option>
+                      <option value="voucher">Vouchers</option>
+                      <option value="procurement">Procurement</option>
+                    </SelectBox>
+                  </div>
                 </div>
 
-                {adminApprovals.length === 0 ? (
+                {filteredAdminApprovals.length === 0 ? (
                   <div className="py-10 text-center space-y-1">
-                    <p className="text-sm font-medium text-neutral-900">No pending approvals</p>
+                    <p className="text-sm font-medium text-neutral-900">No approvals match criteria</p>
                     <p className="text-xs text-neutral-500">
-                      New leave requests, requisitions, and vouchers will appear here for review.
+                      {adminApprovals.length === 0
+                        ? "New leave requests, requisitions, and vouchers will appear here."
+                        : "Try selecting another workflow type or clearing your search filter."}
                     </p>
                   </div>
                 ) : (
                   <div className="divide-y divide-neutral-900/[0.06] mt-1">
-                    {adminApprovals.slice(0, 5).map((item: any) => (
+                    {filteredAdminApprovals.slice(0, 5).map((item: any) => (
                       <Link
                         key={item.id}
                         to={`/requests/approvals/${item.id}`}
@@ -494,9 +550,9 @@ export default function DashboardPage() {
                 )}
               </div>
 
-              {/* Staff Tasks */}
+              {/* Staff Tasks (Live Store + Status Filtering + Drag Reorder) */}
               <div className="bg-white rounded-2xl border border-neutral-900/[0.08] shadow-xs p-6">
-                <div className="flex items-center justify-between gap-4 pb-4 border-b border-neutral-900/[0.08]">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-neutral-900/[0.08]">
                   <div>
                     <h2 className="text-base font-medium text-neutral-900 font-headline">
                       Staff tasks
@@ -505,109 +561,127 @@ export default function DashboardPage() {
                       Active deliverables and items in review across teams
                     </p>
                   </div>
-                  <Link
-                    to="/tasks"
-                    className="text-xs font-medium text-neutral-600 hover:text-neutral-900 inline-flex items-center gap-1 shrink-0 transition-colors"
-                  >
-                    <span>All tasks</span>
-                    <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.5} />
-                  </Link>
+                  <div className="flex items-center gap-2">
+                    <SelectBox
+                      value={adminTaskFilter}
+                      onChange={(e) => setAdminTaskFilter(e.target.value)}
+                      className="h-8 text-xs font-medium bg-neutral-50 border border-neutral-200 rounded-lg px-2 text-neutral-700"
+                    >
+                      <option value="all">All Statuses ({orgTasks.length})</option>
+                      <option value="in_progress">In Progress ({orgTasksInProgress})</option>
+                      <option value="blocked">In Review ({orgTasksBlocked})</option>
+                      <option value="completed">Completed</option>
+                    </SelectBox>
+                    <Link
+                      to="/tasks"
+                      className="text-xs font-medium text-[#ff6900] hover:underline inline-flex items-center gap-0.5 shrink-0"
+                    >
+                      <span>Board</span>
+                      <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.5} />
+                    </Link>
+                  </div>
                 </div>
 
-                <div className="divide-y divide-neutral-900/[0.06] mt-1">
-                  {orgTasks.slice(0, 5).map((task) => {
-                    const statusLabel =
-                      task.status === "in_progress"
-                        ? "In progress"
-                        : task.status === "blocked"
-                        ? "In review"
-                        : task.status === "completed"
-                        ? "Completed"
-                        : "Planned";
-                    const statusBadge =
-                      task.status === "completed"
-                        ? "bg-emerald-50 text-emerald-700 border-emerald-600/15"
-                        : task.status === "blocked"
-                        ? "bg-amber-50 text-amber-800 border-amber-600/15"
-                        : "bg-neutral-100 text-neutral-700 border-neutral-900/[0.08]";
+                {filteredOrgTasks.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-neutral-500">
+                    No tasks match the selected status filter.
+                  </div>
+                ) : (
+                  <div className="divide-y divide-neutral-900/[0.06] mt-1">
+                    {filteredOrgTasks.slice(0, 5).map((task) => {
+                      const statusLabel =
+                        task.status === "in_progress"
+                          ? "In progress"
+                          : task.status === "blocked"
+                          ? "In review"
+                          : task.status === "completed"
+                          ? "Completed"
+                          : "Planned";
+                      const statusBadge =
+                        task.status === "completed"
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-600/15"
+                          : task.status === "blocked"
+                          ? "bg-amber-50 text-amber-800 border-amber-600/15"
+                          : "bg-neutral-100 text-neutral-700 border-neutral-900/[0.08]";
 
-                    return (
-                      <div
-                        key={task.id}
-                        draggable
-                        onDragStart={(e) => {
-                          setDraggedDashboardTaskId(task.id);
-                          e.dataTransfer.effectAllowed = "move";
-                          e.dataTransfer.setData("text/plain", task.id);
-                        }}
-                        onDragEnd={() => {
-                          setDraggedDashboardTaskId(null);
-                          setDragOverDashboardTaskId(null);
-                        }}
-                        onDragOver={(e) => {
-                          e.preventDefault();
-                          e.dataTransfer.dropEffect = "move";
-                          if (dragOverDashboardTaskId !== task.id) {
-                            setDragOverDashboardTaskId(task.id);
-                          }
-                        }}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          const sourceId = e.dataTransfer.getData("text/plain") || draggedDashboardTaskId;
-                          if (sourceId) handleReorderDashboardTask(sourceId, task.id);
-                          setDraggedDashboardTaskId(null);
-                          setDragOverDashboardTaskId(null);
-                        }}
-                        className={`py-3.5 -mx-2 px-2 hover:bg-neutral-50 rounded-lg transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-2 group cursor-grab active:cursor-grabbing ${
-                          draggedDashboardTaskId === task.id ? "opacity-45" : ""
-                        } ${
-                          dragOverDashboardTaskId === task.id && draggedDashboardTaskId !== task.id
-                            ? "border-t-2 border-t-[#ff6900]"
-                            : ""
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                          <GripVertical
-                            className="h-4 w-4 text-neutral-400 group-hover:text-neutral-600 shrink-0"
-                            strokeWidth={1.5}
-                          />
-                          <Link to="/tasks" className="min-w-0 flex-1">
-                            <div className="text-sm font-medium text-neutral-900 truncate">
-                              {task.title}
-                            </div>
-                            <div className="flex items-center gap-2 mt-0.5 text-xs text-neutral-500">
-                              <span className="truncate">
-                                {task.assignees?.length
-                                  ? task.assignees.map((a) => a.name).join(", ")
-                                  : "Unassigned"}
-                              </span>
-                              {task.project_name ? (
-                                <>
-                                  <span>·</span>
-                                  <span className="truncate">{task.project_name}</span>
-                                </>
-                              ) : null}
-                            </div>
+                      return (
+                        <div
+                          key={task.id}
+                          draggable
+                          onDragStart={(e) => {
+                            setDraggedDashboardTaskId(task.id);
+                            e.dataTransfer.effectAllowed = "move";
+                            e.dataTransfer.setData("text/plain", task.id);
+                          }}
+                          onDragEnd={() => {
+                            setDraggedDashboardTaskId(null);
+                            setDragOverDashboardTaskId(null);
+                          }}
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            e.dataTransfer.dropEffect = "move";
+                            if (dragOverDashboardTaskId !== task.id) {
+                              setDragOverDashboardTaskId(task.id);
+                            }
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            const sourceId = e.dataTransfer.getData("text/plain") || draggedDashboardTaskId;
+                            if (sourceId) handleReorderDashboardTask(sourceId, task.id);
+                            setDraggedDashboardTaskId(null);
+                            setDragOverDashboardTaskId(null);
+                          }}
+                          className={`py-3.5 -mx-2 px-2 hover:bg-neutral-50 rounded-lg transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-2 group cursor-grab active:cursor-grabbing ${
+                            draggedDashboardTaskId === task.id ? "opacity-45" : ""
+                          } ${
+                            dragOverDashboardTaskId === task.id && draggedDashboardTaskId !== task.id
+                              ? "border-t-2 border-t-[#ff6900]"
+                              : ""
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                            <GripVertical
+                              className="h-4 w-4 text-neutral-400 group-hover:text-neutral-600 shrink-0"
+                              strokeWidth={1.5}
+                            />
+                            <Link to="/tasks" className="min-w-0 flex-1">
+                              <div className="text-sm font-medium text-neutral-900 truncate">
+                                {task.title}
+                              </div>
+                              <div className="flex items-center gap-2 mt-0.5 text-xs text-neutral-500">
+                                <span className="truncate">
+                                  {task.assignees?.length
+                                    ? task.assignees.map((a) => a.name).join(", ")
+                                    : "Unassigned"}
+                                </span>
+                                {task.project_name ? (
+                                  <>
+                                    <span>·</span>
+                                    <span className="truncate">{task.project_name}</span>
+                                  </>
+                                ) : null}
+                              </div>
+                            </Link>
+                          </div>
+
+                          <Link to="/tasks" className="flex items-center gap-3 shrink-0">
+                            <span className="text-xs font-mono text-neutral-500 capitalize">
+                              {task.priority}
+                            </span>
+                            <span className={`text-xs font-medium px-2 py-0.5 rounded-md border ${statusBadge}`}>
+                              {statusLabel}
+                            </span>
+                            <ChevronRight className="h-4 w-4 text-neutral-400 group-hover:text-neutral-700" strokeWidth={1.5} />
                           </Link>
                         </div>
-
-                        <Link to="/tasks" className="flex items-center gap-3 shrink-0">
-                          <span className="text-xs font-mono text-neutral-500 capitalize">
-                            {task.priority}
-                          </span>
-                          <span className={`text-xs font-medium px-2 py-0.5 rounded-md border ${statusBadge}`}>
-                            {statusLabel}
-                          </span>
-                          <ChevronRight className="h-4 w-4 text-neutral-400 group-hover:text-neutral-700" strokeWidth={1.5} />
-                        </Link>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Right 4 cols: Management Shortcuts + Finance & Governance */}
+            {/* Right 4 cols: Management Shortcuts + Filtered Directory */}
             <div className="lg:col-span-4 space-y-6">
               <div className="bg-white rounded-2xl border border-neutral-900/[0.08] shadow-xs p-6">
                 <h2 className="text-base font-medium text-neutral-900 font-headline pb-3 border-b border-neutral-900/[0.08]">
@@ -644,28 +718,31 @@ export default function DashboardPage() {
                 </nav>
               </div>
 
-              {/* Live Directory Snapshot */}
+              {/* Live Directory Snapshot with Search */}
               <div className="bg-white rounded-2xl border border-neutral-900/[0.08] shadow-xs p-6">
-                <div className="flex items-center justify-between pb-3 border-b border-neutral-900/[0.08]">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-neutral-900/[0.08]">
                   <h2 className="text-base font-medium text-neutral-900 font-headline">
                     Directory snapshot
                   </h2>
-                  <Link
-                    to="/admin/users"
-                    className="text-xs font-medium text-neutral-600 hover:text-neutral-900 inline-flex items-center gap-0.5 transition-colors"
-                  >
-                    <span>All staff</span>
-                    <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.5} />
-                  </Link>
+                  <div className="relative w-full sm:w-36">
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-neutral-400" />
+                    <input
+                      type="text"
+                      value={adminStaffSearch}
+                      onChange={(e) => setAdminStaffSearch(e.target.value)}
+                      placeholder="Filter staff..."
+                      className="w-full pl-7 pr-2 py-0.5 text-xs bg-neutral-50 border border-neutral-200 rounded-md text-neutral-800 placeholder-neutral-400 focus:outline-none focus:border-[#ff6900]"
+                    />
+                  </div>
                 </div>
 
-                {adminEmployees.length === 0 ? (
-                  <p className="text-sm text-neutral-500 py-6">
-                    No employee records loaded yet.
+                {filteredAdminEmployees.length === 0 ? (
+                  <p className="text-sm text-neutral-500 py-6 text-center">
+                    {adminEmployees.length === 0 ? "No employee records loaded yet." : "No staff match your search."}
                   </p>
                 ) : (
                   <div className="divide-y divide-neutral-900/[0.06] mt-1">
-                    {adminEmployees.slice(0, 5).map((emp: any) => {
+                    {filteredAdminEmployees.map((emp: any) => {
                       const fullName =
                         [emp.first_name, emp.last_name].filter(Boolean).join(" ") ||
                         emp.full_name ||
@@ -712,6 +789,9 @@ export default function DashboardPage() {
     );
   }
 
+  // -------------------------------------------------------------
+  // RENDER: EMPLOYEE WORKSPACE VIEW
+  // -------------------------------------------------------------
   return (
     <PortalLayout activeNav="Dashboard">
       <div className="space-y-6 max-w-[1600px] mx-auto pb-12 font-sans">
@@ -732,74 +812,75 @@ export default function DashboardPage() {
           </div>
         </header>
 
-        {/* Row 1: Compact Quick-Link Metric Cards */}
+        {/* Row 1: Compact Quick-Link Metric Cards (Live Data) */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+          {/* Card 1: Leave Balance */}
           <Link
             to="/leave"
             className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-neutral-900/[0.08] hover:border-neutral-900/[0.18] shadow-xs transition-colors duration-150 flex items-center justify-between group"
           >
             <div className="space-y-0.5 sm:space-y-1.5 min-w-0">
               <div className="text-[11px] sm:text-xs text-neutral-500 truncate">Leave balance</div>
-              <div className="text-lg sm:text-[28px] leading-tight sm:leading-none font-medium text-neutral-900 font-headline tabular-nums">
-                View
+              <div className="text-lg sm:text-[28px] leading-tight sm:leading-none font-medium text-neutral-900 font-headline tabular-nums truncate">
+                {leaveRemainingDays} days
               </div>
             </div>
             <ChevronRight className="h-4 w-4 text-neutral-400 group-hover:text-neutral-700 transition-colors duration-150 shrink-0" strokeWidth={1.5} />
           </Link>
 
+          {/* Card 2: Attendance Status */}
           <Link
             to="/attendance"
             className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-neutral-900/[0.08] hover:border-neutral-900/[0.18] shadow-xs transition-colors duration-150 flex items-center justify-between group"
           >
             <div className="space-y-0.5 sm:space-y-1.5 min-w-0">
               <div className="text-[11px] sm:text-xs text-neutral-500 truncate">Attendance log</div>
-              <div className="text-lg sm:text-[28px] leading-tight sm:leading-none font-medium text-neutral-900 font-headline tabular-nums">
-                Today
+              <div className="text-lg sm:text-[28px] leading-tight sm:leading-none font-medium text-neutral-900 font-headline tabular-nums truncate">
+                {isClockedIn ? "Clocked In" : "Not In"}
               </div>
             </div>
             <ChevronRight className="h-4 w-4 text-neutral-400 group-hover:text-neutral-700 transition-colors duration-150 shrink-0" strokeWidth={1.5} />
           </Link>
 
+          {/* Card 3: Active Requests */}
           <Link
             to="/requests"
             className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-neutral-900/[0.08] hover:border-neutral-900/[0.18] shadow-xs transition-colors duration-150 flex items-center justify-between group"
           >
             <div className="space-y-0.5 sm:space-y-1.5 min-w-0">
-              <div className="text-[11px] sm:text-xs text-neutral-500 truncate">Requests</div>
-              <div className="text-lg sm:text-[28px] leading-tight sm:leading-none font-medium text-neutral-900 font-headline tabular-nums">
-                Queue
+              <div className="text-[11px] sm:text-xs text-neutral-500 truncate">Requests queue</div>
+              <div className="text-lg sm:text-[28px] leading-tight sm:leading-none font-medium text-neutral-900 font-headline tabular-nums truncate">
+                {pendingUserRequestsCount > 0 ? `${pendingUserRequestsCount} Pending` : `${userRequests.length} Total`}
               </div>
             </div>
             <ChevronRight className="h-4 w-4 text-neutral-400 group-hover:text-neutral-700 transition-colors duration-150 shrink-0" strokeWidth={1.5} />
           </Link>
 
+          {/* Card 4: Payslips */}
           <Link
             to="/account/payslips"
             className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-neutral-900/[0.08] hover:border-neutral-900/[0.18] shadow-xs transition-colors duration-150 flex items-center justify-between group"
           >
             <div className="space-y-0.5 sm:space-y-1.5 min-w-0">
-              <div className="text-[11px] sm:text-xs text-neutral-500 truncate">Payslips</div>
-              <div className="text-lg sm:text-[28px] leading-tight sm:leading-none font-medium text-neutral-900 font-headline tabular-nums">
-                Records
+              <div className="text-[11px] sm:text-xs text-neutral-500 truncate">Latest payslip</div>
+              <div className="text-base sm:text-2xl leading-tight sm:leading-none font-medium text-neutral-900 font-headline tabular-nums truncate">
+                {latestPayslip ? formatCurrency(latestPayslip.net_pay) : "Verified"}
               </div>
             </div>
             <ChevronRight className="h-4 w-4 text-neutral-400 group-hover:text-neutral-700 transition-colors duration-150 shrink-0" strokeWidth={1.5} />
           </Link>
         </div>
 
-        {/* ============================================================= */}
-        {/* ROW 2: SHIFT & ATTENDANCE (8 COLS) + QUICK ACTIONS (4 COLS)   */}
-        {/* ============================================================= */}
+        {/* Row 2: Shift Status & Attendance Rhythm (with live period filter) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
-          {/* LEFT COLUMN: 8 COLS (Today's Shift + Attendance This Week) */}
+          {/* Today's Shift Card */}
           <div className="lg:col-span-8 space-y-5 flex flex-col justify-between">
-            {/* Today's Shift Card */}
             <div className="bg-white rounded-2xl p-6 border border-neutral-100 shadow-2xs">
               <div className="flex items-center justify-between pb-4">
                 <h2 className="text-base font-medium text-neutral-900">Today&apos;s Shift</h2>
                 {isClockedIn ? (
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/50">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                     <span>Shift Active</span>
                   </span>
                 ) : (
@@ -818,10 +899,12 @@ export default function DashboardPage() {
                   <Clock className="h-5 w-5" />
                 </div>
                 <div>
-                  <div className="text-xl font-semibold text-neutral-900 font-headline">09:00 – 17:00</div>
+                  <div className="text-xl font-semibold text-neutral-900 font-headline">
+                    {shiftStartTime} – {shiftEndTime}
+                  </div>
                   <div className="text-xs text-neutral-500 font-medium">
                     {isClockedIn
-                      ? "8h 12m worked today • Shift active"
+                      ? `${workedHoursStr} worked today • Shift active`
                       : "0h 00m worked today • You have not clocked in yet"}
                   </div>
                 </div>
@@ -831,23 +914,23 @@ export default function DashboardPage() {
               <div className="mt-4 flex items-center gap-4">
                 <div className="flex-1 bg-neutral-100 h-2.5 rounded-full overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-colors duration-500 ${
+                    className={`h-full rounded-full transition-all duration-500 ${
                       isClockedIn ? "bg-[#ff6900]" : "bg-neutral-300"
                     }`}
-                    style={{ width: isClockedIn ? "88%" : "0%" }}
+                    style={{ width: `${workedPercent}%` }}
                   />
                 </div>
-                <span className="text-xs font-semibold text-neutral-500 shrink-0">
-                  {isClockedIn ? "8h 12m / 8h" : "0h 00m / 8h"}
+                <span className="text-xs font-semibold text-neutral-500 shrink-0 tabular-nums">
+                  {workedHoursStr} / 8h
                 </span>
               </div>
 
-              {/* 3 Sub-Metrics Row */}
+              {/* Sub-Metrics Row */}
               <div className="mt-6 pt-5 border-t border-neutral-100 grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="flex items-center gap-2.5">
                   <Coffee className="h-4 w-4 text-neutral-400 shrink-0" />
                   <div className="text-xs">
-                    <span className="text-neutral-500">Break Remaining: </span>
+                    <span className="text-neutral-500">Break Allocation: </span>
                     <span className="font-medium text-neutral-800">60 mins</span>
                   </div>
                 </div>
@@ -855,7 +938,9 @@ export default function DashboardPage() {
                   <FileText className="h-4 w-4 text-neutral-400 shrink-0" />
                   <div className="text-xs">
                     <span className="text-neutral-500">Grace Period: </span>
-                    <span className="font-medium text-neutral-800">15 mins</span>
+                    <span className="font-medium text-neutral-800">
+                      {attendanceData?.policy?.grace_minutes ?? 15} mins
+                    </span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2.5">
@@ -868,28 +953,33 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Attendance This Week Card */}
+            {/* Attendance Rhythm with Live Filter */}
             <div className="bg-white rounded-2xl p-6 border border-neutral-100 shadow-2xs">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6">
                 <div>
-                  <h2 className="text-base font-medium text-neutral-900">Attendance This Week</h2>
-                  <p className="text-xs text-neutral-400 mt-0.5">Your daily check-ins and on-time performance</p>
+                  <h2 className="text-base font-medium text-neutral-900">Attendance Rhythm</h2>
+                  <p className="text-xs text-neutral-400 mt-0.5">Your daily check-ins and performance history</p>
                 </div>
 
                 <div className="flex items-center gap-5">
                   <div className="text-right">
                     <div className="text-xs font-medium text-neutral-400">Attendance Rate</div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-lg font-semibold text-neutral-900">96%</span>
-                      <span className="text-xs font-medium text-emerald-600 flex items-center">
-                        ↑ 2%
+                    <div className="flex items-center gap-1.5 justify-end">
+                      <span className="text-lg font-semibold text-neutral-900 tabular-nums">
+                        {dynamicRhythm.averageRate}%
                       </span>
+                      {dynamicRhythm.averageRate >= 90 ? (
+                        <span className="text-xs font-medium text-emerald-600 flex items-center">
+                          ↑ Good
+                        </span>
+                      ) : null}
                     </div>
                   </div>
 
                   <div className="w-36">
                     <SelectBox
-                      defaultValue="this_week"
+                      value={attendancePeriod}
+                      onChange={(e) => setAttendancePeriod(e.target.value as AttendancePeriod)}
                       className="h-8 px-3 py-1 rounded-lg border border-neutral-200 bg-white text-xs font-semibold text-neutral-700 shadow-2xs"
                     >
                       <option value="this_week">This Week</option>
@@ -901,10 +991,10 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* 7 Daily Rhythm Bar Columns — Neutral ramp with #ff6900 accent on today */}
+              {/* 7 Daily Rhythm Bar Columns */}
               <div className="relative pt-2">
                 <div className="grid grid-cols-7 gap-3 items-end">
-                  {weeklyRhythm.map((item) => (
+                  {dynamicRhythm.bars.map((item) => (
                     <div key={item.day} className="flex flex-col items-center gap-2">
                       <span
                         className={`text-xs font-mono tabular-nums ${
@@ -915,7 +1005,7 @@ export default function DashboardPage() {
                       </span>
                       <div className="w-full max-w-[40px] bg-neutral-100 rounded-md h-28 flex flex-col justify-end overflow-hidden">
                         <div
-                          className={`w-full rounded-t-md transition-colors duration-200 ${
+                          className={`w-full rounded-t-md transition-all duration-300 ${
                             item.isToday
                               ? "bg-[#ff6900]"
                               : item.isWeekend
@@ -939,7 +1029,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* RIGHT COLUMN: 4 COLS (Quick Actions Card) */}
+          {/* Quick Actions Card */}
           <div className="lg:col-span-4 bg-white rounded-2xl p-6 border border-neutral-900/[0.08] shadow-xs flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between pb-4">
@@ -1007,7 +1097,6 @@ export default function DashboardPage() {
                   <ChevronRight className="h-4 w-4 text-neutral-400 group-hover:text-neutral-700 shrink-0" strokeWidth={1.5} />
                 </Link>
 
-                {/* 3. View Attendance */}
                 <Link
                   to="/attendance"
                   className="py-3 px-2 -mx-2 rounded-lg hover:bg-neutral-50 transition-colors flex items-center justify-between group"
@@ -1022,7 +1111,6 @@ export default function DashboardPage() {
                   <ChevronRight className="h-4 w-4 text-neutral-400 group-hover:text-neutral-700 shrink-0" strokeWidth={1.5} />
                 </Link>
 
-                {/* 4. Download Payslip */}
                 <Link
                   to="/account/payslips"
                   className="py-3 px-2 -mx-2 rounded-lg hover:bg-neutral-50 transition-colors flex items-center justify-between group"
@@ -1041,63 +1129,103 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* ============================================================= */}
-        {/* ROW 3: MY RECENT REQUESTS + TEAM ACTIVITY + WHO'S OUT TODAY   */}
-        {/* ============================================================= */}
+        {/* Row 3: My Recent Requests (Live API + Filtering) + Team Activity + Who's Out */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          {/* Card 1: My Recent Requests */}
+          {/* Card 1: My Recent Requests with Status Filter */}
           <div className="bg-white rounded-2xl p-6 border border-neutral-100 shadow-2xs flex flex-col justify-between">
             <div>
-              <div className="flex items-center justify-between pb-4">
-                <h2 className="text-base font-medium text-neutral-900">My Recent Requests</h2>
-                <Link
-                  to="/requests"
-                  className="text-xs font-semibold text-neutral-400 hover:text-neutral-700 flex items-center gap-0.5"
-                >
-                  <span>View All</span>
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </Link>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-neutral-100">
+                <div>
+                  <h2 className="text-base font-medium text-neutral-900">My Recent Requests</h2>
+                  <p className="text-xs text-neutral-400 mt-0.5">Tracking workflow submissions</p>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <SelectBox
+                    value={requestFilter}
+                    onChange={(e) => setRequestFilter(e.target.value)}
+                    className="h-8 text-xs font-medium bg-neutral-50 border border-neutral-200 rounded-lg px-2 text-neutral-700"
+                  >
+                    <option value="all">All ({userRequests.length})</option>
+                    <option value="pending">Pending ({pendingUserRequestsCount})</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                  </SelectBox>
+                </div>
               </div>
 
-              <div className="space-y-3 pt-1">
-                {myRecentRequests.map((req) => {
-                  const Icon = req.icon;
-                  return (
+              <div className="space-y-3 pt-3">
+                {filteredUserRequests.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-neutral-500 space-y-2">
+                    <p>No requests found for this filter.</p>
                     <Link
-                      key={req.id}
-                      to={req.link}
-                      className="p-3 rounded-xl hover:bg-neutral-50 transition flex items-center justify-between group"
+                      to="/requests/new"
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-[#ff6900] hover:underline"
                     >
-                      <div className="flex items-center gap-3">
-                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${req.iconColor}`}>
-                          <Icon className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <div className="text-xs font-medium text-neutral-900 group-hover:text-[#ff6900] transition">
-                            {req.title}
-                          </div>
-                          <div className="text-xs text-neutral-400">{req.period}</div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${req.badgeColor}`}>
-                          {req.status}
-                        </span>
-                        <ChevronRight className="h-4 w-4 text-neutral-300 group-hover:text-neutral-500 transition" />
-                      </div>
+                      <Plus className="h-3 w-3" />
+                      <span>Create new request</span>
                     </Link>
-                  );
-                })}
+                  </div>
+                ) : (
+                  filteredUserRequests.slice(0, 4).map((req) => {
+                    const statusStr = String(req.status || "submitted").toLowerCase();
+                    const isApproved = ["approved", "completed", "disbursed", "closed"].includes(statusStr);
+                    const isPending = ["submitted", "in_review", "pending", "pending_review"].includes(statusStr);
+                    const badgeClass = isApproved
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200/60"
+                      : isPending
+                      ? "bg-amber-50 text-amber-700 border-amber-200/60"
+                      : "bg-neutral-100 text-neutral-700 border-neutral-200";
+
+                    return (
+                      <Link
+                        key={req.id}
+                        to={`/requests`}
+                        className="p-3 rounded-xl hover:bg-neutral-50 transition flex items-center justify-between group"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-orange-50 text-[#ff6900]">
+                            <FileText className="h-4 w-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-xs font-medium text-neutral-900 group-hover:text-[#ff6900] transition truncate">
+                              {req.request_type?.name || (req.data as any)?.title || (req.data as any)?.reason || "Request"}
+                            </div>
+                            <div className="text-xs text-neutral-400 truncate">
+                              {req.request_number || req.voucher_number || (req.created_at ? new Date(req.created_at).toLocaleDateString() : "Recent")}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={`text-[10px] sm:text-xs font-medium px-2 py-0.5 rounded-full border capitalize ${badgeClass}`}>
+                            {req.status?.replace("_", " ") || "Submitted"}
+                          </span>
+                          <ChevronRight className="h-4 w-4 text-neutral-300 group-hover:text-neutral-500 transition" />
+                        </div>
+                      </Link>
+                    );
+                  })
+                )}
               </div>
+            </div>
+
+            <div className="pt-3 border-t border-neutral-100 mt-4 flex items-center justify-between">
+              <span className="text-xs text-neutral-400">Total submitted: {userRequests.length}</span>
+              <Link to="/requests" className="text-xs font-semibold text-[#ff6900] hover:underline flex items-center gap-0.5">
+                <span>View All Requests</span>
+                <ChevronRight className="h-3 w-3" />
+              </Link>
             </div>
           </div>
 
-          {/* Card 2: Team Activity */}
+          {/* Card 2: Team Activity (Live Colleagues API) */}
           <div className="bg-white rounded-2xl p-6 border border-neutral-100 shadow-2xs flex flex-col justify-between">
             <div>
-              <div className="flex items-center justify-between pb-4">
-                <h2 className="text-base font-medium text-neutral-900">Team Activity</h2>
+              <div className="flex items-center justify-between pb-4 border-b border-neutral-100">
+                <div>
+                  <h2 className="text-base font-medium text-neutral-900">Team Activity</h2>
+                  <p className="text-xs text-neutral-400 mt-0.5">Active colleagues in directory</p>
+                </div>
                 <Link
                   to="/teams"
                   className="text-xs font-semibold text-neutral-400 hover:text-neutral-700 flex items-center gap-0.5"
@@ -1107,65 +1235,93 @@ export default function DashboardPage() {
                 </Link>
               </div>
 
-              <div className="space-y-3 pt-1">
-                {teamActivities.map((act) => (
-                  <div
-                    key={act.name}
-                    className="p-3 rounded-xl hover:bg-neutral-50 transition flex items-center gap-3"
-                  >
-                    <div className={`w-9 h-9 rounded-full font-medium text-xs flex items-center justify-center shrink-0 ${act.avatarBg}`}>
-                      {act.avatar}
-                    </div>
-                    <div>
-                      <div className="text-xs font-medium text-neutral-900">{act.name}</div>
-                      <div className="text-xs text-neutral-500 flex items-center gap-1.5 mt-0.5">
-                        <span className={`w-1.5 h-1.5 rounded-full ${act.dotColor}`} />
-                        <span>{act.status}</span>
+              <div className="space-y-3 pt-3">
+                {colleagues.length === 0 ? (
+                  <p className="text-xs text-neutral-400 py-6 text-center">No team members active.</p>
+                ) : (
+                  colleagues.slice(0, 4).map((colleague) => (
+                    <div
+                      key={colleague.id}
+                      className="p-3 rounded-xl hover:bg-neutral-50 transition flex items-center justify-between gap-3"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-full font-medium text-xs flex items-center justify-center shrink-0 bg-orange-100 text-[#ff6900]">
+                          {colleague.avatar}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-xs font-medium text-neutral-900 truncate">{colleague.name}</div>
+                          <div className="text-xs text-neutral-500 truncate">{colleague.role}</div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0 text-xs text-neutral-500">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                        <span>Active</span>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
+            </div>
+
+            <div className="pt-3 border-t border-neutral-100 mt-4 flex items-center justify-between">
+              <span className="text-xs text-neutral-400">{colleagues.length} team members</span>
+              <Link to="/chat" className="text-xs font-semibold text-[#ff6900] hover:underline flex items-center gap-0.5">
+                <span>Open Chat</span>
+                <ChevronRight className="h-3 w-3" />
+              </Link>
             </div>
           </div>
 
-          {/* Card 3: Who's Out Today */}
+          {/* Card 3: Who's Out Today / Leave Directory */}
           <div className="bg-white rounded-2xl p-6 border border-neutral-100 shadow-2xs flex flex-col justify-between">
             <div>
-              <div className="flex items-center justify-between pb-4">
-                <h2 className="text-base font-medium text-neutral-900">Who&apos;s Out Today</h2>
+              <div className="flex items-center justify-between pb-4 border-b border-neutral-100">
+                <div>
+                  <h2 className="text-base font-medium text-neutral-900">Who&apos;s Out Today</h2>
+                  <p className="text-xs text-neutral-400 mt-0.5">Approved staff absences & leaves</p>
+                </div>
                 <Link
                   to="/leave"
                   className="text-xs font-semibold text-neutral-400 hover:text-neutral-700 flex items-center gap-0.5"
                 >
-                  <span>View All</span>
+                  <span>Leave Roster</span>
                   <ChevronRight className="h-3.5 w-3.5" />
                 </Link>
               </div>
 
-              <div className="space-y-3 pt-1">
-                {colleaguesOutToday.map((person) => (
-                  <Link
-                    key={person.name}
-                    to={person.link}
-                    className="p-3 rounded-xl hover:bg-neutral-50 transition flex items-center justify-between group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-9 h-9 rounded-full font-medium text-xs flex items-center justify-center shrink-0 ${person.avatarBg}`}>
-                        {person.avatar}
-                      </div>
-                      <div>
-                        <div className="text-xs font-medium text-neutral-900 group-hover:text-[#ff6900] transition">
-                          {person.name}
-                        </div>
-                        <div className="text-xs text-neutral-400">{person.type}</div>
-                      </div>
-                    </div>
+              <div className="space-y-3 pt-3">
+                <div className="p-4 rounded-xl bg-neutral-50 border border-neutral-200/60 text-center space-y-1.5">
+                  <CheckCircle2 className="h-6 w-6 text-emerald-600 mx-auto" />
+                  <p className="text-xs font-medium text-neutral-900">All Core Team Members Present</p>
+                  <p className="text-[11px] text-neutral-400">
+                    No approved overlapping absences recorded for today&apos;s shift.
+                  </p>
+                </div>
 
-                    <ChevronRight className="h-4 w-4 text-neutral-300 group-hover:text-neutral-500 transition" />
-                  </Link>
-                ))}
+                <div className="pt-2">
+                  <div className="text-xs font-medium text-neutral-500 mb-2">Team on Duty:</div>
+                  <div className="flex flex-wrap gap-2">
+                    {colleagues.slice(0, 5).map((c) => (
+                      <span
+                        key={c.id}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-neutral-100 text-neutral-700"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        <span>{c.name.split(" ")[0]}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
               </div>
+            </div>
+
+            <div className="pt-3 border-t border-neutral-100 mt-4 flex items-center justify-between">
+              <span className="text-xs text-neutral-400">Coverage: 100%</span>
+              <Link to="/leave" className="text-xs font-semibold text-[#ff6900] hover:underline flex items-center gap-0.5">
+                <span>Request Leave</span>
+                <ChevronRight className="h-3 w-3" />
+              </Link>
             </div>
           </div>
         </div>

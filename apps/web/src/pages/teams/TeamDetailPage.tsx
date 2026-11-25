@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { Link } from "@/shared/router-adapter";
-import { PortalLayout } from "@/components/layout/PortalLayout";
+import { PortalLayout, useWorkspace } from "@/components/layout/PortalLayout";
 import { useAuth } from "@/shared/context/AuthProvider";
 import { useCachedQuery, resourceApi, workApi } from "@/shared/lib/core";
 import { getWorkspaceProfile } from "@/shared/api/workspace-api";
@@ -25,6 +25,7 @@ import {
 export default function TeamDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const { isAdmin } = useWorkspace();
   const [activeTab, setActiveTab] = useState("overview");
   const [budgetCreateAttempt, setBudgetCreateAttempt] = useState(0);
 
@@ -383,7 +384,7 @@ export default function TeamDetailPage() {
                 Initiatives and project workspaces scoped to this group.
               </p>
             </div>
-            {canSeeAllRequests && (
+            {isAdmin && (
               <Link
                 to={`/admin/projects?create=1${orgId ? `&organization_id=${orgId}` : ""}`}
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-neutral-900 text-white text-xs font-medium hover:bg-neutral-800 transition"

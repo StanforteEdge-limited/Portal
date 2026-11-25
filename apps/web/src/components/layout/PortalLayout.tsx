@@ -386,13 +386,6 @@ export const EMPLOYEE_PRIMARY_NAV_ITEMS: NavItemDef[] = [
 
 export const EMPLOYEE_SECONDARY_NAV_ITEMS: NavItemDef[] = [
   {
-    label: "Projects",
-    icon: FolderKanban,
-    path: "/projects",
-    aliases: ["Projects", "Project Management", "Initiatives", "Deliverables", "Workspaces"],
-    description: "Team projects, deliverables, and timelines",
-  },
-  {
     label: "Teams",
     icon: Users,
     path: "/teams",
@@ -548,13 +541,6 @@ export const APP_LAUNCHER_CATALOG: AppLauncherCategory[] = [
         description: "Procurement, financial & HR tickets",
         icon: FileText,
         path: "/requests",
-        color: "bg-neutral-100 text-neutral-700",
-      },
-      {
-        name: "Projects",
-        description: "Initiatives, milestones & delivery",
-        icon: Briefcase,
-        path: "/projects",
         color: "bg-neutral-100 text-neutral-700",
       },
       {
