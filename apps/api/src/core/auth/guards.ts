@@ -110,7 +110,10 @@ export function requireVendorJwt() {
     if (!header?.startsWith('Bearer ')) throw new UnauthorizedException();
     let payload: any;
     try {
-      payload = request.server.container.jwt.verify(header.slice(7));
+      payload = request.server.container.jwt.verify(header.slice(7), {
+        algorithms: ['HS256'],
+        audience: 'vendor-portal',
+      });
     } catch {
       throw new UnauthorizedException();
     }

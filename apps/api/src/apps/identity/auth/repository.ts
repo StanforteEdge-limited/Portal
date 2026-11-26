@@ -22,7 +22,9 @@ import {
   AUTH_REFRESH_COOKIE,
   authCookieOptions,
   clearAuthCookieOptions,
-  parseCookieHeader
+  clearRefreshCookieOptions,
+  parseCookieHeader,
+  refreshCookieOptions,
 } from '$core/auth/cookies';
 import { profile as profileTable } from '$apps/identity/users/model';
 import { config } from '$config/index';
@@ -36,6 +38,9 @@ import { BadRequestException, NotFoundException, UnauthorizedException } from '$
 
 const ACCESS_EXPIRES_IN = config.jwt.expiresIn;
 const REFRESH_EXPIRES_IN = config.jwt.refreshExpiresIn;
+// Pre-computed bcrypt cost-10 dummy hash used to equalize login response timing
+// when an email does not exist (prevents user enumeration via timing attacks).
+const DUMMY_BCRYPT_HASH = '$2a$10$CwTycUXWue0Thq9StjUM0uJ8hN4wS/2u6v.H2x5kX0L3H6x1z0p7.';
 
 interface RbacStateCacheEntry {
   tenantId: bigint;
@@ -63,7 +68,10 @@ export class AuthService {
       .from(profileTable)
       .where(eq(profileTable.email, email))
       .limit(1);
-    if (!profile) this.throwUnauthorized('Invalid credentials', 'AUTH_INVALID_CREDENTIALS');
+    if (!profile) {
+      await bcrypt.compare(dto.password, DUMMY_BCRYPT_HASH);
+      this.throwUnauthorized('Invalid credentials', 'AUTH_INVALID_CREDENTIALS');
+    }
 
     // SECURITY: Account Lockout Check
     if (profile.lockoutUntil && profile.lockoutUntil > new Date()) {
@@ -369,7 +377,10 @@ export class AuthService {
       .from(profileTable)
       .where(eq(profileTable.id, toBigInt(userId)))
       .limit(1);
-    if (!profile) this.throwUnauthorized('Invalid credentials', 'AUTH_INVALID_CREDENTIALS');
+    if (!profile) {
+      await bcrypt.compare(dto.current_password, DUMMY_BCRYPT_HASH);
+      this.throwUnauthorized('Invalid credentials', 'AUTH_INVALID_CREDENTIALS');
+    }
     if (!profile.passwordHash) {
       this.throwUnauthorized('Password is not set. Use invite/reset flow first.', 'AUTH_PASSWORD_NOT_SET');
     }
@@ -893,13 +904,13 @@ export class AuthService {
     const accessMaxAge = this.parseExpiresInSeconds(expiresIn);
     const refreshMaxAge = this.parseExpiresInSeconds(REFRESH_EXPIRES_IN);
     res.cookie(AUTH_ACCESS_COOKIE, accessToken, authCookieOptions(accessMaxAge));
-    res.cookie(AUTH_REFRESH_COOKIE, refreshToken, authCookieOptions(refreshMaxAge));
+    res.cookie(AUTH_REFRESH_COOKIE, refreshToken, refreshCookieOptions(refreshMaxAge));
   }
 
   private clearAuthCookies(res: ServiceResponse | undefined) {
     if (!res) return;
     res.clearCookie(AUTH_ACCESS_COOKIE, clearAuthCookieOptions());
-    res.clearCookie(AUTH_REFRESH_COOKIE, clearAuthCookieOptions());
+    res.clearCookie(AUTH_REFRESH_COOKIE, clearRefreshCookieOptions());
   }
 
   private async getUserRoles(profileId: bigint, tenantId?: bigint): Promise<string[]> {

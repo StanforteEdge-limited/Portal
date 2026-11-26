@@ -24,6 +24,7 @@ import { role, userRole } from '$apps/identity/rbac/model';
 import { tenant, tenantMembership, tenantOrganization } from './model';
 import { organization, profileOrganization } from '$apps/hr/organizations/model';
 import { BadRequestException, NotFoundException } from '$core/errors';
+import { assertNonDisposableEmail } from '$core/auth/disposable-email';
 
 
 const RESERVED_SLUGS = new Set([
@@ -231,6 +232,7 @@ export class TenancyService {
 
   async inviteMember(context: TenantContext, emailValue: string, message?: string) {
     const email = emailValue.trim().toLowerCase();
+    assertNonDisposableEmail(email);
     let invitee = await this.tenantContext.runSystem('tenancy.inviteMember', () =>
       this.findProfileByEmail(email),
     );
@@ -387,6 +389,7 @@ export class TenancyService {
 
 async createWorkspace(dto: CreateWorkspace) {
     const email = dto.email.trim().toLowerCase();
+    assertNonDisposableEmail(email);
     const name = dto.name.trim();
     const slug = this.normalizeWorkspaceSlug(dto.slug ?? name);
     if (RESERVED_SLUGS.has(slug)) throw new BadRequestException('Workspace slug is reserved');

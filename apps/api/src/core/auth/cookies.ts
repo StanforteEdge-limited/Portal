@@ -13,6 +13,8 @@ export interface CookieOptions {
 export const AUTH_ACCESS_COOKIE = 'se_access_token';
 export const AUTH_REFRESH_COOKIE = 'se_refresh_token';
 
+const FORBIDDEN_COOKIE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
 function isProduction() {
   return String(process.env.NODE_ENV || '').toLowerCase() === 'production';
 }
@@ -23,7 +25,7 @@ export function authCookieOptions(maxAgeSeconds?: number): CookieOptions {
     secure: isProduction(),
     sameSite: 'lax',
     path: '/',
-    maxAge: maxAgeSeconds
+    maxAge: maxAgeSeconds,
   };
 }
 
@@ -32,7 +34,33 @@ export function clearAuthCookieOptions(): CookieOptions {
     httpOnly: true,
     secure: isProduction(),
     sameSite: 'lax',
-    path: '/'
+    path: '/',
+  };
+}
+
+/**
+ * Hardened options for long-lived refresh cookies:
+ *  - Scoped to `/v1/auth` so the refresh token is never transmitted on non-auth routes
+ *  - `sameSite: 'strict'` in production (`'lax'` in dev) to block cross-site CSRF
+ *  - `httpOnly: true`, `secure: true` in production, `priority: 'high'`
+ */
+export function refreshCookieOptions(maxAgeSeconds?: number): CookieOptions {
+  return {
+    httpOnly: true,
+    secure: isProduction(),
+    sameSite: isProduction() ? 'strict' : 'lax',
+    path: '/v1/auth',
+    priority: 'high',
+    maxAge: maxAgeSeconds,
+  };
+}
+
+export function clearRefreshCookieOptions(): CookieOptions {
+  return {
+    httpOnly: true,
+    secure: isProduction(),
+    sameSite: isProduction() ? 'strict' : 'lax',
+    path: '/v1/auth',
   };
 }
 
@@ -43,7 +71,7 @@ export function parseCookieHeader(cookieHeader?: string | null): Record<string, 
     if (index === -1) return acc;
     const key = segment.slice(0, index).trim();
     const value = segment.slice(index + 1).trim();
-    if (!key) return acc;
+    if (!key || FORBIDDEN_COOKIE_KEYS.has(key)) return acc;
     try {
       acc[key] = decodeURIComponent(value);
     } catch {
@@ -53,4 +81,3 @@ export function parseCookieHeader(cookieHeader?: string | null): Record<string, 
     return acc;
   }, {});
 }
-
