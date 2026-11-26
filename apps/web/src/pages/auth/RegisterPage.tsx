@@ -340,13 +340,13 @@ export default function RegisterPage() {
                 />
                 <span>
                   I agree to the{" "}
-                  <a href="#" className="font-medium text-[#ff6900] hover:underline">
+                  <Link to="/terms" className="font-medium text-[#ff6900] hover:underline">
                     Terms of Service
-                  </a>{" "}
+                  </Link>{" "}
                   and{" "}
-                  <a href="#" className="font-medium text-[#ff6900] hover:underline">
+                  <Link to="/privacy" className="font-medium text-[#ff6900] hover:underline">
                     Privacy Policy
-                  </a>
+                  </Link>
                 </span>
               </label>
             </div>

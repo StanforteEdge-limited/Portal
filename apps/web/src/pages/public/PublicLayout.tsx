@@ -364,7 +364,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
 
                     {/* Item 6: Document & Policy Center */}
                     <Link
-                      to="/documents"
+                      to="/help#documents"
                       onClick={closeAll}
                       className="p-3.5 rounded-2xl border border-transparent hover:border-neutral-200 hover:bg-neutral-50/80 transition-colors flex items-start gap-3.5 group"
                     >
@@ -616,7 +616,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
 
                     {/* Resource 3: Documentation & Policies */}
                     <Link
-                      to="/documents"
+                      to="/help#documents"
                       onClick={closeAll}
                       className="p-3.5 rounded-2xl border border-transparent hover:border-neutral-200 hover:bg-neutral-50 transition-colors flex items-start gap-3.5 group"
                     >
@@ -748,7 +748,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                     <span>Staff Self-Service & Tasks</span>
                   </Link>
                   <Link
-                    to="/documents"
+                    to="/help#documents"
                     onClick={closeAll}
                     className="flex items-center gap-2.5 py-1 text-neutral-700 hover:text-[#ff6900]"
                   >
@@ -848,7 +848,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                     <span>Plans & Pricing</span>
                   </Link>
                   <Link
-                    to="/documents"
+                    to="/help#documents"
                     onClick={closeAll}
                     className="flex items-center gap-2.5 py-1 text-neutral-700 hover:text-[#ff6900]"
                   >
@@ -946,7 +946,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
               <h5 className="font-medium text-neutral-900 text-xs">Resources & Trust</h5>
               <ul className="space-y-2 text-neutral-600">
                 <li><Link to="/security" className="hover:text-neutral-900">Security & Encryption</Link></li>
-                <li><Link to="/documents" className="hover:text-neutral-900">Document Management</Link></li>
+                <li><Link to="/help#documents" className="hover:text-neutral-900">Document Management</Link></li>
                 <li><Link to="/help" className="hover:text-neutral-900">Help & Support</Link></li>
                 <li><Link to="/login" className="hover:text-neutral-900">Sign In</Link></li>
                 <li><Link to="/register" className="hover:text-neutral-900">Create Free Workspace</Link></li>

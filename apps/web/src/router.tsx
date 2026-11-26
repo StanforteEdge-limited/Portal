@@ -93,6 +93,8 @@ const SessionReauthPage = lazy(() => import("@/pages/auth/SessionReauthPage"));
 const PricingPage = lazy(() => import("@/pages/public/PricingPage"));
 const FeaturesPage = lazy(() => import("@/pages/public/FeaturesPage"));
 const SecurityPage = lazy(() => import("@/pages/public/SecurityPage"));
+const PublicHelpPage = lazy(() => import("@/pages/public/PublicHelpPage"));
+const LegalPage = lazy(() => import("@/pages/public/LegalPage"));
 const LoginPage = lazy(() => import("@/pages/auth/LoginPage"));
 const RegisterPage = lazy(() => import("@/pages/auth/RegisterPage"));
 const ForgotPasswordPage = lazy(() => import("@/pages/auth/ForgotPasswordPage"));
@@ -254,6 +256,11 @@ const PUBLIC_ROUTES: readonly RouteDef[] = [
   ["/pricing", PricingPage],
   ["/features", FeaturesPage],
   ["/security", SecurityPage],
+  ["/help", PublicHelpPage],
+  ["/privacy", () => <LegalPage doc="privacy" />],
+  ["/privacy-policy", () => <LegalPage doc="privacy" />],
+  ["/terms", () => <LegalPage doc="terms" />],
+  ["/terms-of-service", () => <LegalPage doc="terms" />],
   ["/reauth", SessionReauthPage],
   ["/verify-email", VerifyEmailPage],
   ["/accept-invite", AcceptInvitePage],
