@@ -231,23 +231,61 @@ export default function DashboardPage() {
 
   useEffect(() => {
     void loadAttendance(attendancePeriod);
+    const onAttendanceUpdated = () => void loadAttendance(attendancePeriod);
+    window.addEventListener("portal-attendance-updated", onAttendanceUpdated);
+    window.addEventListener("focus", onAttendanceUpdated);
+    return () => {
+      window.removeEventListener("portal-attendance-updated", onAttendanceUpdated);
+      window.removeEventListener("focus", onAttendanceUpdated);
+    };
   }, [attendancePeriod]);
 
-  const isClockedIn = Boolean(attendanceData?.current_state?.is_clocked_in);
+  const isClockedIn = Boolean(
+    attendanceData?.current_state?.is_clocked_in ||
+      (attendanceData?.today?.first_in_at && !attendanceData?.today?.last_out_at),
+  );
 
   const handleToggleClock = async () => {
     setClocking(true);
     try {
       if (isClockedIn) {
         await clockOut({ source: "web", attendance_mode: "onsite" });
-        showToast("Successfully clocked out for today", "success");
+        setAttendanceData((prev) =>
+          prev
+            ? {
+                ...prev,
+                current_state: {
+                  ...prev.current_state,
+                  is_clocked_in: false,
+                  can_clock_in: true,
+                  can_clock_out: false,
+                },
+              }
+            : prev,
+        );
+        showToast({ message: "Successfully clocked out for today", tone: "success" });
       } else {
         await clockIn({ source: "web", attendance_mode: "onsite" });
-        showToast("Successfully clocked in for today", "success");
+        setAttendanceData((prev) =>
+          prev
+            ? {
+                ...prev,
+                current_state: {
+                  ...prev.current_state,
+                  is_clocked_in: true,
+                  last_clock_in_at: new Date().toISOString(),
+                  can_clock_in: false,
+                  can_clock_out: true,
+                },
+              }
+            : prev,
+        );
+        showToast({ message: "Successfully clocked in for today", tone: "success" });
       }
+      window.dispatchEvent(new Event("portal-attendance-updated"));
       await loadAttendance(attendancePeriod);
     } catch (err: any) {
-      showToast(err?.message || "Failed to update clock status", "error");
+      showToast({ message: err?.message || "Failed to update clock status", tone: "danger" });
     } finally {
       setClocking(false);
     }

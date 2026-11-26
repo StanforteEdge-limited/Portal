@@ -1,6 +1,6 @@
 import { DateInput } from "@/components/ui/date-picker";
 import { SelectBox } from "@/components/ui/select";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@/shared/router-adapter";
 import { PortalLayout, useWorkspace } from "@/components/layout/PortalLayout";
 import { useAuth } from "@/shared/context/AuthProvider";
@@ -126,22 +126,27 @@ export function AttendancePage() {
   const entries = data?.entries ?? [];
   const daily = data?.daily ?? [];
   const corrections = data?.corrections ?? [];
-  const officeLocations = data?.office_locations ?? [];
+  const officeLocations = useMemo(() => data?.office_locations ?? [], [data?.office_locations]);
   const today = data?.today ?? null;
   const policy = data?.policy ?? null;
   const currentState = data?.current_state;
+  const modeInitializedRef = useRef(false);
 
   useEffect(() => {
-    const inferredMode = String(
-      today?.expected_mode || today?.attendance_mode || "onsite",
-    ).toLowerCase() as AttendanceMode;
-    setSelectedMode(
-      inferredMode === "remote" || inferredMode === "field" ? inferredMode : "onsite",
+    if (!data) return;
+    if (!modeInitializedRef.current) {
+      const inferredMode = String(
+        today?.expected_mode || today?.attendance_mode || "onsite",
+      ).toLowerCase() as AttendanceMode;
+      setSelectedMode(
+        inferredMode === "remote" || inferredMode === "field" ? inferredMode : "onsite",
+      );
+      modeInitializedRef.current = true;
+    }
+    setSelectedOfficeLocationId((prev) =>
+      prev || String(today?.office_location_id || officeLocations[0]?.id || ""),
     );
-    setSelectedOfficeLocationId(
-      String(today?.office_location_id || officeLocations[0]?.id || ""),
-    );
-  }, [officeLocations, today?.attendance_mode, today?.expected_mode, today?.office_location_id]);
+  }, [data, officeLocations, today?.attendance_mode, today?.expected_mode, today?.office_location_id]);
 
   // Derived metric statistics
   const stats = useMemo(() => {
@@ -198,6 +203,7 @@ export function AttendancePage() {
       }
 
       await refetch();
+      window.dispatchEvent(new Event("portal-attendance-updated"));
       showToast({
         tone: "success",
         title: type === "in" ? "Clock-in successful" : "Clock-out recorded",
@@ -240,6 +246,7 @@ export function AttendancePage() {
       setShowCorrectionForm(false);
       setCorrectionForm(defaultCorrectionForm);
       await refetch();
+      window.dispatchEvent(new Event("portal-attendance-updated"));
       showToast({
         tone: "success",
         title: "Correction requested",

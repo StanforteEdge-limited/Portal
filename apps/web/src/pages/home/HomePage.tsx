@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "@/shared/router-adapter";
 import { PublicLayout } from "@/pages/public/PublicLayout";
 import {
   ArrowRight,
   Check,
   Download,
+  Pause,
   Play,
   RotateCcw,
   X,
@@ -156,9 +157,40 @@ function triggerCsvDownload(filename: string, content: string) {
 export default function HomePage() {
   const [activeTab, setActiveTab] = useState<ShowcaseTab>("overview");
   const [videoModalOpen, setVideoModalOpen] = useState(false);
+  const [reelPaused, setReelPaused] = useState(() =>
+    typeof window !== "undefined" &&
+    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches,
+  );
+  const [modalPaused, setModalPaused] = useState(false);
+  const heroVideoRef = useRef<HTMLVideoElement | null>(null);
+  const modalVideoRef = useRef<HTMLVideoElement | null>(null);
   const [headcount, setHeadcount] = useState(85);
   const [voucherState, setVoucherState] = useState<"pending" | "approved" | "returned">("pending");
   const [downloadNotice, setDownloadNotice] = useState<string | null>(null);
+
+  const toggleHeroReel = () => {
+    const el = heroVideoRef.current;
+    if (!el) return;
+    if (el.paused) {
+      void el.play();
+      setReelPaused(false);
+    } else {
+      el.pause();
+      setReelPaused(true);
+    }
+  };
+
+  const toggleModalReel = () => {
+    const el = modalVideoRef.current;
+    if (!el) return;
+    if (el.paused) {
+      void el.play();
+      setModalPaused(false);
+    } else {
+      el.pause();
+      setModalPaused(true);
+    }
+  };
 
   const currentShowcase =
     SHOWCASE_TABS.find((item) => item.id === activeTab) ?? SHOWCASE_TABS[0];
@@ -278,7 +310,7 @@ export default function HomePage() {
                 })}
               </div>
 
-              {/* Single-Elevation Product Frame (Crisp 1px border, zero glassmorphism overlays) */}
+              {/* Single-Elevation Product Frame (Silent Animated Reel on Overview, Crisp Static on Module Tabs) */}
               <div
                 id={`panel-${currentShowcase.id}`}
                 role="tabpanel"
@@ -286,14 +318,30 @@ export default function HomePage() {
                 className="rounded-xl border border-[#E2E8F0] bg-white overflow-hidden"
               >
                 <div className="bg-[#0F172A]">
-                  <img
-                    src={currentShowcase.screenshot}
-                    alt={currentShowcase.alt}
-                    width={1280}
-                    height={800}
-                    decoding="async"
-                    className="w-full h-auto block aspect-[16/10] object-cover object-top"
-                  />
+                  {activeTab === "overview" ? (
+                    <video
+                      ref={heroVideoRef}
+                      autoPlay={!reelPaused}
+                      muted
+                      loop
+                      playsInline
+                      disablePictureInPicture
+                      poster="/screenshots/01-dashboard-dark.png"
+                      aria-label="Animated walkthrough of Stanforte Edge workspace modules"
+                      className="w-full h-auto block aspect-[16/10] object-cover object-top"
+                    >
+                      <source src="/video-frames/portal-showcase.mp4" type="video/mp4" />
+                    </video>
+                  ) : (
+                    <img
+                      src={currentShowcase.screenshot}
+                      alt={currentShowcase.alt}
+                      width={1280}
+                      height={800}
+                      decoding="async"
+                      className="w-full h-auto block aspect-[16/10] object-cover object-top"
+                    />
+                  )}
                 </div>
 
                 <div className="px-6 py-5 bg-white border-t border-[#E2E8F0] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -306,13 +354,33 @@ export default function HomePage() {
                         {currentShowcase.title}
                       </h2>
                       <span className="text-[13px] font-medium text-[#475569]">
-                        {currentShowcase.themeLabel} view
+                        {activeTab === "overview" ? "Silent product reel" : `${currentShowcase.themeLabel} view`}
                       </span>
                     </div>
                     <p className="text-[15px] text-[#475569] leading-[1.5]">
                       {currentShowcase.caption}
                     </p>
                   </div>
+
+                  {activeTab === "overview" && (
+                    <button
+                      type="button"
+                      onClick={toggleHeroReel}
+                      className="min-h-[44px] px-4 py-2 rounded-lg border border-[#CBD5E1] bg-white text-[#0F172A] text-[14px] font-medium inline-flex items-center gap-2 shrink-0 transition-colors duration-150 hover:bg-[#F1F5F9] hover:border-[#94A3B8] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0F172A]"
+                    >
+                      {reelPaused ? (
+                        <>
+                          <Play className="h-[16px] w-[16px]" strokeWidth={1.75} aria-hidden="true" />
+                          <span>Play reel</span>
+                        </>
+                      ) : (
+                        <>
+                          <Pause className="h-[16px] w-[16px]" strokeWidth={1.75} aria-hidden="true" />
+                          <span>Pause reel</span>
+                        </>
+                      )}
+                    </button>
+                  )}
 
                   {currentShowcase.csvAction && (
                     <div className="flex flex-col items-start sm:items-end gap-1 shrink-0">
@@ -728,18 +796,41 @@ export default function HomePage() {
                 </button>
               </div>
 
-              <div className="rounded-lg overflow-hidden border border-[#E2E8F0] bg-[#0F172A]">
+              <div className="rounded-lg overflow-hidden border border-[#E2E8F0] bg-[#0F172A] relative">
                 <video
-                  controls
+                  ref={modalVideoRef}
+                  autoPlay
+                  muted
+                  loop
                   playsInline
+                  disablePictureInPicture
                   poster="/screenshots/01-dashboard-dark.png"
-                  className="w-full aspect-video block"
+                  aria-label="Silent animated walkthrough of Stanforte Edge workspace"
+                  className="w-full aspect-[16/10] block object-cover object-top"
                 >
                   <source src="/video-frames/portal-showcase.mp4" type="video/mp4" />
                   Your browser does not support video playback. You can inspect
                   every module directly in the interactive screenshots on the
                   page.
                 </video>
+                <button
+                  type="button"
+                  onClick={toggleModalReel}
+                  aria-label={modalPaused ? "Play walkthrough" : "Pause walkthrough"}
+                  className="absolute bottom-3 right-3 min-h-[44px] px-4 rounded-lg bg-[#0F172A]/85 text-white text-[13px] font-semibold inline-flex items-center gap-2 border border-white/15 hover:bg-[#0F172A] transition-colors"
+                >
+                  {modalPaused ? (
+                    <>
+                      <Play className="h-[15px] w-[15px]" strokeWidth={1.75} aria-hidden="true" />
+                      <span>Play</span>
+                    </>
+                  ) : (
+                    <>
+                      <Pause className="h-[15px] w-[15px]" strokeWidth={1.75} aria-hidden="true" />
+                      <span>Pause</span>
+                    </>
+                  )}
+                </button>
               </div>
 
               <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-[#E2E8F0]">

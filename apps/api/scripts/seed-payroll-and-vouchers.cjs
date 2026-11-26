@@ -232,7 +232,7 @@ async function seedPayrollAndVouchers() {
         title: "Victoria Island Office Generator Servicing",
         amount: 420000,
         retiredAmount: 420000,
-        status: "confirmed",
+        status: "verified",
         method: "bank_transfer",
         ref: "GTB-TRF-992841",
         note: "Vendor invoice and servicing report verified by Finance.",

@@ -115,3 +115,8 @@ Employee	employee@acme.com	Chidi Eze
 Stanforte Global (workspace: stanforte)
 Role	Email	Name
 Administrator / Owner	admin@stanforte.com	Sarah Connor
+
+Login URL: http://localhost:5173/ceo/login
+Dashboard URL: http://localhost:5173/ceo
+Email: ceo@stanforteedge.com
+Password: CeoPortal2026!

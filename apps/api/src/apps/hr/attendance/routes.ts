@@ -33,15 +33,15 @@ export const AttendanceRoutes: FastifyPluginAsync = async (fastify) => {
     fastify.container.tenantContext.run(currentTenant(request), op);
 
   fastify.get('/status', { preHandler: authenticated }, async (request) =>
-    attendance().getAttendanceStatus(actor(request)),
+    inTenant(request, () => attendance().getAttendanceStatus(actor(request))),
   );
 
   fastify.get('/mine', { preHandler: authenticated, schema: { querystring: AttendanceListQuerySchema } }, async (request) =>
-    attendance().myAttendance(actor(request), requestQuery<AttendanceListQuery>(request)),
+    inTenant(request, () => attendance().myAttendance(actor(request), requestQuery<AttendanceListQuery>(request))),
   );
 
   fastify.get('/me', { preHandler: authenticated, schema: { querystring: AttendanceListQuerySchema } }, async (request) =>
-    attendance().myAttendance(actor(request), requestQuery<AttendanceListQuery>(request)),
+    inTenant(request, () => attendance().myAttendance(actor(request), requestQuery<AttendanceListQuery>(request))),
   );
 
   fastify.post('/clock-in', { preHandler: authenticated, schema: { body: ClockAttendanceSchema } }, async (request) => {
@@ -68,59 +68,61 @@ export const AttendanceRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   fastify.get('/records', { preHandler: read, schema: { querystring: AttendanceListQuerySchema } }, async (request) =>
-    attendance().records(requestQuery<AttendanceListQuery>(request)),
+    inTenant(request, () => attendance().records(requestQuery<AttendanceListQuery>(request))),
   );
 
   fastify.get('/summary', { preHandler: read, schema: { querystring: AttendanceListQuerySchema } }, async (request) =>
-    attendance().summary(requestQuery<AttendanceListQuery>(request)),
+    inTenant(request, () => attendance().summary(requestQuery<AttendanceListQuery>(request))),
   );
 
   fastify.get('/daily/:id', { preHandler: read, schema: { params: attendanceIdParamsSchema, querystring: AttendanceListQuerySchema } }, async (request) => {
     const query = requestQuery<AttendanceListQuery>(request);
-    return attendance().getDailyRecord(id(request), String(query.from ?? query.to ?? new Date().toISOString().slice(0, 10)));
+    return inTenant(request, () =>
+      attendance().getDailyRecord(id(request), String(query.from ?? query.to ?? new Date().toISOString().slice(0, 10))),
+    );
   });
 
   fastify.get('/office-locations', { preHandler: read, schema: { querystring: AttendanceListQuerySchema } }, async (request) =>
-    attendance().listOfficeLocations(requestQuery<AttendanceListQuery>(request)),
+    inTenant(request, () => attendance().listOfficeLocations(requestQuery<AttendanceListQuery>(request))),
   );
 
   fastify.post('/office-locations', { preHandler: write, schema: { body: UpsertOfficeLocationSchema } }, async (request) =>
-    attendance().createOfficeLocation(actor(request), requestBody<UpsertOfficeLocation>(request)),
+    inTenant(request, () => attendance().createOfficeLocation(actor(request), requestBody<UpsertOfficeLocation>(request))),
   );
 
   fastify.put('/office-locations/:id', { preHandler: write, schema: { params: attendanceIdParamsSchema, body: UpsertOfficeLocationSchema } }, async (request) =>
-    attendance().updateOfficeLocation(actor(request), id(request), requestBody<UpsertOfficeLocation>(request)),
+    inTenant(request, () => attendance().updateOfficeLocation(actor(request), id(request), requestBody<UpsertOfficeLocation>(request))),
   );
 
   fastify.get('/corrections', { preHandler: authenticated, schema: { querystring: AttendanceListQuerySchema } }, async (request) =>
-    attendance().listCorrections(actor(request), requestQuery<AttendanceListQuery>(request)),
+    inTenant(request, () => attendance().listCorrections(actor(request), requestQuery<AttendanceListQuery>(request))),
   );
 
   fastify.post('/corrections', { preHandler: authenticated, schema: { body: CreateAttendanceCorrectionSchema } }, async (request) =>
-    attendance().createCorrection(actor(request), requestBody<CreateAttendanceCorrection>(request)),
+    inTenant(request, () => attendance().createCorrection(actor(request), requestBody<CreateAttendanceCorrection>(request))),
   );
 
   fastify.post('/corrections/:id/approve', { preHandler: write, schema: { params: attendanceIdParamsSchema, body: ReviewAttendanceCorrectionSchema } }, async (request) =>
-    attendance().approveCorrection(actor(request), id(request), requestBody<ReviewAttendanceCorrection>(request)),
+    inTenant(request, () => attendance().approveCorrection(actor(request), id(request), requestBody<ReviewAttendanceCorrection>(request))),
   );
 
   fastify.post('/corrections/:id/reject', { preHandler: write, schema: { params: attendanceIdParamsSchema, body: ReviewAttendanceCorrectionSchema } }, async (request) =>
-    attendance().rejectCorrection(actor(request), id(request), requestBody<ReviewAttendanceCorrection>(request)),
+    inTenant(request, () => attendance().rejectCorrection(actor(request), id(request), requestBody<ReviewAttendanceCorrection>(request))),
   );
 
   fastify.get('/exceptions', { preHandler: read, schema: { querystring: AttendanceListQuerySchema } }, async (request) =>
-    attendance().listExceptions(requestQuery<AttendanceListQuery>(request)),
+    inTenant(request, () => attendance().listExceptions(requestQuery<AttendanceListQuery>(request))),
   );
 
   fastify.post('/exceptions', { preHandler: write, schema: { body: CreateAttendanceExceptionSchema } }, async (request) =>
-    attendance().createException(actor(request), requestBody<CreateAttendanceException>(request)),
+    inTenant(request, () => attendance().createException(actor(request), requestBody<CreateAttendanceException>(request))),
   );
 
   fastify.post('/exceptions/:id/resolve', { preHandler: write, schema: { params: attendanceIdParamsSchema, body: ReviewAttendanceExceptionSchema } }, async (request) =>
-    attendance().resolveException(actor(request), id(request), requestBody<ReviewAttendanceException>(request)),
+    inTenant(request, () => attendance().resolveException(actor(request), id(request), requestBody<ReviewAttendanceException>(request))),
   );
 
   fastify.get('/', { preHandler: authenticated, schema: { querystring: AttendanceListQuerySchema } }, async (request) =>
-    attendance().myAttendance(actor(request), requestQuery<AttendanceListQuery>(request)),
+    inTenant(request, () => attendance().myAttendance(actor(request), requestQuery<AttendanceListQuery>(request))),
   );
 };
