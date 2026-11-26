@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { HealthRoutes } from '$apps/platform/health';
 import { BillingRoutes } from '$apps/platform/billing';
+import { CeoPlatformRoutes, PublicContactRoutes } from '$apps/platform/ceo/routes';
 import { MailRoutes } from '$apps/communication/mail';
 import { AuthRoutes } from '$apps/identity/auth/routes';
 import { AdminRoutes, UsersRoutes } from '$apps/identity/users/routes';
@@ -73,6 +74,8 @@ export const appRoutes: AppRoute[] = [
   // Platform & Identity
   ...mount(HealthRoutes, '/health'),
   ...mount(BillingRoutes, '/billing'),
+  ...mount(CeoPlatformRoutes, '/ceo'),
+  ...mount(PublicContactRoutes, '/platform'),
   ...mount(AuthRoutes, '/auth'),
   ...mount(UsersRoutes, ''),
   ...mount(AdminRoutes, '/admin/users'),

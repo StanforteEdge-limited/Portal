@@ -346,6 +346,7 @@ export class TenancyService {
     const exported: Record<string, unknown[]> = {};
     for (const { tableName } of tables) {
       if (excludedExportTables.has(tableName)) continue;
+      if (!/^[a-z0-9_]+$/.test(tableName)) continue;
       const rows = await this.queryRaw<Record<string, unknown>>(
         sql`SELECT * FROM ${sql.raw(`"${tableName}"`)} WHERE tenant_id = ${context.tenantId}`,
       );

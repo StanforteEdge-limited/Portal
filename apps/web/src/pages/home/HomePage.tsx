@@ -292,12 +292,13 @@ export default function HomePage() {
                 {/* Orange Curved Graphic Backdrop */}
                 <div className="absolute top-1/2 -translate-y-1/2 right-2 sm:right-6 w-[340px] sm:w-[420px] h-[340px] sm:h-[420px] bg-gradient-to-tr from-[#ff6900] via-[#ff8800] to-[#ffa500] rounded-full -z-0 opacity-90 blur-0" />
 
-                {/* Hero Photo Container */}
-                <div className="relative z-10 w-[310px] sm:w-[380px] h-[400px] sm:h-[480px] rounded-2xl overflow-hidden shadow-2xl border-4 border-white bg-neutral-100">
+                {/* Real Portal Product Screenshot Container */}
+                <div className="relative z-10 w-full max-w-[600px] rounded-2xl overflow-hidden shadow-2xl border-4 border-white bg-[#141415]">
                   <img
-                    src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=800&q=80"
-                    alt="Executive using Stanforte Edge"
-                    className="w-full h-full object-cover object-top"
+                    src="/screenshots/01-dashboard-dark.png"
+                    alt="Stanforte Edge live workspace dashboard"
+                    decoding="sync"
+                    className="w-full h-auto block [image-rendering:-webkit-optimize-contrast]"
                   />
                 </div>
 
@@ -385,351 +386,35 @@ export default function HomePage() {
                     </button>
                   </div>
 
-                  {/* Dashboard Screen Content */}
-                  <div className="p-5 sm:p-6 bg-neutral-50/50 min-h-[400px] flex flex-col justify-between">
-                    {/* TAB 1: HR & Workforce Directory */}
-                    {selectedFeature === "roster" && (
-                      <div className="space-y-3.5 animate-in fade-in duration-200">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="text-xs font-medium text-neutral-900 flex items-center gap-1.5">
-                              <Users className="h-3.5 w-3.5 text-neutral-700" />
-                              <span>Workforce Directory</span>
+                  {/* Real Portal Screenshot Preview (Mixed Light & Dark Mode) */}
+                  <div className="bg-[#141415]">
+                    {(() => {
+                      const previews: Record<string, { src: string; alt: string; mode: string; label: string }> = {
+                        roster: { src: "/screenshots/05-hr-employees.png", alt: "HR Workforce Directory (Light Mode)", mode: "Light Mode", label: "HR & Workforce Directory" },
+                        attendance: { src: "/screenshots/06-attendance.png", alt: "Time & Attendance (Dark Mode)", mode: "Dark Mode", label: "Time & Attendance Tracking" },
+                        payroll: { src: "/screenshots/04-payroll.png", alt: "Nigerian Payroll Engine (Dark Mode)", mode: "Dark Mode", label: "Automated PAYE & PenCom Payroll" },
+                        procurement: { src: "/screenshots/11-procurement.png", alt: "Procurement & Requisitions (Light Mode)", mode: "Light Mode", label: "Procurement & Vendor Orders" },
+                        approvals: { src: "/screenshots/12-approvals-dark.png", alt: "Multi-Tier Approvals (Dark Mode)", mode: "Dark Mode", label: "Multi-Tier Approval Workflows" },
+                      };
+                      const current = previews[selectedFeature || "roster"] ?? previews.roster;
+                      return (
+                        <>
+                          <div className="w-full overflow-hidden bg-[#141415]">
+                            <img src={current.src} alt={current.alt} decoding="sync" className="w-full h-auto block [image-rendering:-webkit-optimize-contrast]" />
+                          </div>
+                          <div className="px-4 py-3 bg-white border-t border-neutral-200 flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-neutral-900">{current.label}</span>
+                              <span className={`px-2 py-0.5 rounded-full text-[11px] font-mono ${current.mode === "Dark Mode" ? "bg-[#141415] text-white" : "bg-neutral-100 text-neutral-700"}`}>{current.mode}</span>
                             </div>
-                            <div className="text-xs text-neutral-500">1,240 Personnel • 6 Departments</div>
-                          </div>
-                          <span className="text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
-                            All Records Synced
-                          </span>
-                        </div>
-
-                        {/* Staff Cards Mini-List */}
-                        <div className="space-y-2">
-                          <div className="p-2.5 bg-white rounded-xl border border-neutral-200/80 shadow-xs flex items-center justify-between">
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-full bg-neutral-100 text-neutral-700 font-medium flex items-center justify-center text-xs">
-                                OA
-                              </div>
-                              <div>
-                                <div className="text-xs font-medium text-neutral-900 leading-tight">Oluwaseun Adeleke</div>
-                                <div className="text-xs text-neutral-400">Chief Financial Officer • Finance</div>
-                              </div>
-                            </div>
-                            <span className="text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">
-                              Active
-                            </span>
-                          </div>
-
-                          <div className="p-2.5 bg-white rounded-xl border border-neutral-200/80 shadow-xs flex items-center justify-between">
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-full bg-orange-100 text-[#ff6900] font-medium flex items-center justify-center text-xs">
-                                FO
-                              </div>
-                              <div>
-                                <div className="text-xs font-medium text-neutral-900 leading-tight">Fatima Olarinwaju</div>
-                                <div className="text-xs text-neutral-400">Head of People • HR & Culture</div>
-                              </div>
-                            </div>
-                            <span className="text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">
-                              Active
-                            </span>
-                          </div>
-
-                          <div className="p-2.5 bg-white rounded-xl border border-neutral-200/80 shadow-xs flex items-center justify-between">
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-full bg-neutral-100 text-neutral-700 font-medium flex items-center justify-center text-xs">
-                                CI
-                              </div>
-                              <div>
-                                <div className="text-xs font-medium text-neutral-900 leading-tight">Chinedu Ibeawuchi</div>
-                                <div className="text-xs text-neutral-400">Logistics Manager • Supply Chain</div>
-                              </div>
-                            </div>
-                            <span className="text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full">
-                              On Leave
-                            </span>
-                          </div>
-
-                          <div className="p-2.5 bg-white rounded-xl border border-neutral-200/80 shadow-xs flex items-center justify-between">
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-full bg-neutral-100 text-neutral-700 font-medium flex items-center justify-center text-xs">
-                                AY
-                              </div>
-                              <div>
-                                <div className="text-xs font-medium text-neutral-900 leading-tight">Amina Yusuf</div>
-                                <div className="text-xs text-neutral-400">Senior Systems Engineer • Tech</div>
-                              </div>
-                            </div>
-                            <span className="text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">
-                              Active
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Mini Metric footer */}
-                        <div className="p-2.5 bg-neutral-100 border border-neutral-200 rounded-xl flex items-center justify-between text-xs">
-                          <span className="text-blue-900 font-semibold flex items-center gap-1.5">
-                            <CheckCircle2 className="h-3.5 w-3.5 text-neutral-700" />
-                            <span>Automated Onboarding & KYC</span>
-                          </span>
-                          <span className="font-medium text-neutral-700">100% Complete</span>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* TAB 2: Time & Attendance */}
-                    {selectedFeature === "attendance" && (
-                      <div className="space-y-3.5 animate-in fade-in duration-200">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="text-xs font-medium text-neutral-900 flex items-center gap-1.5">
-                              <Clock className="h-3.5 w-3.5 text-amber-600" />
-                              <span>Geofence & Campus Clock-In</span>
-                            </div>
-                            <div className="text-xs text-neutral-500">Victoria Island Campus • 200m Polygon</div>
-                          </div>
-                          <span className="text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md flex items-center gap-1">
-                            <Check className="h-3 w-3 stroke-[3]" />
-                            <span>GPS Verified</span>
-                          </span>
-                        </div>
-
-                        {/* Attendance Stats Cards */}
-                        <div className="grid grid-cols-2 gap-2.5">
-                          <div className="p-3 bg-white rounded-xl border border-neutral-200">
-                            <div className="text-xs font-medium text-neutral-400">On-Time Rate</div>
-                            <div className="text-xl font-semibold text-emerald-600 mt-0.5">96.4%</div>
-                            <div className="text-xs text-neutral-500 mt-0.5">45 / 48 verified present</div>
-                          </div>
-                          <div className="p-3 bg-white rounded-xl border border-neutral-200">
-                            <div className="text-xs font-medium text-neutral-400">Avg Clock-In</div>
-                            <div className="text-xl font-semibold text-neutral-900 mt-0.5">08:14 AM</div>
-                            <div className="text-xs text-neutral-500 mt-0.5">Zero proxy check-ins</div>
-                          </div>
-                        </div>
-
-                        {/* Live Feed */}
-                        <div className="space-y-1.5 text-xs">
-                          <div className="text-xs font-medium text-neutral-400">Live Check-In Stream</div>
-                          <div className="p-2.5 bg-white rounded-xl border border-neutral-200 flex items-center justify-between text-xs">
-                            <span className="font-semibold text-neutral-800">Oluwaseun Adeleke</span>
-                            <span className="text-xs text-emerald-600 font-medium bg-emerald-50 px-2 py-0.5 rounded-md">08:04 AM • Geofence</span>
-                          </div>
-                          <div className="p-2.5 bg-white rounded-xl border border-neutral-200 flex items-center justify-between text-xs">
-                            <span className="font-semibold text-neutral-800">Fatima Olarinwaju</span>
-                            <span className="text-xs text-emerald-600 font-medium bg-emerald-50 px-2 py-0.5 rounded-md">08:12 AM • Biometric #1</span>
-                          </div>
-                          <div className="p-2.5 bg-white rounded-xl border border-neutral-200 flex items-center justify-between text-xs">
-                            <span className="font-semibold text-neutral-800">Amina Yusuf</span>
-                            <span className="text-xs text-emerald-600 font-medium bg-emerald-50 px-2 py-0.5 rounded-md">08:21 AM • Biometric #2</span>
-                          </div>
-                        </div>
-
-                        <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 flex items-center justify-between font-medium">
-                          <span>Biometric Hardware Synced</span>
-                          <span className="font-medium">2 Online Terminals</span>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* TAB 3: Payroll & Tax */}
-                    {selectedFeature === "payroll" && (
-                      <div className="space-y-3.5 animate-in fade-in duration-200">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="text-xs font-medium text-neutral-900 flex items-center gap-1.5">
-                              <CreditCard className="h-3.5 w-3.5 text-[#ff6900]" />
-                              <span>November 2026 Salary Run</span>
-                            </div>
-                            <div className="text-xs text-neutral-500">Automated PAYE Tax & PenCom Compliance</div>
-                          </div>
-                          <span className="text-xs font-medium text-white bg-emerald-600 px-2.5 py-0.5 rounded-full shadow-xs">
-                            Ready for Payment
-                          </span>
-                        </div>
-
-                        {/* Payroll Financial Breakdown */}
-                        <div className="grid grid-cols-2 gap-2.5">
-                          <div className="p-3 bg-white rounded-xl border border-neutral-200">
-                            <div className="text-xs font-medium text-neutral-400">Gross Payroll</div>
-                            <div className="text-base font-semibold text-neutral-900 mt-0.5">₦18,450,000</div>
-                            <div className="text-xs text-neutral-500">48 staff members</div>
-                          </div>
-                          <div className="p-3 bg-white rounded-xl border border-neutral-200">
-                            <div className="text-xs font-medium text-neutral-400">PAYE Tax Deductions</div>
-                            <div className="text-base font-semibold text-neutral-900 mt-0.5">₦2,860,000</div>
-                            <div className="text-xs text-neutral-500">State IRS schedule ready</div>
-                          </div>
-                          <div className="p-3 bg-white rounded-xl border border-neutral-200">
-                            <div className="text-xs font-medium text-neutral-400">Pension Remittances</div>
-                            <div className="text-base font-semibold text-neutral-900 mt-0.5">₦1,476,000</div>
-                            <div className="text-xs text-neutral-500">PFA distribution set</div>
-                          </div>
-                          <div className="p-3 bg-orange-50 rounded-xl border border-orange-200">
-                            <div className="text-xs font-medium text-[#ff6900]">Net Salary Disbursal</div>
-                            <div className="text-base font-semibold text-[#ff6900] mt-0.5">₦14,114,000</div>
-                            <div className="text-xs text-orange-700/80">Bank batch file ready</div>
-                          </div>
-                        </div>
-
-                        <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between text-xs">
-                          <span className="text-emerald-900 font-semibold flex items-center gap-1.5">
-                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                            <span>Commercial Bank Batch (CSV)</span>
-                          </span>
-                          <span className="font-medium text-emerald-700">Generated</span>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* TAB 4: Budgets & Procurement */}
-                    {selectedFeature === "procurement" && (
-                      <div className="space-y-3.5 animate-in fade-in duration-200">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="text-xs font-medium text-neutral-900 flex items-center gap-1.5">
-                              <Building2 className="h-3.5 w-3.5 text-neutral-700" />
-                              <span>Departmental Budgets & POs</span>
-                            </div>
-                            <div className="text-xs text-neutral-500">Q4 Allocation: ₦22.6M Total</div>
-                          </div>
-                          <span className="text-xs font-medium text-neutral-700 bg-neutral-100 border border-neutral-200 px-2.5 py-0.5 rounded-full">
-                            64% Utilized
-                          </span>
-                        </div>
-
-                        {/* Budget bars */}
-                        <div className="space-y-2.5 bg-white p-3.5 rounded-2xl border border-neutral-200">
-                          <div className="space-y-1">
-                            <div className="flex justify-between text-xs font-semibold">
-                              <span className="text-neutral-700">Operations & Logistics</span>
-                              <span className="text-neutral-900 font-medium">₦8.2M / ₦11.4M (72%)</span>
-                            </div>
-                            <div className="w-full bg-neutral-100 rounded-full h-2">
-                              <div className="bg-[#ff6900] h-2 rounded-full w-[72%]" />
-                            </div>
-                          </div>
-
-                          <div className="space-y-1">
-                            <div className="flex justify-between text-xs font-semibold">
-                              <span className="text-neutral-700">Information Technology</span>
-                              <span className="text-neutral-900 font-medium">₦3.45M / ₦7.2M (48%)</span>
-                            </div>
-                            <div className="w-full bg-neutral-100 rounded-full h-2">
-                              <div className="bg-neutral-900 h-2 rounded-full w-[48%]" />
-                            </div>
-                          </div>
-
-                          <div className="space-y-1">
-                            <div className="flex justify-between text-xs font-semibold">
-                              <span className="text-neutral-700">People & Culture</span>
-                              <span className="text-neutral-900 font-medium">₦1.2M / ₦4.0M (30%)</span>
-                            </div>
-                            <div className="w-full bg-neutral-100 rounded-full h-2">
-                              <div className="bg-emerald-600 h-2 rounded-full w-[30%]" />
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="p-2.5 bg-neutral-100 border border-neutral-200 rounded-xl flex items-center justify-between text-xs">
-                          <span className="text-neutral-700">Recent PO #2026-042: Hardware Upgrade</span>
-                          <span className="font-medium text-emerald-600">₦420,000 • Approved</span>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* TAB 5: Approval Chains */}
-                    {selectedFeature === "approvals" && (
-                      <div className="space-y-3.5 animate-in fade-in duration-200">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="text-xs font-medium text-neutral-900 flex items-center gap-1.5">
-                              <FileCheck className="h-3.5 w-3.5 text-neutral-700" />
-                              <span>Sequential Approval Matrix</span>
-                            </div>
-                            <div className="text-xs text-neutral-500">Tiered Authority & Expenditure Caps</div>
-                          </div>
-                          <span className="text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full">
-                            Pending CFO Review
-                          </span>
-                        </div>
-
-                        {/* Approval Stepper Card */}
-                        <div className="p-3 bg-white rounded-xl border border-neutral-200 space-y-2.5">
-                          <div className="text-xs font-medium text-neutral-900">Voucher: IT Server Rack Upgrade</div>
-                          <div className="flex items-center gap-2 text-xs">
-                            <span className="font-medium text-neutral-900">₦420,000</span>
-                            <span className="text-neutral-400">•</span>
-                            <span className="text-neutral-500">Requested by Zainab Bello (IT)</span>
-                          </div>
-
-                          {/* Visual Workflow Steps with real Lucide check icons */}
-                          <div className="grid grid-cols-3 gap-1.5 pt-1 text-xs font-semibold text-center">
-                            <div className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center gap-1">
-                              <Check className="h-3 w-3 stroke-[3]" />
-                              <span>1. Requisition</span>
-                            </div>
-                            <div className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center gap-1">
-                              <Check className="h-3 w-3 stroke-[3]" />
-                              <span>2. Dept Head</span>
-                            </div>
-                            <div className="p-1.5 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 font-medium">
-                              <span>3. CFO Sign-off</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Interactive Action simulation */}
-                        <div className="p-2.5 bg-neutral-100 rounded-xl flex items-center justify-between">
-                          <span className="text-xs font-medium text-neutral-600">Simulate Decision:</span>
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setVoucherStatus("rejected")}
-                              className="px-2.5 py-1 text-xs font-semibold bg-white border border-neutral-200 rounded-lg text-neutral-700 hover:bg-neutral-50"
-                            >
-                              Reject
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setVoucherStatus("approved")}
-                              className="px-3 py-1 text-xs font-medium bg-[#ff6900] text-white rounded-lg hover:bg-[#ea580c] shadow-xs"
-                            >
-                              Approve Voucher
+                            <button type="button" onClick={() => setSelectedFeature(null)} className="font-medium text-[#ff6900] hover:underline flex items-center gap-1 cursor-pointer">
+                              <span>Close preview</span>
+                              <X className="h-3.5 w-3.5" />
                             </button>
                           </div>
-                        </div>
-
-                        {voucherStatus === "approved" && (
-                          <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 font-medium flex items-center justify-between animate-in fade-in duration-150">
-                            <span className="flex items-center gap-1.5">
-                              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                              <span>Authorized by CFO • Indelibly Logged</span>
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => setVoucherStatus("pending")}
-                              className="text-neutral-500 hover:underline font-normal text-xs"
-                            >
-                              Reset
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Bottom Interactive Footnote */}
-                    <div className="pt-2 border-t border-neutral-200/80 flex items-center justify-between text-xs">
-                      <span className="text-neutral-500 font-medium">Click another feature to explore</span>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedFeature(null)}
-                        className="font-medium text-[#ff6900] hover:underline flex items-center gap-1"
-                      >
-                        <span>Close preview</span>
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
@@ -837,309 +522,34 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Window Content */}
-            <div className="p-6 sm:p-8">
-              {/* Tab 1: Staff Directory */}
-              {activeTab === "roster" && (
-                <div className="space-y-6">
-                  <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-neutral-100">
-                    <div>
-                      <h3 className="text-base font-medium text-neutral-900 font-headline">Enterprise Workforce Directory</h3>
-                      <p className="text-xs text-neutral-500">{employees.length} personnel displayed &bull; Multi-campus directory</p>
+            {/* Real Application Screenshots (Light & Dark Mode Mix) */}
+            <div className="bg-[#141415]">
+              {(() => {
+                const tabViews: Record<string, { src: string; alt: string; title: string; subtitle: string; mode: string }> = {
+                  roster: { src: "/screenshots/05-hr-employees.png", alt: "Enterprise Workforce Directory", title: "Enterprise Workforce Directory", subtitle: "Live employee profiles, departments, and role assignments", mode: "Light Mode" },
+                  payroll: { src: "/screenshots/04-payroll.png", alt: "Automated Nigerian Payroll Engine", title: "Automated Payroll & Statutory Tax Engine", subtitle: "PAYE, PenCom pension schedules, and commercial bank disbursement files", mode: "Dark Mode" },
+                  approvals: { src: "/screenshots/12-approvals.png", alt: "Multi-Tier Approval Queue", title: "Multi-Tier Request & Payment Approvals", subtitle: "Department lead and finance sign-offs with immutable audit logs", mode: "Light Mode" },
+                  attendance: { src: "/screenshots/06-attendance.png", alt: "Daily Time and Attendance", title: "Geofenced Time & Attendance Tracking", subtitle: "Real-time daily clock-in logs, late policies, and correction approvals", mode: "Dark Mode" },
+                  procurement: { src: "/screenshots/11-procurement-dark.png", alt: "Procurement and Purchase Orders", title: "Procurement, Vendors & Purchase Orders", subtitle: "End-to-end requisitions, vendor quotes, and payment voucher reconciliation", mode: "Dark Mode" },
+                };
+                const view = tabViews[activeTab] ?? tabViews.roster;
+                return (
+                  <>
+                    <div className="w-full overflow-hidden bg-[#141415]">
+                      <img src={view.src} alt={view.alt} decoding="sync" className="w-full h-auto block [image-rendering:-webkit-optimize-contrast]" />
                     </div>
-                    <div className="flex items-center gap-2">
-                      <SelectBox
-                        value={campusFilter}
-                        onChange={(e) => setCampusFilter(e.target.value as any)}
-                        className="text-xs border border-neutral-200 rounded-lg px-3 py-1.5 text-neutral-700 bg-white font-medium focus:outline-hidden"
-                      >
-                        <option value="all">All Campus Locations</option>
-                        <option value="vi">Victoria Island Campus</option>
-                        <option value="abuja">Abuja Office</option>
-                      </SelectBox>
-                      <button
-                        type="button"
-                        onClick={() => setAddEmployeeModalOpen(true)}
-                        className="text-xs bg-[#ff6900] hover:bg-[#ea580c] text-white font-medium rounded-lg px-3.5 py-1.5 flex items-center gap-1 shadow-sm transition-colors"
-                      >
-                        <Plus className="h-3.5 w-3.5" /> Add Staff (Demo)
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
-                      <thead>
-                        <tr className="border-b border-neutral-200 text-neutral-400 font-semibold text-xs">
-                          <th className="py-3">Employee Name</th>
-                          <th className="py-3">Staff ID</th>
-                          <th className="py-3">Department</th>
-                          <th className="py-3">Role</th>
-                          <th className="py-3">Campus</th>
-                          <th className="py-3">Status</th>
-                          <th className="py-3 text-right">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-neutral-100 text-neutral-700">
-                        {filteredEmployees.map((emp) => (
-                          <tr key={emp.id} className="hover:bg-neutral-50/50 transition-colors">
-                            <td className="py-3.5 font-medium text-neutral-900 flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-orange-100 text-[#ff6900] font-medium flex items-center justify-center text-xs">
-                                {emp.name
-                                  .split(" ")
-                                  .map((n) => n[0])
-                                  .join("")
-                                  .slice(0, 2)}
-                              </div>
-                              <div>
-                                <div>{emp.name}</div>
-                                <div className="text-xs text-neutral-400 font-normal">{emp.email}</div>
-                              </div>
-                            </td>
-                            <td className="py-3.5 font-mono text-neutral-500">{emp.staffId}</td>
-                            <td className="py-3.5">{emp.department}</td>
-                            <td className="py-3.5 font-medium">{emp.role}</td>
-                            <td className="py-3.5 text-neutral-500">{emp.campus}</td>
-                            <td className="py-3.5">
-                              <span
-                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
-                                  emp.status === "Active"
-                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                    : "bg-amber-50 text-amber-700 border-amber-200"
-                                }`}
-                              >
-                                {emp.status}
-                              </span>
-                            </td>
-                            <td className="py-3.5 text-right font-semibold text-[#ff6900] cursor-pointer hover:underline">
-                              <Link to="/register">Manage</Link>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {/* Tab 2: Payroll Engine */}
-              {activeTab === "payroll" && (
-                <div className="space-y-6">
-                  <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-neutral-100">
-                    <div>
-                      <h3 className="text-base font-medium text-neutral-900 font-headline">Monthly Salary Run &bull; November 2026</h3>
-                      <p className="text-xs text-neutral-500">Automated statutory computations (PAYE Tax, Pension Reform Act 2014, NHF)</p>
-                    </div>
-                    <span className="text-xs bg-emerald-600 text-white font-medium rounded-lg px-3 py-1.5 shadow-sm">
-                      Ready for Disbursement
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                    <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200">
-                      <div className="text-xs font-medium text-neutral-400">Gross Salaries</div>
-                      <div className="text-xl font-semibold text-neutral-900 mt-1">&#8358;18,450,000</div>
-                      <div className="text-xs text-neutral-500 mt-0.5">48 active payroll profiles</div>
-                    </div>
-                    <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200">
-                      <div className="text-xs font-medium text-neutral-400">PAYE Tax Deductions</div>
-                      <div className="text-xl font-semibold text-neutral-900 mt-1">&#8358;2,860,000</div>
-                      <div className="text-xs text-neutral-500 mt-0.5">State IRS schedule ready</div>
-                    </div>
-                    <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200">
-                      <div className="text-xs font-medium text-neutral-400">Pension Contributions</div>
-                      <div className="text-xl font-semibold text-neutral-900 mt-1">&#8358;1,476,000</div>
-                      <div className="text-xs text-neutral-500 mt-0.5">PFA allocation breakdown</div>
-                    </div>
-                    <div className="p-4 rounded-2xl bg-orange-50 border border-orange-200">
-                      <div className="text-xs font-medium text-[#ff6900]">Net Salary Disbursal</div>
-                      <div className="text-xl font-semibold text-[#ff6900] mt-1">&#8358;14,114,000</div>
-                      <div className="text-xs text-orange-700/80 mt-0.5">Ready for bank batch upload</div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center justify-between gap-4 pt-3 text-xs text-neutral-500">
-                    <span className="flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                      Zero calculation errors &bull; Fully audited against daily attendance
-                    </span>
-                    <button
-                      type="button"
-                      onClick={handleDownloadCsv}
-                      className="text-xs font-medium text-[#ff6900] hover:text-[#ea580c] flex items-center gap-1.5 bg-orange-50 hover:bg-orange-100/70 px-3.5 py-1.5 rounded-xl border border-orange-200 transition-colors"
-                    >
-                      <Download className="h-4 w-4" /> Download Bank Disbursement Schedule (CSV)
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Tab 3: Approval Queue */}
-              {activeTab === "approvals" && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between pb-4 border-b border-neutral-100">
-                    <div>
-                      <h3 className="text-base font-medium text-neutral-900 font-headline">Multi-Tier Approval Matrix</h3>
-                      <p className="text-xs text-neutral-500">Sequential sign-offs preventing unauthorized departmental expenditures</p>
-                    </div>
-                    <span className="text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1">
-                      {voucherStatus === "pending" ? "1 Pending Sign-Off" : "All Sign-Offs Cleared"}
-                    </span>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="p-4 rounded-2xl border border-neutral-200 flex flex-wrap items-center justify-between gap-4 bg-white transition-colors">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-medium text-neutral-900">Purchase Voucher &bull; Office IT Hardware Upgrade</span>
-                          {voucherStatus === "pending" && (
-                            <span className="text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
-                              Pending CFO Approval
-                            </span>
-                          )}
-                          {voucherStatus === "approved" && (
-                            <span className="text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">
-                              <CheckCircle className="h-3 w-3" /> Approved by CFO
-                            </span>
-                          )}
-                          {voucherStatus === "rejected" && (
-                            <span className="text-xs font-medium text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">
-                              Rejected
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-xs text-neutral-500">
-                          Requisitioned by: <span className="font-semibold text-neutral-700">Zainab Bello</span> (IT) &bull; Amount: <span className="font-medium text-neutral-900">&#8358;420,000</span>
-                        </div>
+                    <div className="px-6 py-4 bg-white border-t border-neutral-200 flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-sm font-semibold text-neutral-900 font-headline">{view.title}</h3>
+                        <p className="text-xs text-neutral-500">{view.subtitle}</p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {voucherStatus === "pending" ? (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => setVoucherStatus("rejected")}
-                              className="px-3.5 py-1.5 text-xs font-semibold border border-neutral-200 rounded-lg hover:bg-neutral-50 text-neutral-700 transition-colors"
-                            >
-                              Reject
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setVoucherStatus("approved")}
-                              className="px-4 py-1.5 text-xs font-medium bg-[#ff6900] hover:bg-[#ea580c] text-white rounded-lg shadow-sm transition-colors"
-                            >
-                              Approve Voucher
-                            </button>
-                          </>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => setVoucherStatus("pending")}
-                            className="text-xs text-neutral-400 hover:text-neutral-600 underline"
-                          >
-                            Reset Demo State
-                          </button>
-                        )}
-                      </div>
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-mono ${view.mode === "Dark Mode" ? "bg-[#141415] text-white" : "bg-neutral-100 text-neutral-700 border border-neutral-200"}`}>
+                        {view.mode} · Live Capture
+                      </span>
                     </div>
-
-                    <div className="p-4 rounded-2xl border border-neutral-200 flex flex-wrap items-center justify-between gap-4 bg-white">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-medium text-neutral-900">Annual Leave Application &bull; 10 Days</span>
-                          <span className="text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                            Supervisor Approved
-                          </span>
-                        </div>
-                        <div className="text-xs text-neutral-500">
-                          Requisitioned by: <span className="font-semibold text-neutral-700">Emeka Okonkwo</span> &bull; Starting: Dec 1, 2026 &bull; Leave balance remaining: 14 days
-                        </div>
-                      </div>
-                      <span className="text-xs font-semibold text-neutral-500">Cleared for HR Record</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Tab 4: Attendance Digest */}
-              {activeTab === "attendance" && (
-                <div className="space-y-6">
-                  <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-neutral-100">
-                    <div>
-                      <h3 className="text-base font-medium text-neutral-900 font-headline">Live Campus Attendance Digest</h3>
-                      <p className="text-xs text-neutral-500">Real-time clock-in records synchronized with biometric devices and polygon geofencing</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleDownloadTimesheet}
-                      className="text-xs border border-neutral-200 bg-white hover:bg-neutral-50 rounded-lg px-3 py-1.5 font-semibold text-neutral-700 flex items-center gap-1.5 transition-colors shadow-xs"
-                    >
-                      <Download className="h-3.5 w-3.5 text-neutral-500" /> Export Today&apos;s Timesheet
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="p-5 rounded-2xl bg-white border border-neutral-200 shadow-sm">
-                      <div className="text-xs font-medium text-neutral-400">Present On-Site Today</div>
-                      <div className="text-2xl font-semibold text-emerald-600 mt-1">45 / 48 (93.7%)</div>
-                      <div className="text-xs text-neutral-500 mt-0.5">Average clock-in time: 08:18 AM</div>
-                    </div>
-                    <div className="p-5 rounded-2xl bg-white border border-neutral-200 shadow-sm">
-                      <div className="text-xs font-medium text-neutral-400">Approved Leave / Off-site</div>
-                      <div className="text-2xl font-semibold text-neutral-800 mt-1">3 Employees</div>
-                      <div className="text-xs text-neutral-500 mt-0.5">2 Annual Leave, 1 Field Operation</div>
-                    </div>
-                    <div className="p-5 rounded-2xl bg-white border border-neutral-200 shadow-sm">
-                      <div className="text-xs font-medium text-neutral-400">Tardiness Rate</div>
-                      <div className="text-2xl font-semibold text-neutral-800 mt-1">0% Discrepancies</div>
-                      <div className="text-xs text-neutral-500 mt-0.5">Automatically synced with payroll deductions</div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Tab 5: Procurement */}
-              {activeTab === "procurement" && (
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between pb-4 border-b border-neutral-100">
-                    <div>
-                      <h3 className="text-base font-medium text-neutral-900 font-headline">Departmental Budgets & Procurement Vouchers</h3>
-                      <p className="text-xs text-neutral-500">Track quarterly spending allocations against live purchase orders</p>
-                    </div>
-                    <span className="text-xs font-medium text-neutral-700 bg-neutral-100 border border-neutral-200 rounded-lg px-3 py-1.5">
-                      Q4 Budget: 64% Utilized
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200">
-                      <div className="text-xs font-medium text-neutral-800">Operations & Logistics</div>
-                      <div className="text-lg font-semibold text-neutral-900 mt-1">&#8358;8,200,000</div>
-                      <div className="w-full bg-neutral-200 rounded-full h-1.5 mt-2">
-                        <div className="bg-[#ff6900] h-1.5 rounded-full w-[72%]" />
-                      </div>
-                      <div className="text-xs text-neutral-500 mt-1">72% of &#8358;11.4M limit</div>
-                    </div>
-
-                    <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200">
-                      <div className="text-xs font-medium text-neutral-800">Information Technology</div>
-                      <div className="text-lg font-semibold text-neutral-900 mt-1">&#8358;3,450,000</div>
-                      <div className="w-full bg-neutral-200 rounded-full h-1.5 mt-2">
-                        <div className="bg-neutral-900 h-1.5 rounded-full w-[48%]" />
-                      </div>
-                      <div className="text-xs text-neutral-500 mt-1">48% of &#8358;7.2M limit</div>
-                    </div>
-
-                    <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200">
-                      <div className="text-xs font-medium text-neutral-800">Human Resources</div>
-                      <div className="text-lg font-semibold text-neutral-900 mt-1">&#8358;1,200,000</div>
-                      <div className="w-full bg-neutral-200 rounded-full h-1.5 mt-2">
-                        <div className="bg-emerald-600 h-1.5 rounded-full w-[30%]" />
-                      </div>
-                      <div className="text-xs text-neutral-500 mt-1">30% of &#8358;4.0M limit</div>
-                    </div>
-                  </div>
-                </div>
-              )}
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>

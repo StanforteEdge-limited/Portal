@@ -948,6 +948,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                 <li><Link to="/security" className="hover:text-neutral-900">Security & Encryption</Link></li>
                 <li><Link to="/help#documents" className="hover:text-neutral-900">Document Management</Link></li>
                 <li><Link to="/help" className="hover:text-neutral-900">Help & Support</Link></li>
+                <li><Link to="/contact" className="hover:text-neutral-900">Contact & Report</Link></li>
                 <li><Link to="/login" className="hover:text-neutral-900">Sign In</Link></li>
                 <li><Link to="/register" className="hover:text-neutral-900">Create Free Workspace</Link></li>
               </ul>

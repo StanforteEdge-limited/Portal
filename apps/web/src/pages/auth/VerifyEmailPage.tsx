@@ -57,9 +57,9 @@ export default function VerifyEmailPage() {
           {/* Background Skyscraper */}
           <div className="absolute inset-0 z-0">
             <img
-              src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1600&q=85"
-              alt="Corporate"
-              className="w-full h-full object-cover object-center opacity-25 mix-blend-luminosity"
+              src="/screenshots/01-dashboard.png"
+              alt="Stanforte Edge Workspace Preview"
+              className="w-full h-full object-cover object-top opacity-25 mix-blend-luminosity"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-[#070e20] via-[#070e20]/90 to-[#070e20]/80" />
           </div>

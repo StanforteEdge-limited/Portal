@@ -104,9 +104,9 @@ export default function RegisterPage() {
         {/* Modern Skyscraper Dusk Background Photo */}
         <div className="absolute inset-0 z-0">
           <img
-            src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1600&q=85"
-            alt="Corporate Headquarters"
-            className="w-full h-full object-cover object-center opacity-30 mix-blend-luminosity"
+            src="/screenshots/09-ceo-console.png"
+            alt="Stanforte Edge Executive Console"
+            className="w-full h-full object-cover object-top opacity-25 mix-blend-luminosity"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-[#070e20] via-[#070e20]/85 to-[#070e20]/75" />
           <div className="absolute inset-0 bg-radial-gradient from-transparent to-[#070e20]/90" />

@@ -95,6 +95,9 @@ const FeaturesPage = lazy(() => import("@/pages/public/FeaturesPage"));
 const SecurityPage = lazy(() => import("@/pages/public/SecurityPage"));
 const PublicHelpPage = lazy(() => import("@/pages/public/PublicHelpPage"));
 const LegalPage = lazy(() => import("@/pages/public/LegalPage"));
+const ContactPage = lazy(() => import("@/pages/public/ContactPage"));
+const CeoLoginPage = lazy(() => import("@/pages/ceo/CeoLoginPage"));
+const CeoDashboardPage = lazy(() => import("@/pages/ceo/CeoDashboardPage"));
 const LoginPage = lazy(() => import("@/pages/auth/LoginPage"));
 const RegisterPage = lazy(() => import("@/pages/auth/RegisterPage"));
 const ForgotPasswordPage = lazy(() => import("@/pages/auth/ForgotPasswordPage"));
@@ -261,6 +264,10 @@ const PUBLIC_ROUTES: readonly RouteDef[] = [
   ["/privacy-policy", () => <LegalPage doc="privacy" />],
   ["/terms", () => <LegalPage doc="terms" />],
   ["/terms-of-service", () => <LegalPage doc="terms" />],
+  ["/contact", ContactPage],
+  ["/ceo/login", CeoLoginPage],
+  ["/ceo", CeoDashboardPage],
+  ["/ceo/dashboard", CeoDashboardPage],
   ["/reauth", SessionReauthPage],
   ["/verify-email", VerifyEmailPage],
   ["/accept-invite", AcceptInvitePage],

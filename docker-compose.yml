@@ -180,6 +180,7 @@ services:
       - api
     volumes:
       - ./apps/web/src:/app/apps/web/src:ro
+      - ./apps/web/public:/app/apps/web/public:ro
       - ./apps/web/tailwind.config.cjs:/app/apps/web/tailwind.config.cjs:ro
       - ./apps/web/vite.config.ts:/app/apps/web/vite.config.ts:ro
       - ./apps/shared/src:/app/apps/shared/src:ro

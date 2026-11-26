@@ -371,7 +371,31 @@ export class StorageService {
     payload: { file_name?: string; mime_type?: string; file_size?: number; expires_in_seconds?: number }
   ) {
     if (!payload?.file_name) throw new BadRequestException('file_name is required');
+    const safeName = String(payload.file_name).trim();
+    const ext = safeName.includes('.') ? safeName.slice(safeName.lastIndexOf('.')).toLowerCase() : '';
+    const ALLOWED_EXTENSIONS = new Set([
+      '.jpg', '.jpeg', '.png', '.webp', '.pdf',
+      '.doc', '.docx', '.xls', '.xlsx', '.csv', '.txt',
+    ]);
+    const ALLOWED_MIMES = new Set([
+      'image/jpeg', 'image/png', 'image/webp', 'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'text/csv', 'text/plain',
+    ]);
+    if (!ext || !ALLOWED_EXTENSIONS.has(ext)) {
+      throw new BadRequestException(`File type "${ext || 'unknown'}" is not allowed`);
+    }
+    if (payload.mime_type && !ALLOWED_MIMES.has(String(payload.mime_type).toLowerCase())) {
+      throw new BadRequestException(`MIME type "${payload.mime_type}" is not allowed`);
+    }
+    const maxBytes = Math.max(1, Number(process.env.FILE_UPLOAD_MAX_MB || 10)) * 1024 * 1024;
     if (payload.file_size !== undefined) {
+      if (payload.file_size <= 0 || payload.file_size > maxBytes) {
+        throw new BadRequestException(`File size must be between 1 byte and ${maxBytes} bytes`);
+      }
       await this.ensureQuota(payload.file_size);
     }
     const tenantId = this.tenantIdValue();
