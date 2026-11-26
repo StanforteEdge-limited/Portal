@@ -385,10 +385,12 @@ export default function LoginPage() {
             </a>
             <button
               type="button"
-              className="flex items-center justify-center gap-2 h-10 px-4 rounded-lg border border-neutral-900/[0.10] bg-white hover:bg-neutral-50 text-sm font-medium text-neutral-800 transition-colors"
+              disabled
+              title="Microsoft SSO is not yet enabled for this workspace"
+              className="flex items-center justify-center gap-2 h-10 px-4 rounded-lg border border-neutral-900/[0.08] bg-neutral-50 text-sm font-medium text-neutral-400 cursor-not-allowed"
             >
               <MicrosoftIcon />
-              <span>Microsoft</span>
+              <span>Microsoft (Soon)</span>
             </button>
           </div>
 

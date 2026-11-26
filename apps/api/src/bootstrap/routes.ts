@@ -1,5 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { HealthRoutes } from '$apps/platform/health';
+import { BillingRoutes } from '$apps/platform/billing';
+import { MailRoutes } from '$apps/communication/mail';
 import { AuthRoutes } from '$apps/identity/auth/routes';
 import { AdminRoutes, UsersRoutes } from '$apps/identity/users/routes';
 import { RbacRoutes } from '$apps/identity/rbac/routes';
@@ -95,5 +97,7 @@ export const appRoutes: AppRoute[] = [
   { prefix: '/tenants', plugin: TenancyRoutes },
   { prefix: '/finance', plugin: FinanceRoutes },
   { prefix: '/procurement', plugin: ProcurementRoutes },
+  { prefix: '/billing', plugin: BillingRoutes },
+  { prefix: '/mail', plugin: MailRoutes },
   { prefix: '/auth/roles', plugin: RbacRoutes },
 ];

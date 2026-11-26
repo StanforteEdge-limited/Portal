@@ -34,7 +34,7 @@ USER node
 EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD wget -q -O /dev/null http://127.0.0.1:3000/v1/health/healthz || exit 1
+  CMD wget -q -O /dev/null http://127.0.0.1:3000/v1/health || exit 1
 
 # Apply pending migrations under a Postgres advisory lock (single replica wins),
 # then exec the compiled app so SIGTERM propagates cleanly

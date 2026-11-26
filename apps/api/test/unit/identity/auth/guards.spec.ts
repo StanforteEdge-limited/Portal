@@ -106,7 +106,11 @@ describe('requirePermissions', () => {
     const req = { headers: { authorization: 'Bearer token' }, server: { container } } as any;
 
     await expect(requirePermissions('users.manage')(req, {} as any)).resolves.toBeUndefined();
-    expect(container.jwt.verify).toHaveBeenCalledWith('token');
+    expect(container.jwt.verify).toHaveBeenCalledWith('token', {
+      algorithms: ['HS256'],
+      audience: 'portal-user',
+      issuer: 'stanforte-api',
+    });
   });
 
   it('rejects an unauthenticated request', async () => {

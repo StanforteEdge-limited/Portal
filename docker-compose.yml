@@ -79,7 +79,7 @@ services:
       MAIL_FROM: no-reply@stanforteedge.com
       MAIL_SUPPORT_EMAIL: support@stanforteedge.com
       MAIL_MESSAGE_ID_DOMAIN: stanforteedge.com
-      MAIL_ENCRYPTION_KEY: ${MAIL_ENCRYPTION_KEY:-dev-mail-encryption-key-change-in-production}
+      MAIL_ENCRYPTION_KEY: ${MAIL_ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
       SMTP_HOST: mailpit
       SMTP_PORT: "1025"
       SMTP_USER: ""
@@ -142,7 +142,7 @@ services:
       MAIL_FROM: no-reply@stanforteedge.com
       MAIL_SUPPORT_EMAIL: support@stanforteedge.com
       MAIL_MESSAGE_ID_DOMAIN: stanforteedge.com
-      MAIL_ENCRYPTION_KEY: ${MAIL_ENCRYPTION_KEY:-dev-mail-encryption-key-change-in-production}
+      MAIL_ENCRYPTION_KEY: ${MAIL_ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
       SMTP_HOST: mailpit
       SMTP_PORT: "1025"
       SMTP_USER: ""

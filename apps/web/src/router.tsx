@@ -128,6 +128,12 @@ const FinancePayrollComponentsPage = lazy(() => import("@/pages/finance/payroll/
 const FinancePayrollTaxTablesPage = lazy(() => import("@/pages/finance/payroll/FinancePayrollTaxTablesPage"));
 const FinancePayrollRunDetailPage = lazy(() => import("@/pages/finance/payroll/FinancePayrollRunDetailPage"));
 const HrPayrollLoansPage = lazy(() => import("@/pages/hr/payroll/HrPayrollLoansPage"));
+const HrPayrollWorkersPage = lazy(() => import("@/pages/hr/payroll/HrPayrollWorkersPage"));
+const HrSettingsPage = lazy(() => import("@/pages/hr/settings/HrSettingsPage"));
+const FinanceIncomePage = lazy(() => import("@/pages/finance/income/FinanceIncomePage"));
+const FinanceItemsPage = lazy(() => import("@/pages/finance/items/FinanceItemsPage"));
+const StatutoryDeductionManualEntryPage = lazy(() => import("@/pages/finance/deductions/StatutoryDeductionManualEntryPage"));
+const FinanceLegacyManualEntryPage = lazy(() => import("@/pages/finance/requests/FinanceLegacyManualEntryPage"));
 
 // Finance & Accounting
 const FinanceDashboardPage = lazy(() => import("@/pages/finance/dashboard/FinanceDashboardPage"));
@@ -447,6 +453,18 @@ const hrPayrollLoansRoute = createRoute({
   component: HrPayrollLoansPage,
 });
 
+const hrPayrollWorkersRoute = createRoute({
+  getParentRoute: () => protectedLayoutRoute,
+  path: "/hr/payroll/workers",
+  component: HrPayrollWorkersPage,
+});
+
+const hrSettingsRoute = createRoute({
+  getParentRoute: () => protectedLayoutRoute,
+  path: "/hr/settings",
+  component: HrSettingsPage,
+});
+
 // 9. Finance & Accounting Routes
 const financeRoute = createRoute({
   getParentRoute: () => protectedLayoutRoute,
@@ -584,6 +602,42 @@ const financeContactsRoute = createRoute({
   getParentRoute: () => protectedLayoutRoute,
   path: "/finance/contacts",
   component: FinanceContactsPage,
+});
+
+const financeCustomersRoute = createRoute({
+  getParentRoute: () => protectedLayoutRoute,
+  path: "/finance/customers",
+  component: () => <FinanceContactsPage defaultType="customer" />,
+});
+
+const financeVendorsRoute = createRoute({
+  getParentRoute: () => protectedLayoutRoute,
+  path: "/finance/vendors",
+  component: () => <FinanceContactsPage defaultType="vendor" />,
+});
+
+const financeIncomeRoute = createRoute({
+  getParentRoute: () => protectedLayoutRoute,
+  path: "/finance/income",
+  component: FinanceIncomePage,
+});
+
+const financeItemsRoute = createRoute({
+  getParentRoute: () => protectedLayoutRoute,
+  path: "/finance/items",
+  component: FinanceItemsPage,
+});
+
+const financeStatutoryDeductionManualEntryRoute = createRoute({
+  getParentRoute: () => protectedLayoutRoute,
+  path: "/finance/manual-entry/statutory-deductions",
+  component: StatutoryDeductionManualEntryPage,
+});
+
+const financeLegacyManualEntryRoute = createRoute({
+  getParentRoute: () => protectedLayoutRoute,
+  path: "/finance/legacy-manual-entry",
+  component: FinanceLegacyManualEntryPage,
 });
 
 const financeSettingsRoute = createRoute({
@@ -952,6 +1006,8 @@ const routeTree = rootRoute.addChildren([
     financePayrollTaxTablesRoute,
     financePayrollRunDetailRoute,
     hrPayrollLoansRoute,
+    hrPayrollWorkersRoute,
+    hrSettingsRoute,
 
     // Finance & Accounting
     financeRoute,
@@ -977,6 +1033,12 @@ const routeTree = rootRoute.addChildren([
     financeReportsRoute,
     financeReportDetailRoute,
     financeContactsRoute,
+    financeCustomersRoute,
+    financeVendorsRoute,
+    financeIncomeRoute,
+    financeItemsRoute,
+    financeStatutoryDeductionManualEntryRoute,
+    financeLegacyManualEntryRoute,
     financeSettingsRoute,
     financeRequestsRoute,
     financeRequestDetailRoute,

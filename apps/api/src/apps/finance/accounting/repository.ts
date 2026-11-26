@@ -2718,7 +2718,7 @@ export class FinanceService {
     const [data, total] = await Promise.all([
       this.selectRows(this.db.client, financeAccount, {
         where,
-        orderBy: [{ isActive: "desc" }, { name: "asc" }],
+        orderBy: { isActive: "desc", name: "asc" },
         offset: (page - 1) * perPage,
         limit: perPage,
       }),
@@ -3392,7 +3392,7 @@ export class FinanceService {
       this.db.client.query.financeAsset.findMany({
         where,
         include: this.getAssetInclude(),
-        orderBy: [{ purchaseDate: "desc" }, { createdAt: "desc" }],
+        orderBy: { purchaseDate: "desc", createdAt: "desc" },
         skip: (page - 1) * perPage,
         take: perPage,
       }),
@@ -3431,7 +3431,7 @@ export class FinanceService {
           select: { id: true, firstName: true, lastName: true, email: true },
         },
       },
-      orderBy: [{ disposalDate: "desc" }, { createdAt: "desc" }],
+      orderBy: { disposalDate: "desc", createdAt: "desc" },
     });
 
     const items = rows.map((row) => ({
@@ -3808,7 +3808,7 @@ export class FinanceService {
     if (query.status) where.status = String(query.status).toLowerCase();
     const rows = await this.db.client.query.financeReportingPeriod.findMany({
       where,
-      orderBy: [{ year: "desc" }, { month: "desc" }],
+      orderBy: { year: "desc", month: "desc" },
     });
     const items = rows.map((row) => this.serializeReportingPeriod(row));
     return paginatedResponse(items, {
@@ -4262,7 +4262,7 @@ export class FinanceService {
           ? { isActive: String(query.is_active) !== "false" }
           : {}),
       },
-      orderBy: [{ name: "asc" }],
+      orderBy: { name: "asc" },
     });
     const items = rows.map((row) => this.serializeDonor(row));
     return paginatedResponse(items, {
@@ -4343,7 +4343,7 @@ export class FinanceService {
         donor: true,
         grants: { select: { id: true, code: true, name: true, status: true } },
       },
-      orderBy: [{ code: "asc" }],
+      orderBy: { code: "asc" },
     });
     const items = rows.map((row) => this.serializeFund(row));
     return paginatedResponse(items, {
@@ -4451,7 +4451,7 @@ export class FinanceService {
         ...(query.status ? { status: String(query.status) } : {}),
       },
       include: { donor: true, fund: true },
-      orderBy: [{ code: "asc" }],
+      orderBy: { code: "asc" },
     });
     const items = rows.map((row) => this.serializeGrant(row));
     return paginatedResponse(items, {
@@ -4604,22 +4604,22 @@ export class FinanceService {
       include: {
         fund: true,
         grant: true,
-        assumptions: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
-        portfolio: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
+        assumptions: { orderBy: { sortOrder: "asc", createdAt: "asc" } },
+        portfolio: { orderBy: { sortOrder: "asc", createdAt: "asc" } },
         commitments: true,
         currentActiveRevision: {
           include: {
-            lines: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
+            lines: { orderBy: { sortOrder: "asc", createdAt: "asc" } },
           },
         },
         draftRevision: {
           include: {
-            lines: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
+            lines: { orderBy: { sortOrder: "asc", createdAt: "asc" } },
           },
         },
-        revisions: { orderBy: [{ revisionNumber: "desc" }] },
+        revisions: { orderBy: { revisionNumber: "desc" } },
       },
-      orderBy: [{ startDate: "desc" }, { createdAt: "desc" }],
+      orderBy: { startDate: "desc", createdAt: "desc" },
     });
     const items = rows.map((row) => this.serializeBudget(row));
     return paginatedResponse(items, {
@@ -4635,20 +4635,20 @@ export class FinanceService {
       include: {
         fund: true,
         grant: true,
-        assumptions: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
-        portfolio: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
+        assumptions: { orderBy: { sortOrder: "asc", createdAt: "asc" } },
+        portfolio: { orderBy: { sortOrder: "asc", createdAt: "asc" } },
         commitments: true,
         currentActiveRevision: {
           include: {
-            lines: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
+            lines: { orderBy: { sortOrder: "asc", createdAt: "asc" } },
           },
         },
         draftRevision: {
           include: {
-            lines: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
+            lines: { orderBy: { sortOrder: "asc", createdAt: "asc" } },
           },
         },
-        revisions: { orderBy: [{ revisionNumber: "desc" }] },
+        revisions: { orderBy: { revisionNumber: "desc" } },
       },
     });
     if (!row) throw new NotFoundException("Budget not found");
@@ -4707,11 +4707,11 @@ export class FinanceService {
       include: {
         currentActiveRevision: {
           include: {
-            lines: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
+            lines: { orderBy: { sortOrder: "asc", createdAt: "asc" } },
           },
         },
       },
-      orderBy: [{ fiscalYear: "desc" }, { createdAt: "desc" }],
+      orderBy: { fiscalYear: "desc", createdAt: "desc" },
     });
 
     return rows.flatMap((budget) =>
@@ -4749,9 +4749,9 @@ export class FinanceService {
       include: {
         fund: true,
         grant: true,
-        assumptions: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
-        portfolio: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
-        lines: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
+        assumptions: { orderBy: { sortOrder: "asc", createdAt: "asc" } },
+        portfolio: { orderBy: { sortOrder: "asc", createdAt: "asc" } },
+        lines: { orderBy: { sortOrder: "asc", createdAt: "asc" } },
       },
     });
     return this.serializeBudget(row);
@@ -4769,9 +4769,9 @@ export class FinanceService {
       include: {
         fund: true,
         grant: true,
-        assumptions: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
-        portfolio: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
-        lines: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
+        assumptions: { orderBy: { sortOrder: "asc", createdAt: "asc" } },
+        portfolio: { orderBy: { sortOrder: "asc", createdAt: "asc" } },
+        lines: { orderBy: { sortOrder: "asc", createdAt: "asc" } },
       },
     });
     return this.serializeBudget(row);
@@ -4783,9 +4783,9 @@ export class FinanceService {
       include: {
         fund: true,
         grant: true,
-        assumptions: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
-        portfolio: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
-        lines: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
+        assumptions: { orderBy: { sortOrder: "asc", createdAt: "asc" } },
+        portfolio: { orderBy: { sortOrder: "asc", createdAt: "asc" } },
+        lines: { orderBy: { sortOrder: "asc", createdAt: "asc" } },
       },
     });
     if (!budget) throw new NotFoundException("Budget not found");
@@ -5155,10 +5155,10 @@ export class FinanceService {
           fund: true,
           grant: true,
           assumptions: {
-            orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+            orderBy: { sortOrder: "asc", createdAt: "asc" },
           },
-          portfolio: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
-          lines: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
+          portfolio: { orderBy: { sortOrder: "asc", createdAt: "asc" } },
+          lines: { orderBy: { sortOrder: "asc", createdAt: "asc" } },
         },
       });
     });
@@ -5172,9 +5172,9 @@ export class FinanceService {
       {
         where: { budgetId },
         include: {
-          lines: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
+          lines: { orderBy: { sortOrder: "asc", createdAt: "asc" } },
         },
-        orderBy: [{ revisionNumber: "desc" }],
+        orderBy: { revisionNumber: "desc" },
       },
     );
     return revisions.map((revision) => this.serializeBudgetRevision(revision));
@@ -5439,7 +5439,7 @@ export class FinanceService {
           },
         },
       },
-      orderBy: [{ invoiceDate: "desc" }, { createdAt: "desc" }],
+      orderBy: { invoiceDate: "desc", createdAt: "desc" },
     });
     const items = rows.map((row) => this.serializeSalesInvoice(row));
     let filtered = items;
@@ -5687,7 +5687,7 @@ export class FinanceService {
           lines: { include: { chartAccount: true } },
           payments: true,
         },
-        orderBy: [{ billDate: "desc" }, { createdAt: "desc" }],
+        orderBy: { billDate: "desc", createdAt: "desc" },
         skip: (page - 1) * perPage,
         take: perPage,
       }),
@@ -6435,7 +6435,7 @@ export class FinanceService {
           },
         },
       },
-      orderBy: [{ invoiceDate: "asc" }, { createdAt: "asc" }],
+      orderBy: { invoiceDate: "asc", createdAt: "asc" },
     });
 
     const rows: Array<{
@@ -6508,11 +6508,7 @@ export class FinanceService {
     const rows = await this.db.client.query.financeReportNote.findMany({
       where,
       include: { period: true },
-      orderBy: [
-        { reportKey: "asc" },
-        { severity: "desc" },
-        { createdAt: "asc" },
-      ],
+      orderBy: { reportKey: "asc", severity: "desc", createdAt: "asc" },
     });
     const items = rows.map((row) => this.serializeReportNote(row));
     return paginatedResponse(items, {
@@ -6532,7 +6528,7 @@ export class FinanceService {
         grant: true,
         assumptions: true,
         portfolio: true,
-        lines: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
+        lines: { orderBy: { sortOrder: "asc", createdAt: "asc" } },
       },
     });
     if (!budget) throw new NotFoundException("Budget not found");
@@ -6602,7 +6598,7 @@ export class FinanceService {
         ...(query.status ? { status: String(query.status) } : {}),
       },
       include: { donor: true, fund: true },
-      orderBy: [{ code: "asc" }],
+      orderBy: { code: "asc" },
     });
 
     const items = await Promise.all(
@@ -6931,7 +6927,7 @@ export class FinanceService {
         fund: true,
         grant: true,
       },
-      orderBy: [{ dueDate: "asc" }, { invoiceDate: "desc" }],
+      orderBy: { dueDate: "asc", invoiceDate: "desc" },
     });
     const today = context.period?.end_date
       ? new Date(context.period.end_date)
@@ -6974,7 +6970,7 @@ export class FinanceService {
         fund: true,
         grant: true,
       },
-      orderBy: [{ dueDate: "asc" }, { billDate: "desc" }],
+      orderBy: { dueDate: "asc", billDate: "desc" },
     });
     const today = context.period?.end_date
       ? new Date(context.period.end_date)
@@ -9304,7 +9300,7 @@ export class FinanceService {
             },
           },
         },
-        orderBy: [{ entryDate: "desc" }, { createdAt: "desc" }],
+        orderBy: { entryDate: "desc", createdAt: "desc" },
         skip,
         take: perPage,
       }),
@@ -9525,7 +9521,7 @@ export class FinanceService {
             },
           },
         },
-        orderBy: [{ entryDate: "desc" }, { createdAt: "desc" }],
+        orderBy: { entryDate: "desc", createdAt: "desc" },
         skip,
         take: perPage,
       }),
@@ -9782,7 +9778,7 @@ export class FinanceService {
             select: { id: true, firstName: true, lastName: true, email: true },
           },
         },
-        orderBy: [{ verifiedAt: "desc" }, { createdAt: "desc" }],
+        orderBy: { verifiedAt: "desc", createdAt: "desc" },
       },
       disposal: {
         include: {
@@ -10014,7 +10010,7 @@ export class FinanceService {
         include: {
           chartAccount: { select: { id: true, name: true, code: true } },
         },
-        orderBy: [{ code: "asc" }, { name: "asc" }],
+        orderBy: { code: "asc", name: "asc" },
         skip,
         take: perPage,
       }),
