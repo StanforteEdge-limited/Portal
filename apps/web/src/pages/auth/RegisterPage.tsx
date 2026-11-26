@@ -98,31 +98,9 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen w-full bg-white flex flex-col lg:flex-row selection:bg-[#ff6900] selection:text-white">
-      {/* 1. Left Half: Full-Bleed Dark Navy Visual (50% on desktop) */}
-      <div className="relative w-full lg:w-1/2 bg-[#070e20] text-white p-8 sm:p-12 lg:p-16 flex flex-col justify-between overflow-hidden min-h-[420px] lg:min-h-screen">
-        {/* Modern Skyscraper Dusk Background Photo */}
-        <div className="absolute inset-0 z-0">
-          <img
-            src="/screenshots/09-ceo-console.png"
-            alt="Stanforte Edge Executive Console"
-            className="w-full h-full object-cover object-top opacity-25 mix-blend-luminosity"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#070e20] via-[#070e20]/85 to-[#070e20]/75" />
-          <div className="absolute inset-0 bg-radial-gradient from-transparent to-[#070e20]/90" />
-        </div>
-
-        {/* Decorative Orange Arc Concentric Lines at Bottom Left */}
-        <svg
-          className="absolute -bottom-16 -left-16 w-64 h-64 pointer-events-none z-10"
-          viewBox="0 0 200 200"
-          fill="none"
-        >
-          <circle cx="20" cy="180" r="140" stroke="#ff6900" strokeWidth="2" strokeOpacity="0.3" />
-          <circle cx="20" cy="180" r="100" stroke="#ff6900" strokeWidth="2" strokeOpacity="0.4" />
-          <circle cx="20" cy="180" r="60" stroke="#ff6900" strokeWidth="2.5" strokeOpacity="0.55" />
-        </svg>
-
+    <div className="min-h-screen w-full bg-white flex flex-col lg:flex-row selection:bg-[#C2410C] selection:text-white">
+      {/* 1. Left Half: Quiet Dark Slate Panel */}
+      <div className="relative w-full lg:w-1/2 bg-[#0F172A] text-[#F8FAFC] p-8 sm:p-12 lg:p-16 flex flex-col justify-between overflow-hidden min-h-[360px] lg:min-h-screen border-r border-[#1E293B]">
         {/* Top Logo */}
         <div className="relative z-10">
           <Link to="/" className="inline-block hover:opacity-90 transition-opacity">
@@ -130,35 +108,30 @@ export default function RegisterPage() {
           </Link>
         </div>
 
-        {/* Center: Create Your Account & 3 Bullet Items with Orange Checks */}
+        {/* Center Copy */}
         <div className="relative z-10 my-auto py-10 max-w-md space-y-8">
           <div className="space-y-3">
-            <h1 className="text-4xl sm:text-5xl font-semibold tracking-tight text-white font-headline leading-tight">
-              Create Your Account
+            <h1 className="text-[34px] sm:text-[42px] font-semibold tracking-[-0.015em] text-white font-headline leading-[1.15]">
+              Create your workspace
             </h1>
-            <p className="text-sm sm:text-base text-neutral-300 leading-relaxed">
-              Get started with Stanforte Edge in just a few steps. Each organization receives a dedicated workspace domain.
+            <p className="text-[16px] text-[#CBD5E1] leading-[1.6]">
+              Each organization receives an isolated tenant workspace with its own subdomain, role matrix, and payroll ledger.
             </p>
           </div>
 
-          {/* 3 Bullet Items with Solid Orange Checks */}
-          <div className="space-y-4 pt-2">
-            <div className="flex items-center gap-3.5">
-              <div className="w-6 h-6 rounded-full bg-[#ff6900] text-white flex items-center justify-center shrink-0 shadow-sm">
-                <CheckCircle2 className="h-4 w-4" />
-              </div>
-              <span className="text-sm font-semibold text-neutral-100">Manage your workforce & branches</span>
+          <div className="space-y-4 pt-2 border-t border-[#1E293B]">
+            <div className="flex items-center gap-3 pt-4">
+              <CheckCircle2 className="h-[18px] w-[18px] text-[#4ADE80] shrink-0" strokeWidth={1.75} aria-hidden="true" />
+              <span className="text-[15px] text-[#F8FAFC]">Manage staff records across every branch</span>
             </div>
 
-            <div className="flex items-center gap-3.5">
-              <div className="w-6 h-6 rounded-full bg-[#ff6900] text-white flex items-center justify-center shrink-0 shadow-sm">
-                <CheckCircle2 className="h-4 w-4" />
-              </div>
-              <span className="text-sm font-semibold text-neutral-100">Automate payroll with statutory accuracy</span>
+            <div className="flex items-center gap-3">
+              <CheckCircle2 className="h-[18px] w-[18px] text-[#4ADE80] shrink-0" strokeWidth={1.75} aria-hidden="true" />
+              <span className="text-[15px] text-[#F8FAFC]">Run Nigerian PAYE and PenCom payroll schedules</span>
             </div>
 
-            <div className="flex items-center gap-3.5">
-              <div className="w-6 h-6 rounded-full bg-[#ff6900] text-white flex items-center justify-center shrink-0 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-6 h-6 rounded-full bg-[#C2410C] text-white flex items-center justify-center shrink-0 shadow-sm">
                 <CheckCircle2 className="h-4 w-4" />
               </div>
               <span className="text-sm font-semibold text-neutral-100">Streamline multi-tier approvals</span>
@@ -355,17 +328,17 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3.5 rounded-2xl font-medium text-sm bg-[#ff6900] hover:bg-[#ea580c] text-white shadow-lg transition-colors transform disabled:opacity-50 mt-2"
+              className="w-full min-h-[44px] py-3 rounded-lg font-semibold text-[15px] bg-[#C2410C] hover:bg-[#9A3412] text-white transition-[background-color,transform] duration-150 hover:-translate-y-[1px] active:translate-y-0 disabled:opacity-50 mt-2"
             >
-              {loading ? "Creating Account..." : "Create Account"}
+              {loading ? "Creating account..." : "Create workspace"}
             </button>
           </form>
 
           {/* Sign In Footer */}
-          <div className="text-center text-xs text-neutral-500 pt-2">
+          <div className="text-center text-[14px] text-[#475569] pt-2">
             Already have an account?{" "}
-            <Link to="/login" className="font-semibold text-[#ff6900] hover:underline">
-              Sign In
+            <Link to="/login" className="font-semibold text-[#C2410C] hover:underline">
+              Sign in
             </Link>
           </div>
         </div>

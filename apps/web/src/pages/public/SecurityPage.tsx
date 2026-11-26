@@ -1,144 +1,121 @@
 import { PublicLayout } from "./PublicLayout";
 import { Link } from "@/shared/router-adapter";
-import {
-  Shield,
-  Lock,
-  Key,
-  FileText,
-  Database,
-  Server,
-  CheckCircle2,
-  ArrowRight,
-} from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
+
+const SECURITY_PILLARS = [
+  {
+    label: "Data Isolation",
+    title: "Tenant-scoped database context",
+    description:
+      "Every organization runs inside a strictly scoped tenant context. Queries filter by the authenticated organization so records never cross workspace boundaries.",
+  },
+  {
+    label: "Encryption",
+    title: "TLS 1.3 in transit and AES-256 at rest",
+    description:
+      "Web and API traffic is enforced over HTTPS with HSTS. Stored database volumes, payroll figures, and file attachments are encrypted at rest.",
+  },
+  {
+    label: "Access Control",
+    title: "Role-based permissions",
+    description:
+      "Granular permissions define exactly what each employee, department lead, HR manager, or finance officer can view, edit, or approve.",
+  },
+  {
+    label: "Accountability",
+    title: "Timestamped audit logs",
+    description:
+      "Payroll approvals, permission updates, voucher sign-offs, and failed login spikes are recorded with user attribution for internal and external audits.",
+  },
+  {
+    label: "Sessions",
+    title: "HttpOnly cookies and CSRF defense",
+    description:
+      "Session tokens live in HttpOnly, SameSite cookies with atomic refresh rotation and Origin validation on state-changing requests.",
+  },
+  {
+    label: "Continuity",
+    title: "Automated backups and recovery",
+    description:
+      "Scheduled PostgreSQL snapshots and point-in-time recovery protect personnel records and financial ledgers against hardware failure.",
+  },
+];
 
 export default function SecurityPage() {
-  const pillars = [
-    {
-      title: "Tenant Data Isolation",
-      subtitle: "Database Partitioning",
-      icon: Database,
-      iconColor: "text-neutral-700 bg-neutral-100",
-      description: "Every organization operates within an isolated tenant context. PostgreSQL row-level security policies ensure that database queries are strictly scoped to the authenticated tenant, preventing any cross-tenant data exposure.",
-    },
-    {
-      title: "Encrypted Data Transmission & Storage",
-      subtitle: "TLS 1.3 & AES-256",
-      icon: Lock,
-      iconColor: "text-[#ff6900] bg-orange-50",
-      description: "All web and mobile traffic is encrypted in transit using industry-standard TLS 1.3. Stored database records, sensitive payroll figures, and document attachments are protected with AES-256 encryption at rest.",
-    },
-    {
-      title: "Role-Based Access Governance",
-      subtitle: "Granular RBAC",
-      icon: Key,
-      iconColor: "text-amber-600 bg-amber-50",
-      description: "Fine-grained permission matrices determine exactly what each staff member, department head, HR officer, or finance administrator can view, edit, or approve. Administrative privileges are strictly compartmentalized.",
-    },
-    {
-      title: "Tamper-Evident Audit Trails",
-      subtitle: "Regulatory Accountability",
-      icon: FileText,
-      iconColor: "text-neutral-700 bg-neutral-100",
-      description: "Critical events—such as payroll batch approvals, employee profile alterations, permission changes, and expenditure approvals—are permanently recorded with timestamped user attribution for internal and external auditors.",
-    },
-    {
-      title: "Secure Session Architecture",
-      subtitle: "HttpOnly Cookie Security",
-      icon: Shield,
-      iconColor: "text-emerald-600 bg-emerald-50",
-      description: "Authentication tokens are delivered via encrypted, HttpOnly cookies with SameSite strict protection, guarding your organization against client-side cross-site scripting (XSS) and credential theft.",
-    },
-    {
-      title: "Automated Backups & Continuity",
-      subtitle: "Disaster Recovery",
-      icon: Server,
-      iconColor: "text-neutral-700 bg-neutral-100",
-      description: "Continuous database snapshots and point-in-time recovery ensure your employee records and financial data remain protected against hardware failures and data corruption.",
-    },
-  ];
-
   return (
     <PublicLayout activePath="/security">
-      {/* Header */}
-      <section className="pt-16 pb-12 px-6 text-center max-w-4xl mx-auto space-y-4">
-        <div className="text-xs font-medium text-[#ff6900]">
-          Institutional Security & Data Isolation
-        </div>
-        <h1 className="text-3xl sm:text-5xl font-semibold text-neutral-900 tracking-tight font-headline">
-          Security and Compliance <br className="hidden sm:inline" />
-          <span className="text-[#ff6900]">by Design</span>
-        </h1>
-        <p className="text-base text-neutral-600 max-w-2xl mx-auto leading-relaxed">
-          We protect sensitive personnel records, salary schedules, and operational workflows with rigorous security architecture and governance standards.
-        </p>
-      </section>
+      <div className="bg-[#FAFAFA] text-[#0F172A]">
+        {/* Header */}
+        <section className="pt-16 pb-14 sm:pt-20 px-6 text-center max-w-4xl mx-auto space-y-5">
+          <h1 className="text-[34px] sm:text-[48px] font-semibold text-[#0F172A] leading-[1.12] tracking-[-0.015em] font-headline">
+            How we protect your <span className="text-[#C2410C]">security</span> and payroll data.
+          </h1>
+          <p className="text-[16px] sm:text-[18px] text-[#475569] max-w-[60ch] mx-auto leading-[1.6]">
+            Personnel records, salary schedules, and approval histories are guarded by strict tenant isolation, audited sessions, and least-privilege access.
+          </p>
+        </section>
 
-      {/* Security Pillars Grid */}
-      <section className="px-6 max-w-7xl mx-auto pb-20">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {pillars.map((pillar, idx) => {
-            const Icon = pillar.icon;
-            return (
-              <div key={idx} className="p-6 rounded-2xl border border-neutral-100 bg-white shadow-2xs hover:border-neutral-200/80 transition-colors space-y-3">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${pillar.iconColor}`}>
-                  <Icon className="h-4 w-4" />
+        {/* Pillars Hairline Grid (No identical icon-tile boxes) */}
+        <section className="px-6 max-w-5xl mx-auto pb-20">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-10">
+            {SECURITY_PILLARS.map((pillar) => (
+              <div
+                key={pillar.title}
+                className="pt-5 border-t border-[#E2E8F0] space-y-2"
+              >
+                <div className="text-[13px] font-medium text-[#475569] font-mono">
+                  {pillar.label}
                 </div>
-                <div>
-                  <div className="text-xs font-medium text-neutral-400">
-                    {pillar.subtitle}
-                  </div>
-                  <h3 className="text-sm font-medium text-neutral-900 mt-0.5">
-                    {pillar.title}
-                  </h3>
-                </div>
-                <p className="text-xs text-neutral-600 leading-relaxed">
+                <h2 className="text-[18px] font-semibold text-[#0F172A] leading-[1.3] font-headline">
+                  {pillar.title}
+                </h2>
+                <p className="text-[15px] text-[#475569] leading-[1.6]">
                   {pillar.description}
                 </p>
               </div>
-            );
-          })}
-        </div>
-      </section>
+            ))}
+          </div>
+        </section>
 
-      {/* Compliance Standards Notice */}
-      <section className="border-t border-neutral-100 bg-neutral-50/60 py-16 px-6">
-        <div className="max-w-4xl mx-auto space-y-8">
-          <div className="p-8 rounded-2xl border border-neutral-100 bg-white shadow-2xs space-y-4">
-            <div className="text-xs font-medium text-[#ff6900]">
-              Regulatory Alignment
-            </div>
-            <h2 className="text-xl font-medium text-neutral-900 font-headline">
-              Data Privacy & Statutory Governance
+        {/* Compliance & Disclosure */}
+        <section className="border-t border-[#E2E8F0] bg-white py-20 px-6">
+          <div className="max-w-4xl mx-auto rounded-xl border border-[#E2E8F0] bg-[#FAFAFA] p-8 sm:p-10 space-y-6">
+            <h2 className="text-[26px] sm:text-[32px] font-semibold text-[#0F172A] leading-[1.2] font-headline">
+              Data privacy and statutory alignment
             </h2>
-            <p className="text-xs text-neutral-600 leading-relaxed">
-              Stanforte Edge is engineered in alignment with national and regional data privacy standards, including the Nigeria Data Protection Act (NDPA / NDPR) and international data governance best practices. We never monetize, sell, or share organizational personnel or financial data with third-party advertisers.
+            <p className="text-[16px] text-[#475569] leading-[1.6]">
+              Stanforte Edge is built to align with the Nigeria Data Protection Act (NDPA) and enterprise governance requirements. We never sell or share customer personnel or financial records with third parties.
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-neutral-100 text-xs text-neutral-600">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-[#ff6900] shrink-0" />
-                <span>ISO 27001-certified hosting</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-[#ff6900] shrink-0" />
-                <span>Full data portability</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-[#ff6900] shrink-0" />
-                <span>Mandatory administrative 2FA</span>
-              </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-[#E2E8F0] text-[15px] text-[#0F172A]">
+              {[
+                "NDPA aligned processing",
+                "Strict file-upload validation",
+                "Responsible disclosure channel",
+              ].map((item) => (
+                <div key={item} className="flex items-center gap-2.5">
+                  <Check className="h-[18px] w-[18px] text-[#15803D] shrink-0" strokeWidth={2} aria-hidden="true" />
+                  <span>{item}</span>
+                </div>
+              ))}
+            </div>
+            <div className="pt-2 flex flex-wrap items-center gap-4">
+              <Link
+                to="/contact"
+                className="min-h-[44px] px-5 py-3 rounded-lg bg-[#C2410C] hover:bg-[#9A3412] text-white text-[15px] font-semibold inline-flex items-center gap-2 transition-colors"
+              >
+                <span>Report a security issue</span>
+                <ArrowRight className="h-[18px] w-[18px]" strokeWidth={1.75} aria-hidden="true" />
+              </Link>
+              <Link
+                to="/privacy"
+                className="min-h-[44px] px-5 py-3 rounded-lg border border-[#CBD5E1] bg-white hover:bg-[#F1F5F9] text-[#0F172A] text-[15px] font-semibold inline-flex items-center transition-colors"
+              >
+                Read privacy policy
+              </Link>
             </div>
           </div>
-
-          <div className="text-center">
-            <Link
-              to="/register"
-              className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full font-medium text-xs bg-[#ff6900] hover:bg-[#ea580c] text-white shadow-md transition-colors transform"
-            >
-              Provision Secure Workspace <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-        </div>
-      </section>
+        </section>
+      </div>
     </PublicLayout>
   );
 }

@@ -121,7 +121,7 @@ export default function TimesheetsPage() {
                   setEditingId(null);
                   setEditorOpen(true);
                 }}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#e05d00] text-white text-xs font-medium shadow-sm transition active:scale-[0.98]"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#C2410C] hover:bg-[#e05d00] text-white text-xs font-medium shadow-sm transition active:scale-[0.98]"
               >
                 <Plus className="h-4 w-4" />
                 <span>Log Time Entry</span>
@@ -377,7 +377,7 @@ export default function TimesheetsPage() {
                               <button
                                 type="button"
                                 onClick={() => void submitTimesheet(row.id)}
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#ff6900] hover:bg-[#e05d00] text-white font-medium text-xs transition shadow-2xs"
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#C2410C] hover:bg-[#e05d00] text-white font-medium text-xs transition shadow-2xs"
                                 title="Submit for review"
                               >
                                 <Send className="h-3 w-3" />

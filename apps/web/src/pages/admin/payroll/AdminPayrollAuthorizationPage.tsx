@@ -124,7 +124,7 @@ export default function AdminPayrollAuthorizationPage() {
               <button
                 type="button"
                 onClick={() => navigate(`/admin/payroll/authorization/${pendingAuth[0].id}`)}
-                className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#ff6900] hover:bg-[#ea580c] text-white font-medium text-sm transition-colors duration-150 active:scale-[0.98] shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30"
+                className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#C2410C] hover:bg-[#9A3412] text-white font-medium text-sm transition-colors duration-150 active:scale-[0.98] shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30"
               >
                 <span>Review run</span>
                 <ArrowRight className="h-4 w-4" strokeWidth={1.5} />
@@ -225,7 +225,7 @@ export default function AdminPayrollAuthorizationPage() {
                             <button
                               type="button"
                               onClick={() => navigate(`/admin/payroll/authorization/${run.id}`)}
-                              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-[#ff6900] hover:bg-[#ea580c] text-white font-medium text-xs transition-colors duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30"
+                              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-[#C2410C] hover:bg-[#9A3412] text-white font-medium text-xs transition-colors duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30"
                             >
                               <span>Authorize</span>
                               <ArrowRight className="h-4 w-4" strokeWidth={1.5} />

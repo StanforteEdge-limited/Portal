@@ -222,7 +222,7 @@ export default function ProjectsPage() {
                       >
                         <td className="py-3.5 px-5">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-orange-50 text-[#ff6900] flex items-center justify-center font-medium text-xs shrink-0 group-hover:bg-[#ff6900] group-hover:text-white transition-colors">
+                            <div className="w-8 h-8 rounded-lg bg-orange-50 text-[#ff6900] flex items-center justify-center font-medium text-xs shrink-0 group-hover:bg-[#C2410C] group-hover:text-white transition-colors">
                               <FolderKanban className="h-4 w-4" />
                             </div>
                             <div className="min-w-0">
@@ -270,7 +270,7 @@ export default function ProjectsPage() {
                           <Link
                             to={`/projects/${project.id}`}
                             onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-neutral-700 hover:text-white hover:bg-[#ff6900] border border-neutral-200 hover:border-[#ff6900] transition shadow-sm"
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-neutral-700 hover:text-white hover:bg-[#C2410C] border border-neutral-200 hover:border-[#ff6900] transition shadow-sm"
                           >
                             <span>Open</span>
                             <ArrowRight className="h-3 w-3" />

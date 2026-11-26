@@ -363,7 +363,7 @@ export default function DocumentSlideOver({ documentRecord, onClose, onSaved }: 
           type="button"
           onClick={() => void handleSave()}
           disabled={submitting || uploading}
-          className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] active:scale-[0.98] text-white font-medium text-xs shadow-sm transition disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#C2410C] hover:bg-[#9A3412] active:scale-[0.98] text-white font-medium text-xs shadow-sm transition disabled:opacity-50"
         >
           <Save className="w-3.5 h-3.5" />
           <span>{submitting ? "Saving..." : isEdit ? "Save Document" : "Publish Document"}</span>

@@ -233,7 +233,7 @@ export default function TeamsPage() {
 
                     {/* Team Icon & Name */}
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center font-semibold group-hover:bg-[#ff6900] group-hover:text-white transition-colors shrink-0">
+                      <div className="w-10 h-10 rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center font-semibold group-hover:bg-[#C2410C] group-hover:text-white transition-colors shrink-0">
                         <Users className="h-5 w-5" />
                       </div>
                       <h3 className="font-medium text-neutral-900 group-hover:text-[#ff6900] transition-colors truncate">

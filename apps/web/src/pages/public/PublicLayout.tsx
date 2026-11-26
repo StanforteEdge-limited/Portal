@@ -103,7 +103,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-white text-neutral-900 font-sans flex flex-col justify-between selection:bg-[#ff6900] selection:text-white">
+    <div className="min-h-screen bg-white text-neutral-900 font-sans flex flex-col justify-between selection:bg-[#C2410C] selection:text-white">
       {/* Top Navigation Bar */}
       <header
         ref={navRef}
@@ -208,15 +208,15 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
           <div className="hidden md:flex items-center gap-3">
             <Link
               to="/login"
-              className="px-5 py-2 text-sm font-semibold text-neutral-700 hover:text-neutral-900 transition-colors"
+              className="min-h-[44px] px-4 inline-flex items-center text-[15px] font-semibold text-[#475569] hover:text-[#0F172A] transition-colors rounded-lg"
             >
-              Sign In
+              Sign in
             </Link>
             <Link
               to="/register"
-              className="px-6 py-2.5 rounded-full text-sm font-semibold bg-[#ff6900] hover:bg-[#ea580c] text-white shadow-md transition-colors transform"
+              className="min-h-[44px] px-5 inline-flex items-center rounded-lg text-[15px] font-semibold bg-[#C2410C] hover:bg-[#9A3412] text-white transition-[background-color,transform] duration-150 hover:-translate-y-[1px] active:translate-y-0"
             >
-              Get Started
+              Create workspace
             </Link>
           </div>
 
@@ -224,14 +224,14 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
           <div className="flex md:hidden items-center gap-2">
             <Link
               to="/login"
-              className="px-3 py-1.5 text-xs font-semibold text-neutral-700 hover:text-neutral-900"
+              className="min-h-[44px] px-3 inline-flex items-center text-[14px] font-semibold text-[#475569] hover:text-[#0F172A]"
             >
-              Sign In
+              Sign in
             </Link>
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-xl border border-neutral-200 text-neutral-700 hover:bg-neutral-50 focus:outline-hidden"
+              className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-lg border border-[#E2E8F0] text-[#0F172A] hover:bg-[#F1F5F9]"
               aria-label="Toggle navigation menu"
             >
               {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -400,7 +400,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                     <a
                       href="/#interactive-demo"
                       onClick={closeAll}
-                      className="inline-flex items-center gap-2 text-xs font-medium text-white bg-[#ff6900] hover:bg-[#ea580c] px-4 py-2.5 rounded-xl shadow-sm transition-colors"
+                      className="inline-flex items-center gap-2 text-xs font-medium text-white bg-[#C2410C] hover:bg-[#9A3412] px-4 py-2.5 rounded-xl shadow-sm transition-colors"
                     >
                       <Play className="h-3.5 w-3.5 fill-white" /> Launch Live Demo
                     </a>
@@ -542,7 +542,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                     <Link
                       to="/security"
                       onClick={closeAll}
-                      className="inline-flex items-center gap-1.5 text-xs font-medium text-white bg-[#ff6900] hover:bg-[#ea580c] px-4 py-2.5 rounded-xl transition-colors"
+                      className="inline-flex items-center gap-1.5 text-xs font-medium text-white bg-[#C2410C] hover:bg-[#9A3412] px-4 py-2.5 rounded-xl transition-colors"
                     >
                       Read Security Architecture <ArrowRight className="h-3.5 w-3.5" />
                     </Link>
@@ -881,7 +881,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
               <Link
                 to="/register"
                 onClick={closeAll}
-                className="w-full py-3 rounded-full text-center text-sm font-medium bg-[#ff6900] text-white block shadow-md"
+                className="w-full py-3 rounded-full text-center text-sm font-medium bg-[#C2410C] text-white block shadow-md"
               >
                 Get Started Free
               </Link>

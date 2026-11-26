@@ -26,7 +26,7 @@ interface ColumnDef {
 
 const COLUMNS: ColumnDef[] = [
   { status: "planned", title: "Planned", dotColor: "bg-neutral-400" },
-  { status: "in_progress", title: "In progress", dotColor: "bg-[#ff6900]" },
+  { status: "in_progress", title: "In progress", dotColor: "bg-[#C2410C]" },
   { status: "blocked", title: "In review", dotColor: "bg-amber-600" },
   { status: "completed", title: "Completed", dotColor: "bg-emerald-600" },
 ];

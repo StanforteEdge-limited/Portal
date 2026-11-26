@@ -187,7 +187,7 @@ export default function HrEmployeesPage() {
             canManage ? (
               <Link
                 to="/hr/employees/new"
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-medium shadow-md transition transform"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#C2410C] hover:bg-[#9A3412] text-white text-xs font-medium shadow-md transition transform"
               >
                 <Plus className="h-4 w-4" />
                 <span>Add Employee</span>

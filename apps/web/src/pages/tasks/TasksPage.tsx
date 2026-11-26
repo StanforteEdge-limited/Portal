@@ -262,7 +262,7 @@ export default function TasksPage() {
             <button
               type="button"
               onClick={() => handleOpenNewTask("planned")}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-medium transition shadow-sm active:scale-[0.98] cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#C2410C] hover:bg-[#9A3412] text-white text-xs font-medium transition shadow-sm active:scale-[0.98] cursor-pointer"
             >
               <Plus className="h-4 w-4" />
               <span>{isAdminView ? "Create & Assign Task to Staff" : "+ New Personal Task"}</span>

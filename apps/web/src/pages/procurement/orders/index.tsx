@@ -61,7 +61,7 @@ export default function PoIndex() {
           actions={
             <Link
               to="/procurement/orders/create"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-medium shadow-md transition transform"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#C2410C] hover:bg-[#9A3412] text-white text-xs font-medium shadow-md transition transform"
             >
               <Plus className="h-4 w-4" />
               <span>Create Purchase Order</span>
@@ -206,7 +206,7 @@ export default function PoIndex() {
                       <td className="py-3.5 px-5 text-right">
                         <Link
                           to={`/procurement/orders/${po.id}`}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-neutral-700 group-hover:text-white group-hover:bg-[#ff6900] border border-neutral-200 group-hover:border-[#ff6900] transition shadow-sm"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-neutral-700 group-hover:text-white group-hover:bg-[#C2410C] border border-neutral-200 group-hover:border-[#ff6900] transition shadow-sm"
                         >
                           <span>Details</span>
                           <ArrowRight className="h-3 w-3" />

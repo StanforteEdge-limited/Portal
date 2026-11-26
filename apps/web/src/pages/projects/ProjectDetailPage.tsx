@@ -418,7 +418,7 @@ export default function ProjectDetailPage() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-colors ${
                   isActive
-                    ? "bg-[#ff6900] text-white shadow-md "
+                    ? "bg-[#C2410C] text-white shadow-md "
                     : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100"
                 }`}
               >
@@ -568,7 +568,7 @@ export default function ProjectDetailPage() {
                 <button
                   type="button"
                   onClick={() => setShowAddTask((v) => !v)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-medium transition shrink-0"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#C2410C] hover:bg-[#9A3412] text-white text-xs font-medium transition shrink-0"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   <span>{showAddTask ? "Close Form" : "Add Task"}</span>
@@ -659,7 +659,7 @@ export default function ProjectDetailPage() {
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-1.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-medium"
+                      className="px-4 py-1.5 rounded-xl bg-[#C2410C] hover:bg-[#9A3412] text-white text-xs font-medium"
                     >
                       Save Project Task
                     </button>
@@ -761,7 +761,7 @@ export default function ProjectDetailPage() {
                   type="button"
                   onClick={() => docInputRef.current?.click()}
                   disabled={uploadingDoc}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-medium disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#C2410C] hover:bg-[#9A3412] text-white text-xs font-medium disabled:opacity-50"
                 >
                   <Upload className="h-3.5 w-3.5" />
                   <span>{uploadingDoc ? "Uploading..." : "Attach Document"}</span>
@@ -837,7 +837,7 @@ export default function ProjectDetailPage() {
                   type="button"
                   onClick={() => void handleAddProjectMember()}
                   disabled={!addingMemberId || addingMember}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-medium disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#C2410C] hover:bg-[#9A3412] text-white text-xs font-medium disabled:opacity-50"
                 >
                   <UserPlus className="h-3.5 w-3.5" />
                   <span>{addingMember ? "Adding..." : "Assign"}</span>

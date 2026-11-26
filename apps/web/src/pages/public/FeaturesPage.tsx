@@ -1,237 +1,269 @@
 import { useEffect } from "react";
 import { PublicLayout } from "./PublicLayout";
 import { Link, useLocation } from "@/shared/router-adapter";
-import {
-  Users,
-  CreditCard,
-  Clock,
-  FileCheck,
-  ArrowRight,
-  CheckCircle2,
-  Smartphone,
-} from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
+
+const FEATURE_SUITES = [
+  {
+    id: "workforce",
+    title: "Workforce and people operations",
+    summary:
+      "Keep employee records, reporting lines, and branch assignments in one directory.",
+    screenshot: "/screenshots/05-hr-employees.png",
+    screenshotAlt: "Stanforte Edge staff directory showing employee profiles across branches",
+    items: [
+      {
+        title: "Staff directory and profiles",
+        description:
+          "Store digital employee records, job roles, emergency contacts, identification numbers, and bank details.",
+      },
+      {
+        title: "Department and branch hierarchy",
+        description:
+          "Model multi-branch and multi-department structures with clear line-manager reporting.",
+      },
+      {
+        title: "Structured onboarding and exits",
+        description:
+          "Track onboarding checklists, policy acknowledgements, asset handovers, and offboarding steps.",
+      },
+      {
+        title: "Centralized document storage",
+        description:
+          "Keep employment contracts, IDs, certificates, and appraisal records scoped by role.",
+      },
+    ],
+  },
+  {
+    id: "payroll",
+    title: "Payroll and statutory compliance",
+    summary:
+      "Run gross-to-net salary calculations and generate Nigerian tax and pension schedules without spreadsheet formulas.",
+    screenshot: "/screenshots/04-payroll-light.png",
+    screenshotAlt: "Stanforte Edge payroll calculation table with PAYE and pension columns",
+    items: [
+      {
+        title: "Monthly salary runs",
+        description:
+          "Compute net pay from verified attendance, unpaid leave, bonuses, and recurring allowances.",
+      },
+      {
+        title: "PAYE, PenCom, and NHF schedules",
+        description:
+          "Generate monthly tax deduction schedules, pension administrator remittances, and housing fund files.",
+      },
+      {
+        title: "Bank disbursement batches",
+        description:
+          "Export clean CSV files formatted for commercial bank portals without re-keying account numbers.",
+      },
+      {
+        title: "Self-service payslips",
+        description:
+          "Publish downloadable PDF payslips to employee accounts as soon as finance approves the run.",
+      },
+    ],
+  },
+  {
+    id: "attendance",
+    title: "Time, shifts, and leave tracking",
+    summary:
+      "Record daily check-ins by campus boundary and feed approved hours straight into payroll.",
+    screenshot: "/screenshots/06-attendance-light.png",
+    screenshotAlt: "Stanforte Edge daily attendance log with branch verification",
+    items: [
+      {
+        title: "Campus geofenced clock-ins",
+        description:
+          "Verify daily attendance using office GPS boundaries, biometric exports, or supervisor logs.",
+      },
+      {
+        title: "Shift schedules and rosters",
+        description:
+          "Plan recurring shift rotations, weekend cover, and overtime allocations with conflict checks.",
+      },
+      {
+        title: "Leave balances and requests",
+        description:
+          "Track annual, sick, and compassionate leave with automatic balance updates on approval.",
+      },
+      {
+        title: "Direct payroll sync",
+        description:
+          "Feed approved overtime and unexcused absences directly into the monthly salary run.",
+      },
+    ],
+  },
+  {
+    id: "approvals",
+    title: "Approvals, procurement, and spend controls",
+    summary:
+      "Route purchase requests and payment vouchers through departmental budgets before funds leave the account.",
+    screenshot: "/screenshots/03-payment-vouchers.png",
+    screenshotAlt: "Stanforte Edge payment voucher queue and approval trail",
+    items: [
+      {
+        title: "Tiered approval chains",
+        description:
+          "Route requisitions, travel advances, and claims through line managers, finance, and executives.",
+      },
+      {
+        title: "Payment vouchers and receipts",
+        description:
+          "Attach vendor invoices, cost-center tags, and two-step verification before disbursement.",
+      },
+      {
+        title: "Departmental budget checks",
+        description:
+          "Compare every purchase request against remaining quarterly or annual budget allocations.",
+      },
+      {
+        title: "Immutable audit log",
+        description:
+          "Record who submitted, reviewed, returned, or approved every transaction with timestamps.",
+      },
+    ],
+  },
+];
 
 export default function FeaturesPage() {
   const location = useLocation();
 
   useEffect(() => {
-    if (window.location.hash) {
-      const id = window.location.hash.replace("#", "");
-      const el = document.getElementById(id);
-      if (el) {
-        setTimeout(() => {
-          el.scrollIntoView({ behavior: "smooth" });
-        }, 100);
-      }
+    if (!window.location.hash) return;
+    const id = window.location.hash.replace("#", "");
+    const el = document.getElementById(id);
+    if (el) {
+      window.setTimeout(() => {
+        el.scrollIntoView({ behavior: "smooth" });
+      }, 100);
     }
   }, [location]);
-  const suites = [
-    {
-      id: "workforce",
-      category: "Workforce & People Operations",
-      icon: Users,
-      iconColor: "text-neutral-700 bg-neutral-100",
-      description: "Centralize employee information, contracts, and organizational reporting lines.",
-      items: [
-        {
-          title: "Staff Directory & Profiles",
-          description: "Maintain comprehensive digital employee records, job roles, emergency contacts, national identification, and bank details in a centralized directory.",
-        },
-        {
-          title: "Department & Branch Structure",
-          description: "Model multi-branch, multi-department corporate structures with clear management hierarchies and division-level reporting.",
-        },
-        {
-          title: "Structured Onboarding & Offboarding",
-          description: "Standardize onboarding task lists, policy acknowledgements, asset issuances, and exit handovers with automated status tracking.",
-        },
-        {
-          title: "Digital Document Storage",
-          description: "Secure repository for employee contracts, identification scans, qualification certificates, and annual appraisal files.",
-        },
-      ],
-    },
-    {
-      id: "payroll",
-      category: "Automated Payroll & Statutory Compliance",
-      icon: CreditCard,
-      iconColor: "text-[#ff6900] bg-orange-50",
-      description: "Eliminate manual payroll calculation errors and ensure full regulatory compliance.",
-      items: [
-        {
-          title: "Monthly Salary Calculation",
-          description: "Automatically compute gross to net salaries based on verified attendance, unpaid leave deductions, bonuses, and recurring allowances.",
-        },
-        {
-          title: "Statutory Tax & Pension Schedules",
-          description: "Generate compliant monthly PAYE tax deduction schedules, pension administrator remittances, and national housing fund contributions.",
-        },
-        {
-          title: "Commercial Bank Disbursement Batches",
-          description: "Export standardized payment schedule files ready for direct upload into commercial banking portals for batch salary disbursement.",
-        },
-        {
-          title: "Self-Service Digital Payslips",
-          description: "Automatically generate downloadable, password-protected PDF payslips accessible directly from employee self-service portals.",
-        },
-      ],
-    },
-    {
-      id: "attendance",
-      category: "Time, Shifts & Absence Management",
-      icon: Clock,
-      iconColor: "text-amber-600 bg-amber-50",
-      description: "Accurately record employee hours, shifts, and absence without manual paper logs.",
-      items: [
-        {
-          title: "Biometric & Campus Attendance",
-          description: "Capture accurate clock-in times using integrated biometric hardware, office network detection, or authorized supervisor logbooks.",
-        },
-        {
-          title: "Shift Scheduling & Rosters",
-          description: "Plan recurring shift rotations for operational teams, weekend duties, and overtime allocations with automated conflict detection.",
-        },
-        {
-          title: "Leave Management & Balances",
-          description: "Manage annual, sick, compassionate, and maternity leave with real-time balance deductions and automated approval routing to managers.",
-        },
-        {
-          title: "Tardiness & Overtime Integration",
-          description: "Seamlessly feed attendance anomalies directly into monthly payroll computations to adjust allowances or deductions automatically.",
-        },
-      ],
-    },
-    {
-      id: "approvals",
-      category: "Approvals, Procurement & Financial Controls",
-      icon: FileCheck,
-      iconColor: "text-neutral-700 bg-neutral-100",
-      description: "Enforce institutional financial discipline and transparent sign-off workflows.",
-      items: [
-        {
-          title: "Configurable Approval Chains",
-          description: "Route purchase requests, travel advances, and expenditure claims through sequential management tiers based on departmental budget rules.",
-        },
-        {
-          title: "Expense Requisitions & Vouchers",
-          description: "Submit expense claims with supporting receipt uploads, cost-center tags, and two-step verification prior to cash disbursement.",
-        },
-        {
-          title: "Departmental Budget Tracking",
-          description: "Monitor departmental expenditures in real time against approved quarterly budgets to prevent budget overruns.",
-        },
-        {
-          title: "Immutable Operational Audit Trail",
-          description: "Every approval, voucher creation, and payroll sign-off is indelibly timestamped with user identification for regulatory review.",
-        },
-      ],
-    },
-    {
-      id: "selfservice",
-      category: "Employee Self-Service & Team Collaboration",
-      icon: Smartphone,
-      iconColor: "text-emerald-600 bg-emerald-50",
-      description: "Empower staff with self-service tools, daily logs, and peer document sharing.",
-      items: [
-        {
-          title: "Instant Digital Payslips",
-          description: "Employees can securely view and download monthly payslips, year-to-date earnings, and statutory tax deductions anytime.",
-        },
-        {
-          title: "Self-Service Leave & Requests",
-          description: "Submit leave applications, track balance accruals, and view approval status updates without back-and-forth emails.",
-        },
-        {
-          title: "Task Boards & Daily Logs",
-          description: "Switch seamlessly between Kanban and Table views, manage personal tasks, tag collaborators, and log daily milestones.",
-        },
-        {
-          title: "Instant Document & Policy Sharing",
-          description: "Access official handbooks and share confidential files with instant in-app chat notifications and direct delivery.",
-        },
-      ],
-    },
-  ];
 
   return (
     <PublicLayout activePath="/features">
-      {/* Header */}
-      <section className="pt-16 pb-12 px-6 text-center max-w-4xl mx-auto space-y-4">
-        <div className="text-xs font-medium text-[#ff6900]">
-          Platform Capabilities
-        </div>
-        <h1 className="text-3xl sm:text-5xl font-semibold text-neutral-900 tracking-tight font-headline">
-          Comprehensive Tools for <br className="hidden sm:inline" />
-          <span className="text-[#ff6900]">Modern Operations</span>
-        </h1>
-        <p className="text-base text-neutral-600 max-w-2xl mx-auto leading-relaxed">
-          Every capability in Stanforte Edge is built to streamline institutional workflows, improve administrative accountability, and eliminate operational bottlenecks.
-        </p>
-      </section>
+      <div className="bg-[#FAFAFA] text-[#0F172A]">
+        {/* Hero */}
+        <section className="pt-16 pb-14 sm:pt-20 sm:pb-16 px-6 max-w-4xl mx-auto text-center space-y-5">
+          <h1 className="text-[34px] sm:text-[48px] font-semibold text-[#0F172A] leading-[1.12] tracking-[-0.015em] font-headline text-balance">
+            Every core workflow for <span className="text-[#C2410C]">operations</span> in one system.
+          </h1>
+          <p className="text-[16px] sm:text-[18px] text-[#475569] leading-[1.6] max-w-[60ch] mx-auto">
+            Staff records, attendance, Nigerian statutory payroll, and spend approvals share the same directory and permission model.
+          </p>
 
-      {/* Feature Suites */}
-      <section className="px-6 max-w-7xl mx-auto pb-20 space-y-16">
-        {suites.map((suite, idx) => {
-          const Icon = suite.icon;
-          return (
-            <div key={idx} id={suite.id} className="border-t border-neutral-100 pt-10 scroll-mt-24">
-              <div className="max-w-2xl mb-8 space-y-2">
-                <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${suite.iconColor}`}>
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <h2 className="text-xl font-medium text-neutral-900 font-headline">
-                    {suite.category}
+          {/* Jump Links */}
+          <nav aria-label="Feature suites" className="pt-3 flex flex-wrap items-center justify-center gap-2">
+            {FEATURE_SUITES.map((suite) => (
+              <a
+                key={suite.id}
+                href={`#${suite.id}`}
+                className="min-h-[44px] px-4 py-2 rounded-lg border border-[#E2E8F0] bg-white text-[14px] font-medium text-[#0F172A] inline-flex items-center hover:bg-[#F1F5F9] transition-colors"
+              >
+                {suite.id === "workforce"
+                  ? "Workforce"
+                  : suite.id === "payroll"
+                  ? "Payroll & Tax"
+                  : suite.id === "attendance"
+                  ? "Attendance"
+                  : "Approvals & Spend"}
+              </a>
+            ))}
+          </nav>
+        </section>
+
+        {/* Feature Suites */}
+        <section className="px-6 pb-24 max-w-5xl mx-auto space-y-24">
+          {FEATURE_SUITES.map((suite, index) => (
+            <div
+              key={suite.id}
+              id={suite.id}
+              className="scroll-mt-24 pt-12 border-t border-[#E2E8F0] space-y-10"
+            >
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+                <div
+                  className={`lg:col-span-5 space-y-4 ${
+                    index % 2 === 1 ? "lg:order-2" : ""
+                  }`}
+                >
+                  <h2 className="text-[26px] sm:text-[32px] font-semibold text-[#0F172A] leading-[1.2] tracking-[-0.01em] font-headline">
+                    {suite.title}
                   </h2>
+                  <p className="text-[16px] text-[#475569] leading-[1.6]">
+                    {suite.summary}
+                  </p>
                 </div>
-                <p className="text-sm text-neutral-600">
-                  {suite.description}
-                </p>
+
+                <div
+                  className={`lg:col-span-7 ${
+                    index % 2 === 1 ? "lg:order-1" : ""
+                  }`}
+                >
+                  <div className="rounded-xl border border-[#E2E8F0] bg-white overflow-hidden">
+                    <img
+                      src={suite.screenshot}
+                      alt={suite.screenshotAlt}
+                      width={1280}
+                      height={800}
+                      loading="lazy"
+                      className="w-full h-auto block aspect-[16/10] object-cover object-top"
+                    />
+                  </div>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {suite.items.map((item, itemIdx) => (
-                  <div key={itemIdx} className="p-6 rounded-2xl border border-neutral-200/80 bg-white shadow-sm hover:border-neutral-300 transition-colors space-y-2">
-                    <h3 className="text-sm font-medium text-neutral-900 flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-[#ff6900] shrink-0" />
-                      {item.title}
-                    </h3>
-                    <p className="text-xs text-neutral-600 leading-relaxed pl-6">
-                      {item.description}
-                    </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-8">
+                {suite.items.map((item) => (
+                  <div key={item.title} className="flex items-start gap-3">
+                    <Check
+                      className="h-[18px] w-[18px] mt-1 shrink-0 text-[#15803D]"
+                      strokeWidth={2}
+                      aria-hidden="true"
+                    />
+                    <div className="space-y-1">
+                      <h3 className="text-[18px] font-semibold text-[#0F172A] leading-[1.3] font-headline">
+                        {item.title}
+                      </h3>
+                      <p className="text-[15px] text-[#475569] leading-[1.55]">
+                        {item.description}
+                      </p>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
-          );
-        })}
-      </section>
+          ))}
+        </section>
 
-      {/* Conversion Banner */}
-      <section className="border-t border-neutral-100 bg-neutral-50/60 py-16 px-6 text-center">
-        <div className="max-w-3xl mx-auto space-y-4">
-          <h2 className="text-2xl font-semibold text-neutral-900 font-headline">
-            Ready to evaluate Stanforte Edge for your organization?
-          </h2>
-          <p className="text-sm text-neutral-600 max-w-xl mx-auto">
-            Get started with our free tier or request a guided consultation with our solution architecture team.
-          </p>
-          <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
-            <Link
-              to="/register"
-              className="px-7 py-3 rounded-full font-medium text-xs bg-[#ff6900] hover:bg-[#ea580c] text-white shadow-md transition-colors transform flex items-center gap-2"
-            >
-              Start Free Workspace <ArrowRight className="h-4 w-4" />
-            </Link>
-            <a
-              href="mailto:demo@stanforteedge.com"
-              className="px-7 py-3 rounded-full font-semibold text-xs border border-neutral-300 bg-white hover:bg-neutral-50 text-neutral-800 transition-colors"
-            >
-              Schedule Consultation
-            </a>
+        {/* Bottom CTA */}
+        <section className="py-16 px-6 bg-white border-t border-[#E2E8F0]">
+          <div className="max-w-5xl mx-auto rounded-xl bg-[#0F172A] text-[#F8FAFC] p-8 sm:p-12 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            <div className="space-y-2 max-w-xl">
+              <h2 className="text-[26px] sm:text-[32px] font-semibold leading-[1.2] font-headline">
+                Start with your team directory today
+              </h2>
+              <p className="text-[16px] text-[#CBD5E1] leading-[1.6]">
+                Free for up to 15 employees. Add payroll and multi-tier approvals when you are ready.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 shrink-0">
+              <Link
+                to="/register"
+                className="min-h-[44px] px-6 py-3 rounded-lg bg-[#C2410C] hover:bg-[#9A3412] text-white text-[15px] font-semibold inline-flex items-center gap-2 transition-colors"
+              >
+                <span>Create a workspace</span>
+                <ArrowRight className="h-[18px] w-[18px]" strokeWidth={1.75} aria-hidden="true" />
+              </Link>
+              <Link
+                to="/pricing"
+                className="min-h-[44px] px-6 py-3 rounded-lg border border-[#334155] text-[#F8FAFC] text-[15px] font-semibold inline-flex items-center hover:bg-[#1E293B] transition-colors"
+              >
+                View pricing
+              </Link>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </div>
     </PublicLayout>
   );
 }

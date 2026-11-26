@@ -50,7 +50,7 @@ export default function VerifyEmailPage() {
   const workspaceLoginUrl = slug ? buildTenantUrl(slug, "/login") : "/login";
 
   return (
-    <div className="min-h-screen bg-neutral-100 flex items-center justify-center p-4 sm:p-6 lg:p-10 selection:bg-[#ff6900] selection:text-white">
+    <div className="min-h-screen bg-neutral-100 flex items-center justify-center p-4 sm:p-6 lg:p-10 selection:bg-[#C2410C] selection:text-white">
       <div className="w-full max-w-4xl bg-white rounded-2xl shadow-2xl overflow-hidden grid grid-cols-1 md:grid-cols-2 min-h-[500px]">
         {/* Left Column: Dark Navy Brand Section */}
         <div className="relative bg-[#070e20] text-white p-8 sm:p-12 flex flex-col justify-between overflow-hidden">
@@ -151,7 +151,7 @@ export default function VerifyEmailPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 rounded-xl font-medium text-xs bg-[#ff6900] hover:bg-[#ea580c] text-white shadow-md transition-colors disabled:opacity-50"
+                className="w-full py-3 rounded-xl font-medium text-xs bg-[#C2410C] hover:bg-[#9A3412] text-white shadow-md transition-colors disabled:opacity-50"
               >
                 {loading ? "Sending..." : "Resend Verification Email"}
               </button>

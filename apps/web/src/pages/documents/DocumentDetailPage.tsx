@@ -274,7 +274,7 @@ export default function DocumentDetailPage() {
               <button
                 type="button"
                 onClick={() => setShareModalOpen(true)}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] active:scale-[0.98] text-white text-xs font-medium shadow-md transition"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#C2410C] hover:bg-[#9A3412] active:scale-[0.98] text-white text-xs font-medium shadow-md transition"
               >
                 <Share2 className="h-4 w-4" />
                 <span>Share Document</span>
@@ -474,7 +474,7 @@ export default function DocumentDetailPage() {
             <button
               type="button"
               onClick={() => setShareModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-orange-50 hover:bg-[#ff6900] text-[#ff6900] hover:text-white border border-orange-200/80 hover:border-[#ff6900] text-xs font-medium transition shadow-xs"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-orange-50 hover:bg-[#C2410C] text-[#ff6900] hover:text-white border border-orange-200/80 hover:border-[#ff6900] text-xs font-medium transition shadow-xs"
             >
               <Share2 className="h-3.5 w-3.5" />
               <span>Share with Colleague</span>
@@ -496,7 +496,7 @@ export default function DocumentDetailPage() {
                   key={share.id}
                   className="p-4 rounded-2xl bg-neutral-50/80 border border-neutral-200/80 flex items-start gap-3.5"
                 >
-                  <div className="w-9 h-9 rounded-full bg-[#ff6900] text-white flex items-center justify-center font-medium text-xs shrink-0 shadow-xs">
+                  <div className="w-9 h-9 rounded-full bg-[#C2410C] text-white flex items-center justify-center font-medium text-xs shrink-0 shadow-xs">
                     {share.recipient_avatar || "U"}
                   </div>
                   <div className="min-w-0 flex-1">
@@ -595,7 +595,7 @@ export default function DocumentDetailPage() {
                     type="button"
                     onClick={handleAcknowledge}
                     disabled={submittingSign || !agreed || !signature.trim()}
-                    className="px-5 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] disabled:opacity-50 text-white text-xs font-medium shadow-md transition whitespace-nowrap active:scale-[0.98]"
+                    className="px-5 py-2.5 rounded-xl bg-[#C2410C] hover:bg-[#9A3412] disabled:opacity-50 text-white text-xs font-medium shadow-md transition whitespace-nowrap active:scale-[0.98]"
                   >
                     {submittingSign ? "Submitting..." : "Sign Document"}
                   </button>

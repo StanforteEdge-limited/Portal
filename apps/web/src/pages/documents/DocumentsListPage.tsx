@@ -127,7 +127,7 @@ export default function DocumentsListPage() {
           actions={
             <Link
               to="/documents/new"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] active:scale-[0.98] text-white text-xs font-medium shadow-sm transition"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#C2410C] hover:bg-[#9A3412] active:scale-[0.98] text-white text-xs font-medium shadow-sm transition"
             >
               <Plus className="h-4 w-4" />
               <span>Create Document</span>
@@ -263,7 +263,7 @@ export default function DocumentsListPage() {
                       >
                         <td className="py-3.5 px-5">
                           <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center font-medium text-xs shrink-0 group-hover:bg-[#ff6900] group-hover:text-white transition-colors">
+                            <div className="w-9 h-9 rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center font-medium text-xs shrink-0 group-hover:bg-[#C2410C] group-hover:text-white transition-colors">
                               <FileText className="h-4 w-4" />
                             </div>
                             <div className="min-w-0">
@@ -318,7 +318,7 @@ export default function DocumentsListPage() {
                             <button
                               type="button"
                               onClick={() => setSharingDoc(doc)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-orange-50 hover:bg-[#ff6900] text-[#ff6900] hover:text-white border border-orange-200/80 hover:border-[#ff6900] text-xs font-medium transition shadow-xs active:scale-[0.98]"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-orange-50 hover:bg-[#C2410C] text-[#ff6900] hover:text-white border border-orange-200/80 hover:border-[#ff6900] text-xs font-medium transition shadow-xs active:scale-[0.98]"
                               title="Share document with colleague via Email and Chat"
                             >
                               <Share2 className="h-3.5 w-3.5" />

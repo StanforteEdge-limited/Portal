@@ -49,7 +49,7 @@ function NotFoundScreen() {
         <button
           type="button"
           onClick={() => navigate(status === "authenticated" ? "/dashboard" : "/")}
-          className="w-full h-10 px-4 bg-[#ff6900] hover:bg-[#ea580c] text-white rounded-lg text-sm font-medium transition-colors cursor-pointer"
+          className="w-full h-10 px-4 bg-[#C2410C] hover:bg-[#9A3412] text-white rounded-lg text-sm font-medium transition-colors cursor-pointer"
         >
           {status === "authenticated" ? "Return to dashboard" : "Return to home"}
         </button>
@@ -235,7 +235,7 @@ function AnalyticsAdminGatedPage() {
           <button
             type="button"
             onClick={() => navigate("/dashboard")}
-            className="w-full h-10 px-4 bg-[#ff6900] hover:bg-[#ea580c] text-white rounded-lg text-sm font-medium transition-colors cursor-pointer"
+            className="w-full h-10 px-4 bg-[#C2410C] hover:bg-[#9A3412] text-white rounded-lg text-sm font-medium transition-colors cursor-pointer"
           >
             Return to dashboard
           </button>

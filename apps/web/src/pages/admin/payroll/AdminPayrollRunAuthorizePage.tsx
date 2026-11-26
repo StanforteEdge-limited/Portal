@@ -136,7 +136,7 @@ export default function AdminPayrollRunAuthorizePage() {
           <p className="text-xs text-neutral-500 mt-1 mb-5">This payroll run does not exist or has been archived</p>
           <Link
             to="/admin/payroll/authorization"
-            className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#ff6900] hover:bg-[#ea580c] text-white font-medium text-sm transition-colors duration-150"
+            className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#C2410C] hover:bg-[#9A3412] text-white font-medium text-sm transition-colors duration-150"
           >
             <ArrowLeft className="h-4 w-4" strokeWidth={1.5} />
             <span>Back to authorization queue</span>
@@ -191,7 +191,7 @@ export default function AdminPayrollRunAuthorizePage() {
                     type="button"
                     disabled={acting === "authorize"}
                     onClick={() => void handleAuthorize()}
-                    className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#ff6900] hover:bg-[#ea580c] text-white text-sm font-medium transition-colors duration-150 active:scale-[0.98]"
+                    className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#C2410C] hover:bg-[#9A3412] text-white text-sm font-medium transition-colors duration-150 active:scale-[0.98]"
                   >
                     {acting === "authorize" ? (
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />

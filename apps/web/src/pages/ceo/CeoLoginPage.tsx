@@ -52,14 +52,14 @@ export default function CeoLoginPage() {
   }
 
   return (
-    <div className="min-h-screen w-full bg-[#fafafa] flex flex-col lg:flex-row selection:bg-[#ff6900] selection:text-white">
+    <div className="min-h-screen w-full bg-[#fafafa] flex flex-col lg:flex-row selection:bg-[#C2410C] selection:text-white">
       {/* Left Executive Panel */}
       <div className="w-full lg:w-1/2 bg-[#141415] text-[#ededed] p-8 sm:p-12 lg:p-16 flex flex-col justify-between min-h-[340px] lg:min-h-screen border-r border-white/[0.08]">
         <div className="flex items-center justify-between">
           <Link to="/" className="inline-block hover:opacity-90 transition-opacity">
             <StanforteLogo variant="dark" className="h-8" />
           </Link>
-          <span className="px-2.5 py-1 rounded-md bg-[#ff6900]/15 text-[#ff6900] text-xs font-mono border border-[#ff6900]/30">
+          <span className="px-2.5 py-1 rounded-md bg-[#C2410C]/15 text-[#ff6900] text-xs font-mono border border-[#ff6900]/30">
             EXECUTIVE CONSOLE
           </span>
         </div>
@@ -114,13 +114,10 @@ export default function CeoLoginPage() {
       <div className="w-full lg:w-1/2 bg-white flex flex-col justify-center px-6 sm:px-12 lg:px-20 py-12 min-h-screen">
         <div className="max-w-md w-full mx-auto space-y-7">
           <div className="space-y-1.5">
-            <div className="text-xs font-mono text-[#ff6900] uppercase tracking-wider">
-              Restricted Access
-            </div>
-            <h2 className="text-2xl sm:text-[28px] font-medium tracking-tight text-neutral-900 font-headline">
+            <h2 className="text-[28px] font-semibold tracking-[-0.01em] text-[#0F172A] font-headline">
               CEO Executive Sign In
             </h2>
-            <p className="text-sm text-neutral-500">
+            <p className="text-[15px] text-[#475569]">
               Sign in with your dedicated platform administrator credentials.
             </p>
           </div>
@@ -200,15 +197,15 @@ export default function CeoLoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full h-10 rounded-lg font-medium text-sm bg-[#ff6900] hover:bg-[#ea580c] text-white transition-colors disabled:opacity-50 cursor-pointer"
+              className="w-full min-h-[44px] py-2.5 rounded-lg font-semibold text-[15px] bg-[#C2410C] hover:bg-[#9A3412] text-white transition-[background-color,transform] duration-150 hover:-translate-y-[1px] active:translate-y-0 disabled:opacity-50 cursor-pointer"
             >
               {loading ? "Authenticating..." : "Enter Executive Console"}
             </button>
           </form>
 
-          <div className="text-center text-xs text-neutral-500 pt-2">
+          <div className="text-center text-[14px] text-[#475569] pt-2">
             Looking for a tenant workspace?{" "}
-            <Link to="/login" className="font-semibold text-[#ff6900] hover:underline">
+            <Link to="/login" className="font-semibold text-[#C2410C] hover:underline">
               Standard Staff Login
             </Link>
           </div>

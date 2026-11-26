@@ -435,7 +435,7 @@ export function TaskDetailSlideOver({
                 showToast("Task updated successfully", "success");
                 onClose();
               }}
-              className="px-5 py-2 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-medium transition shadow-sm"
+              className="px-5 py-2 rounded-xl bg-[#C2410C] hover:bg-[#9A3412] text-white text-xs font-medium transition shadow-sm"
             >
               Save Changes
             </button>

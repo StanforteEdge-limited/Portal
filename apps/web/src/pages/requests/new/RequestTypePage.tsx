@@ -181,7 +181,7 @@ export default function RequestTypePage() {
                       <span className="flex items-center gap-2 min-w-0">
                         <span
                           className={`h-1.5 w-1.5 rounded-full shrink-0 ${
-                            active ? "bg-[#ff6900]" : "bg-transparent"
+                            active ? "bg-[#C2410C]" : "bg-transparent"
                           }`}
                         />
                         <span className="truncate">{item.name}</span>

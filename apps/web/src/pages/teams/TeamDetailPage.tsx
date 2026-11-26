@@ -140,7 +140,7 @@ export default function TeamDetailPage() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-colors ${
                   isActive
-                    ? "bg-[#ff6900] text-white shadow-md "
+                    ? "bg-[#C2410C] text-white shadow-md "
                     : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100"
                 }`}
               >
@@ -337,7 +337,7 @@ export default function TeamDetailPage() {
             {canSeeAllRequests && (
               <Link
                 to={`/requests/new?team_id=${id}${orgId ? `&organization_id=${orgId}` : ""}`}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#ff6900] text-white text-xs font-medium hover:bg-[#ea580c] transition shadow-md"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#C2410C] text-white text-xs font-medium hover:bg-[#9A3412] transition shadow-md"
               >
                 <Plus className="h-3.5 w-3.5" />
                 <span>Create Group Request</span>

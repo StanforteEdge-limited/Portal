@@ -118,7 +118,7 @@ export default function AdminGroupTypeSlideOver({ type, onClose, onSaved }: Prop
           </button>
           <button
             type="submit"
-            className="px-5 py-2 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white font-medium text-xs shadow-sm transition flex items-center gap-2"
+            className="px-5 py-2 rounded-xl bg-[#C2410C] hover:bg-[#9A3412] text-white font-medium text-xs shadow-sm transition flex items-center gap-2"
           >
             <Check className="h-4 w-4" />
             <span>{type?.id ? "Update Type" : "Create Type"}</span>

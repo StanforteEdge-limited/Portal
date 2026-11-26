@@ -124,7 +124,7 @@ export function Calendar({
               className={cn(
                 "h-8 w-8 mx-auto rounded-xl text-xs font-medium flex items-center justify-center transition cursor-pointer",
                 isSelected
-                  ? "bg-[#ff6900] text-white shadow-sm "
+                  ? "bg-[#C2410C] text-white shadow-sm "
                   : isCurrentDay
                   ? "bg-orange-50 text-[#ff6900] font-semibold border border-orange-200/60"
                   : "text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900"

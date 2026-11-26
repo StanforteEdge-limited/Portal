@@ -309,7 +309,7 @@ export default function ProfileEditorSlideOver({
               type="submit"
               form="profile-editor-form"
               disabled={saving}
-              className="min-h-[44px] inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] active:scale-[0.98] text-white font-medium text-xs shadow-sm transition disabled:opacity-50"
+              className="min-h-[44px] inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#C2410C] hover:bg-[#9A3412] active:scale-[0.98] text-white font-medium text-xs shadow-sm transition disabled:opacity-50"
             >
               <Save className="w-3.5 h-3.5" />
               <span>{saving ? "Saving Changes..." : "Save Profile Details"}</span>

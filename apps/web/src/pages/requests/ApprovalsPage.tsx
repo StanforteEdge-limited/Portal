@@ -259,7 +259,7 @@ export function ApprovalsPage() {
             </button>
             <Link
               to="/requests/new"
-              className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#ff6900] hover:bg-[#ea580c] text-white text-sm font-medium transition-colors active:scale-[0.98]"
+              className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#C2410C] hover:bg-[#9A3412] text-white text-sm font-medium transition-colors active:scale-[0.98]"
             >
               <FileCheck className="h-4 w-4" strokeWidth={1.5} />
               <span>New request</span>

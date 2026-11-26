@@ -227,7 +227,7 @@ export default function PoliciesListPage() {
                       >
                         <td className="py-3.5 px-5">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-orange-50 text-[#ff6900] flex items-center justify-center font-medium text-xs shrink-0 group-hover:bg-[#ff6900] group-hover:text-white transition-colors">
+                            <div className="w-8 h-8 rounded-lg bg-orange-50 text-[#ff6900] flex items-center justify-center font-medium text-xs shrink-0 group-hover:bg-[#C2410C] group-hover:text-white transition-colors">
                               <ShieldCheck className="h-4 w-4" />
                             </div>
                             <div className="min-w-0">
@@ -275,7 +275,7 @@ export default function PoliciesListPage() {
                             className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition shadow-sm ${
                               isSigned
                                 ? "text-neutral-700 border border-neutral-200 group-hover:bg-neutral-100"
-                                : "text-white bg-[#ff6900] hover:bg-[#ea580c] "
+                                : "text-white bg-[#C2410C] hover:bg-[#9A3412] "
                             }`}
                           >
                             <span>{isSigned ? "Review" : "Sign Now"}</span>

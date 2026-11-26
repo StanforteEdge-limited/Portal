@@ -179,7 +179,7 @@ export default function LeavePage() {
           actions={
             <Link
               to="/requests/new"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#e05d00] text-white text-xs font-medium shadow-sm transition active:scale-[0.98]"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#C2410C] hover:bg-[#e05d00] text-white text-xs font-medium shadow-sm transition active:scale-[0.98]"
             >
               <CalendarPlus className="h-4 w-4" />
               <span>Request Leave</span>
@@ -289,7 +289,7 @@ export default function LeavePage() {
                   </div>
                   <div className="w-full bg-neutral-100 rounded-full h-2 overflow-hidden">
                     <div
-                      className="bg-[#ff6900] h-2 rounded-full transition-colors duration-500"
+                      className="bg-[#C2410C] h-2 rounded-full transition-colors duration-500"
                       style={{ width: `${pct}%` }}
                     />
                   </div>

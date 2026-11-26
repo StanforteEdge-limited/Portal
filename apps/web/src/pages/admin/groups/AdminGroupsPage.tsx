@@ -115,7 +115,7 @@ export default function AdminGroupsPage() {
               <button
                 type="button"
                 onClick={() => setShowCreate(true)}
-                className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#ff6900] hover:bg-[#ea580c] text-white text-sm font-medium transition-colors duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30"
+                className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#C2410C] hover:bg-[#9A3412] text-white text-sm font-medium transition-colors duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30"
               >
                 <Plus className="h-4 w-4" strokeWidth={1.5} />
                 <span>Create group</span>
@@ -124,7 +124,7 @@ export default function AdminGroupsPage() {
               <button
                 type="button"
                 onClick={() => setShowCreateType(true)}
-                className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#ff6900] hover:bg-[#ea580c] text-white text-sm font-medium transition-colors duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30"
+                className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#C2410C] hover:bg-[#9A3412] text-white text-sm font-medium transition-colors duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30"
               >
                 <Plus className="h-4 w-4" strokeWidth={1.5} />
                 <span>Add group type</span>

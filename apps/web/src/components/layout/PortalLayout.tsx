@@ -963,7 +963,7 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
 
   return (
     <WorkspaceContext.Provider value={{ mode: workspaceMode, isAdmin, switchMode: switchWorkspaceMode }}>
-      <div className="min-h-screen bg-[#fafafa] flex flex-col font-sans text-neutral-900 selection:bg-[#ff6900] selection:text-white antialiased">
+      <div className="min-h-screen bg-[#fafafa] flex flex-col font-sans text-neutral-900 selection:bg-[#C2410C] selection:text-white antialiased">
       {/* 1. LEFT SIDEBAR */}
       <aside
         className={`fixed inset-y-0 left-0 z-40 bg-white border-r border-neutral-900/[0.08] text-neutral-800 flex flex-col justify-between transition-[width,transform] duration-200 ease-out ${
@@ -1312,8 +1312,8 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
               <Bell className="h-4 w-4" strokeWidth={1.5} />
               {unreadNotifications > 0 && (
                 <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#ff6900] opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[#ff6900]" />
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C2410C] opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[#C2410C]" />
                 </span>
               )}
             </Link>
@@ -1362,7 +1362,7 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
                   <div className="px-4 py-3 border-b border-neutral-100 dark:border-neutral-800">
                     <div className="flex items-center gap-3">
                       <div className="relative shrink-0 w-10 h-10">
-                        <div className="w-10 h-10 rounded-full bg-[#ff6900] text-white font-medium text-sm flex items-center justify-center shadow-sm">
+                        <div className="w-10 h-10 rounded-full bg-[#C2410C] text-white font-medium text-sm flex items-center justify-center shadow-sm">
                           {initials || "AD"}
                         </div>
                         <span
@@ -1472,7 +1472,7 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
                           className="w-full flex items-center justify-between p-2.5 rounded-xl bg-orange-50 hover:bg-orange-100/90 border border-orange-200/70 text-orange-950 transition text-xs font-medium group shadow-xs"
                         >
                           <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-lg bg-[#ff6900] text-white flex items-center justify-center shadow-sm shrink-0">
+                            <div className="w-8 h-8 rounded-lg bg-[#C2410C] text-white flex items-center justify-center shadow-sm shrink-0">
                               <UserIcon className="h-4 w-4" />
                             </div>
                             <div className="text-left">
@@ -1734,7 +1734,7 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
                 </button>
 
                 <div className="flex flex-col items-center text-center space-y-3 pt-2">
-                  <div className="w-20 h-20 rounded-full bg-[#ff6900] text-white font-semibold text-2xl flex items-center justify-center ring-4 ring-white/10 shadow-xl">
+                  <div className="w-20 h-20 rounded-full bg-[#C2410C] text-white font-semibold text-2xl flex items-center justify-center ring-4 ring-white/10 shadow-xl">
                     {initials || "AD"}
                   </div>
 
@@ -1814,7 +1814,7 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
                       onClick={() => toggleRail(false)}
                       className={`p-2.5 rounded-xl border text-xs font-medium transition flex items-center gap-2 justify-center ${
                         !isCompactRail
-                          ? "bg-[#ff6900] text-white border-[#ff6900]"
+                          ? "bg-[#C2410C] text-white border-[#ff6900]"
                           : "bg-white/5 text-neutral-300 border-white/10 hover:bg-white/10"
                       }`}
                     >
@@ -1826,7 +1826,7 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
                       onClick={() => toggleRail(true)}
                       className={`p-2.5 rounded-xl border text-xs font-medium transition flex items-center gap-2 justify-center ${
                         isCompactRail
-                          ? "bg-[#ff6900] text-white border-[#ff6900]"
+                          ? "bg-[#C2410C] text-white border-[#ff6900]"
                           : "bg-white/5 text-neutral-300 border-white/10 hover:bg-white/10"
                       }`}
                     >
@@ -2127,7 +2127,7 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
                     <div
                       className={`max-w-[88%] rounded-2xl p-3.5 text-xs leading-relaxed ${
                         msg.sender === "user"
-                          ? "bg-[#ff6900] text-white shadow-sm"
+                          ? "bg-[#C2410C] text-white shadow-sm"
                           : "bg-neutral-50 border border-neutral-100 text-neutral-800 shadow-2xs"
                       }`}
                     >
@@ -2170,7 +2170,7 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
                   />
                   <button
                     type="submit"
-                    className="p-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white font-medium transition shadow-sm cursor-pointer"
+                    className="p-2.5 rounded-xl bg-[#C2410C] hover:bg-[#9A3412] text-white font-medium transition shadow-sm cursor-pointer"
                   >
                     <Zap className="h-4 w-4" />
                   </button>

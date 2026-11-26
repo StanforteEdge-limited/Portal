@@ -253,7 +253,7 @@ export default function WorkspaceAnalyticsPage() {
                         <div className="w-full max-w-[48px] flex-1 flex items-end">
                           <div
                             className={`w-full rounded-t-md transition-[height] duration-300 ${
-                              bucket.accent ? "bg-[#ff6900]" : "bg-neutral-300"
+                              bucket.accent ? "bg-[#C2410C]" : "bg-neutral-300"
                             }`}
                             style={{ height: `${heightPct}%` }}
                           />
@@ -311,7 +311,7 @@ export default function WorkspaceAnalyticsPage() {
                       <div className="w-full h-1.5 bg-neutral-100 rounded-full overflow-hidden">
                         <div
                           className={`h-full rounded-full ${
-                            index === 0 ? "bg-[#ff6900]" : "bg-neutral-400"
+                            index === 0 ? "bg-[#C2410C]" : "bg-neutral-400"
                           }`}
                           style={{ width: `${Math.round((dept.count / maxDept) * 100)}%` }}
                         />

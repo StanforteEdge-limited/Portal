@@ -60,7 +60,7 @@ export function ColleagueMultiSelect({
             <UserHoverCard key={member.id} user={member} side="top">
               <span className="inline-flex items-center gap-1.5 pl-1.5 pr-2 py-0.5 rounded-full bg-orange-50 dark:bg-orange-950/40 border border-[#ff6900]/30 dark:border-[#ff6900]/40 text-xs font-medium text-neutral-900 dark:text-neutral-100 transition-colors">
                 <span className="relative">
-                  <span className="w-4 h-4 rounded-full bg-[#ff6900] text-white text-[10px] font-semibold flex items-center justify-center shrink-0">
+                  <span className="w-4 h-4 rounded-full bg-[#C2410C] text-white text-[10px] font-semibold flex items-center justify-center shrink-0">
                     {member.avatar || member.name.slice(0, 2).toUpperCase()}
                   </span>
                 </span>
@@ -138,7 +138,7 @@ export function ColleagueMultiSelect({
                     <div className="relative shrink-0">
                       <div
                         className={`w-6 h-6 rounded-full text-white text-[10px] font-semibold flex items-center justify-center shrink-0 ${
-                          isSelected ? "bg-[#ff6900]" : "bg-neutral-800 dark:bg-neutral-700"
+                          isSelected ? "bg-[#C2410C]" : "bg-neutral-800 dark:bg-neutral-700"
                         }`}
                       >
                         {member.avatar || member.name.slice(0, 2).toUpperCase()}
@@ -156,7 +156,7 @@ export function ColleagueMultiSelect({
                 <span
                   className={`w-4.5 h-4.5 rounded-md border flex items-center justify-center shrink-0 transition-colors ${
                     isSelected
-                      ? "bg-[#ff6900] border-[#ff6900] text-white"
+                      ? "bg-[#C2410C] border-[#ff6900] text-white"
                       : "border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800"
                   }`}
                 >

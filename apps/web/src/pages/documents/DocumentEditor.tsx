@@ -191,7 +191,7 @@ export function RichDocumentEditor({
                         }}
                         className="w-full px-3 py-2 flex items-center gap-2.5 text-left hover:bg-orange-50/60 transition-colors"
                       >
-                        <div className="w-6 h-6 rounded-full bg-[#ff6900] text-white text-[10px] font-medium flex items-center justify-center shrink-0">
+                        <div className="w-6 h-6 rounded-full bg-[#C2410C] text-white text-[10px] font-medium flex items-center justify-center shrink-0">
                           {m.avatar || m.name.slice(0, 2).toUpperCase()}
                         </div>
                         <div className="min-w-0">
@@ -443,7 +443,7 @@ export function CollaborativeDocumentWorkspace({
             <MessageSquare className="h-3.5 w-3.5" />
             <span>Comments</span>
             {openCommentCount > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full bg-[#ff6900] text-white text-[10px] font-mono">
+              <span className="px-1.5 py-0.2 rounded-full bg-[#C2410C] text-white text-[10px] font-mono">
                 {openCommentCount}
               </span>
             )}
@@ -453,7 +453,7 @@ export function CollaborativeDocumentWorkspace({
             <button
               type="button"
               onClick={() => setEditing(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-medium transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#C2410C] hover:bg-[#9A3412] text-white text-xs font-medium transition-colors"
             >
               <Pencil className="h-3.5 w-3.5" />
               <span>Edit</span>
@@ -476,7 +476,7 @@ export function CollaborativeDocumentWorkspace({
                 type="button"
                 onClick={() => void handleSave()}
                 disabled={saving}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-medium transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#C2410C] hover:bg-[#9A3412] text-white text-xs font-medium transition-colors disabled:opacity-50"
               >
                 <Save className="h-3.5 w-3.5" />
                 <span>{saving ? "Saving..." : "Save"}</span>
@@ -612,7 +612,7 @@ export function CollaborativeDocumentWorkspace({
               <button
                 type="submit"
                 disabled={!newComment.trim()}
-                className="p-2 rounded-lg bg-[#ff6900] hover:bg-[#ea580c] text-white disabled:opacity-40 transition-colors"
+                className="p-2 rounded-lg bg-[#C2410C] hover:bg-[#9A3412] text-white disabled:opacity-40 transition-colors"
                 aria-label="Post comment"
               >
                 <Send className="h-3.5 w-3.5" />

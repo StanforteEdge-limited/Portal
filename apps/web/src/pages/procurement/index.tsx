@@ -88,7 +88,7 @@ export default function ProcurementIndex() {
             </button>
             <Link
               to="/requests/new"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#e05d00] text-white text-xs font-medium shadow-sm transition active:scale-[0.98]"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#C2410C] hover:bg-[#e05d00] text-white text-xs font-medium shadow-sm transition active:scale-[0.98]"
             >
               <Plus className="h-4 w-4" />
               <span>Raise Requisition</span>
@@ -200,7 +200,7 @@ export default function ProcurementIndex() {
                         <button
                           type="button"
                           onClick={() => handleCreateCase(item.id)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#ff6900] hover:bg-[#e05d00] text-white text-xs font-medium shadow-sm transition active:scale-[0.98]"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#C2410C] hover:bg-[#e05d00] text-white text-xs font-medium shadow-sm transition active:scale-[0.98]"
                         >
                           <span>Convert to Case</span>
                           <ArrowRight className="h-3 w-3" />

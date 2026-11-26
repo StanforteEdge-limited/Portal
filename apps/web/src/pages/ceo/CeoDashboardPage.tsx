@@ -168,7 +168,7 @@ export default function CeoDashboardPage() {
       <aside className="w-full lg:w-64 bg-[#141415] text-[#ededed] border-b lg:border-b-0 lg:border-r border-white/[0.08] flex flex-col shrink-0">
         <div className="p-5 border-b border-white/[0.08] flex items-center justify-between">
           <StanforteLogo variant="dark" className="h-7" />
-          <span className="px-2 py-0.5 rounded bg-[#ff6900]/15 text-[#ff6900] text-[10px] font-mono border border-[#ff6900]/30">
+          <span className="px-2 py-0.5 rounded bg-[#C2410C]/15 text-[#ff6900] text-[10px] font-mono border border-[#ff6900]/30">
             CEO
           </span>
         </div>
@@ -184,7 +184,7 @@ export default function CeoDashboardPage() {
                 onClick={() => setActiveTab(t.id)}
                 className={`flex items-center justify-between gap-2.5 px-3 py-2.5 rounded-xl text-xs font-medium transition-colors whitespace-nowrap cursor-pointer ${
                   active
-                    ? "bg-[#ff6900] text-white"
+                    ? "bg-[#C2410C] text-white"
                     : "text-[#a1a1a6] hover:text-white hover:bg-white/[0.06]"
                 }`}
               >
@@ -356,7 +356,7 @@ export default function CeoDashboardPage() {
                       </span>
                       <div className="w-full max-w-[48px] bg-neutral-100 rounded-t-xl h-36 flex items-end overflow-hidden">
                         <div
-                          className="w-full bg-[#ff6900] hover:bg-[#ea580c] transition-all rounded-t-xl"
+                          className="w-full bg-[#C2410C] hover:bg-[#9A3412] transition-all rounded-t-xl"
                           style={{ height: `${pct}%` }}
                           title={`${pt.month}: ${formatNgn(pt.revenueNgn)} (${pt.organizations} orgs)`}
                         />
@@ -389,7 +389,7 @@ export default function CeoDashboardPage() {
                       </div>
                       <div className="h-2 rounded-full bg-neutral-100 overflow-hidden">
                         <div
-                          className="h-full bg-[#ff6900] rounded-full"
+                          className="h-full bg-[#C2410C] rounded-full"
                           style={{
                             width: `${Math.min(100, Math.max(10, (p.count / Math.max(kpis.totalOrganizations || 1, 1)) * 100))}%`,
                           }}
@@ -740,7 +740,7 @@ export default function CeoDashboardPage() {
                         type="button"
                         disabled={busyId === `inq:${inq.id}`}
                         onClick={() => void updateInquiryStatus(inq.id, "resolved")}
-                        className="h-8 px-3 rounded-lg bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-medium cursor-pointer disabled:opacity-50"
+                        className="h-8 px-3 rounded-lg bg-[#C2410C] hover:bg-[#9A3412] text-white text-xs font-medium cursor-pointer disabled:opacity-50"
                       >
                         Mark Resolved
                       </button>

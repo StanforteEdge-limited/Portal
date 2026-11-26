@@ -96,7 +96,7 @@ export function UserHoverCard({
         >
           <div className="flex items-start gap-3">
             <div className="relative shrink-0">
-              <div className="w-10 h-10 rounded-full bg-[#ff6900] text-white font-semibold text-xs flex items-center justify-center shadow-xs">
+              <div className="w-10 h-10 rounded-full bg-[#C2410C] text-white font-semibold text-xs flex items-center justify-center shadow-xs">
                 {user.avatar || user.name.slice(0, 2).toUpperCase()}
               </div>
               <span

@@ -390,7 +390,7 @@ export default function AdminSettingsPage() {
                 <button
                   type="button"
                   onClick={() => setEditingType(true)}
-                  className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#ff6900] hover:bg-[#ea580c] text-white text-sm font-medium transition-colors duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30"
+                  className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#C2410C] hover:bg-[#9A3412] text-white text-sm font-medium transition-colors duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30"
                 >
                   <Plus className="h-4 w-4" strokeWidth={1.5} />
                   <span>Add request type</span>
@@ -403,7 +403,7 @@ export default function AdminSettingsPage() {
                     setEditingCategory(true);
                     setCategoryForm({ group_id: groups[0]?.id || "", name: "", code: "", description: "" });
                   }}
-                  className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#ff6900] hover:bg-[#ea580c] text-white text-sm font-medium transition-colors duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30"
+                  className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#C2410C] hover:bg-[#9A3412] text-white text-sm font-medium transition-colors duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30"
                 >
                   <Plus className="h-4 w-4" strokeWidth={1.5} />
                   <span>Add category</span>
@@ -413,7 +413,7 @@ export default function AdminSettingsPage() {
                 <button
                   type="button"
                   onClick={() => setEditingTaxonomy(true)}
-                  className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#ff6900] hover:bg-[#ea580c] text-white text-sm font-medium transition-colors duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30"
+                  className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#C2410C] hover:bg-[#9A3412] text-white text-sm font-medium transition-colors duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30"
                 >
                   <Plus className="h-4 w-4" strokeWidth={1.5} />
                   <span>Add taxonomy</span>
@@ -629,7 +629,7 @@ export default function AdminSettingsPage() {
                     type="button"
                     onClick={() => void handleSaveCategory()}
                     disabled={categorySaving}
-                    className="h-9 px-4 rounded-lg bg-[#ff6900] hover:bg-[#ea580c] text-white text-sm font-medium transition-colors duration-150 active:scale-[0.98] disabled:opacity-50"
+                    className="h-9 px-4 rounded-lg bg-[#C2410C] hover:bg-[#9A3412] text-white text-sm font-medium transition-colors duration-150 active:scale-[0.98] disabled:opacity-50"
                   >
                     {categorySaving ? "Saving" : typeof editingCategory === "object" ? "Update category" : "Create category"}
                   </button>
@@ -1029,7 +1029,7 @@ export default function AdminSettingsPage() {
                 type="button"
                 onClick={() => void handleSaveTenant()}
                 disabled={tenantSaving}
-                className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#ff6900] hover:bg-[#ea580c] text-white text-sm font-medium transition-colors duration-150 active:scale-[0.98] disabled:opacity-50"
+                className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#C2410C] hover:bg-[#9A3412] text-white text-sm font-medium transition-colors duration-150 active:scale-[0.98] disabled:opacity-50"
               >
                 <Save className="h-4 w-4" strokeWidth={1.5} />
                 <span>{tenantSaving ? "Saving" : "Save workspace changes"}</span>
@@ -1229,7 +1229,7 @@ export default function AdminSettingsPage() {
                 <button
                   type="button"
                   onClick={() => handleSaveLocalization()}
-                  className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#ff6900] hover:bg-[#ea580c] text-white text-sm font-medium transition-colors duration-150 active:scale-[0.98]"
+                  className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#C2410C] hover:bg-[#9A3412] text-white text-sm font-medium transition-colors duration-150 active:scale-[0.98]"
                 >
                   <Save className="h-4 w-4" strokeWidth={1.5} />
                   <span>Save regional preferences</span>
@@ -1277,7 +1277,7 @@ export default function AdminSettingsPage() {
               </div>
               <Link
                 to="/admin/roles"
-                className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#ff6900] hover:bg-[#ea580c] text-white text-sm font-medium transition-colors duration-150 active:scale-[0.98] shrink-0"
+                className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#C2410C] hover:bg-[#9A3412] text-white text-sm font-medium transition-colors duration-150 active:scale-[0.98] shrink-0"
               >
                 <span>Manage roles</span>
                 <ExternalLink className="h-4 w-4" strokeWidth={1.5} />

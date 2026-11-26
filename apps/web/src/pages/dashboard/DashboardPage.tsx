@@ -411,7 +411,7 @@ export default function DashboardPage() {
 
               <Link
                 to="/tasks?new=1"
-                className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#ff6900] hover:bg-[#ea580c] text-white text-sm font-medium transition-colors duration-150 active:scale-[0.98]"
+                className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#C2410C] hover:bg-[#9A3412] text-white text-sm font-medium transition-colors duration-150 active:scale-[0.98]"
               >
                 <Plus className="h-4 w-4" strokeWidth={1.5} />
                 <span>Assign task</span>
@@ -915,7 +915,7 @@ export default function DashboardPage() {
                 <div className="flex-1 bg-neutral-100 h-2.5 rounded-full overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all duration-500 ${
-                      isClockedIn ? "bg-[#ff6900]" : "bg-neutral-300"
+                      isClockedIn ? "bg-[#C2410C]" : "bg-neutral-300"
                     }`}
                     style={{ width: `${workedPercent}%` }}
                   />
@@ -1007,7 +1007,7 @@ export default function DashboardPage() {
                         <div
                           className={`w-full rounded-t-md transition-all duration-300 ${
                             item.isToday
-                              ? "bg-[#ff6900]"
+                              ? "bg-[#C2410C]"
                               : item.isWeekend
                               ? "bg-neutral-200"
                               : "bg-neutral-400"
@@ -1050,7 +1050,7 @@ export default function DashboardPage() {
                 className={`w-full h-10 px-4 rounded-lg font-medium text-sm flex items-center justify-center gap-2 transition-colors duration-150 active:scale-[0.98] cursor-pointer ${
                   isClockedIn
                     ? "bg-neutral-900 hover:bg-neutral-800 text-white"
-                    : "bg-[#ff6900] hover:bg-[#ea580c] text-white"
+                    : "bg-[#C2410C] hover:bg-[#9A3412] text-white"
                 }`}
               >
                 {clocking ? (

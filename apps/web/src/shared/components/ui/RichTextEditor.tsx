@@ -294,7 +294,7 @@ export function RichTextEditor({
                               }}
                               className="w-full px-2.5 py-1.5 flex items-center gap-2 text-left hover:bg-orange-50/70 dark:hover:bg-orange-950/40 transition-colors"
                             >
-                              <div className="w-5 h-5 rounded-full bg-[#ff6900] text-white text-[10px] font-medium flex items-center justify-center shrink-0">
+                              <div className="w-5 h-5 rounded-full bg-[#C2410C] text-white text-[10px] font-medium flex items-center justify-center shrink-0">
                                 {m.avatar || m.name.slice(0, 2).toUpperCase()}
                               </div>
                               <div className="min-w-0">

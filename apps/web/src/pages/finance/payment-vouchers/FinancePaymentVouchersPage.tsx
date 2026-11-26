@@ -299,7 +299,7 @@ export default function FinancePaymentVouchersPage() {
                   onClick={() => updateFilter("retirement_status", tab.value)}
                   className={`px-3.5 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition ${
                     active
-                      ? "bg-[#ff6900] text-white shadow-sm "
+                      ? "bg-[#C2410C] text-white shadow-sm "
                       : "text-neutral-600 hover:bg-neutral-100"
                   }`}
                 >
@@ -421,7 +421,7 @@ export default function FinancePaymentVouchersPage() {
                 <button
                   type="button"
                   onClick={clearFilters}
-                  className="px-4 py-2 rounded-xl bg-[#ff6900] text-white text-xs font-medium shadow-md"
+                  className="px-4 py-2 rounded-xl bg-[#C2410C] text-white text-xs font-medium shadow-md"
                 >
                   Clear Filters
                 </button>

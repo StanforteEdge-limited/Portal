@@ -118,7 +118,7 @@ export default function PayslipsPage() {
                 type="button"
                 onClick={() => void handleDownload(summary.latest!)}
                 disabled={downloadingId === summary.latest.id}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#e05d00] text-white text-xs font-medium shadow-sm transition active:scale-[0.98] disabled:opacity-50"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#C2410C] hover:bg-[#e05d00] text-white text-xs font-medium shadow-sm transition active:scale-[0.98] disabled:opacity-50"
               >
                 <Download className="h-4 w-4" />
                 <span>{downloadingId === summary.latest.id ? "Downloading..." : "Download Latest Payslip"}</span>
@@ -292,7 +292,7 @@ export default function PayslipsPage() {
                           type="button"
                           onClick={() => void handleDownload(row)}
                           disabled={isDownloading}
-                          className="flex-1 min-h-[40px] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-orange-50 text-[#ff6900] hover:bg-[#ff6900] hover:text-white font-semibold text-xs transition shadow-2xs disabled:opacity-50"
+                          className="flex-1 min-h-[40px] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-orange-50 text-[#ff6900] hover:bg-[#C2410C] hover:text-white font-semibold text-xs transition shadow-2xs disabled:opacity-50"
                         >
                           <Download className="h-4 w-4" />
                           <span>{isDownloading ? "Saving..." : "Download PDF"}</span>
@@ -358,7 +358,7 @@ export default function PayslipsPage() {
                               type="button"
                               onClick={() => void handleDownload(row)}
                               disabled={isDownloading}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-50 text-[#ff6900] hover:bg-[#ff6900] hover:text-white font-semibold text-xs transition shadow-2xs disabled:opacity-50"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-50 text-[#ff6900] hover:bg-[#C2410C] hover:text-white font-semibold text-xs transition shadow-2xs disabled:opacity-50"
                               title="Download PDF"
                             >
                               <Download className="h-3.5 w-3.5" />
@@ -549,7 +549,7 @@ export default function PayslipsPage() {
                 <button
                   type="button"
                   onClick={() => void handleDownload(detail)}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#e05d00] text-white font-medium text-xs shadow-md transition active:scale-[0.98]"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#C2410C] hover:bg-[#e05d00] text-white font-medium text-xs shadow-md transition active:scale-[0.98]"
                 >
                   <Download className="h-4 w-4" />
                   <span>Download Stamped PDF</span>

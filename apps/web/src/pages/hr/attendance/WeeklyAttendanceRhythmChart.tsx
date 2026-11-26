@@ -121,7 +121,7 @@ export function WeeklyAttendanceRhythmChart({
               <div
                 className={`w-full rounded-lg transition-colors duration-500 ${
                   item.isToday
-                    ? "bg-[#ff6900] shadow-sm "
+                    ? "bg-[#C2410C] shadow-sm "
                     : item.isWeekend
                     ? "bg-neutral-300/80"
                     : "bg-emerald-500 hover:bg-emerald-600"

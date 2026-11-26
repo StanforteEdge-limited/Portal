@@ -111,7 +111,7 @@ export default function ProfilePage() {
               <button
                 type="button"
                 onClick={() => setEditorOpen(true)}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#e05d00] active:scale-[0.98] text-white font-medium text-xs shadow-sm transition"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#C2410C] hover:bg-[#e05d00] active:scale-[0.98] text-white font-medium text-xs shadow-sm transition"
               >
                 <Edit3 className="w-3.5 h-3.5" />
                 <span>Edit Profile</span>

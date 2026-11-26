@@ -137,7 +137,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen w-full bg-[#fafafa] flex flex-col lg:flex-row selection:bg-[#ff6900] selection:text-white">
+    <div className="min-h-screen w-full bg-[#fafafa] flex flex-col lg:flex-row selection:bg-[#C2410C] selection:text-white">
       {/* 1. Left Half: Calm Graphite Institutional Panel */}
       <div className="relative w-full lg:w-1/2 bg-[#141415] text-[#ededed] p-8 sm:p-12 lg:p-16 flex flex-col justify-between min-h-[360px] lg:min-h-screen border-r border-white/[0.08]">
         <div>
@@ -181,11 +181,6 @@ export default function LoginPage() {
             </div>
           </div>
         </div>
-
-        <div className="pt-6 border-t border-white/[0.08] flex items-center justify-between text-xs text-[#85858b]">
-          <span>Stanforte Edge Portal</span>
-          <span className="font-mono">NGN · Multi-entity</span>
-        </div>
       </div>
 
       {/* 2. Right Half: Full-Bleed Clean White Generic Sign In Form */}
@@ -195,7 +190,7 @@ export default function LoginPage() {
           {detectedSubdomain ? (
             <div className="flex items-center justify-between p-3 rounded-2xl bg-orange-50/70 border border-orange-200/80">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-[#ff6900] text-white flex items-center justify-center font-medium text-xs">
+                <div className="w-8 h-8 rounded-xl bg-[#C2410C] text-white flex items-center justify-center font-medium text-xs">
                   {detectedSubdomain.charAt(0).toUpperCase()}
                 </div>
                 <div>
@@ -306,7 +301,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full h-10 rounded-lg font-medium text-sm bg-[#ff6900] hover:bg-[#ea580c] text-white transition-colors duration-150 active:scale-[0.98] disabled:opacity-50"
+              className="w-full min-h-[44px] py-2.5 rounded-lg font-semibold text-[15px] bg-[#C2410C] hover:bg-[#9A3412] text-white transition-[background-color,transform] duration-150 hover:-translate-y-[1px] active:translate-y-0 disabled:opacity-50"
             >
               {loading ? "Signing in..." : "Sign in"}
             </button>
@@ -378,7 +373,7 @@ export default function LoginPage() {
           <div className="grid grid-cols-2 gap-3">
             <a
               href={`${apiBase}/auth/google`}
-              className="flex items-center justify-center gap-2 h-10 px-4 rounded-lg border border-neutral-900/[0.10] bg-white hover:bg-neutral-50 text-sm font-medium text-neutral-800 transition-colors"
+              className="flex items-center justify-center gap-2 min-h-[44px] px-4 rounded-lg border border-[#CBD5E1] bg-white hover:bg-[#F1F5F9] text-[14px] font-semibold text-[#0F172A] transition-colors"
             >
               <GoogleIcon />
               <span>Google</span>
@@ -387,7 +382,7 @@ export default function LoginPage() {
               type="button"
               disabled
               title="Microsoft SSO is not yet enabled for this workspace"
-              className="flex items-center justify-center gap-2 h-10 px-4 rounded-lg border border-neutral-900/[0.08] bg-neutral-50 text-sm font-medium text-neutral-400 cursor-not-allowed"
+              className="flex items-center justify-center gap-2 min-h-[44px] px-4 rounded-lg border border-[#E2E8F0] bg-[#FAFAFA] text-[14px] font-medium text-[#64748B] cursor-not-allowed"
             >
               <MicrosoftIcon />
               <span>Microsoft (Soon)</span>
@@ -395,9 +390,9 @@ export default function LoginPage() {
           </div>
 
           {/* Register Footer */}
-          <div className="text-center text-xs text-neutral-500 pt-1">
+          <div className="text-center text-[14px] text-[#475569] pt-1">
             Don&apos;t have an account?{" "}
-            <Link to="/register" className="font-semibold text-[#ff6900] hover:underline">
+            <Link to="/register" className="font-semibold text-[#C2410C] hover:underline">
               Register
             </Link>
           </div>

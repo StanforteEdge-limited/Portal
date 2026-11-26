@@ -211,7 +211,7 @@ export function RequestsListPage() {
               </button>
               <Link
                 to="/requests/new"
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#e05d00] text-white text-xs font-medium shadow-sm transition active:scale-[0.98]"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#C2410C] hover:bg-[#e05d00] text-white text-xs font-medium shadow-sm transition active:scale-[0.98]"
               >
                 <Plus className="h-4 w-4" />
                 <span>New Request</span>
@@ -437,7 +437,7 @@ export function RequestsListPage() {
                       </p>
                       <Link
                         to="/requests/new"
-                        className="inline-flex items-center gap-1.5 mt-3 px-3.5 py-1.5 rounded-xl bg-[#ff6900] text-white text-xs font-medium transition shadow-sm hover:bg-[#e05d00]"
+                        className="inline-flex items-center gap-1.5 mt-3 px-3.5 py-1.5 rounded-xl bg-[#C2410C] text-white text-xs font-medium transition shadow-sm hover:bg-[#e05d00]"
                       >
                         <Plus className="h-3.5 w-3.5" />
                         <span>Create New Request</span>

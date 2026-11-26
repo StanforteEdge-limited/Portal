@@ -130,7 +130,7 @@ export default function SettingsPage() {
                         className={`h-4 w-4 ${active ? "text-[#ff6900]" : "text-neutral-500"}`}
                         strokeWidth={1.5}
                       />
-                      {active && <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-[#ff6900]" />}
+                      {active && <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-[#C2410C]" />}
                     </div>
                     <p className="mt-2 text-xs sm:text-sm font-medium text-neutral-900">{option.label}</p>
                     <p className="mt-0.5 text-[10px] sm:text-xs text-neutral-500 hidden sm:block">{option.hint}</p>

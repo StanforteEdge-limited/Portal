@@ -494,7 +494,7 @@ export default function HrLeavePage() {
               </button>
               <Link
                 to="/requests/approvals"
-                className="inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-medium shadow-sm transition text-center"
+                className="inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-xl bg-[#C2410C] hover:bg-[#9A3412] text-white text-xs font-medium shadow-sm transition text-center"
               >
                 <FileCheck className="h-4 w-4 shrink-0" />
                 <span className="truncate">Approvals<span className="hidden sm:inline"> Queue</span></span>

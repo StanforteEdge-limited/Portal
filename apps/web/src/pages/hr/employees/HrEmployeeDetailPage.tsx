@@ -175,7 +175,7 @@ export default function HrEmployeeDetailPage() {
             <button
               type="button"
               onClick={() => navigate(`/hr/employees/${id}/edit`)}
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-medium shadow-md transition transform"
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#C2410C] hover:bg-[#9A3412] text-white text-xs font-medium shadow-md transition transform"
             >
               <Edit3 className="h-3.5 w-3.5" />
               <span>Edit Profile</span>

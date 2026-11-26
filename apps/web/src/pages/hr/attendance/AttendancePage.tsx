@@ -414,7 +414,7 @@ export function AttendancePage() {
                 type="button"
                 disabled={acting === "in"}
                 onClick={() => handleClockAction("in")}
-                className="w-full py-3.5 px-6 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] active:scale-[0.99] text-white font-semibold text-sm shadow-sm transition flex items-center justify-center gap-2.5 disabled:opacity-50 cursor-pointer"
+                className="w-full py-3.5 px-6 rounded-xl bg-[#C2410C] hover:bg-[#9A3412] active:scale-[0.99] text-white font-semibold text-sm shadow-sm transition flex items-center justify-center gap-2.5 disabled:opacity-50 cursor-pointer"
               >
                 {acting === "in" ? (
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -428,7 +428,7 @@ export function AttendancePage() {
                 type="button"
                 disabled={acting === "out"}
                 onClick={() => handleClockAction("out")}
-                className="w-full py-3.5 px-6 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] active:scale-[0.99] text-white font-semibold text-sm shadow-sm transition flex items-center justify-center gap-2.5 disabled:opacity-50 cursor-pointer"
+                className="w-full py-3.5 px-6 rounded-xl bg-[#C2410C] hover:bg-[#9A3412] active:scale-[0.99] text-white font-semibold text-sm shadow-sm transition flex items-center justify-center gap-2.5 disabled:opacity-50 cursor-pointer"
               >
                 {acting === "out" ? (
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -486,7 +486,7 @@ export function AttendancePage() {
               </div>
               <div className="w-full h-2.5 rounded-full bg-neutral-100 overflow-hidden">
                 <div
-                  className="h-full bg-[#ff6900] rounded-full transition-colors duration-500"
+                  className="h-full bg-[#C2410C] rounded-full transition-colors duration-500"
                   style={{ width: `${Math.min(100, Math.round((workedMinutesToday / 480) * 100))}%` }}
                 />
               </div>
@@ -613,7 +613,7 @@ export function AttendancePage() {
             onClick={() => setActiveTab("daily")}
             className={`px-4 py-2 rounded-xl text-xs font-medium transition ${
               activeTab === "daily"
-                ? "bg-[#ff6900] text-white shadow-sm "
+                ? "bg-[#C2410C] text-white shadow-sm "
                 : "bg-white text-neutral-600 hover:bg-neutral-100 border border-neutral-200"
             }`}
           >
@@ -624,7 +624,7 @@ export function AttendancePage() {
             onClick={() => setActiveTab("raw")}
             className={`px-4 py-2 rounded-xl text-xs font-medium transition ${
               activeTab === "raw"
-                ? "bg-[#ff6900] text-white shadow-sm "
+                ? "bg-[#C2410C] text-white shadow-sm "
                 : "bg-white text-neutral-600 hover:bg-neutral-100 border border-neutral-200"
             }`}
           >
@@ -635,7 +635,7 @@ export function AttendancePage() {
             onClick={() => setActiveTab("corrections")}
             className={`px-4 py-2 rounded-xl text-xs font-medium transition ${
               activeTab === "corrections"
-                ? "bg-[#ff6900] text-white shadow-sm "
+                ? "bg-[#C2410C] text-white shadow-sm "
                 : "bg-white text-neutral-600 hover:bg-neutral-100 border border-neutral-200"
             }`}
           >
@@ -952,7 +952,7 @@ export function AttendancePage() {
                 type="submit"
                 form="correction-form"
                 disabled={submittingCorrection}
-                className="px-5 py-2 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] text-white text-xs font-medium shadow-md transition flex items-center gap-2 disabled:opacity-50"
+                className="px-5 py-2 rounded-xl bg-[#C2410C] hover:bg-[#9A3412] text-white text-xs font-medium shadow-md transition flex items-center gap-2 disabled:opacity-50"
               >
                 {submittingCorrection ? (
                   <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />

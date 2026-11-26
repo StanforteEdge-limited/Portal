@@ -1,1031 +1,768 @@
-import { SelectBox } from "@/components/ui/select";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "@/shared/router-adapter";
 import { PublicLayout } from "@/pages/public/PublicLayout";
 import {
-  Users,
-  Clock,
-  CreditCard,
-  Building2,
-  FileCheck,
   ArrowRight,
-  Play,
-  TrendingUp,
   Check,
-  ShieldCheck,
-  CheckCircle2,
   Download,
-  Plus,
-  DollarSign,
-  ChevronRight,
-  Layers,
-  FileSpreadsheet,
-  Lock,
+  Play,
+  RotateCcw,
   X,
-  Filter,
-  CheckCircle,
-  Building,
-  Briefcase,
-  Sliders,
-  Calendar,
-  AlertCircle,
 } from "lucide-react";
 
-type ProductTab = "roster" | "payroll" | "approvals" | "attendance" | "procurement";
+type ShowcaseTab =
+  | "overview"
+  | "directory"
+  | "payroll"
+  | "attendance"
+  | "approvals"
+  | "procurement";
 
-interface DemoEmployee {
-  id: string;
-  name: string;
-  email: string;
-  staffId: string;
-  department: string;
-  role: string;
-  status: "Active" | "On Leave" | "Probation";
-  campus: "Victoria Island Campus" | "Abuja Office";
+interface ShowcaseItem {
+  id: ShowcaseTab;
+  label: string;
+  title: string;
+  caption: string;
+  screenshot: string;
+  alt: string;
+  themeLabel: "Dark" | "Light";
+  csvAction?: {
+    label: string;
+    filename: string;
+    content: string;
+  };
 }
 
-const INITIAL_DEMO_EMPLOYEES: DemoEmployee[] = [
+const SHOWCASE_TABS: ShowcaseItem[] = [
   {
-    id: "1",
-    name: "Oluwaseun Adeleke",
-    email: "o.adeleke@stanforteedge.com",
-    staffId: "STE-2024-001",
-    department: "Finance & Accounts",
-    role: "Chief Financial Officer",
-    status: "Active",
-    campus: "Victoria Island Campus",
+    id: "overview",
+    label: "Workspace",
+    title: "Daily operations summary",
+    caption:
+      "Track active headcount, pending purchase approvals, and monthly payroll readiness from one screen.",
+    screenshot: "/screenshots/01-dashboard-dark.png",
+    alt: "Stanforte Edge workspace overview dashboard in dark mode",
+    themeLabel: "Dark",
   },
   {
-    id: "2",
-    name: "Fatima Olarinwaju",
-    email: "f.olarinwaju@stanforteedge.com",
-    staffId: "STE-2024-014",
-    department: "People & Culture",
-    role: "Head of Human Resources",
-    status: "Active",
-    campus: "Victoria Island Campus",
+    id: "directory",
+    label: "Staff Directory",
+    title: "Multi-campus employee records",
+    caption:
+      "Keep staff profiles, departments, reporting lines, and contract documents organized across every branch.",
+    screenshot: "/screenshots/05-hr-employees.png",
+    alt: "Stanforte Edge staff directory showing employee records in light mode",
+    themeLabel: "Light",
   },
   {
-    id: "3",
-    name: "Chinedu Ibeawuchi",
-    email: "c.ibeawuchi@stanforteedge.com",
-    staffId: "STE-2024-032",
-    department: "Supply Chain",
-    role: "Logistics Manager",
-    status: "On Leave",
-    campus: "Abuja Office",
+    id: "payroll",
+    label: "Payroll & Tax",
+    title: "PAYE, PenCom, and net salary runs",
+    caption:
+      "Calculate statutory deductions automatically and export bank-ready disbursement schedules without manual formulas.",
+    screenshot: "/screenshots/04-payroll.png",
+    alt: "Stanforte Edge payroll run screen showing PAYE and pension schedules in dark mode",
+    themeLabel: "Dark",
+    csvAction: {
+      label: "Download sample bank CSV",
+      filename: "stanforte_salary_disbursement_sample.csv",
+      content:
+        "Staff ID,Employee Name,Bank Name,Account Number,Gross Salary,PAYE Tax,Pension,Net Disbursal\n" +
+        "STE-2024-001,Oluwaseun Adeleke,Access Bank,0029384721,1200000,185000,96000,919000\n" +
+        "STE-2024-014,Fatima Olarinwaju,Zenith Bank,1012938492,850000,127500,68000,654500\n" +
+        "STE-2024-032,Chinedu Ibeawuchi,GTBank,0123984712,650000,97500,52000,500500\n",
+    },
   },
   {
-    id: "4",
-    name: "Amina Yusuf",
-    email: "a.yusuf@stanforteedge.com",
-    staffId: "STE-2024-045",
-    department: "Engineering",
-    role: "Senior Systems Engineer",
-    status: "Active",
-    campus: "Abuja Office",
+    id: "attendance",
+    label: "Attendance",
+    title: "Geofenced branch check-ins",
+    caption:
+      "Verify daily clock-ins by campus boundary and feed approved leave and overtime straight into payroll.",
+    screenshot: "/screenshots/06-attendance-light.png",
+    alt: "Stanforte Edge attendance tracking log in light mode",
+    themeLabel: "Light",
+    csvAction: {
+      label: "Download sample timesheet CSV",
+      filename: "stanforte_campus_timesheet_sample.csv",
+      content:
+        "Date,Staff ID,Employee Name,Department,Clock In,Clock Out,Verification,Status\n" +
+        "2026-11-11,STE-2024-001,Oluwaseun Adeleke,Finance,08:04 AM,05:15 PM,Campus Geofence,Present\n" +
+        "2026-11-11,STE-2024-014,Fatima Olarinwaju,HR,08:12 AM,05:02 PM,Campus Geofence,Present\n" +
+        "2026-11-11,STE-2024-032,Chinedu Ibeawuchi,Supply Chain,-,-,Leave Approved,On Leave\n",
+    },
+  },
+  {
+    id: "approvals",
+    label: "Approvals",
+    title: "Tiered sign-off queues",
+    caption:
+      "Route leave requests, expense claims, and payment vouchers through line managers and finance with timestamped records.",
+    screenshot: "/screenshots/12-approvals-dark.png",
+    alt: "Stanforte Edge approval queue in dark mode",
+    themeLabel: "Dark",
+  },
+  {
+    id: "procurement",
+    label: "Procurement",
+    title: "Vendor orders and budget checks",
+    caption:
+      "Compare vendor quotes against remaining departmental budgets before issuing purchase orders.",
+    screenshot: "/screenshots/11-procurement.png",
+    alt: "Stanforte Edge procurement and purchase orders screen in light mode",
+    themeLabel: "Light",
   },
 ];
 
+const PROOF_COLUMNS = [
+  {
+    metric: "100%",
+    title: "Tenant-scoped data isolation",
+    detail:
+      "Every organization operates inside its own isolated records, role permissions, and approval hierarchy.",
+  },
+  {
+    metric: "4 tiers",
+    title: "Configurable sign-off chains",
+    detail:
+      "Require line manager, budget holder, finance, and executive approval based on transaction amount.",
+  },
+  {
+    metric: "PAYE + PFA",
+    title: "Nigerian statutory schedules",
+    detail:
+      "Generate monthly tax, pension, NHF, and bank disbursement files directly from approved payroll runs.",
+  },
+  {
+    metric: "Immutable",
+    title: "Timestamped audit trail",
+    detail:
+      "Every voucher sign-off, salary adjustment, and role change records who acted and when.",
+  },
+];
+
+function triggerCsvDownload(filename: string, content: string) {
+  const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", filename);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 export default function HomePage() {
-  const [activeTab, setActiveTab] = useState<ProductTab>("roster");
-  const [selectedFeature, setSelectedFeature] = useState<ProductTab | null>(null);
+  const [activeTab, setActiveTab] = useState<ShowcaseTab>("overview");
   const [videoModalOpen, setVideoModalOpen] = useState(false);
-  const [voucherStatus, setVoucherStatus] = useState<"pending" | "approved" | "rejected">("pending");
-  const [campusFilter, setCampusFilter] = useState<"all" | "vi" | "abuja">("all");
-  const [employees, setEmployees] = useState<DemoEmployee[]>(INITIAL_DEMO_EMPLOYEES);
-  const [addEmployeeModalOpen, setAddEmployeeModalOpen] = useState(false);
-  const [newEmpName, setNewEmpName] = useState("");
-  const [newEmpEmail, setNewEmpEmail] = useState("");
-  const [newEmpDept, setNewEmpDept] = useState("People & Culture");
-  const [newEmpRole, setNewEmpRole] = useState("Operations Associate");
+  const [headcount, setHeadcount] = useState(85);
+  const [voucherState, setVoucherState] = useState<"pending" | "approved" | "returned">("pending");
+  const [downloadNotice, setDownloadNotice] = useState<string | null>(null);
 
-  // Headcount ROI Calculator State
-  const [headcount, setHeadcount] = useState(35);
+  const currentShowcase =
+    SHOWCASE_TABS.find((item) => item.id === activeTab) ?? SHOWCASE_TABS[0];
 
-  const handleFeatureClick = (tab: ProductTab) => {
-    if (selectedFeature === tab) {
-      setSelectedFeature(null);
-    } else {
-      setSelectedFeature(tab);
-      setActiveTab(tab);
-    }
-  };
+  // Quiet ROI calculation grounded in realistic payroll + attendance + voucher hours
+  const hoursSavedPerMonth = Math.round(headcount * 0.45 + 12);
+  const spreadsheetErrorExposure = Math.max(2, Math.round(headcount * 0.06));
+  const manualBaselineHours = Math.round(hoursSavedPerMonth * 1.35);
 
-  const handleDownloadCsv = () => {
-    const csvContent =
-      "Staff ID,Employee Name,Bank Name,Account Number,Gross Salary,PAYE Tax,Pension,Net Disbursal\n" +
-      "STE-2024-001,Oluwaseun Adeleke,Access Bank,0029384721,1200000,185000,96000,919000\n" +
-      "STE-2024-014,Fatima Olarinwaju,Zenith Bank,1012938492,850000,127500,68000,654500\n" +
-      "STE-2024-032,Chinedu Ibeawuchi,GTBank,0123984712,650000,97500,52000,500500\n" +
-      "STE-2024-045,Amina Yusuf,First Bank,3029184719,950000,142500,76000,731500\n";
-
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `stanforte_salary_disbursement_nov2026.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const handleDownloadTimesheet = () => {
-    const csvContent =
-      "Date,Staff ID,Employee Name,Department,Clock In,Clock Out,Verification,Status\n" +
-      "2026-11-11,STE-2024-001,Oluwaseun Adeleke,Finance,08:04 AM,05:15 PM,Polygon Geofence,Present\n" +
-      "2026-11-11,STE-2024-014,Fatima Olarinwaju,HR,08:12 AM,05:02 PM,Biometric Terminal 1,Present\n" +
-      "2026-11-11,STE-2024-032,Chinedu Ibeawuchi,Supply Chain,-,-,Leave Approved,On Leave\n" +
-      "2026-11-11,STE-2024-045,Amina Yusuf,Engineering,08:21 AM,05:30 PM,Biometric Terminal 2,Present\n";
-
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `stanforte_campus_timesheet_today.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const handleAddEmployeeSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newEmpName.trim()) return;
-
-    const newEmp: DemoEmployee = {
-      id: Date.now().toString(),
-      name: newEmpName.trim(),
-      email: newEmpEmail.trim() || `${newEmpName.toLowerCase().replace(/\s+/g, ".")}@stanforteedge.com`,
-      staffId: `STE-2024-0${Math.floor(Math.random() * 90) + 10}`,
-      department: newEmpDept,
-      role: newEmpRole,
-      status: "Active",
-      campus: "Victoria Island Campus",
+  useEffect(() => {
+    if (!videoModalOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setVideoModalOpen(false);
+      }
     };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [videoModalOpen]);
 
-    setEmployees((prev) => [newEmp, ...prev]);
-    setNewEmpName("");
-    setNewEmpEmail("");
-    setAddEmployeeModalOpen(false);
+  const handleSampleDownload = () => {
+    if (!currentShowcase.csvAction) return;
+    triggerCsvDownload(currentShowcase.csvAction.filename, currentShowcase.csvAction.content);
+    setDownloadNotice(`Downloaded ${currentShowcase.csvAction.filename}`);
+    window.setTimeout(() => setDownloadNotice(null), 3500);
   };
-
-  const filteredEmployees = employees.filter((emp) => {
-    if (campusFilter === "vi") return emp.campus === "Victoria Island Campus";
-    if (campusFilter === "abuja") return emp.campus === "Abuja Office";
-    return true;
-  });
 
   return (
     <PublicLayout activePath="/">
-      {/* 1. Hero Section (Clean, authoritative, high-impact) */}
-      <section className="relative overflow-hidden pt-12 pb-16 lg:pt-16 lg:pb-24 px-6 max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
-          {/* Left Column: Copy & Actions */}
-          <div className="lg:col-span-6 space-y-7">
-            <p className="text-xs font-medium text-[#c2410c]">
-              Workforce, payroll, and spend operations
-            </p>
+      <div
+        className="bg-[#FAFAFA] text-[#0F172A]"
+        style={{ fontFamily: "var(--font-quiet-body)" }}
+      >
+        {/* ================================================================ */}
+        {/* 1. HERO + CENTER PRODUCT SHOWCASE (Product Demo + Features)      */}
+        {/* ================================================================ */}
+        <section className="relative overflow-hidden pt-16 pb-20 sm:pt-24 sm:pb-28 px-6">
+          {/* Accent Usage #1 of 3: Subtle ambient hero light wash */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[760px] h-[320px] rounded-full opacity-[0.07]"
+            style={{
+              background:
+                "radial-gradient(ellipse at center, #C2410C 0%, rgba(194, 65, 12, 0) 70%)",
+            }}
+          />
 
-            <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-medium tracking-[-0.03em] text-neutral-900 leading-[1.06] font-headline">
-              Run your organization <br />
-              on one operational ledger
-            </h1>
-
-            <p className="text-base sm:text-lg text-neutral-600 max-w-xl leading-relaxed">
-              Unify HR records, geofenced attendance, Nigerian statutory payroll, and tiered purchase approvals in one workspace.
-            </p>
-
-            {/* CTA Buttons */}
-            <div className="flex flex-wrap items-center gap-3 pt-1">
-              <Link
-                to="/register"
-                className="h-11 px-6 rounded-lg font-medium text-sm bg-[#ff6900] hover:bg-[#ea580c] text-white transition-colors duration-150 inline-flex items-center gap-2"
+          <div className="relative max-w-5xl mx-auto">
+            {/* Editorial Hero Copy (No eyebrow badge above H1) */}
+            <div className="max-w-3xl mx-auto text-center space-y-6">
+              <h1
+                className="text-[34px] sm:text-[48px] font-semibold text-[#0F172A] leading-[1.12] tracking-[-0.015em] text-balance"
+                style={{ fontFamily: "var(--font-quiet-display)" }}
               >
-                <span>Start workspace</span>
-                <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={1.5} />
-              </Link>
-              <button
-                type="button"
-                onClick={() => setVideoModalOpen(true)}
-                className="h-11 px-5 rounded-lg font-medium text-sm border border-neutral-900/[0.12] bg-white hover:bg-neutral-50 text-neutral-900 transition-colors duration-150 inline-flex items-center gap-2"
-              >
-                <Play className="h-3.5 w-3.5 text-[#ff6900]" strokeWidth={1.5} />
-                <span>Product walkthrough</span>
-              </button>
-            </div>
+                {/* Accent Usage #2 of 3: One emphasized headline word */}
+                Run staff records,{" "}
+                <span className="text-[#C2410C]">payroll</span>, and approvals in
+                one place.
+              </h1>
 
-            {/* 5 Feature Module Controls */}
-            <div className="pt-4">
-              <div className="text-xs font-medium text-neutral-500 mb-2.5">
-                Core workspaces
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 max-w-2xl">
+              <p className="text-[16px] sm:text-[18px] text-[#475569] leading-[1.6] max-w-[60ch] mx-auto">
+                Built for multi-campus teams handling monthly PAYE and pension
+                schedules, daily attendance, and internal purchase sign-offs
+                without spreadsheets.
+              </p>
+
+              {/* Primary + Secondary Actions (min 44x44px hit targets) */}
+              <div className="pt-2 flex flex-wrap items-center justify-center gap-4">
+                {/* Accent Usage #3 of 3: Primary CTA button */}
+                <Link
+                  to="/register"
+                  className="min-h-[44px] min-w-[44px] px-6 py-3 rounded-lg bg-[#C2410C] text-white text-[15px] font-semibold inline-flex items-center justify-center gap-2 transition-[background-color,transform,box-shadow] duration-150 hover:bg-[#9A3412] hover:-translate-y-[1px] hover:shadow-md active:translate-y-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0F172A]"
+                >
+                  <span>Create a workspace</span>
+                  <ArrowRight className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} aria-hidden="true" />
+                </Link>
+
                 <button
                   type="button"
-                  onClick={() => handleFeatureClick("roster")}
-                  className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-colors duration-150 text-center ${
-                    selectedFeature === "roster"
-                      ? "border-[#ff6900] bg-orange-50/60"
-                      : "border-neutral-900/[0.08] bg-white hover:border-neutral-900/[0.18]"
-                  }`}
+                  onClick={() => setVideoModalOpen(true)}
+                  className="min-h-[44px] min-w-[44px] px-6 py-3 rounded-lg border border-[#CBD5E1] bg-white text-[#0F172A] text-[15px] font-semibold inline-flex items-center justify-center gap-2 transition-[background-color,border-color,transform] duration-150 hover:bg-[#F1F5F9] hover:border-[#94A3B8] hover:-translate-y-[1px] active:translate-y-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0F172A]"
                 >
-                  <Users className={`h-4 w-4 mb-1.5 transition-colors ${selectedFeature === "roster" ? "text-[#ff6900]" : "text-neutral-600"}`} strokeWidth={1.5} />
-                  <span className="text-xs font-semibold text-neutral-800 leading-tight">HR & Workforce</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleFeatureClick("attendance")}
-                  className={`flex flex-col items-center justify-center p-3 rounded-2xl border transition-colors text-center ${
-                    selectedFeature === "attendance"
-                      ? "border-[#ff6900] bg-orange-50/70 shadow-sm ring-2 ring-orange-500/20"
-                      : "border-neutral-200 bg-white hover:border-neutral-300 hover:shadow-xs"
-                  }`}
-                >
-                  <Clock className={`h-4 w-4 mb-1.5 transition-colors ${selectedFeature === "attendance" ? "text-[#ff6900]" : "text-neutral-600"}`} />
-                  <span className="text-xs font-semibold text-neutral-800 leading-tight">Time & Attendance</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleFeatureClick("payroll")}
-                  className={`flex flex-col items-center justify-center p-3 rounded-2xl border transition-colors text-center ${
-                    selectedFeature === "payroll"
-                      ? "border-[#ff6900] bg-orange-50/70 shadow-sm ring-2 ring-orange-500/20"
-                      : "border-neutral-200 bg-white hover:border-neutral-300 hover:shadow-xs"
-                  }`}
-                >
-                  <CreditCard className={`h-4 w-4 mb-1.5 transition-colors ${selectedFeature === "payroll" ? "text-[#ff6900]" : "text-neutral-600"}`} />
-                  <span className="text-xs font-semibold text-neutral-800 leading-tight">Payroll & Tax</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleFeatureClick("procurement")}
-                  className={`flex flex-col items-center justify-center p-3 rounded-2xl border transition-colors text-center ${
-                    selectedFeature === "procurement"
-                      ? "border-[#ff6900] bg-orange-50/70 shadow-sm ring-2 ring-orange-500/20"
-                      : "border-neutral-200 bg-white hover:border-neutral-300 hover:shadow-xs"
-                  }`}
-                >
-                  <Building2 className={`h-4 w-4 mb-1.5 transition-colors ${selectedFeature === "procurement" ? "text-[#ff6900]" : "text-neutral-600"}`} />
-                  <span className="text-xs font-semibold text-neutral-800 leading-tight">Budgets & Spend</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleFeatureClick("approvals")}
-                  className={`flex flex-col items-center justify-center p-3 rounded-2xl border transition-colors text-center col-span-2 sm:col-span-1 ${
-                    selectedFeature === "approvals"
-                      ? "border-[#ff6900] bg-orange-50/70 shadow-sm ring-2 ring-orange-500/20"
-                      : "border-neutral-200 bg-white hover:border-neutral-300 hover:shadow-xs"
-                  }`}
-                >
-                  <FileCheck className={`h-4 w-4 mb-1.5 transition-colors ${selectedFeature === "approvals" ? "text-[#ff6900]" : "text-neutral-600"}`} />
-                  <span className="text-xs font-semibold text-neutral-800 leading-tight">Approval Chains</span>
+                  <Play className="h-[16px] w-[16px] shrink-0 text-[#0F172A]" strokeWidth={1.75} aria-hidden="true" />
+                  <span>Watch walkthrough</span>
                 </button>
               </div>
             </div>
-          </div>
 
-          {/* Right Column: Default Image Design, dynamically changes to Dashboard Preview when user clicks any feature */}
-          <div className="lg:col-span-6 relative flex justify-center lg:justify-end items-center">
-            {/* When NO feature is clicked: DEFAULT IMAGE DESIGN */}
-            {selectedFeature === null && (
-              <div className="relative flex justify-center lg:justify-end w-full animate-in fade-in duration-200">
-                {/* Orange Curved Graphic Backdrop */}
-                <div className="absolute top-1/2 -translate-y-1/2 right-2 sm:right-6 w-[340px] sm:w-[420px] h-[340px] sm:h-[420px] bg-gradient-to-tr from-[#ff6900] via-[#ff8800] to-[#ffa500] rounded-full -z-0 opacity-90 blur-0" />
+            {/* Live Product Showcase */}
+            <div className="mt-14 space-y-6">
+              {/* Quiet Horizontal Module Switcher (No identical icon-tile grid) */}
+              <div
+                role="tablist"
+                aria-label="Workspace modules"
+                className="flex items-center justify-start sm:justify-center gap-2 overflow-x-auto pb-2"
+              >
+                {SHOWCASE_TABS.map((tab) => {
+                  const isSelected = tab.id === activeTab;
+                  return (
+                    <button
+                      key={tab.id}
+                      role="tab"
+                      type="button"
+                      aria-selected={isSelected}
+                      aria-controls={`panel-${tab.id}`}
+                      id={`tab-${tab.id}`}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`min-h-[44px] px-4 py-2 rounded-lg text-[14px] font-medium whitespace-nowrap transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0F172A] ${
+                        isSelected
+                          ? "bg-[#0F172A] text-white"
+                          : "bg-transparent text-[#475569] hover:bg-[#E2E8F0]/70 hover:text-[#0F172A]"
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
 
-                {/* Real Portal Product Screenshot Container */}
-                <div className="relative z-10 w-full max-w-[600px] rounded-2xl overflow-hidden shadow-2xl border-4 border-white bg-[#141415]">
+              {/* Single-Elevation Product Frame (Crisp 1px border, zero glassmorphism overlays) */}
+              <div
+                id={`panel-${currentShowcase.id}`}
+                role="tabpanel"
+                aria-labelledby={`tab-${currentShowcase.id}`}
+                className="rounded-xl border border-[#E2E8F0] bg-white overflow-hidden"
+              >
+                <div className="bg-[#0F172A]">
                   <img
-                    src="/screenshots/01-dashboard-dark.png"
-                    alt="Stanforte Edge live workspace dashboard"
-                    decoding="sync"
-                    className="w-full h-auto block [image-rendering:-webkit-optimize-contrast]"
+                    src={currentShowcase.screenshot}
+                    alt={currentShowcase.alt}
+                    width={1280}
+                    height={800}
+                    decoding="async"
+                    className="w-full h-auto block aspect-[16/10] object-cover object-top"
                   />
                 </div>
 
-                {/* Floating Metric Card 1: Total Employees */}
-                <div className="absolute -top-3 left-0 sm:left-4 z-20 bg-white/95 backdrop-blur-md border border-neutral-100 rounded-2xl p-3.5 shadow-xl flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center">
-                    <Users className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-semibold text-neutral-500">Total Personnel</div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-base font-semibold text-neutral-900">1,240</span>
-                      <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
-                        <TrendingUp className="h-2.5 w-2.5" /> +12%
+                <div className="px-6 py-5 bg-white border-t border-[#E2E8F0] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="space-y-1 max-w-[65ch]">
+                    <div className="flex items-center gap-3">
+                      <h2
+                        className="text-[18px] font-semibold text-[#0F172A] leading-[1.3]"
+                        style={{ fontFamily: "var(--font-quiet-display)" }}
+                      >
+                        {currentShowcase.title}
+                      </h2>
+                      <span className="text-[13px] font-medium text-[#475569]">
+                        {currentShowcase.themeLabel} view
                       </span>
                     </div>
+                    <p className="text-[15px] text-[#475569] leading-[1.5]">
+                      {currentShowcase.caption}
+                    </p>
                   </div>
-                </div>
 
-                {/* Floating Metric Card 2: On Time Today */}
-                <div className="absolute top-1/2 -translate-y-1/2 -left-4 sm:left-0 z-20 bg-white/95 backdrop-blur-md border border-neutral-100 rounded-2xl p-3.5 shadow-xl flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-                    <Clock className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-semibold text-neutral-500">On Time Today</div>
-                    <div className="text-base font-semibold text-neutral-900 mt-0.5">96.4%</div>
-                  </div>
-                </div>
-
-                {/* Floating Metric Card 3: Payroll Ready */}
-                <div className="absolute bottom-6 left-2 sm:left-8 z-20 bg-white/95 backdrop-blur-md border border-neutral-100 rounded-2xl p-3.5 shadow-xl flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                    <Check className="h-5 w-5 stroke-[3]" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-semibold text-neutral-500">Payroll Status</div>
-                    <div className="text-xs font-medium text-emerald-600 mt-0.5 flex items-center gap-1.5">
-                      <Check className="h-3.5 w-3.5 stroke-[3]" />
-                      <span>Tax & Pension Audited</span>
+                  {currentShowcase.csvAction && (
+                    <div className="flex flex-col items-start sm:items-end gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={handleSampleDownload}
+                        className="min-h-[44px] px-4 py-2 rounded-lg border border-[#CBD5E1] bg-white text-[#0F172A] text-[14px] font-medium inline-flex items-center gap-2 transition-colors duration-150 hover:bg-[#F1F5F9] hover:border-[#94A3B8] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0F172A]"
+                      >
+                        <Download className="h-[16px] w-[16px]" strokeWidth={1.75} aria-hidden="true" />
+                        <span>{currentShowcase.csvAction.label}</span>
+                      </button>
+                      {downloadNotice && (
+                        <span
+                          role="status"
+                          className="text-[13px] font-medium text-[#15803D]"
+                        >
+                          {downloadNotice}
+                        </span>
+                      )}
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
-            )}
+            </div>
+          </div>
+        </section>
 
-            {/* When a feature IS clicked: DYNAMIC DASHBOARD PREVIEW */}
-            {selectedFeature !== null && (
-              <div className="relative z-10 w-full max-w-[520px] animate-in fade-in zoom-in-95 duration-200">
-                {/* Layered Under-Card Sheen */}
-                <div className="absolute -inset-1.5 rounded-2xl bg-gradient-to-tr from-[#ff6900]/20 via-neutral-100 to-amber-100/40 blur-xs -z-10" />
+        {/* ================================================================ */}
+        {/* 2. EDITORIAL FEATURE ROWS (Alternating 2-col, no 3-card hero)    */}
+        {/* ================================================================ */}
+        <section className="py-20 sm:py-24 px-6 bg-white border-t border-[#E2E8F0]">
+          <div className="max-w-5xl mx-auto space-y-24">
+            {/* Row 1: Payroll */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+              <div className="lg:col-span-5 space-y-5">
+                <h2
+                  className="text-[26px] sm:text-[32px] font-semibold text-[#0F172A] leading-[1.2] tracking-[-0.01em]"
+                  style={{ fontFamily: "var(--font-quiet-display)" }}
+                >
+                  Payroll schedules ready for bank upload
+                </h2>
+                <p className="text-[16px] text-[#475569] leading-[1.6]">
+                  Stop rebuilding tax formulas in spreadsheets every month. Run
+                  gross-to-net calculations across every branch, verify
+                  statutory deductions, and export files formatted for your
+                  corporate bank portal.
+                </p>
+                <ul className="space-y-3 pt-1 text-[15px] text-[#0F172A]">
+                  <li className="flex items-start gap-3">
+                    <Check
+                      className="h-[18px] w-[18px] mt-1 shrink-0 text-[#15803D]"
+                      strokeWidth={2}
+                      aria-hidden="true"
+                    />
+                    <span>Automatic PAYE, PenCom, NHF, and NSITF schedules</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <Check
+                      className="h-[18px] w-[18px] mt-1 shrink-0 text-[#15803D]"
+                      strokeWidth={2}
+                      aria-hidden="true"
+                    />
+                    <span>Employee self-service payslips published after sign-off</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <Check
+                      className="h-[18px] w-[18px] mt-1 shrink-0 text-[#15803D]"
+                      strokeWidth={2}
+                      aria-hidden="true"
+                    />
+                    <span>Month-over-month variance checks before disbursement</span>
+                  </li>
+                </ul>
+              </div>
 
-                {/* Main Window */}
-                <div className="w-full rounded-2xl overflow-hidden shadow-2xl border border-neutral-200/90 bg-white">
-                  {/* Browser / App Window Top Chrome Bar */}
-                  <div className="bg-neutral-900 text-white px-4 py-2.5 flex items-center justify-between text-xs border-b border-neutral-800">
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#ff5f56]" />
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#ffbd2e]" />
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#27c93f]" />
-                      <div className="ml-2 bg-neutral-800/90 rounded-md px-2.5 py-0.5 flex items-center gap-1.5 text-xs font-mono text-neutral-300 border border-neutral-700/60">
-                        <Lock className="h-2.5 w-2.5 text-emerald-400 shrink-0" />
-                        <span>
-                          app.stanforteedge.com/
-                          {selectedFeature === "roster"
-                            ? "hr/directory"
-                            : selectedFeature === "attendance"
-                            ? "attendance/geofence"
-                            : selectedFeature === "payroll"
-                            ? "payroll/nov-2026"
-                            : selectedFeature === "procurement"
-                            ? "finance/budgets"
-                            : "requests/matrix"}
-                        </span>
+              <div className="lg:col-span-7">
+                <div className="rounded-xl border border-[#E2E8F0] bg-[#FAFAFA] overflow-hidden">
+                  <img
+                    src="/screenshots/04-payroll-light.png"
+                    alt="Payroll calculation table with PAYE and pension columns in light mode"
+                    width={1280}
+                    height={800}
+                    loading="lazy"
+                    className="w-full h-auto block aspect-[16/10] object-cover object-top"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Row 2: Approvals & Payment Vouchers */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+              <div className="lg:col-span-7 order-2 lg:order-1">
+                <div className="rounded-xl border border-[#E2E8F0] bg-[#FAFAFA] overflow-hidden">
+                  <img
+                    src="/screenshots/03-payment-vouchers.png"
+                    alt="Payment vouchers queue showing approval tiers and budget verification"
+                    width={1280}
+                    height={800}
+                    loading="lazy"
+                    className="w-full h-auto block aspect-[16/10] object-cover object-top"
+                  />
+                </div>
+              </div>
+
+              <div className="lg:col-span-5 order-1 lg:order-2 space-y-5">
+                <h2
+                  className="text-[26px] sm:text-[32px] font-semibold text-[#0F172A] leading-[1.2] tracking-[-0.01em]"
+                  style={{ fontFamily: "var(--font-quiet-display)" }}
+                >
+                  Purchase and leave approvals with a clear audit trail
+                </h2>
+                <p className="text-[16px] text-[#475569] leading-[1.6]">
+                  Replace scattered email threads and paper folders. Every
+                  payment voucher checks remaining departmental budget and
+                  routes to the right approver automatically.
+                </p>
+
+                {/* Interactive Approval State Demo (No nested cards, semantic colors only) */}
+                <div className="pt-4 border-t border-[#E2E8F0] space-y-3">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <div className="text-[15px] font-semibold text-[#0F172A]">
+                        PV-2026-084 · Generator Servicing
+                      </div>
+                      <div
+                        className="text-[13px] text-[#475569]"
+                        style={{
+                          fontFamily: "var(--font-quiet-mono)",
+                          fontVariantNumeric: "tabular-nums",
+                        }}
+                      >
+                        NGN 420,000 · Facilities Budget
                       </div>
                     </div>
+                    <span
+                      className={`text-[13px] font-semibold ${
+                        voucherState === "approved"
+                          ? "text-[#15803D]"
+                          : voucherState === "returned"
+                          ? "text-[#B91C1C]"
+                          : "text-[#475569]"
+                      }`}
+                    >
+                      {voucherState === "approved"
+                        ? "Approved"
+                        : voucherState === "returned"
+                        ? "Returned"
+                        : "Pending sign-off"}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => setSelectedFeature(null)}
-                      className="text-xs text-neutral-300 hover:text-white flex items-center gap-1 bg-neutral-800 hover:bg-neutral-700 px-2 py-0.5 rounded-md transition-colors"
-                      title="Return to default photo"
+                      onClick={() => setVoucherState("approved")}
+                      disabled={voucherState === "approved"}
+                      className="min-h-[44px] px-4 py-2 rounded-lg bg-[#0F172A] text-white text-[14px] font-medium transition-colors duration-150 hover:bg-[#1E293B] disabled:opacity-45 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0F172A]"
                     >
-                      <X className="h-3 w-3" />
-                      <span>Default view</span>
+                      Approve voucher
                     </button>
-                  </div>
-
-                  {/* Real Portal Screenshot Preview (Mixed Light & Dark Mode) */}
-                  <div className="bg-[#141415]">
-                    {(() => {
-                      const previews: Record<string, { src: string; alt: string; mode: string; label: string }> = {
-                        roster: { src: "/screenshots/05-hr-employees.png", alt: "HR Workforce Directory (Light Mode)", mode: "Light Mode", label: "HR & Workforce Directory" },
-                        attendance: { src: "/screenshots/06-attendance.png", alt: "Time & Attendance (Dark Mode)", mode: "Dark Mode", label: "Time & Attendance Tracking" },
-                        payroll: { src: "/screenshots/04-payroll.png", alt: "Nigerian Payroll Engine (Dark Mode)", mode: "Dark Mode", label: "Automated PAYE & PenCom Payroll" },
-                        procurement: { src: "/screenshots/11-procurement.png", alt: "Procurement & Requisitions (Light Mode)", mode: "Light Mode", label: "Procurement & Vendor Orders" },
-                        approvals: { src: "/screenshots/12-approvals-dark.png", alt: "Multi-Tier Approvals (Dark Mode)", mode: "Dark Mode", label: "Multi-Tier Approval Workflows" },
-                      };
-                      const current = previews[selectedFeature || "roster"] ?? previews.roster;
-                      return (
-                        <>
-                          <div className="w-full overflow-hidden bg-[#141415]">
-                            <img src={current.src} alt={current.alt} decoding="sync" className="w-full h-auto block [image-rendering:-webkit-optimize-contrast]" />
-                          </div>
-                          <div className="px-4 py-3 bg-white border-t border-neutral-200 flex items-center justify-between text-xs">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium text-neutral-900">{current.label}</span>
-                              <span className={`px-2 py-0.5 rounded-full text-[11px] font-mono ${current.mode === "Dark Mode" ? "bg-[#141415] text-white" : "bg-neutral-100 text-neutral-700"}`}>{current.mode}</span>
-                            </div>
-                            <button type="button" onClick={() => setSelectedFeature(null)} className="font-medium text-[#ff6900] hover:underline flex items-center gap-1 cursor-pointer">
-                              <span>Close preview</span>
-                              <X className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        </>
-                      );
-                    })()}
+                    <button
+                      type="button"
+                      onClick={() => setVoucherState("returned")}
+                      disabled={voucherState === "returned"}
+                      className="min-h-[44px] px-4 py-2 rounded-lg border border-[#CBD5E1] bg-white text-[#0F172A] text-[14px] font-medium transition-colors duration-150 hover:bg-[#F1F5F9] disabled:opacity-45 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0F172A]"
+                    >
+                      Return for edit
+                    </button>
+                    {voucherState !== "pending" && (
+                      <button
+                        type="button"
+                        onClick={() => setVoucherState("pending")}
+                        className="min-h-[44px] px-3 py-2 rounded-lg text-[14px] font-medium text-[#475569] inline-flex items-center gap-1.5 hover:text-[#0F172A] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0F172A]"
+                      >
+                        <RotateCcw className="h-[15px] w-[15px]" strokeWidth={1.75} aria-hidden="true" />
+                        <span>Reset</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
-            )}
-          </div>
-        </div>
-
-        {/* Core Capabilities Strip */}
-        <div className="mt-16 pt-8 border-t border-neutral-900/[0.08]">
-          <div className="flex flex-wrap items-center justify-between gap-4 text-xs text-neutral-500">
-            <span className="font-medium text-neutral-700">Included in every workspace</span>
-            <div className="flex flex-wrap items-center gap-6">
-              <span>Role-based access control</span>
-              <span>Tenant-isolated records</span>
-              <span>PAYE &amp; PenCom schedules</span>
-              <span>Approval audit log</span>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* 2. Interactive Live Product Experience */}
-      <section id="interactive-demo" className="py-20 px-6 bg-neutral-50 border-t border-neutral-200/80">
-        <div className="max-w-7xl mx-auto space-y-12">
-          <div className="text-center max-w-3xl mx-auto space-y-3">
-            <div className="text-xs font-medium text-[#ff6900]">
-              Live Platform Experience
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-semibold text-neutral-900 tracking-tight font-headline">
-              A Single Workspace for Your Whole Organization
-            </h2>
-            <p className="text-neutral-600 text-sm sm:text-base leading-relaxed">
-              Explore how Stanforte Edge unifies staff records, monthly salary disbursements, daily clock-in logs, and internal purchase approvals in one intuitive workspace.
-            </p>
-          </div>
-
-          {/* Interactive Window Container */}
-          <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-xl overflow-hidden">
-            {/* Top Window Bar */}
-            <div className="border-b border-neutral-200 bg-neutral-100/70 px-6 py-4 flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-red-400" />
-                <span className="w-3 h-3 rounded-full bg-amber-400" />
-                <span className="w-3 h-3 rounded-full bg-emerald-400" />
-                <span className="ml-4 text-xs font-mono text-neutral-500 font-medium">app.stanforteedge.com/workspace</span>
-              </div>
-
-              {/* Tab Selector Pills */}
-              <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-neutral-200 shadow-xs text-xs font-semibold overflow-x-auto max-w-full">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("roster")}
-                  className={`px-3.5 py-1.5 rounded-lg transition-colors whitespace-nowrap ${
-                    activeTab === "roster"
-                      ? "bg-[#ff6900] text-white shadow-sm"
-                      : "text-neutral-600 hover:text-neutral-900"
-                  }`}
-                >
-                  Staff Directory
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("payroll")}
-                  className={`px-3.5 py-1.5 rounded-lg transition-colors whitespace-nowrap ${
-                    activeTab === "payroll"
-                      ? "bg-[#ff6900] text-white shadow-sm"
-                      : "text-neutral-600 hover:text-neutral-900"
-                  }`}
-                >
-                  Payroll Engine
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("approvals")}
-                  className={`px-3.5 py-1.5 rounded-lg transition-colors whitespace-nowrap ${
-                    activeTab === "approvals"
-                      ? "bg-[#ff6900] text-white shadow-sm"
-                      : "text-neutral-600 hover:text-neutral-900"
-                  }`}
-                >
-                  Approval Queue
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("attendance")}
-                  className={`px-3.5 py-1.5 rounded-lg transition-colors whitespace-nowrap ${
-                    activeTab === "attendance"
-                      ? "bg-[#ff6900] text-white shadow-sm"
-                      : "text-neutral-600 hover:text-neutral-900"
-                  }`}
-                >
-                  Daily Attendance
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("procurement")}
-                  className={`px-3.5 py-1.5 rounded-lg transition-colors whitespace-nowrap ${
-                    activeTab === "procurement"
-                      ? "bg-[#ff6900] text-white shadow-sm"
-                      : "text-neutral-600 hover:text-neutral-900"
-                  }`}
-                >
-                  Procurement
-                </button>
-              </div>
-            </div>
-
-            {/* Real Application Screenshots (Light & Dark Mode Mix) */}
-            <div className="bg-[#141415]">
-              {(() => {
-                const tabViews: Record<string, { src: string; alt: string; title: string; subtitle: string; mode: string }> = {
-                  roster: { src: "/screenshots/05-hr-employees.png", alt: "Enterprise Workforce Directory", title: "Enterprise Workforce Directory", subtitle: "Live employee profiles, departments, and role assignments", mode: "Light Mode" },
-                  payroll: { src: "/screenshots/04-payroll.png", alt: "Automated Nigerian Payroll Engine", title: "Automated Payroll & Statutory Tax Engine", subtitle: "PAYE, PenCom pension schedules, and commercial bank disbursement files", mode: "Dark Mode" },
-                  approvals: { src: "/screenshots/12-approvals.png", alt: "Multi-Tier Approval Queue", title: "Multi-Tier Request & Payment Approvals", subtitle: "Department lead and finance sign-offs with immutable audit logs", mode: "Light Mode" },
-                  attendance: { src: "/screenshots/06-attendance.png", alt: "Daily Time and Attendance", title: "Geofenced Time & Attendance Tracking", subtitle: "Real-time daily clock-in logs, late policies, and correction approvals", mode: "Dark Mode" },
-                  procurement: { src: "/screenshots/11-procurement-dark.png", alt: "Procurement and Purchase Orders", title: "Procurement, Vendors & Purchase Orders", subtitle: "End-to-end requisitions, vendor quotes, and payment voucher reconciliation", mode: "Dark Mode" },
-                };
-                const view = tabViews[activeTab] ?? tabViews.roster;
-                return (
-                  <>
-                    <div className="w-full overflow-hidden bg-[#141415]">
-                      <img src={view.src} alt={view.alt} decoding="sync" className="w-full h-auto block [image-rendering:-webkit-optimize-contrast]" />
-                    </div>
-                    <div className="px-6 py-4 bg-white border-t border-neutral-200 flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <h3 className="text-sm font-semibold text-neutral-900 font-headline">{view.title}</h3>
-                        <p className="text-xs text-neutral-500">{view.subtitle}</p>
-                      </div>
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-mono ${view.mode === "Dark Mode" ? "bg-[#141415] text-white" : "bg-neutral-100 text-neutral-700 border border-neutral-200"}`}>
-                        {view.mode} · Live Capture
-                      </span>
-                    </div>
-                  </>
-                );
-              })()}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 3. Deep Operational Capabilities (6 Pillar Grid with functional links) */}
-      <section className="py-20 px-6 bg-white">
-        <div className="max-w-7xl mx-auto space-y-14">
-          <div className="max-w-3xl space-y-3">
-            <div className="text-xs font-medium text-[#ff6900]">
-              Enterprise Architecture & Capabilities
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-semibold text-neutral-900 tracking-tight font-headline">
-              Engineered for Real-World Organizational Complexity
-            </h2>
-            <p className="text-neutral-600 text-base leading-relaxed">
-              Every workflow in Stanforte Edge addresses the exact compliance, payroll, and administrative friction points experienced by growing institutions.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {/* Pillar 1 */}
-            <Link
-              to="/features#payroll"
-              className="p-8 rounded-2xl border border-neutral-200/80 bg-white hover:border-[#ff6900] hover:shadow-lg transition-colors space-y-3 group block"
-            >
-              <div className="w-10 h-10 rounded-2xl bg-orange-50 text-[#ff6900] flex items-center justify-center transition-transform">
-                <CreditCard className="h-5 w-5" />
-              </div>
-              <h3 className="text-base font-medium text-neutral-900 font-headline group-hover:text-[#ff6900] transition-colors">
-                Automated Salary & Tax Remittances
-              </h3>
-              <p className="text-xs text-neutral-600 leading-relaxed">
-                Compute monthly payroll with statutory PAYE tax schedules, pension administrator remittances, and NHF contributions with zero calculation errors.
+        {/* ================================================================ */}
+        {/* 3. TIME-SAVED ESTIMATOR (One Hero Number Per Screen)             */}
+        {/* ================================================================ */}
+        <section className="py-20 sm:py-24 px-6 bg-[#FAFAFA] border-t border-[#E2E8F0]">
+          <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+            <div className="lg:col-span-6 space-y-5">
+              <h2
+                className="text-[26px] sm:text-[32px] font-semibold text-[#0F172A] leading-[1.2] tracking-[-0.01em]"
+                style={{ fontFamily: "var(--font-quiet-display)" }}
+              >
+                Estimate the hours your team saves each month
+              </h2>
+              <p className="text-[16px] text-[#475569] leading-[1.6]">
+                Adjust the team size below to see how much manual reconciliation
+                time HR and finance recover across payroll, attendance, and
+                voucher approvals.
               </p>
-              <div className="pt-2 text-xs font-medium text-[#ff6900] flex items-center gap-1">
-                Explore payroll suite <ChevronRight className="h-3.5 w-3.5 transition-transform" />
-              </div>
-            </Link>
 
-            {/* Pillar 2 */}
-            <Link
-              to="/features#attendance"
-              className="p-8 rounded-2xl border border-neutral-200/80 bg-white hover:border-[#ff6900] hover:shadow-lg transition-colors space-y-3 group block"
-            >
-              <div className="w-10 h-10 rounded-2xl bg-neutral-100 text-neutral-700 flex items-center justify-center transition-transform">
-                <Clock className="h-5 w-5" />
-              </div>
-              <h3 className="text-base font-medium text-neutral-900 font-headline group-hover:text-[#ff6900] transition-colors">
-                Biometric & Polygon Geofence Tracking
-              </h3>
-              <p className="text-xs text-neutral-600 leading-relaxed">
-                Eliminate proxy attendance with GPS coordinate verification and physical biometric machine integration across all branches.
-              </p>
-              <div className="pt-2 text-xs font-medium text-[#ff6900] flex items-center gap-1">
-                Explore attendance suite <ChevronRight className="h-3.5 w-3.5 transition-transform" />
-              </div>
-            </Link>
-
-            {/* Pillar 3 */}
-            <Link
-              to="/features#approvals"
-              className="p-8 rounded-2xl border border-neutral-200/80 bg-white hover:border-[#ff6900] hover:shadow-lg transition-colors space-y-3 group block"
-            >
-              <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center transition-transform">
-                <FileCheck className="h-5 w-5" />
-              </div>
-              <h3 className="text-base font-medium text-neutral-900 font-headline group-hover:text-[#ff6900] transition-colors">
-                Multi-Tier Approval Guardrails
-              </h3>
-              <p className="text-xs text-neutral-600 leading-relaxed">
-                Enforce sign-off hierarchies for leave, travel allowances, and purchase vouchers with full audit history and notification routing.
-              </p>
-              <div className="pt-2 text-xs font-medium text-[#ff6900] flex items-center gap-1">
-                Explore approval matrices <ChevronRight className="h-3.5 w-3.5 transition-transform" />
-              </div>
-            </Link>
-
-            {/* Pillar 4 */}
-            <Link
-              to="/security"
-              className="p-8 rounded-2xl border border-neutral-200/80 bg-white hover:border-[#ff6900] hover:shadow-lg transition-colors space-y-3 group block"
-            >
-              <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center transition-transform">
-                <ShieldCheck className="h-5 w-5" />
-              </div>
-              <h3 className="text-base font-medium text-neutral-900 font-headline group-hover:text-[#ff6900] transition-colors">
-                PostgreSQL Row-Level Multi-Tenancy
-              </h3>
-              <p className="text-xs text-neutral-600 leading-relaxed">
-                Protect sensitive corporate records with strict database-level row isolation, custom roles, and HttpOnly session architecture.
-              </p>
-              <div className="pt-2 text-xs font-medium text-[#ff6900] flex items-center gap-1">
-                Explore security architecture <ChevronRight className="h-3.5 w-3.5 transition-transform" />
-              </div>
-            </Link>
-
-            {/* Pillar 5 */}
-            <Link
-              to="/features#selfservice"
-              className="p-8 rounded-2xl border border-neutral-200/80 bg-white hover:border-[#ff6900] hover:shadow-lg transition-colors space-y-3 group block"
-            >
-              <div className="w-10 h-10 rounded-2xl bg-neutral-100 text-neutral-700 flex items-center justify-center transition-transform">
-                <Users className="h-5 w-5" />
-              </div>
-              <h3 className="text-base font-medium text-neutral-900 font-headline group-hover:text-[#ff6900] transition-colors">
-                Staff Self-Service & Tasks
-              </h3>
-              <p className="text-xs text-neutral-600 leading-relaxed">
-                Give employees instant access to download digital payslips, check accrued leave balances, and manage tasks in Kanban or Table view.
-              </p>
-              <div className="pt-2 text-xs font-medium text-[#ff6900] flex items-center gap-1">
-                Explore self-service tools <ChevronRight className="h-3.5 w-3.5 transition-transform" />
-              </div>
-            </Link>
-
-            {/* Pillar 6 */}
-            <Link
-              to="/features#workforce"
-              className="p-8 rounded-2xl border border-neutral-200/80 bg-white hover:border-[#ff6900] hover:shadow-lg transition-colors space-y-3 group block"
-            >
-              <div className="w-10 h-10 rounded-2xl bg-neutral-100 text-neutral-700 flex items-center justify-center transition-transform">
-                <Building2 className="h-5 w-5" />
-              </div>
-              <h3 className="text-base font-medium text-neutral-900 font-headline group-hover:text-[#ff6900] transition-colors">
-                Multi-Subsidiary & Branch Network
-              </h3>
-              <p className="text-xs text-neutral-600 leading-relaxed">
-                Operate across multiple holding entities, state branches, and cost centers with centralized executive oversight.
-              </p>
-              <div className="pt-2 text-xs font-medium text-[#ff6900] flex items-center gap-1">
-                Explore workforce structure <ChevronRight className="h-3.5 w-3.5 transition-transform" />
-              </div>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* 4. Interactive Headcount & Value Estimator */}
-      <section className="py-20 px-6 bg-neutral-50 border-t border-neutral-100">
-        <div className="max-w-5xl mx-auto space-y-12">
-          <div className="text-center space-y-3">
-            <div className="text-xs font-medium text-[#ff6900]">
-              Organizational Efficiency Calculator
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-semibold text-neutral-900 font-headline">
-              Calculate Your Operational Efficiency
-            </h2>
-            <p className="text-xs sm:text-sm text-neutral-600 max-w-xl mx-auto">
-              Drag the headcount slider to see how much administrative time and compliance overhead Stanforte Edge saves your business each month.
-            </p>
-          </div>
-
-          <div className="p-8 sm:p-10 rounded-2xl bg-white border border-neutral-200/80 shadow-xl space-y-8">
-            {/* Slider control */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <label htmlFor="headcount-slider" className="text-sm font-medium text-neutral-900 flex items-center gap-2">
-                  <Users className="h-4 w-4 text-[#ff6900]" /> Total Active Workforce:
-                </label>
-                <span className="text-2xl font-semibold text-[#ff6900] font-headline">
-                  {headcount} Employees
-                </span>
-              </div>
-              <input
-                id="headcount-slider"
-                type="range"
-                min="5"
-                max="350"
-                step="5"
-                value={headcount}
-                onChange={(e) => setHeadcount(Number(e.target.value))}
-                className="w-full h-2.5 bg-neutral-200 rounded-lg appearance-none cursor-pointer accent-[#ff6900]"
-              />
-              <div className="flex justify-between text-xs text-neutral-400 font-semibold">
-                <span>5 (Early Stage)</span>
-                <span>50 (Mid-Market)</span>
-                <span>150 (Enterprise)</span>
-                <span>350+ (Multi-Branch)</span>
-              </div>
-            </div>
-
-            {/* Calculations Output Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-4 border-t border-neutral-100">
-              <div className="p-4 rounded-2xl bg-orange-50/60 border border-orange-100 space-y-1">
-                <div className="text-xs font-medium text-[#ff6900]">HR Admin Time Saved</div>
-                <div className="text-2xl font-semibold text-neutral-900 font-headline">
-                  ~{Math.round(headcount * 0.85)} hrs / mo
+              <div className="pt-2 space-y-3">
+                <div className="flex items-center justify-between text-[15px]">
+                  <label htmlFor="team-headcount-slider" className="font-medium text-[#0F172A]">
+                    Active staff on payroll
+                  </label>
+                  <span
+                    className="font-semibold text-[#0F172A]"
+                    style={{
+                      fontFamily: "var(--font-quiet-mono)",
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                  >
+                    {headcount} employees
+                  </span>
                 </div>
-                <div className="text-xs text-neutral-500">Automated clock-in, leave & roster reconciliation</div>
-              </div>
 
-              <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200 space-y-1">
-                <div className="text-xs font-medium text-neutral-500">Payroll Run Duration</div>
-                <div className="text-2xl font-semibold text-emerald-600 font-headline">
-                  &lt; 30 Minutes
-                </div>
-                <div className="text-xs text-neutral-500">Down from 4-5 manual spreadsheet days</div>
-              </div>
+                <input
+                  id="team-headcount-slider"
+                  type="range"
+                  min={10}
+                  max={500}
+                  step={5}
+                  value={headcount}
+                  onChange={(e) => setHeadcount(Number(e.target.value))}
+                  className="w-full h-11 accent-[#0F172A] cursor-pointer"
+                />
 
-              <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200 space-y-1">
-                <div className="text-xs font-medium text-neutral-500">Recommended Plan</div>
-                <div className="text-xl font-semibold text-neutral-900 font-headline">
-                  {headcount <= 15 ? "Starter Free" : headcount <= 100 ? "Growth Tier" : "Enterprise"}
-                </div>
-                <div className="text-xs text-neutral-500">
-                  {headcount <= 15
-                    ? "Free for up to 15 staff forever"
-                    : `₦${(headcount * 1200).toLocaleString()} / month total`}
+                <div className="flex justify-between text-[13px] text-[#475569]">
+                  <span>10 staff</span>
+                  <span>250 staff</span>
+                  <span>500 staff</span>
                 </div>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
-              <span className="text-xs text-neutral-500 flex items-center gap-1.5">
-                <Check className="h-3.5 w-3.5 text-emerald-600 stroke-[3]" />
-                <span>No setup fee • 15-day full feature trial • Cancel anytime</span>
-              </span>
+            {/* Single Hero Number + Semantic Breakdown */}
+            <div className="lg:col-span-6 rounded-xl border border-[#E2E8F0] bg-white p-8 space-y-6">
+              <div>
+                <div
+                  className="text-[48px] font-semibold text-[#0F172A] leading-none tracking-[-0.02em]"
+                  style={{
+                    fontFamily: "var(--font-quiet-mono)",
+                    fontVariantNumeric: "tabular-nums",
+                  }}
+                >
+                  {hoursSavedPerMonth} hrs
+                </div>
+                <div className="mt-2 text-[13px] font-medium text-[#475569] tracking-[0.01em]">
+                  Estimated HR &amp; finance hours recovered every month
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-6 border-t border-[#E2E8F0]">
+                <div>
+                  <div
+                    className="text-[20px] font-semibold text-[#15803D]"
+                    style={{
+                      fontFamily: "var(--font-quiet-mono)",
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                  >
+                    -{Math.round((hoursSavedPerMonth / manualBaselineHours) * 100)}%
+                  </div>
+                  <div className="mt-1 text-[13px] text-[#475569]">
+                    Payroll prep time
+                  </div>
+                </div>
+
+                <div>
+                  <div
+                    className="text-[20px] font-semibold text-[#B91C1C]"
+                    style={{
+                      fontFamily: "var(--font-quiet-mono)",
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                  >
+                    {spreadsheetErrorExposure} / mo
+                  </div>
+                  <div className="mt-1 text-[13px] text-[#475569]">
+                    Manual formula risks avoided
+                  </div>
+                </div>
+
+                <div>
+                  <div
+                    className="text-[20px] font-semibold text-[#475569]"
+                    style={{
+                      fontFamily: "var(--font-quiet-mono)",
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                  >
+                    {manualBaselineHours} hrs
+                  </div>
+                  <div className="mt-1 text-[13px] text-[#475569]">
+                    Typical spreadsheet baseline
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ================================================================ */}
+        {/* 4. OPERATIONAL PROOF STRIP (Typographic hairline grid)           */}
+        {/* ================================================================ */}
+        <section className="py-20 px-6 bg-white border-t border-[#E2E8F0]">
+          <div className="max-w-5xl mx-auto">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+              {PROOF_COLUMNS.map((item) => (
+                <div
+                  key={item.title}
+                  className="pt-5 border-t border-[#E2E8F0] space-y-2"
+                >
+                  <div
+                    className="text-[22px] font-semibold text-[#0F172A]"
+                    style={{
+                      fontFamily: "var(--font-quiet-mono)",
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                  >
+                    {item.metric}
+                  </div>
+                  <h3
+                    className="text-[18px] font-semibold text-[#0F172A] leading-[1.3]"
+                    style={{ fontFamily: "var(--font-quiet-display)" }}
+                  >
+                    {item.title}
+                  </h3>
+                  <p className="text-[15px] text-[#475569] leading-[1.55]">
+                    {item.detail}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ================================================================ */}
+        {/* 5. FINAL CTA BAND (Quiet high-contrast dark slate)               */}
+        {/* ================================================================ */}
+        <section className="py-20 px-6 bg-[#FAFAFA] border-t border-[#E2E8F0]">
+          <div className="max-w-5xl mx-auto rounded-xl bg-[#0F172A] text-[#F8FAFC] p-8 sm:p-14 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
+            <div className="space-y-3 max-w-xl">
+              <h2
+                className="text-[26px] sm:text-[32px] font-semibold leading-[1.2] tracking-[-0.01em]"
+                style={{ fontFamily: "var(--font-quiet-display)" }}
+              >
+                Ready to move off spreadsheets?
+              </h2>
+              <p className="text-[16px] text-[#CBD5E1] leading-[1.6]">
+                Set up your organization, invite department heads, and run your
+                first payroll cycle in one afternoon.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-4 shrink-0">
               <Link
                 to="/register"
-                className="px-6 py-2.5 rounded-full text-xs font-medium bg-[#ff6900] hover:bg-[#ea580c] text-white shadow-md transition-colors flex items-center gap-1.5"
+                className="min-h-[44px] min-w-[44px] px-6 py-3 rounded-lg bg-[#C2410C] text-white text-[15px] font-semibold inline-flex items-center justify-center gap-2 transition-[background-color,transform] duration-150 hover:bg-[#9A3412] hover:-translate-y-[1px] active:translate-y-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
               >
-                <span>Provision Workspace for {headcount} Staff</span>
-                <ArrowRight className="h-3.5 w-3.5" />
+                <span>Create a workspace</span>
+                <ArrowRight className="h-[18px] w-[18px]" strokeWidth={1.75} aria-hidden="true" />
+              </Link>
+              <Link
+                to="/contact"
+                className="min-h-[44px] min-w-[44px] px-6 py-3 rounded-lg border border-[#334155] bg-transparent text-[#F8FAFC] text-[15px] font-semibold inline-flex items-center justify-center transition-colors duration-150 hover:bg-[#1E293B] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              >
+                Talk to our team
               </Link>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* 5. Enterprise Impact Metrics */}
-      <section className="py-16 px-6 bg-white border-t border-neutral-100">
-        <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-          <div className="space-y-1">
-            <div className="text-4xl font-semibold text-[#ff6900] font-headline">4.8x</div>
-            <div className="text-xs font-medium text-neutral-900">Faster Salary Runs</div>
-            <div className="text-xs text-neutral-500">From 4 days to under 45 minutes</div>
-          </div>
-          <div className="space-y-1">
-            <div className="text-2xl font-medium text-neutral-900 font-headline">PAYE &amp; PenCom</div>
-            <div className="text-sm font-medium text-neutral-800">Statutory payroll schedules</div>
-            <div className="text-xs text-neutral-500">Tax tables, pension deductions, and downloadable payslips</div>
-          </div>
-          <div className="space-y-1.5">
-            <div className="text-2xl font-medium text-neutral-900 font-headline">Audit trail</div>
-            <div className="text-sm font-medium text-neutral-800">Voucher and approval history</div>
-            <div className="text-xs text-neutral-500">Every requisition, review step, and disbursement recorded</div>
-          </div>
-          <div className="space-y-1.5">
-            <div className="text-2xl font-medium text-neutral-900 font-headline">Multi-entity</div>
-            <div className="text-sm font-medium text-neutral-800">Tenant-scoped isolation</div>
-            <div className="text-xs text-neutral-500">Separate organizations, roles, and budgets in one portal</div>
-          </div>
-        </div>
-      </section>
-
-      {/* 6. Operational Architecture */}
-      <section className="py-20 px-6 bg-[#fafafa] border-t border-neutral-900/[0.08]">
-        <div className="max-w-7xl mx-auto space-y-10">
-          <div className="max-w-2xl space-y-2">
-            <h2 className="text-2xl sm:text-3xl font-medium text-neutral-900 font-headline tracking-tight">
-              Built for multi-branch operations
-            </h2>
-            <p className="text-sm text-neutral-600 leading-relaxed">
-              One workspace for HR records, geofenced attendance, procurement approvals, and general ledger reporting.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="p-6 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
-              <h3 className="text-base font-medium text-neutral-900 font-headline">Attendance to payroll</h3>
-              <p className="text-sm text-neutral-600 leading-relaxed">
-                Reconcile branch check-ins, leave balances, and overtime directly into monthly payroll runs and statutory schedules.
-              </p>
-            </div>
-
-            <div className="p-6 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
-              <h3 className="text-base font-medium text-neutral-900 font-headline">Tiered spend approvals</h3>
-              <p className="text-sm text-neutral-600 leading-relaxed">
-                Route requisitions and payment vouchers through departmental review and budget checks before funds are disbursed.
-              </p>
-            </div>
-
-            <div className="p-6 rounded-2xl bg-white border border-neutral-900/[0.08] shadow-xs space-y-2">
-              <h3 className="text-base font-medium text-neutral-900 font-headline">Staff self-service</h3>
-              <p className="text-sm text-neutral-600 leading-relaxed">
-                Employees submit leave requests, review policies, and download monthly payslips from one account without email back-and-forth.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 7. Bottom Call to Action */}
-      <section className="py-20 px-6 bg-white border-t border-neutral-900/[0.08]">
-        <div className="max-w-5xl mx-auto rounded-2xl bg-neutral-900 text-white p-10 sm:p-14 space-y-6">
-          <div className="space-y-3 max-w-2xl">
-            <p className="text-xs font-medium text-orange-400">Workspace setup</p>
-            <h2 className="text-2xl sm:text-4xl font-medium tracking-tight font-headline leading-tight">
-              Run your organization from one operational ledger
-            </h2>
-            <p className="text-sm sm:text-base text-neutral-300 leading-relaxed">
-              Create your workspace, configure departments and approval tiers, and invite your team.
-            </p>
-          </div>
-
-          <div className="pt-2 flex flex-wrap items-center gap-3">
-            <Link
-              to="/register"
-              className="h-11 px-6 rounded-lg font-medium text-sm bg-[#ff6900] hover:bg-[#ea580c] text-white transition-colors duration-150 inline-flex items-center gap-2"
-            >
-              <span>Create workspace</span>
-              <ArrowRight className="h-4 w-4" strokeWidth={1.5} />
-            </Link>
-            <Link
-              to="/pricing"
-              className="h-11 px-6 rounded-lg font-medium text-sm border border-white/15 bg-white/5 hover:bg-white/10 text-white transition-colors duration-150 inline-flex items-center"
-            >
-              View pricing
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* ============================================================ */}
-      {/* VIDEO / DEMO MODAL */}
-      {/* ============================================================ */}
-      {videoModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/70 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl max-w-3xl w-full p-6 sm:p-8 space-y-6 shadow-2xl border border-neutral-100 relative">
-            <button
-              type="button"
-              onClick={() => setVideoModalOpen(false)}
-              className="absolute top-6 right-6 p-2 rounded-full hover:bg-neutral-100 text-neutral-500"
-            >
-              <X className="h-5 w-5" />
-            </button>
-
-            <div className="space-y-2">
-              <span className="text-xs font-medium text-[#ff6900] bg-orange-50 px-2.5 py-1 rounded-full">
-                Interactive Product Walkthrough
-              </span>
-              <h3 className="text-xl font-medium text-neutral-900 font-headline">
-                Stanforte Edge Enterprise Platform Tour
-              </h3>
-              <p className="text-xs text-neutral-600">
-                Watch how multi-branch organizations streamline statutory payroll, geofenced clock-in, and multi-tier purchase approvals in minutes.
-              </p>
-            </div>
-
-            {/* Video Preview Frame */}
-            <div className="w-full aspect-video rounded-2xl bg-neutral-900 overflow-hidden relative flex flex-col items-center justify-center text-center p-6 text-white">
-              <div className="w-16 h-16 rounded-full bg-[#ff6900] text-white flex items-center justify-center mb-3 shadow-lg cursor-pointer transition-transform">
-                <Play className="h-7 w-7 fill-white ml-1" />
-              </div>
-              <h4 className="text-base font-medium font-headline">Stanforte Edge System Overview</h4>
-              <p className="text-xs text-neutral-400 max-w-sm mt-1">
-                Full 4-minute interactive walk-through covering staff management, PAYE schedules, and mobile self-service.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-neutral-100">
-              <button
-                type="button"
-                onClick={() => {
-                  setVideoModalOpen(false);
-                  setActiveTab("payroll");
-                }}
-                className="text-xs font-semibold text-neutral-700 hover:text-neutral-900 flex items-center gap-1.5"
-              >
-                <ChevronRight className="h-3.5 w-3.5 rotate-180" />
-                <span>Switch to Live Interactive Sandbox</span>
-              </button>
-              <Link
-                to="/register"
-                onClick={() => setVideoModalOpen(false)}
-                className="px-6 py-2.5 rounded-full text-xs font-medium bg-[#ff6900] hover:bg-[#ea580c] text-white shadow-md transition-colors flex items-center gap-1.5"
-              >
-                <span>Start Free Trial</span>
-                <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ============================================================ */}
-      {/* ADD EMPLOYEE DEMO MODAL */}
-      {/* ============================================================ */}
-      {addEmployeeModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/70 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 sm:p-8 space-y-5 shadow-2xl border border-neutral-100 relative">
-            <button
-              type="button"
-              onClick={() => setAddEmployeeModalOpen(false)}
-              className="absolute top-6 right-6 p-2 rounded-full hover:bg-neutral-100 text-neutral-500"
-            >
-              <X className="h-5 w-5" />
-            </button>
-
-            <div className="space-y-1">
-              <h3 className="text-lg font-medium text-neutral-900 font-headline">Add Personnel (Demo)</h3>
-              <p className="text-xs text-neutral-500">
-                Add a test staff record to experience instant directory indexing and automated payroll integration.
-              </p>
-            </div>
-
-            <form onSubmit={handleAddEmployeeSubmit} className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-neutral-700">Full Name</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Babatunde Fashola"
-                  value={newEmpName}
-                  onChange={(e) => setNewEmpName(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs focus:outline-hidden focus:border-[#ff6900]"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-neutral-700">Official Email</label>
-                <input
-                  type="email"
-                  placeholder="e.g. b.fashola@stanforteedge.com"
-                  value={newEmpEmail}
-                  onChange={(e) => setNewEmpEmail(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs focus:outline-hidden focus:border-[#ff6900]"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
+        {/* ================================================================ */}
+        {/* ACCESSIBLE WALKTHROUGH VIDEO MODAL                               */}
+        {/* ================================================================ */}
+        {videoModalOpen && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="walkthrough-modal-title"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/75 p-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setVideoModalOpen(false);
+            }}
+          >
+            <div className="bg-white rounded-xl max-w-3xl w-full p-6 sm:p-8 space-y-5 border border-[#E2E8F0] relative">
+              <div className="flex items-start justify-between gap-4">
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-neutral-700">Department</label>
-                  <SelectBox
-                    value={newEmpDept}
-                    onChange={(e) => setNewEmpDept(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-neutral-200 text-xs focus:outline-hidden focus:border-[#ff6900]"
+                  <h3
+                    id="walkthrough-modal-title"
+                    className="text-[20px] font-semibold text-[#0F172A] leading-[1.3]"
+                    style={{ fontFamily: "var(--font-quiet-display)" }}
                   >
-                    <option value="People & Culture">People & Culture</option>
-                    <option value="Finance & Accounts">Finance & Accounts</option>
-                    <option value="Engineering">Engineering</option>
-                    <option value="Supply Chain">Supply Chain</option>
-                  </SelectBox>
+                    Stanforte Edge workspace walkthrough
+                  </h3>
+                  <p className="text-[15px] text-[#475569]">
+                    A direct look at staff records, PAYE payroll runs, attendance
+                    logs, and payment voucher approvals.
+                  </p>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-neutral-700">Role</label>
-                  <input
-                    type="text"
-                    value={newEmpRole}
-                    onChange={(e) => setNewEmpRole(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs focus:outline-hidden focus:border-[#ff6900]"
-                  >
-                  </input>
-                </div>
-              </div>
 
-              <div className="pt-2 flex items-center justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setAddEmployeeModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-neutral-600 hover:bg-neutral-100"
+                  aria-label="Close walkthrough modal"
+                  onClick={() => setVideoModalOpen(false)}
+                  className="min-h-[44px] min-w-[44px] rounded-lg border border-[#E2E8F0] text-[#0F172A] inline-flex items-center justify-center hover:bg-[#F1F5F9] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0F172A]"
                 >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl text-xs font-medium bg-[#ff6900] hover:bg-[#ea580c] text-white shadow-sm"
-                >
-                  Add to Directory
+                  <X className="h-[18px] w-[18px]" strokeWidth={1.75} aria-hidden="true" />
                 </button>
               </div>
-            </form>
+
+              <div className="rounded-lg overflow-hidden border border-[#E2E8F0] bg-[#0F172A]">
+                <video
+                  controls
+                  playsInline
+                  poster="/screenshots/01-dashboard-dark.png"
+                  className="w-full aspect-video block"
+                >
+                  <source src="/video-frames/portal-showcase.mp4" type="video/mp4" />
+                  Your browser does not support video playback. You can inspect
+                  every module directly in the interactive screenshots on the
+                  page.
+                </video>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-[#E2E8F0]">
+                <Link
+                  to="/contact"
+                  onClick={() => setVideoModalOpen(false)}
+                  className="min-h-[44px] px-2 text-[14px] font-medium text-[#475569] inline-flex items-center hover:text-[#0F172A] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0F172A]"
+                >
+                  Book a live Q&amp;A with our team
+                </Link>
+                <Link
+                  to="/register"
+                  onClick={() => setVideoModalOpen(false)}
+                  className="min-h-[44px] px-5 py-2.5 rounded-lg bg-[#C2410C] text-white text-[14px] font-semibold inline-flex items-center gap-2 transition-colors duration-150 hover:bg-[#9A3412] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0F172A]"
+                >
+                  <span>Create a workspace</span>
+                  <ArrowRight className="h-[16px] w-[16px]" strokeWidth={1.75} aria-hidden="true" />
+                </Link>
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </PublicLayout>
   );
 }

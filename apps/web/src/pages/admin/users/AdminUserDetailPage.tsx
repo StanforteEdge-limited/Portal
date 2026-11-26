@@ -351,7 +351,7 @@ export default function AdminUserDetailPage() {
                     type="button"
                     onClick={() => void handleSaveInfo()}
                     disabled={infoSaving}
-                    className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#ff6900] text-sm font-medium text-white transition-colors duration-150 hover:bg-[#ea580c] active:scale-[0.98] disabled:opacity-50"
+                    className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#C2410C] text-sm font-medium text-white transition-colors duration-150 hover:bg-[#9A3412] active:scale-[0.98] disabled:opacity-50"
                   >
                     {infoSaving ? "Saving" : "Save details"}
                   </button>

@@ -431,7 +431,7 @@ export default function DocumentShareModal({
                                   <div
                                     className={`w-7 h-7 rounded-full flex items-center justify-center font-medium text-[11px] shrink-0 ${
                                       isSelected
-                                        ? "bg-[#ff6900] text-white"
+                                        ? "bg-[#C2410C] text-white"
                                         : "bg-neutral-100 text-neutral-700"
                                     }`}
                                   >
@@ -461,7 +461,7 @@ export default function DocumentShareModal({
                 {/* Selected Colleague Preview Badge */}
                 {selectedColleague && (
                   <div className="flex items-center gap-3 p-2.5 rounded-xl bg-orange-50/50 border border-orange-100">
-                    <div className="w-8 h-8 rounded-full bg-[#ff6900] text-white flex items-center justify-center font-medium text-xs shrink-0 shadow-xs">
+                    <div className="w-8 h-8 rounded-full bg-[#C2410C] text-white flex items-center justify-center font-medium text-xs shrink-0 shadow-xs">
                       {selectedColleague.avatar || "U"}
                     </div>
                     <div className="min-w-0">
@@ -562,7 +562,7 @@ export default function DocumentShareModal({
             <button
               type="submit"
               disabled={sharing}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#ff6900] hover:bg-[#ea580c] active:scale-[0.98] text-white text-xs font-medium shadow-md transition disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#C2410C] hover:bg-[#9A3412] active:scale-[0.98] text-white text-xs font-medium shadow-md transition disabled:opacity-50"
             >
               {sharing ? (
                 <>

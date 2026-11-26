@@ -402,7 +402,7 @@ export default function PaymentVoucherDetailSlideOver({
             </button>
             <Link
               to={`/finance/requests/${voucher.request_id}`}
-              className="px-4 py-2 text-xs font-medium text-white bg-[#ff6900] hover:bg-[#ea580c] rounded-xl shadow-md transition flex items-center gap-1.5"
+              className="px-4 py-2 text-xs font-medium text-white bg-[#C2410C] hover:bg-[#9A3412] rounded-xl shadow-md transition flex items-center gap-1.5"
             >
               Open Request <ArrowRight className="h-3.5 w-3.5" />
             </Link>
