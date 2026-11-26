@@ -71,6 +71,9 @@ test.describe('Full Feature, Extended Finance, Mail, Billing/Paystack & Seed Dat
     expect(Array.isArray(plans)).toBe(true);
     expect(plans.map((p: any) => p.code)).toEqual(expect.arrayContaining(['starter', 'growth', 'enterprise']));
 
+    await page.request.post(`${API_BASE}/auth/login`, {
+      data: { email: ADMIN_EMAIL, password: PASSWORD },
+    });
     const subRes = await page.request.get(`${API_BASE}/billing/subscription`);
     expect(subRes.status()).toBe(200);
     const subJson = await subRes.json();
