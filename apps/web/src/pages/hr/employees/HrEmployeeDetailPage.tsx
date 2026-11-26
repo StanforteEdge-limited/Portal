@@ -98,7 +98,7 @@ export default function HrEmployeeDetailPage() {
     return (
       <PortalLayout activeNav="Employees">
         <div className="flex flex-col items-center justify-center h-64 gap-3">
-          <div className="w-8 h-8 rounded-full border-2 border-[#ff6900] border-t-transparent animate-spin" />
+          <div className="w-8 h-8 rounded-full border-2 border-[#C2410C] border-t-transparent animate-spin" />
           <p className="text-xs font-semibold text-neutral-500">Loading employee details...</p>
         </div>
       </PortalLayout>
@@ -151,7 +151,7 @@ export default function HrEmployeeDetailPage() {
                 Employees
               </Link>
               <ChevronRight className="h-3 w-3 text-neutral-400" />
-              <span className="text-[#ff6900] truncate max-w-xs">{employeeFullName(employee)}</span>
+              <span className="text-[#C2410C] truncate max-w-xs">{employeeFullName(employee)}</span>
             </div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-semibold text-neutral-900 tracking-tight font-headline">

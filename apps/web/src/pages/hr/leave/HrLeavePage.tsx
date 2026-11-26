@@ -480,7 +480,7 @@ export default function HrLeavePage() {
           title="Workforce Leave & Absence Management"
           description="Review and approve staff leave applications across departments, monitor who is currently out, and audit historical leave records."
           icon={Calendar}
-          iconColor="bg-orange-50 text-[#ff6900]"
+          iconColor="bg-orange-50 text-[#C2410C]"
           actions={
             <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
               <button

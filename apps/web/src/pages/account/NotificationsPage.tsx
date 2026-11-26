@@ -282,7 +282,7 @@ export default function NotificationsPage() {
                 placeholder="Filter by keyword..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-xl border border-neutral-200 bg-white py-1.5 pl-8 pr-3 text-xs text-neutral-900 placeholder-neutral-400 focus:border-[#ff6900] focus:outline-none focus:ring-1 focus:ring-[#ff6900]"
+                className="w-full rounded-xl border border-neutral-200 bg-white py-1.5 pl-8 pr-3 text-xs text-neutral-900 placeholder-neutral-400 focus:border-[#C2410C] focus:outline-none focus:ring-1 focus:ring-[#C2410C]"
               />
             </div>
           </div>
@@ -379,7 +379,7 @@ export default function NotificationsPage() {
                       {item.link && (
                         <Link
                           to={item.link}
-                          className="inline-flex items-center gap-1 text-xs font-semibold text-[#0a1128] hover:text-[#ff6900] transition-colors"
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-[#0a1128] hover:text-[#C2410C] transition-colors"
                         >
                           <span>Open details</span>
                           <ExternalLink className="w-3 h-3" />

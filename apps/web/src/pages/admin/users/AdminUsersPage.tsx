@@ -146,7 +146,7 @@ export default function AdminUsersPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search users"
-                className="w-full h-9 pl-9 pr-3 text-sm bg-white border border-neutral-900/[0.12] rounded-lg text-neutral-900 placeholder:text-neutral-400 outline-none transition-[border-color,box-shadow] duration-150 focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
+                className="w-full h-9 pl-9 pr-3 text-sm bg-white border border-neutral-900/[0.12] rounded-lg text-neutral-900 placeholder:text-neutral-400 outline-none transition-[border-color,box-shadow] duration-150 focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/15"
               />
             </div>
 
@@ -154,7 +154,7 @@ export default function AdminUsersPage() {
               <SelectBox
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value)}
-                className="w-full h-9 px-3 text-sm bg-white border border-neutral-900/[0.12] rounded-lg outline-none text-neutral-700 focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
+                className="w-full h-9 px-3 text-sm bg-white border border-neutral-900/[0.12] rounded-lg outline-none text-neutral-700 focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/15"
               >
                 <option value="">All types</option>
                 <option value="staff">Staff</option>
@@ -168,7 +168,7 @@ export default function AdminUsersPage() {
               <SelectBox
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full h-9 px-3 text-sm bg-white border border-neutral-900/[0.12] rounded-lg outline-none text-neutral-700 focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
+                className="w-full h-9 px-3 text-sm bg-white border border-neutral-900/[0.12] rounded-lg outline-none text-neutral-700 focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/15"
               >
                 <option value="">All statuses</option>
                 <option value="active">Active</option>
@@ -182,7 +182,7 @@ export default function AdminUsersPage() {
               <SelectBox
                 value={orgFilter}
                 onChange={(e) => setOrgFilter(e.target.value)}
-                className="w-full h-9 px-3 text-sm bg-white border border-neutral-900/[0.12] rounded-lg outline-none text-neutral-700 focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
+                className="w-full h-9 px-3 text-sm bg-white border border-neutral-900/[0.12] rounded-lg outline-none text-neutral-700 focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/15"
               >
                 <option value="">All organizations</option>
                 {(organizations as any)?.data?.items?.map((org: any) => (
@@ -213,7 +213,7 @@ export default function AdminUsersPage() {
                 {loading && users.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-5 py-12 text-center text-sm text-neutral-500">
-                      <div className="inline-block w-5 h-5 border-2 border-[#ff6900] border-t-transparent rounded-full animate-spin mb-2" />
+                      <div className="inline-block w-5 h-5 border-2 border-[#C2410C] border-t-transparent rounded-full animate-spin mb-2" />
                       <div>Loading workforce directory</div>
                     </td>
                   </tr>

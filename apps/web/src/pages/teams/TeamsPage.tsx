@@ -93,7 +93,7 @@ export default function TeamsPage() {
           {/* Card 1: Enrolled Groups */}
           <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2 sm:gap-3">
             <div className="flex items-center justify-between gap-1.5">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-orange-50 text-[#C2410C] flex items-center justify-center shrink-0">
                 <Users className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
               <div className="text-[10px] sm:text-xs font-medium text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded-full">
@@ -151,7 +151,7 @@ export default function TeamsPage() {
               placeholder="Filter teams by name or unit..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-xs bg-neutral-50 rounded-xl border border-neutral-200 text-neutral-800 placeholder-neutral-400 focus:outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+              className="w-full pl-9 pr-3 py-1.5 text-xs bg-neutral-50 rounded-xl border border-neutral-200 text-neutral-800 placeholder-neutral-400 focus:outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C]"
             />
           </div>
 
@@ -202,7 +202,7 @@ export default function TeamsPage() {
                 <div
                   key={group.id}
                   onClick={() => navigate(`/teams/${group.id}`)}
-                  className="p-5 rounded-2xl bg-white border border-neutral-200/80 hover:border-[#ff6900]/50 hover:shadow-md transition-colors duration-200 flex flex-col justify-between cursor-pointer group"
+                  className="p-5 rounded-2xl bg-white border border-neutral-200/80 hover:border-[#C2410C]/50 hover:shadow-md transition-colors duration-200 flex flex-col justify-between cursor-pointer group"
                 >
                   <div>
                     {/* Top Type & Role Badges */}
@@ -233,10 +233,10 @@ export default function TeamsPage() {
 
                     {/* Team Icon & Name */}
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center font-semibold group-hover:bg-[#C2410C] group-hover:text-white transition-colors shrink-0">
+                      <div className="w-10 h-10 rounded-xl bg-orange-50 text-[#C2410C] flex items-center justify-center font-semibold group-hover:bg-[#C2410C] group-hover:text-white transition-colors shrink-0">
                         <Users className="h-5 w-5" />
                       </div>
-                      <h3 className="font-medium text-neutral-900 group-hover:text-[#ff6900] transition-colors truncate">
+                      <h3 className="font-medium text-neutral-900 group-hover:text-[#C2410C] transition-colors truncate">
                         {group.name}
                       </h3>
                     </div>
@@ -251,7 +251,7 @@ export default function TeamsPage() {
                     <span className="text-xs font-medium text-neutral-400">
                       ID: {String(group.id).slice(0, 8)}...
                     </span>
-                    <span className="font-medium text-[#ff6900] flex items-center gap-1 transition-transform">
+                    <span className="font-medium text-[#C2410C] flex items-center gap-1 transition-transform">
                       <span>Open Workspace</span>
                       <ArrowRight className="h-3 w-3" />
                     </span>

@@ -252,7 +252,7 @@ export default function FinanceAccountsPage() {
           title="Bank & Ledger Accounts"
           description="Manage operating bank accounts, petty cash vaults, digital wallets, and general ledger balances."
           icon={Wallet}
-          iconColor="bg-orange-50 text-[#ff6900]"
+          iconColor="bg-orange-50 text-[#C2410C]"
           actions={
             <button
               type="button"
@@ -318,16 +318,16 @@ export default function FinanceAccountsPage() {
 
           <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2.5 sm:gap-3">
             <div className="flex items-center justify-between gap-1.5">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-orange-50 text-[#C2410C] flex items-center justify-center shrink-0">
                 <DollarSign className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
-              <div className="text-[10px] sm:text-xs font-medium text-[#ff6900] bg-orange-50 px-2 py-0.5 rounded-full shrink-0">
+              <div className="text-[10px] sm:text-xs font-medium text-[#C2410C] bg-orange-50 px-2 py-0.5 rounded-full shrink-0">
                 Live
               </div>
             </div>
             <div className="min-w-0">
               <div className="text-[11px] sm:text-xs font-semibold text-neutral-500 truncate">Current Balance</div>
-              <div className="text-base sm:text-xl font-semibold text-[#ff6900] mt-0.5 tracking-tight truncate">
+              <div className="text-base sm:text-xl font-semibold text-[#C2410C] mt-0.5 tracking-tight truncate">
                 {formatCurrency(totalCurrent)}
               </div>
             </div>

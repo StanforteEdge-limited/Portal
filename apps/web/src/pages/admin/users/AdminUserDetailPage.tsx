@@ -282,7 +282,7 @@ export default function AdminUserDetailPage() {
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
                       placeholder="Folake"
-                      className="w-full h-9 rounded-lg border border-neutral-900/[0.12] bg-white px-3 text-sm text-neutral-900 outline-none transition-[border-color,box-shadow] duration-150 focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
+                      className="w-full h-9 rounded-lg border border-neutral-900/[0.12] bg-white px-3 text-sm text-neutral-900 outline-none transition-[border-color,box-shadow] duration-150 focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/15"
                     />
                   </div>
 
@@ -295,7 +295,7 @@ export default function AdminUserDetailPage() {
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
                       placeholder="Adeleke"
-                      className="w-full h-9 rounded-lg border border-neutral-900/[0.12] bg-white px-3 text-sm text-neutral-900 outline-none transition-[border-color,box-shadow] duration-150 focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
+                      className="w-full h-9 rounded-lg border border-neutral-900/[0.12] bg-white px-3 text-sm text-neutral-900 outline-none transition-[border-color,box-shadow] duration-150 focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/15"
                     />
                   </div>
 
@@ -318,7 +318,7 @@ export default function AdminUserDetailPage() {
                     <SelectBox
                       value={organizationId}
                       onChange={(e) => setOrganizationId(e.target.value)}
-                      className="w-full h-9 rounded-lg border border-neutral-900/[0.12] bg-white px-3 text-sm text-neutral-900 outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
+                      className="w-full h-9 rounded-lg border border-neutral-900/[0.12] bg-white px-3 text-sm text-neutral-900 outline-none focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/15"
                     >
                       <option value="">Select organization</option>
                       {organizations.map((org) => (
@@ -336,7 +336,7 @@ export default function AdminUserDetailPage() {
                     <SelectBox
                       value={type}
                       onChange={(e) => setType(e.target.value)}
-                      className="w-full h-9 rounded-lg border border-neutral-900/[0.12] bg-white px-3 text-sm text-neutral-900 outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
+                      className="w-full h-9 rounded-lg border border-neutral-900/[0.12] bg-white px-3 text-sm text-neutral-900 outline-none focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/15"
                     >
                       <option value="staff">Staff / Employee</option>
                       <option value="vendor">Vendor</option>
@@ -385,7 +385,7 @@ export default function AdminUserDetailPage() {
                             onClick={() => toggleRole(r.slug)}
                             className={`flex cursor-pointer items-center justify-between rounded-xl border p-3 transition-colors duration-150 ${
                               isChecked
-                                ? "border-[#ff6900] bg-orange-50/30"
+                                ? "border-[#C2410C] bg-orange-50/30"
                                 : "border-neutral-900/[0.10] bg-white hover:bg-neutral-50"
                             }`}
                           >
@@ -394,7 +394,7 @@ export default function AdminUserDetailPage() {
                                 type="checkbox"
                                 checked={isChecked}
                                 onChange={() => {}}
-                                className="h-4 w-4 rounded border-neutral-300 text-[#ff6900] focus:ring-[#ff6900]"
+                                className="h-4 w-4 rounded border-neutral-300 text-[#C2410C] focus:ring-[#C2410C]"
                               />
                               <span className="text-sm font-medium text-neutral-900 truncate">
                                 {r.name}

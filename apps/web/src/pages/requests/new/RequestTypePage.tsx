@@ -242,7 +242,7 @@ export default function RequestTypePage() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search request types"
-                  className="w-full h-9 pl-9 pr-8 rounded-lg border border-neutral-900/[0.12] bg-white text-sm text-neutral-900 placeholder:text-neutral-400 outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15 transition-colors duration-150"
+                  className="w-full h-9 pl-9 pr-8 rounded-lg border border-neutral-900/[0.12] bg-white text-sm text-neutral-900 placeholder:text-neutral-400 outline-none focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/15 transition-colors duration-150"
                 />
                 {query && (
                   <button
@@ -365,7 +365,7 @@ export default function RequestTypePage() {
                           )}
                         </div>
                         <ArrowRight
-                          className="h-4 w-4 text-neutral-400 group-hover:text-[#ff6900] transition-colors duration-150 shrink-0"
+                          className="h-4 w-4 text-neutral-400 group-hover:text-[#C2410C] transition-colors duration-150 shrink-0"
                           strokeWidth={1.5}
                         />
                       </div>

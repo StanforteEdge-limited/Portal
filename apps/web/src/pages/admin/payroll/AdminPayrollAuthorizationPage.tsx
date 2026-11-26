@@ -60,13 +60,29 @@ export default function AdminPayrollAuthorizationPage() {
           title="Payroll authorization"
           description="Review finance-approved payroll runs, verify statutory deductions, and authorize disbursements"
           actions={
-            <Link
-              to="/finance/payroll"
-              className="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg border border-neutral-900/[0.10] bg-white hover:bg-neutral-50 text-neutral-900 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30"
-            >
-              <CreditCard className="h-4 w-4 text-neutral-500" strokeWidth={1.5} />
-              <span>Payroll components</span>
-            </Link>
+            <div className="flex flex-wrap items-center gap-2">
+              <Link
+                to="/hr/payroll/workers"
+                className="inline-flex items-center gap-2 min-h-[44px] px-4 rounded-lg border border-[#CBD5E1] bg-white hover:bg-[#F1F5F9] text-[#0F172A] text-[14px] font-semibold transition-colors duration-150"
+              >
+                <Users className="h-[16px] w-[16px] text-[#475569]" strokeWidth={1.75} aria-hidden="true" />
+                <span>Employee salaries</span>
+              </Link>
+              <Link
+                to="/finance/payroll/components"
+                className="inline-flex items-center gap-2 min-h-[44px] px-4 rounded-lg border border-[#CBD5E1] bg-white hover:bg-[#F1F5F9] text-[#0F172A] text-[14px] font-semibold transition-colors duration-150"
+              >
+                <CreditCard className="h-[16px] w-[16px] text-[#475569]" strokeWidth={1.75} aria-hidden="true" />
+                <span>Payroll components</span>
+              </Link>
+              <Link
+                to="/hr/payroll/runs/new"
+                className="inline-flex items-center gap-2 min-h-[44px] px-4 rounded-lg bg-[#C2410C] hover:bg-[#9A3412] text-white text-[14px] font-semibold transition-colors duration-150"
+              >
+                <span>New payroll run</span>
+                <ArrowRight className="h-[16px] w-[16px]" strokeWidth={1.75} aria-hidden="true" />
+              </Link>
+            </div>
           }
         />
 

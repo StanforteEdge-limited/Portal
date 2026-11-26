@@ -1377,7 +1377,7 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
                           {user?.email || "staff@stanforteedge.com"}
                         </div>
                         <div className="mt-1 flex items-center gap-1.5 flex-wrap">
-                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-orange-50 dark:bg-orange-950/40 text-[#ff6900] dark:text-orange-300 border border-orange-200/60 dark:border-orange-800/60">
+                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-orange-50 dark:bg-orange-950/40 text-[#C2410C] dark:text-orange-300 border border-orange-200/60 dark:border-orange-800/60">
                             {userRole}
                           </span>
                           <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">
@@ -1426,7 +1426,7 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
                                   <span className={`w-2 h-2 rounded-full shrink-0 ${opt.dotColor}`} />
                                   <span className="truncate">{opt.label}</span>
                                 </div>
-                                {isSelected && <Check className="h-3 w-3 text-[#ff6900] shrink-0" strokeWidth={2.5} />}
+                                {isSelected && <Check className="h-3 w-3 text-[#C2410C] shrink-0" strokeWidth={2.5} />}
                               </button>
                             );
                           })}
@@ -1479,7 +1479,7 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
                               <div className="text-xs font-semibold text-orange-900">
                                 Staff Workspace
                               </div>
-                              <div className="text-xs font-medium text-[#ff6900]">
+                              <div className="text-xs font-medium text-[#C2410C]">
                                 Return to daily staff dashboard
                               </div>
                             </div>
@@ -1583,7 +1583,7 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
               <div className="px-5 py-4 border-b border-neutral-900/[0.08] bg-[#fafafa] space-y-3.5 shrink-0">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-8 h-8 rounded-lg bg-orange-50 border border-orange-200/60 text-[#ff6900] flex items-center justify-center shrink-0">
+                    <div className="w-8 h-8 rounded-lg bg-orange-50 border border-orange-200/60 text-[#C2410C] flex items-center justify-center shrink-0">
                       <LayoutGrid className="h-4 w-4" strokeWidth={1.75} />
                     </div>
                     <h3 className="font-headline text-base font-medium tracking-tight text-neutral-900 truncate">
@@ -1609,7 +1609,7 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
                     value={launcherSearch}
                     onChange={(e) => setLauncherSearch(e.target.value)}
                     placeholder="Search applications & tools..."
-                    className="w-full pl-9 pr-8 py-2 text-sm bg-white border border-neutral-900/[0.12] rounded-lg text-neutral-900 placeholder:text-neutral-400 outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15 transition-colors duration-150"
+                    className="w-full pl-9 pr-8 py-2 text-sm bg-white border border-neutral-900/[0.12] rounded-lg text-neutral-900 placeholder:text-neutral-400 outline-none focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/15 transition-colors duration-150"
                   />
                   {launcherSearch && (
                     <button
@@ -1639,7 +1639,7 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
                     <Link
                       to="/admin/payroll/authorization"
                       onClick={() => setAppLauncherOpen(false)}
-                      className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-[#ff6900] hover:text-[#ea580c] transition-colors"
+                      className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-[#C2410C] hover:text-[#ea580c] transition-colors"
                     >
                       <span>Open Payroll Authorization</span>
                       <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} />
@@ -1673,7 +1673,7 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
                               className="p-3 rounded-xl bg-white border border-neutral-900/[0.08] hover:border-neutral-900/[0.16] hover:bg-neutral-50/80 transition-colors duration-150 group flex flex-col justify-between"
                             >
                               <div className="flex items-center justify-between gap-2 mb-2.5">
-                                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-neutral-100 text-neutral-600 group-hover:bg-orange-50 group-hover:text-[#ff6900] transition-colors duration-150">
+                                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-neutral-100 text-neutral-600 group-hover:bg-orange-50 group-hover:text-[#C2410C] transition-colors duration-150">
                                   <Icon className="h-4 w-4" strokeWidth={1.75} />
                                 </div>
                                 {app.badge && (
@@ -1814,7 +1814,7 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
                       onClick={() => toggleRail(false)}
                       className={`p-2.5 rounded-xl border text-xs font-medium transition flex items-center gap-2 justify-center ${
                         !isCompactRail
-                          ? "bg-[#C2410C] text-white border-[#ff6900]"
+                          ? "bg-[#C2410C] text-white border-[#C2410C]"
                           : "bg-white/5 text-neutral-300 border-white/10 hover:bg-white/10"
                       }`}
                     >
@@ -1826,7 +1826,7 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
                       onClick={() => toggleRail(true)}
                       className={`p-2.5 rounded-xl border text-xs font-medium transition flex items-center gap-2 justify-center ${
                         isCompactRail
-                          ? "bg-[#C2410C] text-white border-[#ff6900]"
+                          ? "bg-[#C2410C] text-white border-[#C2410C]"
                           : "bg-white/5 text-neutral-300 border-white/10 hover:bg-white/10"
                       }`}
                     >
@@ -1882,7 +1882,7 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
                 {/* Timezone & Regional Display */}
                 <div className="p-3 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-lg bg-orange-500/15 text-[#ff6900] flex items-center justify-center shrink-0">
+                    <div className="w-7 h-7 rounded-lg bg-orange-500/15 text-[#C2410C] flex items-center justify-center shrink-0">
                       <Globe className="h-4 w-4" />
                     </div>
                     <div>
@@ -1893,7 +1893,7 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
                   <Link
                     to="/admin/settings"
                     onClick={() => setUserDrawerOpen(false)}
-                    className="text-xs font-medium text-[#ff6900] hover:underline"
+                    className="text-xs font-medium text-[#C2410C] hover:underline"
                   >
                     Adjust
                   </Link>
@@ -1964,7 +1964,7 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
                   setAiDrawerOpen(true);
                   handleRunAiPrompt("What needs my approval?");
                 }}
-                className="px-2.5 py-1 rounded-full bg-white border border-neutral-200/80 text-neutral-700 hover:border-[#ff6900] hover:text-[#ff6900] transition whitespace-nowrap font-medium shrink-0 cursor-pointer"
+                className="px-2.5 py-1 rounded-full bg-white border border-neutral-200/80 text-neutral-700 hover:border-[#C2410C] hover:text-[#C2410C] transition whitespace-nowrap font-medium shrink-0 cursor-pointer"
               >
                 ⚡ What needs my approval?
               </button>
@@ -1975,7 +1975,7 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
                   setAiDrawerOpen(true);
                   handleRunAiPrompt("Show payment vouchers above ₦500,000");
                 }}
-                className="px-2.5 py-1 rounded-full bg-white border border-neutral-200/80 text-neutral-700 hover:border-[#ff6900] hover:text-[#ff6900] transition whitespace-nowrap font-medium shrink-0 cursor-pointer"
+                className="px-2.5 py-1 rounded-full bg-white border border-neutral-200/80 text-neutral-700 hover:border-[#C2410C] hover:text-[#C2410C] transition whitespace-nowrap font-medium shrink-0 cursor-pointer"
               >
                 ₦ Vouchers above ₦500k
               </button>
@@ -1986,7 +1986,7 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
                   setAiDrawerOpen(true);
                   handleRunAiPrompt("Who is absent today?");
                 }}
-                className="px-2.5 py-1 rounded-full bg-white border border-neutral-200/80 text-neutral-700 hover:border-[#ff6900] hover:text-[#ff6900] transition whitespace-nowrap font-medium shrink-0 cursor-pointer"
+                className="px-2.5 py-1 rounded-full bg-white border border-neutral-200/80 text-neutral-700 hover:border-[#C2410C] hover:text-[#C2410C] transition whitespace-nowrap font-medium shrink-0 cursor-pointer"
               >
                 👥 Who is absent today?
               </button>
@@ -1997,7 +1997,7 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
                   setAiDrawerOpen(true);
                   handleRunAiPrompt("Generate payroll summary");
                 }}
-                className="px-2.5 py-1 rounded-full bg-white border border-neutral-200/80 text-neutral-700 hover:border-[#ff6900] hover:text-[#ff6900] transition whitespace-nowrap font-medium shrink-0 cursor-pointer"
+                className="px-2.5 py-1 rounded-full bg-white border border-neutral-200/80 text-neutral-700 hover:border-[#C2410C] hover:text-[#C2410C] transition whitespace-nowrap font-medium shrink-0 cursor-pointer"
               >
                 📊 Generate payroll summary
               </button>
@@ -2018,11 +2018,11 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
                     className="flex items-center justify-between p-3 rounded-2xl hover:bg-neutral-50 transition group"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-xl bg-neutral-100 group-hover:bg-orange-50 text-neutral-600 group-hover:text-[#ff6900] flex items-center justify-center shrink-0 transition">
+                      <div className="w-9 h-9 rounded-xl bg-neutral-100 group-hover:bg-orange-50 text-neutral-600 group-hover:text-[#C2410C] flex items-center justify-center shrink-0 transition">
                         <Icon className="h-4 w-4" />
                       </div>
                       <div className="min-w-0">
-                        <div className="text-xs font-medium text-neutral-900 group-hover:text-[#ff6900] transition truncate">
+                        <div className="text-xs font-medium text-neutral-900 group-hover:text-[#C2410C] transition truncate">
                           {item.title}
                         </div>
                         <div className="text-xs text-neutral-400 truncate">{item.subtitle}</div>
@@ -2067,13 +2067,13 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
               {/* Header */}
               <div className="p-5 border-b border-neutral-100 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-2xl bg-orange-50 text-[#ff6900] flex items-center justify-center font-medium">
+                  <div className="w-9 h-9 rounded-2xl bg-orange-50 text-[#C2410C] flex items-center justify-center font-medium">
                     <Sparkles className="h-5 w-5" />
                   </div>
                   <div>
                     <h3 className="font-medium text-sm text-neutral-900 flex items-center gap-1.5">
                       <span>Stanforte AI</span>
-                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-[#ff6900]">
+                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-[#C2410C]">
                         2026
                       </span>
                     </h3>
@@ -2108,10 +2108,10 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
                       key={q}
                       type="button"
                       onClick={() => handleRunAiPrompt(q)}
-                      className="text-left px-3 py-2 rounded-xl bg-white border border-neutral-200/80 hover:border-[#ff6900] hover:text-[#ff6900] text-neutral-700 font-medium transition shadow-2xs text-xs flex items-center justify-between group cursor-pointer"
+                      className="text-left px-3 py-2 rounded-xl bg-white border border-neutral-200/80 hover:border-[#C2410C] hover:text-[#C2410C] text-neutral-700 font-medium transition shadow-2xs text-xs flex items-center justify-between group cursor-pointer"
                     >
                       <span>{q}</span>
-                      <ArrowRight className="h-3 w-3 text-neutral-300 group-hover:text-[#ff6900] transition" />
+                      <ArrowRight className="h-3 w-3 text-neutral-300 group-hover:text-[#C2410C] transition" />
                     </button>
                   ))}
                 </div>
@@ -2137,7 +2137,7 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
                         <Link
                           to={msg.data.actionLink}
                           onClick={() => setAiDrawerOpen(false)}
-                          className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-neutral-200 text-[#ff6900] font-medium text-xs shadow-2xs hover:bg-neutral-50 transition"
+                          className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-neutral-200 text-[#C2410C] font-medium text-xs shadow-2xs hover:bg-neutral-50 transition"
                         >
                           <span>{msg.data.actionLabel || "View Record"}</span>
                           <ArrowRight className="h-3 w-3" />
@@ -2166,7 +2166,7 @@ export function PortalLayout({ children, activeNav }: PortalLayoutProps) {
                     value={aiInput}
                     onChange={(e) => setAiInput(e.target.value)}
                     placeholder="Ask Stanforte AI anything..."
-                    className="flex-1 px-3.5 py-2.5 rounded-xl border border-neutral-200 text-xs text-neutral-900 outline-none focus:border-[#ff6900]"
+                    className="flex-1 px-3.5 py-2.5 rounded-xl border border-neutral-200 text-xs text-neutral-900 outline-none focus:border-[#C2410C]"
                   />
                   <button
                     type="submit"

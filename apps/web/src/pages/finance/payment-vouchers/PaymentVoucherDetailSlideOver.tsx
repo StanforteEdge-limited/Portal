@@ -154,7 +154,7 @@ export default function PaymentVoucherDetailSlideOver({
         {/* Disbursement Source & Method */}
         <div className="p-5 rounded-2xl bg-white border border-neutral-200/80 shadow-sm space-y-4">
           <div className="flex items-center gap-2 pb-2 border-b border-neutral-100">
-            <Building2 className="h-4 w-4 text-[#ff6900]" />
+            <Building2 className="h-4 w-4 text-[#C2410C]" />
             <h4 className="text-xs font-medium text-neutral-900">
               Disbursement Details
             </h4>
@@ -216,7 +216,7 @@ export default function PaymentVoucherDetailSlideOver({
             </div>
             <Link
               to={`/finance/requests/${voucher.request_id}`}
-              className="text-xs font-medium text-[#ff6900] hover:underline flex items-center gap-1"
+              className="text-xs font-medium text-[#C2410C] hover:underline flex items-center gap-1"
             >
               Open Request <ExternalLink className="h-3 w-3" />
             </Link>
@@ -233,7 +233,7 @@ export default function PaymentVoucherDetailSlideOver({
             <div>
               <span className="text-neutral-400 font-medium block">Requester / Officer</span>
               <div className="flex items-center gap-2 mt-0.5">
-                <div className="w-6 h-6 rounded-full bg-orange-100 text-[#ff6900] font-medium text-xs flex items-center justify-center">
+                <div className="w-6 h-6 rounded-full bg-orange-100 text-[#C2410C] font-medium text-xs flex items-center justify-center">
                   {(voucher.request_creator_name || "ST").slice(0, 2).toUpperCase()}
                 </div>
                 <span className="font-medium text-neutral-800">
@@ -309,7 +309,7 @@ export default function PaymentVoucherDetailSlideOver({
               <button
                 type="button"
                 onClick={onManageDeductions}
-                className="text-xs font-medium text-[#ff6900] hover:underline mt-1.5 inline-block"
+                className="text-xs font-medium text-[#C2410C] hover:underline mt-1.5 inline-block"
               >
                 + Add WHT / Tax Deduction
               </button>

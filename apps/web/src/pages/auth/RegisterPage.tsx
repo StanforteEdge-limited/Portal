@@ -142,7 +142,7 @@ export default function RegisterPage() {
         {/* Bottom Tagline */}
         <div className="relative z-10 pt-6 border-t border-white/10 flex items-center justify-between text-xs text-neutral-400">
           <span>Built for Modern Businesses</span>
-          <span className="font-mono text-xs text-[#ff6900]">Dedicated Multi-Tenant OS</span>
+          <span className="font-mono text-xs text-[#C2410C]">Dedicated Multi-Tenant OS</span>
         </div>
       </div>
 
@@ -205,7 +205,7 @@ export default function RegisterPage() {
                   onChange={(e) => handleNameChange(e.target.value)}
                   placeholder={accountType === "organization" ? "e.g. Acme Nigeria Ltd" : "e.g. Daniel Owonikoko"}
                   required
-                  className="w-full pl-11 pr-4 py-3 text-xs sm:text-sm bg-white border border-neutral-200 rounded-2xl outline-none transition focus:border-[#ff6900] focus:ring-4 focus:ring-orange-500/10 placeholder:text-neutral-400"
+                  className="w-full pl-11 pr-4 py-3 text-xs sm:text-sm bg-white border border-neutral-200 rounded-2xl outline-none transition focus:border-[#C2410C] focus:ring-4 focus:ring-orange-500/10 placeholder:text-neutral-400"
                 />
               </div>
             </div>
@@ -220,14 +220,14 @@ export default function RegisterPage() {
                   <span className="text-xs text-neutral-400">Unique enterprise address</span>
                 </div>
                 <div className="relative flex items-center">
-                  <Globe className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-[#ff6900]" />
+                  <Globe className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-[#C2410C]" />
                   <input
                     type="text"
                     value={workspaceSlug}
                     onChange={(e) => handleSlugChange(e.target.value)}
                     placeholder="acme"
                     required
-                    className="w-full pl-11 pr-32 py-3 text-xs sm:text-sm bg-white border border-neutral-200 rounded-2xl outline-none transition focus:border-[#ff6900] focus:ring-4 focus:ring-orange-500/10 font-medium text-neutral-900 placeholder:text-neutral-400"
+                    className="w-full pl-11 pr-32 py-3 text-xs sm:text-sm bg-white border border-neutral-200 rounded-2xl outline-none transition focus:border-[#C2410C] focus:ring-4 focus:ring-orange-500/10 font-medium text-neutral-900 placeholder:text-neutral-400"
                   />
                   <div className="absolute right-4 text-xs font-semibold text-neutral-400 pointer-events-none select-none">
                     .{baseDomain}
@@ -254,7 +254,7 @@ export default function RegisterPage() {
                   placeholder="you@company.com"
                   required
                   autoComplete="email"
-                  className="w-full pl-11 pr-4 py-3 text-xs sm:text-sm bg-white border border-neutral-200 rounded-2xl outline-none transition focus:border-[#ff6900] focus:ring-4 focus:ring-orange-500/10 placeholder:text-neutral-400"
+                  className="w-full pl-11 pr-4 py-3 text-xs sm:text-sm bg-white border border-neutral-200 rounded-2xl outline-none transition focus:border-[#C2410C] focus:ring-4 focus:ring-orange-500/10 placeholder:text-neutral-400"
                 />
               </div>
             </div>
@@ -272,7 +272,7 @@ export default function RegisterPage() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="801 234 5678"
-                  className="w-full pl-20 pr-4 py-3 text-xs sm:text-sm bg-white border border-neutral-200 rounded-2xl outline-none transition focus:border-[#ff6900] focus:ring-4 focus:ring-orange-500/10 font-mono placeholder:text-neutral-400"
+                  className="w-full pl-20 pr-4 py-3 text-xs sm:text-sm bg-white border border-neutral-200 rounded-2xl outline-none transition focus:border-[#C2410C] focus:ring-4 focus:ring-orange-500/10 font-mono placeholder:text-neutral-400"
                 />
               </div>
             </div>
@@ -289,7 +289,7 @@ export default function RegisterPage() {
                   placeholder="Create a strong password"
                   required
                   autoComplete="new-password"
-                  className="w-full pl-11 pr-11 py-3 text-xs sm:text-sm bg-white border border-neutral-200 rounded-2xl outline-none transition focus:border-[#ff6900] focus:ring-4 focus:ring-orange-500/10 placeholder:text-neutral-400"
+                  className="w-full pl-11 pr-11 py-3 text-xs sm:text-sm bg-white border border-neutral-200 rounded-2xl outline-none transition focus:border-[#C2410C] focus:ring-4 focus:ring-orange-500/10 placeholder:text-neutral-400"
                 />
                 <button
                   type="button"
@@ -309,15 +309,15 @@ export default function RegisterPage() {
                   checked={agreed}
                   onChange={(e) => setAgreed(e.target.checked)}
                   required
-                  className="mt-0.5 w-4 h-4 rounded border-neutral-300 text-[#ff6900] focus:ring-[#ff6900]"
+                  className="mt-0.5 w-4 h-4 rounded border-neutral-300 text-[#C2410C] focus:ring-[#C2410C]"
                 />
                 <span>
                   I agree to the{" "}
-                  <Link to="/terms" className="font-medium text-[#ff6900] hover:underline">
+                  <Link to="/terms" className="font-medium text-[#C2410C] hover:underline">
                     Terms of Service
                   </Link>{" "}
                   and{" "}
-                  <Link to="/privacy" className="font-medium text-[#ff6900] hover:underline">
+                  <Link to="/privacy" className="font-medium text-[#C2410C] hover:underline">
                     Privacy Policy
                   </Link>
                 </span>

@@ -265,7 +265,7 @@ export default function ProfilePage() {
                   : "text-neutral-600 hover:text-neutral-900"
               }`}
             >
-              <User className="w-3.5 h-3.5 text-[#ff6900]" />
+              <User className="w-3.5 h-3.5 text-[#C2410C]" />
               <span>Personal &amp; Contact Information</span>
             </button>
 
@@ -308,7 +308,7 @@ export default function ProfilePage() {
                 <button
                   type="button"
                   onClick={() => setEditorOpen(true)}
-                  className="inline-flex items-center gap-1.5 text-xs font-medium text-[#ff6900] hover:text-[#ea580c] transition"
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-[#C2410C] hover:text-[#ea580c] transition"
                 >
                   <Edit3 className="w-3.5 h-3.5" />
                   <span>Update Details</span>
@@ -410,7 +410,7 @@ export default function ProfilePage() {
                         </div>
                       </div>
                       {org.is_primary && (
-                        <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-50 text-[#ff6900] border border-orange-200/60">
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-50 text-[#C2410C] border border-orange-200/60">
                           Primary Entity
                         </span>
                       )}

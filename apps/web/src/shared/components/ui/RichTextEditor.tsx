@@ -212,7 +212,7 @@ export function RichTextEditor({
         className={`rounded-xl border transition-all overflow-visible ${
           error
             ? "border-rose-300 dark:border-rose-700 ring-2 ring-rose-100 dark:ring-rose-950/40 bg-white dark:bg-neutral-900"
-            : "border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 focus-within:border-[#ff6900] dark:focus-within:border-[#ff6900] focus-within:ring-2 focus-within:ring-[#ff6900]/15"
+            : "border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 focus-within:border-[#C2410C] dark:focus-within:border-[#C2410C] focus-within:ring-2 focus-within:ring-[#ff6900]/15"
         }`}
       >
         {!readOnly && (
@@ -268,7 +268,7 @@ export function RichTextEditor({
                           onChange={(e) => setMentionQuery(e.target.value)}
                           placeholder="Search colleague..."
                           autoFocus
-                          className="w-full px-2 py-1 text-xs bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 rounded-md outline-none focus:border-[#ff6900]"
+                          className="w-full px-2 py-1 text-xs bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 rounded-md outline-none focus:border-[#C2410C]"
                         />
                         <button
                           type="button"
@@ -332,7 +332,7 @@ export function RichTextEditor({
             }
           }}
           data-placeholder={placeholder}
-          className={`${minHeightClass} p-3 text-xs text-neutral-800 dark:text-neutral-100 leading-relaxed font-sans outline-none focus:bg-transparent empty:before:content-[attr(data-placeholder)] empty:before:text-neutral-400 dark:empty:before:text-neutral-500 empty:before:pointer-events-none [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:text-neutral-900 dark:[&_h2]:text-neutral-100 [&_h2]:mt-2 [&_h2]:mb-1 [&_h3]:text-xs [&_h3]:font-semibold [&_h3]:text-neutral-900 dark:[&_h3]:text-neutral-200 [&_h3]:mt-1.5 [&_h3]:mb-1 [&_blockquote]:border-l-2 [&_blockquote]:border-[#ff6900] [&_blockquote]:pl-2.5 [&_blockquote]:italic [&_blockquote]:text-neutral-600 dark:[&_blockquote]:text-neutral-400 [&_blockquote]:my-1.5 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-1.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-1.5 [&_pre]:bg-neutral-100 dark:[&_pre]:bg-neutral-800 [&_pre]:text-neutral-900 dark:[&_pre]:text-neutral-100 [&_pre]:p-2.5 [&_pre]:rounded-lg [&_pre]:text-xs [&_pre]:font-mono [&_pre]:my-1.5 [&_a]:text-[#ff6900] [&_a]:underline`}
+          className={`${minHeightClass} p-3 text-xs text-neutral-800 dark:text-neutral-100 leading-relaxed font-sans outline-none focus:bg-transparent empty:before:content-[attr(data-placeholder)] empty:before:text-neutral-400 dark:empty:before:text-neutral-500 empty:before:pointer-events-none [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:text-neutral-900 dark:[&_h2]:text-neutral-100 [&_h2]:mt-2 [&_h2]:mb-1 [&_h3]:text-xs [&_h3]:font-semibold [&_h3]:text-neutral-900 dark:[&_h3]:text-neutral-200 [&_h3]:mt-1.5 [&_h3]:mb-1 [&_blockquote]:border-l-2 [&_blockquote]:border-[#C2410C] [&_blockquote]:pl-2.5 [&_blockquote]:italic [&_blockquote]:text-neutral-600 dark:[&_blockquote]:text-neutral-400 [&_blockquote]:my-1.5 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-1.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-1.5 [&_pre]:bg-neutral-100 dark:[&_pre]:bg-neutral-800 [&_pre]:text-neutral-900 dark:[&_pre]:text-neutral-100 [&_pre]:p-2.5 [&_pre]:rounded-lg [&_pre]:text-xs [&_pre]:font-mono [&_pre]:my-1.5 [&_a]:text-[#C2410C] [&_a]:underline`}
         />
       </div>
 
@@ -377,7 +377,7 @@ export function RichTextViewer({
 
   return (
     <div
-      className={`text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:text-neutral-900 dark:[&_h2]:text-neutral-100 [&_h2]:mt-2 [&_h2]:mb-1 [&_h3]:text-xs [&_h3]:font-semibold [&_h3]:text-neutral-900 dark:[&_h3]:text-neutral-200 [&_h3]:mt-1.5 [&_h3]:mb-1 [&_blockquote]:border-l-2 [&_blockquote]:border-[#ff6900] [&_blockquote]:pl-2.5 [&_blockquote]:italic [&_blockquote]:text-neutral-600 dark:[&_blockquote]:text-neutral-400 [&_blockquote]:my-1.5 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-1.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-1.5 [&_pre]:bg-neutral-100 dark:[&_pre]:bg-neutral-800 [&_pre]:text-neutral-900 dark:[&_pre]:text-neutral-100 [&_pre]:p-2 [&_pre]:rounded-md [&_pre]:font-mono [&_pre]:my-1.5 [&_a]:text-[#ff6900] [&_a]:underline ${className}`}
+      className={`text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:text-neutral-900 dark:[&_h2]:text-neutral-100 [&_h2]:mt-2 [&_h2]:mb-1 [&_h3]:text-xs [&_h3]:font-semibold [&_h3]:text-neutral-900 dark:[&_h3]:text-neutral-200 [&_h3]:mt-1.5 [&_h3]:mb-1 [&_blockquote]:border-l-2 [&_blockquote]:border-[#C2410C] [&_blockquote]:pl-2.5 [&_blockquote]:italic [&_blockquote]:text-neutral-600 dark:[&_blockquote]:text-neutral-400 [&_blockquote]:my-1.5 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-1.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-1.5 [&_pre]:bg-neutral-100 dark:[&_pre]:bg-neutral-800 [&_pre]:text-neutral-900 dark:[&_pre]:text-neutral-100 [&_pre]:p-2 [&_pre]:rounded-md [&_pre]:font-mono [&_pre]:my-1.5 [&_a]:text-[#C2410C] [&_a]:underline ${className}`}
       dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(content) }}
     />
   );

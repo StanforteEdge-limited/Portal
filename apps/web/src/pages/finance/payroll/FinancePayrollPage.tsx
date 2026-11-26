@@ -66,7 +66,7 @@ export default function FinancePayrollPage() {
 
   const { data: runsResp, loading } = useCachedQuery(
     "finance:payroll:runs",
-    () => listPayrollRuns({ per_page: 100, status_in: "under_review,approved" }),
+    () => listPayrollRuns({ per_page: 100 }),
     { ttlMs: 1000 * 30, storage: "memory" },
   );
 
@@ -97,8 +97,39 @@ export default function FinancePayrollPage() {
     >
       <PageHeader
         breadcrumbs={[{ label: "Financial", path: "/finance" }, { label: "Payroll" }]}
-        title="Payroll Approval"
-        description="Review, approve, and pay payroll runs routed from HR."
+        title="Payroll & Employee Payments"
+        description="Configure employee salaries, draft monthly payroll runs, review deductions, and disburse payments."
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => navigate("/hr/payroll/workers")}
+            >
+              Employee Salaries
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => navigate("/finance/payroll/components")}
+            >
+              Components
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => navigate("/finance/payroll/tax-tables")}
+            >
+              Tax Tables
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => navigate("/hr/payroll/runs/new")}
+            >
+              New Payroll Run
+            </Button>
+          </div>
+        }
       />
 
       <div className="grid gap-6">

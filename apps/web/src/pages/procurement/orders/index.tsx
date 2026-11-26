@@ -57,7 +57,7 @@ export default function PoIndex() {
           title="Purchase Orders"
           description="Generate, track, and manage official purchase orders issued to certified suppliers and vendors."
           icon={ShoppingCart}
-          iconColor="bg-orange-50 text-[#ff6900]"
+          iconColor="bg-orange-50 text-[#C2410C]"
           actions={
             <Link
               to="/procurement/orders/create"
@@ -73,10 +73,10 @@ export default function PoIndex() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
           <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-100 shadow-2xs hover:border-neutral-200/80 transition-colors flex flex-col justify-between gap-2.5 sm:gap-3">
             <div className="flex items-center justify-between gap-1.5">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-orange-50 text-[#C2410C] flex items-center justify-center shrink-0">
                 <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
-              <div className="text-[10px] sm:text-xs font-medium text-[#ff6900] bg-orange-50 px-2 py-0.5 rounded-full shrink-0">
+              <div className="text-[10px] sm:text-xs font-medium text-[#C2410C] bg-orange-50 px-2 py-0.5 rounded-full shrink-0">
                 POs
               </div>
             </div>
@@ -179,7 +179,7 @@ export default function PoIndex() {
 
                       <td className="py-3.5 px-4">
                         <div className="min-w-0">
-                          <p className="font-medium text-neutral-900 group-hover:text-[#ff6900] transition-colors truncate">
+                          <p className="font-medium text-neutral-900 group-hover:text-[#C2410C] transition-colors truncate">
                             {po.requisition ? `${po.requisition.requisitionNumber} - ${po.requisition.title}` : "Direct PO"}
                           </p>
                         </div>
@@ -206,7 +206,7 @@ export default function PoIndex() {
                       <td className="py-3.5 px-5 text-right">
                         <Link
                           to={`/procurement/orders/${po.id}`}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-neutral-700 group-hover:text-white group-hover:bg-[#C2410C] border border-neutral-200 group-hover:border-[#ff6900] transition shadow-sm"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-neutral-700 group-hover:text-white group-hover:bg-[#C2410C] border border-neutral-200 group-hover:border-[#C2410C] transition shadow-sm"
                         >
                           <span>Details</span>
                           <ArrowRight className="h-3 w-3" />

@@ -135,7 +135,7 @@ export default function TimesheetsPage() {
           {/* Card 1: Total Logged Hours */}
           <div className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2.5 sm:gap-3">
             <div className="flex items-center justify-between gap-1.5">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-orange-50 text-[#C2410C] flex items-center justify-center shrink-0">
                 <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
               <span className="text-[10px] sm:text-xs font-medium text-neutral-600 bg-neutral-100 px-2 py-0.5 rounded-full shrink-0">
@@ -257,7 +257,7 @@ export default function TimesheetsPage() {
                 placeholder="Search project, fund, notes..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-xl border border-neutral-200 bg-white py-1.5 pl-8 pr-3 text-xs text-neutral-900 placeholder-neutral-400 focus:border-[#ff6900] focus:outline-none focus:ring-1 focus:ring-[#ff6900]"
+                className="w-full rounded-xl border border-neutral-200 bg-white py-1.5 pl-8 pr-3 text-xs text-neutral-900 placeholder-neutral-400 focus:border-[#C2410C] focus:outline-none focus:ring-1 focus:ring-[#C2410C]"
               />
             </div>
           </div>
@@ -399,7 +399,7 @@ export default function TimesheetsPage() {
 
         {/* Guidelines Card */}
         <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-start gap-3">
-          <div className="p-2 rounded-xl bg-orange-50 text-[#ff6900] shrink-0 mt-0.5">
+          <div className="p-2 rounded-xl bg-orange-50 text-[#C2410C] shrink-0 mt-0.5">
             <FileText className="h-4 w-4" />
           </div>
           <div className="text-xs">

@@ -335,7 +335,7 @@ export default function ProjectDetailPage() {
     return (
       <PortalLayout activeNav="Projects">
         <div className="flex flex-col items-center justify-center h-64 gap-3">
-          <div className="w-8 h-8 rounded-full border-2 border-[#ff6900] border-t-transparent animate-spin" />
+          <div className="w-8 h-8 rounded-full border-2 border-[#C2410C] border-t-transparent animate-spin" />
           <p className="text-xs font-semibold text-neutral-500">Loading project details...</p>
         </div>
       </PortalLayout>
@@ -376,7 +376,7 @@ export default function ProjectDetailPage() {
                 Projects
               </Link>
               <ChevronRight className="h-3 w-3 text-neutral-400" />
-              <span className="text-[#ff6900] truncate max-w-xs">{project.name}</span>
+              <span className="text-[#C2410C] truncate max-w-xs">{project.name}</span>
             </div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-semibold text-neutral-900 tracking-tight font-headline">
@@ -586,7 +586,7 @@ export default function ProjectDetailPage() {
                         value={taskTitle}
                         onChange={(e) => setTaskTitle(e.target.value)}
                         placeholder="e.g., Finalize architecture specification"
-                        className="w-full text-xs border border-neutral-200 rounded-xl px-3 py-2 bg-white text-neutral-900 focus:outline-none focus:border-[#ff6900]"
+                        className="w-full text-xs border border-neutral-200 rounded-xl px-3 py-2 bg-white text-neutral-900 focus:outline-none focus:border-[#C2410C]"
                       />
                     </div>
                     <div>
@@ -620,7 +620,7 @@ export default function ProjectDetailPage() {
                         value={taskTagsInput}
                         onChange={(e) => setTaskTagsInput(e.target.value)}
                         placeholder={projectTags.length ? `Inherits: ${projectTags.join(", ")}` : "Design, API, Sprint 1"}
-                        className="w-full text-xs border border-neutral-200 rounded-xl px-3 py-2 bg-white text-neutral-800 focus:outline-none focus:border-[#ff6900]"
+                        className="w-full text-xs border border-neutral-200 rounded-xl px-3 py-2 bg-white text-neutral-800 focus:outline-none focus:border-[#C2410C]"
                       />
                     </div>
                   </div>
@@ -691,7 +691,7 @@ export default function ProjectDetailPage() {
                             onClick={() => handleChangeProjectTaskStatus(task.id, isDone ? "in_progress" : "completed")}
                             title={isDone ? "Reopen task" : "Mark as completed"}
                             className={`mt-0.5 shrink-0 transition-colors ${
-                              isDone ? "text-emerald-600" : "text-neutral-400 hover:text-[#ff6900]"
+                              isDone ? "text-emerald-600" : "text-neutral-400 hover:text-[#C2410C]"
                             }`}
                           >
                             {isDone ? <CheckCircle2 className="h-4.5 w-4.5" /> : <Circle className="h-4.5 w-4.5" />}
@@ -788,7 +788,7 @@ export default function ProjectDetailPage() {
                 {projectDocuments.map((doc) => (
                   <div key={doc.file_id} className="p-4 flex items-center justify-between gap-4 hover:bg-neutral-50 transition">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-8 h-8 rounded-lg bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
+                      <div className="w-8 h-8 rounded-lg bg-orange-50 text-[#C2410C] flex items-center justify-center shrink-0">
                         <FileText className="h-4 w-4" />
                       </div>
                       <div className="min-w-0">
@@ -865,7 +865,7 @@ export default function ProjectDetailPage() {
                       className="p-4 flex items-center justify-between gap-4 hover:bg-neutral-50 transition"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-orange-50 text-[#ff6900] font-medium text-xs flex items-center justify-center">
+                        <div className="w-8 h-8 rounded-full bg-orange-50 text-[#C2410C] font-medium text-xs flex items-center justify-center">
                           {name.charAt(0)}
                         </div>
                         <div>

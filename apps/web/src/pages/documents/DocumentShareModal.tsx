@@ -260,7 +260,7 @@ export default function DocumentShareModal({
         {/* Header */}
         <div className="px-6 py-5 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50 rounded-t-2xl">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0 shadow-xs">
+            <div className="w-10 h-10 rounded-2xl bg-orange-50 text-[#C2410C] flex items-center justify-center shrink-0 shadow-xs">
               <Share2 className="h-5 w-5" />
             </div>
             <div>
@@ -284,7 +284,7 @@ export default function DocumentShareModal({
         <form onSubmit={handleShareSubmit} className="p-6 space-y-5">
           {/* Document Preview Card */}
           <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200/80 flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-white border border-neutral-200 flex items-center justify-center text-[#ff6900] shrink-0 shadow-xs">
+            <div className="w-10 h-10 rounded-xl bg-white border border-neutral-200 flex items-center justify-center text-[#C2410C] shrink-0 shadow-xs">
               <FileText className="h-5 w-5" />
             </div>
             <div className="min-w-0 flex-1">
@@ -322,7 +322,7 @@ export default function DocumentShareModal({
               <button
                 type="button"
                 onClick={() => setUseCustomEmail(!useCustomEmail)}
-                className="text-xs font-medium text-[#ff6900] hover:underline inline-flex items-center gap-1"
+                className="text-xs font-medium text-[#C2410C] hover:underline inline-flex items-center gap-1"
               >
                 {useCustomEmail ? (
                   <>
@@ -343,7 +343,7 @@ export default function DocumentShareModal({
                   value={customEmail}
                   onChange={(e) => setCustomEmail(e.target.value)}
                   placeholder="colleague@stanforteedge.com"
-                  className="w-full pl-10 pr-3.5 py-2.5 text-xs bg-neutral-50 border border-neutral-200 rounded-xl outline-none transition focus:bg-white focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+                  className="w-full pl-10 pr-3.5 py-2.5 text-xs bg-neutral-50 border border-neutral-200 rounded-xl outline-none transition focus:bg-white focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C]"
                   required
                 />
               </div>
@@ -357,7 +357,7 @@ export default function DocumentShareModal({
                     aria-haspopup="listbox"
                     className={`w-full flex items-center justify-between gap-2 px-3.5 py-2.5 text-xs bg-neutral-50 border rounded-xl outline-none transition font-medium text-neutral-800 text-left ${
                       colleagueDropdownOpen
-                        ? "bg-white border-[#ff6900] ring-2 ring-[#ff6900]/15"
+                        ? "bg-white border-[#C2410C] ring-2 ring-[#ff6900]/15"
                         : "border-neutral-200 hover:border-neutral-300"
                     }`}
                   >
@@ -368,7 +368,7 @@ export default function DocumentShareModal({
                     </span>
                     <ChevronDown
                       className={`h-4 w-4 text-neutral-400 shrink-0 transition-transform duration-150 ${
-                        colleagueDropdownOpen ? "rotate-180 text-[#ff6900]" : ""
+                        colleagueDropdownOpen ? "rotate-180 text-[#C2410C]" : ""
                       }`}
                     />
                   </button>
@@ -387,7 +387,7 @@ export default function DocumentShareModal({
                             value={colleagueSearch}
                             onChange={(e) => setColleagueSearch(e.target.value)}
                             placeholder="Search by name, role, or email..."
-                            className="w-full pl-8 pr-7 py-1.5 text-xs bg-white border border-neutral-200 rounded-lg text-neutral-900 placeholder:text-neutral-400 outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
+                            className="w-full pl-8 pr-7 py-1.5 text-xs bg-white border border-neutral-200 rounded-lg text-neutral-900 placeholder:text-neutral-400 outline-none focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/15"
                           />
                           {colleagueSearch && (
                             <button
@@ -447,7 +447,7 @@ export default function DocumentShareModal({
                                   </div>
                                 </div>
                                 {isSelected && (
-                                  <Check className="h-3.5 w-3.5 text-[#ff6900] shrink-0" />
+                                  <Check className="h-3.5 w-3.5 text-[#C2410C] shrink-0" />
                                 )}
                               </button>
                             );
@@ -509,11 +509,11 @@ export default function DocumentShareModal({
                   type="checkbox"
                   checked={notifyChat}
                   onChange={(e) => setNotifyChat(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded border-neutral-300 text-[#ff6900] focus:ring-[#ff6900]"
+                  className="mt-0.5 h-4 w-4 rounded border-neutral-300 text-[#C2410C] focus:ring-[#C2410C]"
                 />
                 <div>
                   <div className="flex items-center gap-1.5 text-xs font-medium text-neutral-900">
-                    <MessageSquare className="h-3.5 w-3.5 text-[#ff6900]" />
+                    <MessageSquare className="h-3.5 w-3.5 text-[#C2410C]" />
                     <span>In-App Chat</span>
                   </div>
                   <p className="text-xs text-neutral-500 mt-0.5 leading-tight">

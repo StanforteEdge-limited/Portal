@@ -154,7 +154,7 @@ export default function AdminProjectsPage() {
                 to="/projects"
                 className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-neutral-900/[0.10] bg-white hover:bg-neutral-50 text-neutral-700 text-xs font-medium transition-colors duration-150"
               >
-                <FolderKanban className="h-4 w-4 text-[#ff6900]" strokeWidth={1.5} />
+                <FolderKanban className="h-4 w-4 text-[#C2410C]" strokeWidth={1.5} />
                 <span>Workspaces View</span>
               </Link>
               <button
@@ -214,14 +214,14 @@ export default function AdminProjectsPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search projects or codes"
-                className="w-full h-9 pl-9 pr-3 rounded-lg border border-neutral-900/[0.12] bg-white text-sm text-neutral-900 placeholder:text-neutral-400 outline-none transition-[border-color,box-shadow] duration-150 focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
+                className="w-full h-9 pl-9 pr-3 rounded-lg border border-neutral-900/[0.12] bg-white text-sm text-neutral-900 placeholder:text-neutral-400 outline-none transition-[border-color,box-shadow] duration-150 focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/15"
               />
             </div>
 
             <SelectBox
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="h-9 px-3 rounded-lg border border-neutral-900/[0.12] bg-white text-sm text-neutral-700 outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
+              className="h-9 px-3 rounded-lg border border-neutral-900/[0.12] bg-white text-sm text-neutral-700 outline-none focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/15"
             >
               {STATUS_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -257,7 +257,7 @@ export default function AdminProjectsPage() {
                 {projectsLoading ? (
                   <tr>
                     <td colSpan={4} className="py-12 text-center text-sm text-neutral-500">
-                      <div className="w-5 h-5 border-2 border-[#ff6900] border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                      <div className="w-5 h-5 border-2 border-[#C2410C] border-t-transparent rounded-full animate-spin mx-auto mb-2" />
                       Loading projects
                     </td>
                   </tr>
@@ -282,7 +282,7 @@ export default function AdminProjectsPage() {
                           <div className="flex items-center gap-2">
                             <Link
                               to={`/projects/${p.id}`}
-                              className="font-medium text-neutral-900 hover:text-[#ff6900] transition-colors"
+                              className="font-medium text-neutral-900 hover:text-[#C2410C] transition-colors"
                             >
                               {p.name}
                             </Link>

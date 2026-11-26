@@ -96,7 +96,7 @@ export default function SettingsPage() {
                 <button
                   type="button"
                   onClick={() => setThemeMode(null)}
-                  className="inline-flex items-center gap-1.5 text-xs font-medium text-[#ff6900] hover:text-[#ea580c] transition-colors"
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-[#C2410C] hover:text-[#ea580c] transition-colors"
                 >
                   <RotateCcw className="h-3.5 w-3.5" strokeWidth={1.5} />
                   <span>Use workspace default ({tenantDefault ?? "light"})</span>
@@ -121,13 +121,13 @@ export default function SettingsPage() {
                     onClick={() => setThemeMode(option.id)}
                     className={`p-2.5 sm:p-4 rounded-xl border text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6900]/30 ${
                       active
-                        ? "border-[#ff6900] bg-orange-50/60"
+                        ? "border-[#C2410C] bg-orange-50/60"
                         : "border-neutral-900/[0.08] bg-neutral-50 hover:bg-neutral-100"
                     }`}
                   >
                     <div className="flex items-center justify-between gap-1">
                       <Icon
-                        className={`h-4 w-4 ${active ? "text-[#ff6900]" : "text-neutral-500"}`}
+                        className={`h-4 w-4 ${active ? "text-[#C2410C]" : "text-neutral-500"}`}
                         strokeWidth={1.5}
                       />
                       {active && <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-[#C2410C]" />}

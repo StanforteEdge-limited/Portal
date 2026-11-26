@@ -72,7 +72,7 @@ export default function VerifyEmailPage() {
 
           <div className="relative z-10 my-auto py-8 space-y-4">
             {slug && (
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-500/20 text-[#ff6900] text-xs font-medium border border-orange-500/30">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-500/20 text-[#C2410C] text-xs font-medium border border-orange-500/30">
                 <Globe className="h-3.5 w-3.5" />
                 <span>{slug}.{baseDomain}</span>
               </div>
@@ -87,14 +87,14 @@ export default function VerifyEmailPage() {
 
           <div className="relative z-10 pt-4 border-t border-white/10 flex items-center justify-between text-xs text-neutral-400">
             <span>Enterprise Workspace Activation</span>
-            <div className="w-8 h-8 rounded-full border-2 border-[#ff6900]/40 -mr-4 -mb-4 opacity-50" />
+            <div className="w-8 h-8 rounded-full border-2 border-[#C2410C]/40 -mr-4 -mb-4 opacity-50" />
           </div>
         </div>
 
         {/* Right Column: Clean White Form */}
         <div className="bg-white p-8 sm:p-12 flex flex-col justify-center">
           <div className="max-w-md w-full mx-auto space-y-5">
-            <div className="w-12 h-12 rounded-2xl bg-orange-50 text-[#ff6900] flex items-center justify-center">
+            <div className="w-12 h-12 rounded-2xl bg-orange-50 text-[#C2410C] flex items-center justify-center">
               <Mail className="h-6 w-6" />
             </div>
 
@@ -109,7 +109,7 @@ export default function VerifyEmailPage() {
 
             {slug && (
               <div className="p-3.5 rounded-2xl bg-orange-50/70 border border-orange-200/80 flex items-center gap-3">
-                <Building2 className="h-5 w-5 text-[#ff6900] shrink-0" />
+                <Building2 className="h-5 w-5 text-[#C2410C] shrink-0" />
                 <div className="text-xs">
                   <div className="font-medium text-neutral-900">Your Dedicated Workspace URL</div>
                   <div className="text-orange-700 font-mono font-medium">
@@ -143,7 +143,7 @@ export default function VerifyEmailPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@company.com"
                     required
-                    className="w-full pl-10 pr-4 py-2.5 text-xs bg-white border border-neutral-200 rounded-xl outline-none transition focus:border-[#ff6900] focus:ring-2 focus:ring-orange-500/10"
+                    className="w-full pl-10 pr-4 py-2.5 text-xs bg-white border border-neutral-200 rounded-xl outline-none transition focus:border-[#C2410C] focus:ring-2 focus:ring-orange-500/10"
                   />
                 </div>
               </div>

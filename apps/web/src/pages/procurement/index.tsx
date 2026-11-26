@@ -83,7 +83,7 @@ export default function ProcurementIndex() {
               onClick={loadData}
               className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-xs font-semibold shadow-sm transition"
             >
-              <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin text-[#ff6900]" : ""}`} />
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin text-[#C2410C]" : ""}`} />
               <span>Refresh</span>
             </button>
             <Link
@@ -269,7 +269,7 @@ export default function ProcurementIndex() {
                       <td className="py-3.5 px-5 text-right">
                         <Link
                           to={`/procurement/${pr.id}`}
-                          className="inline-flex items-center gap-1 text-xs font-medium text-[#ff6900] hover:text-[#e05d00] transition"
+                          className="inline-flex items-center gap-1 text-xs font-medium text-[#C2410C] hover:text-[#e05d00] transition"
                         >
                           <span>Review</span>
                           <ChevronRight className="h-3 w-3" />

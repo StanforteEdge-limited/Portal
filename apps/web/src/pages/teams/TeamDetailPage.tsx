@@ -97,7 +97,7 @@ export default function TeamDetailPage() {
                 Teams & Groups
               </Link>
               <ChevronRight className="h-3 w-3 text-neutral-400" />
-              <span className="text-[#ff6900] truncate max-w-xs">{groupName}</span>
+              <span className="text-[#C2410C] truncate max-w-xs">{groupName}</span>
             </div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-semibold text-neutral-900 tracking-tight font-headline">
@@ -157,7 +157,7 @@ export default function TeamDetailPage() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
               <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2.5 sm:gap-3">
                 <div className="flex items-center justify-between gap-1.5">
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-orange-50 text-[#C2410C] flex items-center justify-center shrink-0">
                     <Building2 className="h-4 w-4 sm:h-5 sm:w-5" />
                   </div>
                   <span className="text-[10px] sm:text-xs font-medium text-neutral-500 bg-neutral-100 px-2 py-0.5 rounded-full shrink-0 capitalize">

@@ -101,7 +101,7 @@ export function TaskKanbanView({
             onDrop={(e) => handleLaneDrop(e, col.status)}
             className={`w-[82vw] sm:w-[320px] md:w-auto shrink-0 snap-center md:shrink rounded-2xl p-3 flex flex-col min-h-[400px] sm:min-h-[500px] border transition-colors duration-150 ${
               isLaneTarget
-                ? "bg-orange-50/40 border-[#ff6900]/50"
+                ? "bg-orange-50/40 border-[#C2410C]/50"
                 : "bg-neutral-100/70 border-neutral-900/[0.08]"
             }`}
           >
@@ -132,7 +132,7 @@ export function TaskKanbanView({
                 <div
                   className={`py-8 text-center border border-dashed rounded-xl transition-colors ${
                     isLaneTarget
-                      ? "border-[#ff6900]/50 bg-white/80"
+                      ? "border-[#C2410C]/50 bg-white/80"
                       : "border-neutral-900/[0.10] bg-white/40"
                   }`}
                 >

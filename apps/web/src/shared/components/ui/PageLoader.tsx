@@ -3,7 +3,7 @@ export function PageLoader({ size = "md" }: { size?: "sm" | "md" }) {
   return (
     <div className="min-h-screen bg-[#fafafa] flex items-center justify-center">
       <div
-        className={`${dim} rounded-full border-2 border-[#ff6900] border-t-transparent animate-spin`}
+        className={`${dim} rounded-full border-2 border-[#C2410C] border-t-transparent animate-spin`}
         role="status"
         aria-label="Loading"
       />

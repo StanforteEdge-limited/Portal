@@ -204,7 +204,7 @@ export default function DocumentSlideOver({ documentRecord, onClose, onSaved }: 
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Q3 Software Development SOP & Standards"
-              className="w-full px-3.5 py-2 text-xs bg-white border border-neutral-200 rounded-xl outline-none transition focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+              className="w-full px-3.5 py-2 text-xs bg-white border border-neutral-200 rounded-xl outline-none transition focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C]"
               required
             />
           </div>
@@ -214,7 +214,7 @@ export default function DocumentSlideOver({ documentRecord, onClose, onSaved }: 
             <SelectBox
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full px-3.5 py-2 text-xs bg-white border border-neutral-200 rounded-xl outline-none transition focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+              className="w-full px-3.5 py-2 text-xs bg-white border border-neutral-200 rounded-xl outline-none transition focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C]"
             >
               <option value="general">General</option>
               <option value="wiki">Wiki / Guide</option>
@@ -232,7 +232,7 @@ export default function DocumentSlideOver({ documentRecord, onClose, onSaved }: 
               id="requireAcknowledgement"
               checked={requireAcknowledgement}
               onChange={(e) => setRequireAcknowledgement(e.target.checked)}
-              className="h-4 w-4 rounded border-neutral-300 text-[#ff6900] focus:ring-[#ff6900]"
+              className="h-4 w-4 rounded border-neutral-300 text-[#C2410C] focus:ring-[#C2410C]"
             />
             <label
               htmlFor="requireAcknowledgement"
@@ -279,7 +279,7 @@ export default function DocumentSlideOver({ documentRecord, onClose, onSaved }: 
               value={linkUrl}
               onChange={(e) => setLinkUrl(e.target.value)}
               placeholder="https://docs.google.com/document/d/..."
-              className="w-full pl-9 pr-3.5 py-2 text-xs bg-white border border-neutral-200 rounded-xl outline-none transition focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+              className="w-full pl-9 pr-3.5 py-2 text-xs bg-white border border-neutral-200 rounded-xl outline-none transition focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C]"
             />
           </div>
         </div>
@@ -290,7 +290,7 @@ export default function DocumentSlideOver({ documentRecord, onClose, onSaved }: 
 
           {attachedFile ? (
             <div className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-neutral-50/80 px-4 py-3">
-              <div className="w-8 h-8 rounded-lg bg-orange-100 text-[#ff6900] flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-orange-100 text-[#C2410C] flex items-center justify-center shrink-0">
                 <Paperclip className="w-4 h-4" />
               </div>
               <div className="flex-1 min-w-0">
@@ -303,7 +303,7 @@ export default function DocumentSlideOver({ documentRecord, onClose, onSaved }: 
                 <button
                   type="button"
                   onClick={() => setPreviewAttached(true)}
-                  className="text-xs text-[#ff6900] hover:underline font-semibold"
+                  className="text-xs text-[#C2410C] hover:underline font-semibold"
                 >
                   View
                 </button>
@@ -330,11 +330,11 @@ export default function DocumentSlideOver({ documentRecord, onClose, onSaved }: 
                 type="button"
                 disabled={uploading}
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-neutral-200 bg-neutral-50/60 px-4 py-4 text-xs font-semibold text-neutral-600 transition hover:border-[#ff6900] hover:text-[#ff6900] hover:bg-orange-50/10 disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-neutral-200 bg-neutral-50/60 px-4 py-4 text-xs font-semibold text-neutral-600 transition hover:border-[#C2410C] hover:text-[#C2410C] hover:bg-orange-50/10 disabled:opacity-50"
               >
                 {uploading ? (
                   <>
-                    <Hourglass className="w-4 h-4 animate-spin text-[#ff6900]" />
+                    <Hourglass className="w-4 h-4 animate-spin text-[#C2410C]" />
                     <span>Uploading attachment...</span>
                   </>
                 ) : (

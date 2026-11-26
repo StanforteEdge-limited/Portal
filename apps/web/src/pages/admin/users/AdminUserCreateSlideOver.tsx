@@ -104,7 +104,7 @@ export default function AdminUserCreateSlideOver({ onClose, onCreated }: Props) 
           {/* Section 1: User Identity */}
           <div className="space-y-4">
             <div className="flex items-center gap-2 pb-2 border-b border-neutral-100 text-xs font-medium text-neutral-900">
-              <User className="h-4 w-4 text-[#ff6900]" />
+              <User className="h-4 w-4 text-[#C2410C]" />
               Staff Identity & Details
             </div>
 
@@ -118,7 +118,7 @@ export default function AdminUserCreateSlideOver({ onClose, onCreated }: Props) 
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="colleague@stanforteedge.com"
                 required
-                className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#C2410C]/20 focus:border-[#C2410C]"
               />
             </div>
 
@@ -132,7 +132,7 @@ export default function AdminUserCreateSlideOver({ onClose, onCreated }: Props) 
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   placeholder="e.g., Daniel"
-                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#C2410C]/20 focus:border-[#C2410C]"
                 />
               </div>
 
@@ -145,7 +145,7 @@ export default function AdminUserCreateSlideOver({ onClose, onCreated }: Props) 
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                   placeholder="e.g., Owonikoko"
-                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#C2410C]/20 focus:border-[#C2410C]"
                 />
               </div>
             </div>
@@ -157,7 +157,7 @@ export default function AdminUserCreateSlideOver({ onClose, onCreated }: Props) 
               <SelectBox
                 value={type}
                 onChange={(e) => setType(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#C2410C]/20 focus:border-[#C2410C]"
               >
                 <option value="staff">Staff / Full-time Employee</option>
                 <option value="vendor">Vendor / External Partner</option>
@@ -182,7 +182,7 @@ export default function AdminUserCreateSlideOver({ onClose, onCreated }: Props) 
                 value={organizationId}
                 onChange={(e) => setOrganizationId(e.target.value)}
                 required
-                className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#C2410C]/20 focus:border-[#C2410C]"
               >
                 <option value="">Select legal organization...</option>
                 {organizations.map((org) => (
@@ -214,7 +214,7 @@ export default function AdminUserCreateSlideOver({ onClose, onCreated }: Props) 
                     type="checkbox"
                     checked={selectedRoles.includes(r.slug)}
                     onChange={() => toggleRole(r.slug)}
-                    className="w-4 h-4 rounded text-[#ff6900] border-neutral-300 focus:ring-[#ff6900]"
+                    className="w-4 h-4 rounded text-[#C2410C] border-neutral-300 focus:ring-[#C2410C]"
                   />
                   <div className="min-w-0">
                     <span className="text-xs font-medium text-neutral-800 block truncate">{r.name}</span>
@@ -237,7 +237,7 @@ export default function AdminUserCreateSlideOver({ onClose, onCreated }: Props) 
                 type="checkbox"
                 checked={sendInvite}
                 onChange={(e) => setSendInvite(e.target.checked)}
-                className="mt-0.5 w-4 h-4 rounded text-[#ff6900] border-neutral-300 focus:ring-[#ff6900]"
+                className="mt-0.5 w-4 h-4 rounded text-[#C2410C] border-neutral-300 focus:ring-[#C2410C]"
               />
               <div>
                 <span className="text-xs font-medium text-emerald-950 block">

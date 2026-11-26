@@ -57,7 +57,7 @@ export default function AdminGroupTypeSlideOver({ type, onClose, onSaved }: Prop
       <form onSubmit={handleSubmit} className="flex-1 flex flex-col justify-between overflow-y-auto">
         <SlideOverContent className="space-y-4 p-6">
           <div className="flex items-center gap-2 pb-2 border-b border-neutral-100 text-xs font-medium text-neutral-900">
-            <FolderTree className="h-4 w-4 text-[#ff6900]" />
+            <FolderTree className="h-4 w-4 text-[#C2410C]" />
             Type Attributes
           </div>
 
@@ -71,7 +71,7 @@ export default function AdminGroupTypeSlideOver({ type, onClose, onSaved }: Prop
               onChange={(e) => handleNameChange(e.target.value)}
               placeholder="e.g., Department, Tribe, Squad"
               required
-              className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+              className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#C2410C]/20 focus:border-[#C2410C]"
             />
           </div>
 
@@ -85,7 +85,7 @@ export default function AdminGroupTypeSlideOver({ type, onClose, onSaved }: Prop
               onChange={(e) => setSlug(e.target.value)}
               placeholder="e.g., department"
               disabled={!!type?.id}
-              className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-mono text-neutral-800 placeholder-neutral-400 disabled:bg-neutral-50 disabled:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+              className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-mono text-neutral-800 placeholder-neutral-400 disabled:bg-neutral-50 disabled:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-[#C2410C]/20 focus:border-[#C2410C]"
             />
             {!type?.id && (
               <p className="text-xs text-neutral-400 mt-1">
@@ -103,7 +103,7 @@ export default function AdminGroupTypeSlideOver({ type, onClose, onSaved }: Prop
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Explain the functional purpose of this group type..."
               rows={3}
-              className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+              className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#C2410C]/20 focus:border-[#C2410C]"
             />
           </div>
         </SlideOverContent>

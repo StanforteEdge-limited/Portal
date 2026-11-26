@@ -219,7 +219,7 @@ export default function DocumentDetailPage() {
     return (
       <PortalLayout activeNav="Documents">
         <div className="flex flex-col items-center justify-center h-64 gap-3">
-          <div className="w-8 h-8 rounded-full border-2 border-[#ff6900] border-t-transparent animate-spin" />
+          <div className="w-8 h-8 rounded-full border-2 border-[#C2410C] border-t-transparent animate-spin" />
           <p className="text-xs font-semibold text-neutral-500">Loading document details...</p>
         </div>
       </PortalLayout>
@@ -261,14 +261,14 @@ export default function DocumentDetailPage() {
           title={documentRecord.title}
           description={`Category: ${documentRecord.category?.toUpperCase()} • Revision ${documentRecord.version || "v1.0"} • Effective: ${documentRecord.effective_date || "Active Immediately"}`}
           icon={FileText}
-          iconColor="bg-orange-50 text-[#ff6900]"
+          iconColor="bg-orange-50 text-[#C2410C]"
           actions={
             <div className="flex items-center gap-2.5">
               <Link
                 to={`/documents/${documentRecord.id}/edit`}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-xs font-medium transition shadow-xs"
               >
-                <Edit3 className="h-3.5 w-3.5 text-[#ff6900]" />
+                <Edit3 className="h-3.5 w-3.5 text-[#C2410C]" />
                 <span>Open in Editor</span>
               </Link>
               <button
@@ -306,7 +306,7 @@ export default function DocumentDetailPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
           <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2.5 sm:gap-3">
             <div className="flex items-center justify-between gap-1.5">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-orange-50 text-[#C2410C] flex items-center justify-center shrink-0">
                 <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
               <span className="text-[10px] sm:text-xs font-medium text-orange-700 bg-orange-50 px-2 py-0.5 rounded-full shrink-0">
@@ -405,7 +405,7 @@ export default function DocumentDetailPage() {
         {documentRecord.file && (
           <div className="p-5 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-2xl bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0 shadow-xs">
+              <div className="w-12 h-12 rounded-2xl bg-orange-50 text-[#C2410C] flex items-center justify-center shrink-0 shadow-xs">
                 <Paperclip className="h-6 w-6" />
               </div>
               <div>
@@ -439,7 +439,7 @@ export default function DocumentDetailPage() {
                 to={`/documents/${documentRecord.id}/edit`}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-xs font-medium transition shadow-xs"
               >
-                <Edit3 className="h-3.5 w-3.5 text-[#ff6900]" />
+                <Edit3 className="h-3.5 w-3.5 text-[#C2410C]" />
                 <span>Open in Editor</span>
               </Link>
               <button
@@ -447,7 +447,7 @@ export default function DocumentDetailPage() {
                 onClick={() => setShareModalOpen(true)}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-xs font-medium transition shadow-xs"
               >
-                <Share2 className="h-3.5 w-3.5 text-[#ff6900]" />
+                <Share2 className="h-3.5 w-3.5 text-[#C2410C]" />
                 <span>Share File</span>
               </button>
             </div>
@@ -474,7 +474,7 @@ export default function DocumentDetailPage() {
             <button
               type="button"
               onClick={() => setShareModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-orange-50 hover:bg-[#C2410C] text-[#ff6900] hover:text-white border border-orange-200/80 hover:border-[#ff6900] text-xs font-medium transition shadow-xs"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-orange-50 hover:bg-[#C2410C] text-[#C2410C] hover:text-white border border-orange-200/80 hover:border-[#C2410C] text-xs font-medium transition shadow-xs"
             >
               <Share2 className="h-3.5 w-3.5" />
               <span>Share with Colleague</span>
@@ -519,7 +519,7 @@ export default function DocumentDetailPage() {
                     )}
                     <div className="flex items-center gap-1.5 mt-2">
                       {share.channels.includes("chat") && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-[#ff6900]">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-[#C2410C]">
                           <MessageSquare className="h-2.5 w-2.5" /> Chat Notification
                         </span>
                       )}
@@ -576,7 +576,7 @@ export default function DocumentDetailPage() {
                     type="checkbox"
                     checked={agreed}
                     onChange={(e) => setAgreed(e.target.checked)}
-                    className="mt-0.5 rounded border-neutral-300 text-[#ff6900] focus:ring-[#ff6900]"
+                    className="mt-0.5 rounded border-neutral-300 text-[#C2410C] focus:ring-[#C2410C]"
                   />
                   <span>
                     I confirm that I have thoroughly read, understood, and agree to abide by all the terms, obligations, and directives set forth in this document.
@@ -589,7 +589,7 @@ export default function DocumentDetailPage() {
                     placeholder={`Type "${userName}" to sign`}
                     value={signature}
                     onChange={(e) => setSignature(e.target.value)}
-                    className="flex-1 px-3.5 py-2 text-xs bg-neutral-50 rounded-xl border border-neutral-200 text-neutral-800 placeholder-neutral-400 focus:outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+                    className="flex-1 px-3.5 py-2 text-xs bg-neutral-50 rounded-xl border border-neutral-200 text-neutral-800 placeholder-neutral-400 focus:outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C]"
                   />
                   <button
                     type="button"

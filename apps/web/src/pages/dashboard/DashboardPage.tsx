@@ -387,7 +387,7 @@ export default function DashboardPage() {
           {/* Page Header */}
           <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-5 border-b border-neutral-900/[0.08]">
             <div className="space-y-1">
-              <h1 className="text-2xl sm:text-[28px] leading-tight font-medium text-neutral-900 tracking-tight font-headline">
+              <h1 className="text-[28px] sm:text-[32px] leading-[1.2] font-semibold text-[#0F172A] tracking-[-0.01em] font-headline">
                 Admin console
               </h1>
               <p className="text-sm text-neutral-500 max-w-2xl">
@@ -395,15 +395,15 @@ export default function DashboardPage() {
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
               <Link
                 to="/requests/approvals"
-                className="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg bg-white hover:bg-neutral-50 text-neutral-900 border border-neutral-900/[0.10] text-sm font-medium transition-colors duration-150"
+                className="inline-flex items-center gap-2 min-h-[44px] px-4 rounded-lg bg-white hover:bg-[#F1F5F9] text-[#0F172A] border border-[#E2E8F0] text-[14px] font-medium transition-colors duration-150"
               >
-                <FileCheck className="h-4 w-4 text-neutral-500" strokeWidth={1.5} />
+                <FileCheck className="h-4 w-4 text-[#475569]" strokeWidth={1.75} aria-hidden="true" />
                 <span>Approval queue</span>
                 {adminPendingApprovalsCount > 0 ? (
-                  <span className="font-mono text-xs text-[#c2410c] tabular-nums font-semibold">
+                  <span className="font-mono text-[13px] text-[#C2410C] tabular-nums font-semibold">
                     {adminPendingApprovalsCount}
                   </span>
                 ) : null}
@@ -411,58 +411,58 @@ export default function DashboardPage() {
 
               <Link
                 to="/tasks?new=1"
-                className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#C2410C] hover:bg-[#9A3412] text-white text-sm font-medium transition-colors duration-150 active:scale-[0.98]"
+                className="inline-flex items-center gap-2 min-h-[44px] px-4 rounded-lg bg-[#C2410C] hover:bg-[#9A3412] text-white text-[14px] font-semibold transition-[background-color,transform] duration-150 hover:-translate-y-[1px] active:translate-y-0"
               >
-                <Plus className="h-4 w-4" strokeWidth={1.5} />
+                <Plus className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
                 <span>Assign task</span>
               </Link>
             </div>
           </header>
 
           {/* Row 1: 4 Compact Numbers-Only KPI Cards */}
-          <section className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+          <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <Link
               to="/admin/users"
-              className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-neutral-900/[0.08] hover:border-neutral-900/[0.18] shadow-xs transition-colors duration-150 flex flex-col justify-between gap-1 sm:space-y-2"
+              className="p-4 sm:p-5 rounded-xl bg-white border border-[#E2E8F0] hover:border-[#94A3B8] transition-colors duration-150 flex flex-col justify-between gap-1.5"
             >
-              <p className="text-[11px] sm:text-xs text-neutral-500 truncate">Active staff</p>
-              <p className="text-xl sm:text-[28px] leading-tight sm:leading-none font-medium text-neutral-900 font-headline tabular-nums">
+              <p className="text-[13px] text-[#475569] truncate">Active staff</p>
+              <p className="text-[24px] sm:text-[30px] leading-none font-semibold text-[#0F172A] font-headline tabular-nums">
                 {adminLoading ? "—" : adminTotalEmployees.toLocaleString()}
               </p>
-              <p className="text-[10px] sm:text-xs text-neutral-400 truncate hidden sm:block">Registered directory members</p>
+              <p className="text-[12px] text-[#475569] truncate hidden sm:block">Registered directory members</p>
             </Link>
 
             <Link
               to="/requests/approvals"
-              className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-neutral-900/[0.08] hover:border-neutral-900/[0.18] shadow-xs transition-colors duration-150 flex flex-col justify-between gap-1 sm:space-y-2"
+              className="p-4 sm:p-5 rounded-xl bg-white border border-[#E2E8F0] hover:border-[#94A3B8] transition-colors duration-150 flex flex-col justify-between gap-1.5"
             >
-              <p className="text-[11px] sm:text-xs text-neutral-500 truncate">Pending approvals</p>
-              <p className="text-xl sm:text-[28px] leading-tight sm:leading-none font-medium text-[#c2410c] font-headline tabular-nums">
+              <p className="text-[13px] text-[#475569] truncate">Pending approvals</p>
+              <p className="text-[24px] sm:text-[30px] leading-none font-semibold text-[#C2410C] font-headline tabular-nums">
                 {adminLoading ? "—" : adminPendingApprovalsCount.toLocaleString()}
               </p>
-              <p className="text-[10px] sm:text-xs text-neutral-400 truncate hidden sm:block">Awaiting review action</p>
+              <p className="text-[12px] text-[#475569] truncate hidden sm:block">Awaiting review action</p>
             </Link>
 
             <Link
               to="/requests"
-              className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-neutral-900/[0.08] hover:border-neutral-900/[0.18] shadow-xs transition-colors duration-150 flex flex-col justify-between gap-1 sm:space-y-2"
+              className="p-4 sm:p-5 rounded-xl bg-white border border-[#E2E8F0] hover:border-[#94A3B8] transition-colors duration-150 flex flex-col justify-between gap-1.5"
             >
-              <p className="text-[11px] sm:text-xs text-neutral-500 truncate">Total requests</p>
-              <p className="text-xl sm:text-[28px] leading-tight sm:leading-none font-medium text-neutral-900 font-headline tabular-nums">
+              <p className="text-[13px] text-[#475569] truncate">Total requests</p>
+              <p className="text-[24px] sm:text-[30px] leading-none font-semibold text-[#0F172A] font-headline tabular-nums">
                 {adminLoading ? "—" : adminTotalRequests.toLocaleString()}
               </p>
-              <p className="text-[10px] sm:text-xs text-neutral-400 truncate hidden sm:block">Tracked across all workflows</p>
+              <p className="text-[12px] text-[#475569] truncate hidden sm:block">Tracked across all workflows</p>
             </Link>
 
             <Link
               to="/tasks"
-              className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-neutral-900/[0.08] hover:border-neutral-900/[0.18] shadow-xs transition-colors duration-150 flex flex-col justify-between gap-1 sm:space-y-2"
+              className="p-4 sm:p-5 rounded-xl bg-white border border-[#E2E8F0] hover:border-[#94A3B8] transition-colors duration-150 flex flex-col justify-between gap-1.5"
             >
-              <p className="text-[11px] sm:text-xs text-neutral-500 truncate">Staff tasks</p>
-              <p className="text-xl sm:text-[28px] leading-tight sm:leading-none font-medium text-neutral-900 font-headline tabular-nums">
+              <p className="text-[13px] text-[#475569] truncate">Staff tasks</p>
+              <p className="text-[24px] sm:text-[30px] leading-none font-semibold text-[#0F172A] font-headline tabular-nums">
                 {orgTasks.length}
               </p>
-              <p className="text-[10px] sm:text-xs text-neutral-400 tabular-nums truncate hidden sm:block">
+              <p className="text-[12px] text-[#475569] tabular-nums truncate hidden sm:block">
                 {orgTasksInProgress} in progress · {orgTasksBlocked} in review
               </p>
             </Link>
@@ -490,7 +490,7 @@ export default function DashboardPage() {
                         value={adminApprovalSearch}
                         onChange={(e) => setAdminApprovalSearch(e.target.value)}
                         placeholder="Search queue..."
-                        className="w-full pl-8 pr-2.5 py-1 text-xs bg-neutral-50 border border-neutral-200 rounded-lg text-neutral-800 placeholder-neutral-400 focus:outline-none focus:border-[#ff6900]"
+                        className="w-full pl-8 pr-2.5 py-1 text-xs bg-neutral-50 border border-neutral-200 rounded-lg text-neutral-800 placeholder-neutral-400 focus:outline-none focus:border-[#C2410C]"
                       />
                     </div>
                     <SelectBox
@@ -574,7 +574,7 @@ export default function DashboardPage() {
                     </SelectBox>
                     <Link
                       to="/tasks"
-                      className="text-xs font-medium text-[#ff6900] hover:underline inline-flex items-center gap-0.5 shrink-0"
+                      className="text-xs font-medium text-[#C2410C] hover:underline inline-flex items-center gap-0.5 shrink-0"
                     >
                       <span>Board</span>
                       <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.5} />
@@ -731,7 +731,7 @@ export default function DashboardPage() {
                       value={adminStaffSearch}
                       onChange={(e) => setAdminStaffSearch(e.target.value)}
                       placeholder="Filter staff..."
-                      className="w-full pl-7 pr-2 py-0.5 text-xs bg-neutral-50 border border-neutral-200 rounded-md text-neutral-800 placeholder-neutral-400 focus:outline-none focus:border-[#ff6900]"
+                      className="w-full pl-7 pr-2 py-0.5 text-xs bg-neutral-50 border border-neutral-200 rounded-md text-neutral-800 placeholder-neutral-400 focus:outline-none focus:border-[#C2410C]"
                     />
                   </div>
                 </div>
@@ -798,7 +798,7 @@ export default function DashboardPage() {
         {/* Page Header */}
         <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-5 border-b border-neutral-900/[0.08]">
           <div className="space-y-1">
-            <h1 className="text-2xl sm:text-[28px] leading-tight font-medium text-neutral-900 tracking-tight font-headline">
+            <h1 className="text-[28px] sm:text-[32px] leading-[1.2] font-semibold text-[#0F172A] tracking-[-0.01em] font-headline">
               Workspace overview
             </h1>
             <p className="text-sm text-neutral-500">
@@ -875,37 +875,39 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
           {/* Today's Shift Card */}
           <div className="lg:col-span-8 space-y-5 flex flex-col justify-between">
-            <div className="bg-white rounded-2xl p-6 border border-neutral-100 shadow-2xs">
+            <div className="bg-white rounded-xl p-6 border border-[#E2E8F0]">
               <div className="flex items-center justify-between pb-4">
-                <h2 className="text-base font-medium text-neutral-900">Today&apos;s Shift</h2>
+                <h2 className="text-[18px] font-semibold text-[#0F172A] font-headline">Today&apos;s shift</h2>
                 {isClockedIn ? (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/50">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    <span>Shift Active</span>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-[13px] font-semibold bg-[#DCFCE7] text-[#15803D]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#15803D]" />
+                    <span>Shift active</span>
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-neutral-100 text-neutral-600 border border-neutral-200/50">
-                    <span className="w-1.5 h-1.5 rounded-full bg-neutral-400" />
-                    <span>Not Clocked In</span>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-[13px] font-semibold bg-[#F1F5F9] text-[#475569]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#64748B]" />
+                    <span>Not clocked in</span>
                   </span>
                 )}
               </div>
 
               {/* Time & Hours */}
               <div className="flex items-center gap-3.5 pt-1">
-                <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
-                  isClockedIn ? "bg-orange-50 text-[#ff6900]" : "bg-neutral-100 text-neutral-500"
-                }`}>
-                  <Clock className="h-5 w-5" />
-                </div>
+                <Clock
+                  className={`h-5 w-5 shrink-0 ${
+                    isClockedIn ? "text-[#15803D]" : "text-[#475569]"
+                  }`}
+                  strokeWidth={1.75}
+                  aria-hidden="true"
+                />
                 <div>
-                  <div className="text-xl font-semibold text-neutral-900 font-headline">
+                  <div className="text-[22px] font-semibold text-[#0F172A] font-mono tabular-nums">
                     {shiftStartTime} – {shiftEndTime}
                   </div>
-                  <div className="text-xs text-neutral-500 font-medium">
+                  <div className="text-[14px] text-[#475569]">
                     {isClockedIn
-                      ? `${workedHoursStr} worked today • Shift active`
-                      : "0h 00m worked today • You have not clocked in yet"}
+                      ? `${workedHoursStr} worked today · Shift active`
+                      : "0h 00m worked today · You have not clocked in yet"}
                   </div>
                 </div>
               </div>
@@ -1159,7 +1161,7 @@ export default function DashboardPage() {
                     <p>No requests found for this filter.</p>
                     <Link
                       to="/requests/new"
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-[#ff6900] hover:underline"
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-[#C2410C] hover:underline"
                     >
                       <Plus className="h-3 w-3" />
                       <span>Create new request</span>
@@ -1183,11 +1185,11 @@ export default function DashboardPage() {
                         className="p-3 rounded-xl hover:bg-neutral-50 transition flex items-center justify-between group"
                       >
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-orange-50 text-[#ff6900]">
+                          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-orange-50 text-[#C2410C]">
                             <FileText className="h-4 w-4" />
                           </div>
                           <div className="min-w-0">
-                            <div className="text-xs font-medium text-neutral-900 group-hover:text-[#ff6900] transition truncate">
+                            <div className="text-xs font-medium text-neutral-900 group-hover:text-[#C2410C] transition truncate">
                               {req.request_type?.name || (req.data as any)?.title || (req.data as any)?.reason || "Request"}
                             </div>
                             <div className="text-xs text-neutral-400 truncate">
@@ -1211,7 +1213,7 @@ export default function DashboardPage() {
 
             <div className="pt-3 border-t border-neutral-100 mt-4 flex items-center justify-between">
               <span className="text-xs text-neutral-400">Total submitted: {userRequests.length}</span>
-              <Link to="/requests" className="text-xs font-semibold text-[#ff6900] hover:underline flex items-center gap-0.5">
+              <Link to="/requests" className="text-xs font-semibold text-[#C2410C] hover:underline flex items-center gap-0.5">
                 <span>View All Requests</span>
                 <ChevronRight className="h-3 w-3" />
               </Link>
@@ -1245,7 +1247,7 @@ export default function DashboardPage() {
                       className="p-3 rounded-xl hover:bg-neutral-50 transition flex items-center justify-between gap-3"
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-9 h-9 rounded-full font-medium text-xs flex items-center justify-center shrink-0 bg-orange-100 text-[#ff6900]">
+                        <div className="w-9 h-9 rounded-full font-medium text-xs flex items-center justify-center shrink-0 bg-orange-100 text-[#C2410C]">
                           {colleague.avatar}
                         </div>
                         <div className="min-w-0">
@@ -1266,7 +1268,7 @@ export default function DashboardPage() {
 
             <div className="pt-3 border-t border-neutral-100 mt-4 flex items-center justify-between">
               <span className="text-xs text-neutral-400">{colleagues.length} team members</span>
-              <Link to="/chat" className="text-xs font-semibold text-[#ff6900] hover:underline flex items-center gap-0.5">
+              <Link to="/chat" className="text-xs font-semibold text-[#C2410C] hover:underline flex items-center gap-0.5">
                 <span>Open Chat</span>
                 <ChevronRight className="h-3 w-3" />
               </Link>
@@ -1318,7 +1320,7 @@ export default function DashboardPage() {
 
             <div className="pt-3 border-t border-neutral-100 mt-4 flex items-center justify-between">
               <span className="text-xs text-neutral-400">Coverage: 100%</span>
-              <Link to="/leave" className="text-xs font-semibold text-[#ff6900] hover:underline flex items-center gap-0.5">
+              <Link to="/leave" className="text-xs font-semibold text-[#C2410C] hover:underline flex items-center gap-0.5">
                 <span>Request Leave</span>
                 <ChevronRight className="h-3 w-3" />
               </Link>

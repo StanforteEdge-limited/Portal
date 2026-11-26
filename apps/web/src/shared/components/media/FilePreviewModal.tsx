@@ -182,7 +182,7 @@ export function FilePreviewModal({ file, isOpen, onClose, fallbackHtml }: FilePr
           }`}
         >
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-orange-50 dark:bg-orange-500/10 border border-orange-200/60 dark:border-orange-500/20 text-[#ff6900] flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-orange-50 dark:bg-orange-500/10 border border-orange-200/60 dark:border-orange-500/20 text-[#C2410C] flex items-center justify-center shrink-0">
               <HeaderIcon className="h-4 w-4" strokeWidth={1.75} />
             </div>
             <div className="min-w-0">
@@ -254,7 +254,7 @@ export function FilePreviewModal({ file, isOpen, onClose, fallbackHtml }: FilePr
         >
           {loading ? (
             <div className="flex flex-col items-center gap-2.5 text-neutral-500 dark:text-neutral-400">
-              <Loader2 className="h-6 w-6 animate-spin text-[#ff6900]" />
+              <Loader2 className="h-6 w-6 animate-spin text-[#C2410C]" />
               <p className="text-xs font-medium">Loading preview...</p>
             </div>
           ) : error ? (
@@ -297,7 +297,7 @@ export function FilePreviewModal({ file, isOpen, onClose, fallbackHtml }: FilePr
             />
           ) : kind === "audio" ? (
             <div className="w-full max-w-md p-6 rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-900/[0.08] dark:border-neutral-800 shadow-xs space-y-4 text-center">
-              <div className="w-12 h-12 rounded-xl bg-orange-50 dark:bg-orange-500/10 border border-orange-200/60 dark:border-orange-500/20 text-[#ff6900] flex items-center justify-center mx-auto">
+              <div className="w-12 h-12 rounded-xl bg-orange-50 dark:bg-orange-500/10 border border-orange-200/60 dark:border-orange-500/20 text-[#C2410C] flex items-center justify-center mx-auto">
                 <Music className="h-5 w-5" />
               </div>
               <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100 truncate">{file.file_name}</p>
@@ -322,7 +322,7 @@ export function FilePreviewModal({ file, isOpen, onClose, fallbackHtml }: FilePr
             />
           ) : (
             <div className="max-w-sm text-center space-y-2 py-8">
-              <div className="w-12 h-12 rounded-xl bg-orange-50 dark:bg-orange-500/10 border border-orange-200/60 dark:border-orange-500/20 text-[#ff6900] flex items-center justify-center mx-auto">
+              <div className="w-12 h-12 rounded-xl bg-orange-50 dark:bg-orange-500/10 border border-orange-200/60 dark:border-orange-500/20 text-[#C2410C] flex items-center justify-center mx-auto">
                 <FileText className="h-5 w-5" />
               </div>
               <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">Inline preview unavailable</p>

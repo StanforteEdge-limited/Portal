@@ -174,7 +174,7 @@ export function RichDocumentEditor({
                     onChange={(e) => setMentionQuery(e.target.value)}
                     placeholder="Search colleague to tag..."
                     autoFocus
-                    className="w-full px-2.5 py-1.5 text-xs bg-white border border-neutral-200 rounded-lg outline-none focus:border-[#ff6900]"
+                    className="w-full px-2.5 py-1.5 text-xs bg-white border border-neutral-200 rounded-lg outline-none focus:border-[#C2410C]"
                   />
                 </div>
                 <div className="max-h-44 overflow-y-auto py-1">
@@ -219,7 +219,7 @@ export function RichDocumentEditor({
           }
         }}
         data-placeholder={placeholder}
-        className={`${minHeightClass} p-4 prose prose-sm max-w-none text-neutral-800 leading-relaxed font-sans outline-none focus:bg-white empty:before:content-[attr(data-placeholder)] empty:before:text-neutral-400 empty:before:pointer-events-none [&_h2]:text-base [&_h2]:font-semibold [&_h2]:text-neutral-900 [&_h2]:mt-4 [&_h2]:mb-2 [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:text-neutral-900 [&_h3]:mt-3 [&_h3]:mb-1.5 [&_blockquote]:border-l-2 [&_blockquote]:border-[#ff6900] [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:text-neutral-600 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_pre]:bg-neutral-100 [&_pre]:p-3 [&_pre]:rounded-lg [&_pre]:text-xs [&_a]:text-[#ff6900] [&_a]:underline`}
+        className={`${minHeightClass} p-4 prose prose-sm max-w-none text-neutral-800 leading-relaxed font-sans outline-none focus:bg-white empty:before:content-[attr(data-placeholder)] empty:before:text-neutral-400 empty:before:pointer-events-none [&_h2]:text-base [&_h2]:font-semibold [&_h2]:text-neutral-900 [&_h2]:mt-4 [&_h2]:mb-2 [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:text-neutral-900 [&_h3]:mt-3 [&_h3]:mb-1.5 [&_blockquote]:border-l-2 [&_blockquote]:border-[#C2410C] [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:text-neutral-600 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_pre]:bg-neutral-100 [&_pre]:p-3 [&_pre]:rounded-lg [&_pre]:text-xs [&_a]:text-[#C2410C] [&_a]:underline`}
       />
     </div>
   );
@@ -286,14 +286,14 @@ export function DocumentTagBar({ tags, onChange, readOnly = false }: TagInputPro
               onBlur={addTag}
               placeholder="tag name..."
               autoFocus
-              className="w-28 px-2 py-0.5 text-xs bg-white border border-neutral-300 rounded-md outline-none focus:border-[#ff6900]"
+              className="w-28 px-2 py-0.5 text-xs bg-white border border-neutral-300 rounded-md outline-none focus:border-[#C2410C]"
             />
           </div>
         ) : (
           <button
             type="button"
             onClick={() => setAdding(true)}
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium text-neutral-500 hover:text-[#ff6900] hover:bg-orange-50 border border-dashed border-neutral-300 transition-colors"
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium text-neutral-500 hover:text-[#C2410C] hover:bg-orange-50 border border-dashed border-neutral-300 transition-colors"
           >
             <Plus className="h-3 w-3" />
             <span>Add tag</span>
@@ -526,7 +526,7 @@ export function CollaborativeDocumentWorkspace({
             <div
               onDoubleClick={() => setEditing(true)}
               title="Double-click to edit"
-              className="prose prose-sm max-w-none text-neutral-800 leading-relaxed font-sans space-y-4 cursor-text [&_h2]:text-base [&_h2]:font-semibold [&_h2]:text-neutral-900 [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:text-neutral-900 [&_blockquote]:border-l-2 [&_blockquote]:border-[#ff6900] [&_blockquote]:pl-3 [&_blockquote]:italic [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
+              className="prose prose-sm max-w-none text-neutral-800 leading-relaxed font-sans space-y-4 cursor-text [&_h2]:text-base [&_h2]:font-semibold [&_h2]:text-neutral-900 [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:text-neutral-900 [&_blockquote]:border-l-2 [&_blockquote]:border-[#C2410C] [&_blockquote]:pl-3 [&_blockquote]:italic [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
               dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(draftHtml) }}
             />
           ) : (
@@ -607,7 +607,7 @@ export function CollaborativeDocumentWorkspace({
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
                 placeholder="Add a comment or @mention..."
-                className="flex-1 px-3 py-1.5 text-xs bg-white border border-neutral-200 rounded-lg outline-none focus:border-[#ff6900]"
+                className="flex-1 px-3 py-1.5 text-xs bg-white border border-neutral-200 rounded-lg outline-none focus:border-[#C2410C]"
               />
               <button
                 type="submit"

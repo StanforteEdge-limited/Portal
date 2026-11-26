@@ -106,7 +106,7 @@ export default function AdminGroupSlideOver({ group, types = [], onClose, onSave
           {/* Section 1: Basic Info */}
           <div className="space-y-4">
             <div className="flex items-center gap-2 pb-2 border-b border-neutral-100 text-xs font-medium text-neutral-900">
-              <Users className="h-4 w-4 text-[#ff6900]" />
+              <Users className="h-4 w-4 text-[#C2410C]" />
               Basic Information
             </div>
 
@@ -120,7 +120,7 @@ export default function AdminGroupSlideOver({ group, types = [], onClose, onSave
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g., Enterprise Architecture Team"
                 required
-                className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#C2410C]/20 focus:border-[#C2410C]"
               />
             </div>
 
@@ -132,7 +132,7 @@ export default function AdminGroupSlideOver({ group, types = [], onClose, onSave
                 <SelectBox
                   value={groupType}
                   onChange={(e) => setGroupType(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#C2410C]/20 focus:border-[#C2410C]"
                 >
                   {types.map((t) => (
                     <option key={t.id} value={t.slug}>
@@ -152,7 +152,7 @@ export default function AdminGroupSlideOver({ group, types = [], onClose, onSave
                       type="checkbox"
                       checked={isActive}
                       onChange={(e) => setIsActive(e.target.checked)}
-                      className="w-4 h-4 rounded text-[#ff6900] border-neutral-300 focus:ring-[#ff6900]"
+                      className="w-4 h-4 rounded text-[#C2410C] border-neutral-300 focus:ring-[#C2410C]"
                     />
                     <span className="text-xs font-medium text-neutral-700">
                       {isActive ? "Active / Operational" : "Deactivated / Inactive"}
@@ -201,7 +201,7 @@ export default function AdminGroupSlideOver({ group, types = [], onClose, onSave
                         type="checkbox"
                         checked={orgIds.includes(org.id)}
                         onChange={(e) => toggleOrg(org.id, e.target.checked)}
-                        className="w-4 h-4 rounded text-[#ff6900] border-neutral-300 focus:ring-[#ff6900]"
+                        className="w-4 h-4 rounded text-[#C2410C] border-neutral-300 focus:ring-[#C2410C]"
                       />
                       <div>
                         <div className="text-xs font-medium text-neutral-800">{org.name}</div>
@@ -227,7 +227,7 @@ export default function AdminGroupSlideOver({ group, types = [], onClose, onSave
                 <SelectBox
                   value={primaryOrgId}
                   onChange={(e) => setPrimaryOrgId(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#C2410C]/20 focus:border-[#C2410C]"
                 >
                   <option value="">Select Primary Organization</option>
                   {organizations

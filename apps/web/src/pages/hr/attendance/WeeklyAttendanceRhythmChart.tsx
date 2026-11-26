@@ -133,7 +133,7 @@ export function WeeklyAttendanceRhythmChart({
             {/* Day label */}
             <span
               className={`text-xs font-medium transition-colors ${
-                item.isToday ? "text-[#ff6900]" : "text-neutral-700"
+                item.isToday ? "text-[#C2410C]" : "text-neutral-700"
               }`}
             >
               {item.name}
@@ -142,7 +142,7 @@ export function WeeklyAttendanceRhythmChart({
             {/* Percentage */}
             <span
               className={`text-xs font-semibold transition-colors ${
-                item.isToday ? "text-[#ff6900]" : "text-neutral-400"
+                item.isToday ? "text-[#C2410C]" : "text-neutral-400"
               }`}
             >
               {item.rate}%

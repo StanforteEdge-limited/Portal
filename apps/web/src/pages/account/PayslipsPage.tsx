@@ -292,7 +292,7 @@ export default function PayslipsPage() {
                           type="button"
                           onClick={() => void handleDownload(row)}
                           disabled={isDownloading}
-                          className="flex-1 min-h-[40px] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-orange-50 text-[#ff6900] hover:bg-[#C2410C] hover:text-white font-semibold text-xs transition shadow-2xs disabled:opacity-50"
+                          className="flex-1 min-h-[40px] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-orange-50 text-[#C2410C] hover:bg-[#C2410C] hover:text-white font-semibold text-xs transition shadow-2xs disabled:opacity-50"
                         >
                           <Download className="h-4 w-4" />
                           <span>{isDownloading ? "Saving..." : "Download PDF"}</span>
@@ -358,7 +358,7 @@ export default function PayslipsPage() {
                               type="button"
                               onClick={() => void handleDownload(row)}
                               disabled={isDownloading}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-50 text-[#ff6900] hover:bg-[#C2410C] hover:text-white font-semibold text-xs transition shadow-2xs disabled:opacity-50"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-50 text-[#C2410C] hover:bg-[#C2410C] hover:text-white font-semibold text-xs transition shadow-2xs disabled:opacity-50"
                               title="Download PDF"
                             >
                               <Download className="h-3.5 w-3.5" />
@@ -377,7 +377,7 @@ export default function PayslipsPage() {
 
         {/* Information Banner */}
         <div className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex items-start gap-3">
-          <div className="p-2 rounded-xl bg-orange-50 text-[#ff6900] shrink-0 mt-0.5">
+          <div className="p-2 rounded-xl bg-orange-50 text-[#C2410C] shrink-0 mt-0.5">
             <FileText className="h-4 w-4" />
           </div>
           <div className="text-xs">

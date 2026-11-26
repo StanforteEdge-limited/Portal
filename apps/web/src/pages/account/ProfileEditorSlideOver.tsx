@@ -139,7 +139,7 @@ export default function ProfileEditorSlideOver({
                     type="text"
                     value={form.first_name}
                     onChange={(e) => setForm({ ...form, first_name: e.target.value })}
-                    className="w-full px-3 py-2 text-base sm:text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+                    className="w-full px-3 py-2 text-base sm:text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C]"
                     required
                   />
                 </div>
@@ -150,7 +150,7 @@ export default function ProfileEditorSlideOver({
                     type="text"
                     value={form.last_name}
                     onChange={(e) => setForm({ ...form, last_name: e.target.value })}
-                    className="w-full px-3 py-2 text-base sm:text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+                    className="w-full px-3 py-2 text-base sm:text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C]"
                     required
                   />
                 </div>
@@ -163,7 +163,7 @@ export default function ProfileEditorSlideOver({
 
                     value={form.date_of_birth}
                     onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })}
-                    className="w-full px-3 py-2 text-base sm:text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+                    className="w-full px-3 py-2 text-base sm:text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C]"
                   />
                 </div>
 
@@ -172,7 +172,7 @@ export default function ProfileEditorSlideOver({
                   <SelectBox
                     value={form.gender}
                     onChange={(e) => setForm({ ...form, gender: e.target.value })}
-                    className="w-full px-3 py-2 text-base sm:text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+                    className="w-full px-3 py-2 text-base sm:text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C]"
                   >
                     <option value="">Prefer not to say</option>
                     <option value="male">Male</option>
@@ -187,7 +187,7 @@ export default function ProfileEditorSlideOver({
                   <SelectBox
                     value={form.marital_status}
                     onChange={(e) => setForm({ ...form, marital_status: e.target.value })}
-                    className="w-full px-3 py-2 text-base sm:text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+                    className="w-full px-3 py-2 text-base sm:text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C]"
                   >
                     <option value="">Select status...</option>
                     <option value="single">Single</option>
@@ -204,7 +204,7 @@ export default function ProfileEditorSlideOver({
                     placeholder="e.g. +234 801 234 5678"
                     value={form.phone}
                     onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                    className="w-full px-3 py-2 text-base sm:text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+                    className="w-full px-3 py-2 text-base sm:text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C]"
                   />
                 </div>
               </div>
@@ -224,7 +224,7 @@ export default function ProfileEditorSlideOver({
                   placeholder="Street address, city"
                   value={form.address}
                   onChange={(e) => setForm({ ...form, address: e.target.value })}
-                  className="w-full px-3 py-2 text-base sm:text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+                  className="w-full px-3 py-2 text-base sm:text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C]"
                 />
               </div>
 
@@ -236,7 +236,7 @@ export default function ProfileEditorSlideOver({
                     placeholder="e.g. Lagos"
                     value={form.state}
                     onChange={(e) => setForm({ ...form, state: e.target.value })}
-                    className="w-full px-3 py-2 text-base sm:text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+                    className="w-full px-3 py-2 text-base sm:text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C]"
                   />
                 </div>
 
@@ -247,7 +247,7 @@ export default function ProfileEditorSlideOver({
                     placeholder="e.g. Ikeja"
                     value={form.lga}
                     onChange={(e) => setForm({ ...form, lga: e.target.value })}
-                    className="w-full px-3 py-2 text-base sm:text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+                    className="w-full px-3 py-2 text-base sm:text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C]"
                   />
                 </div>
 
@@ -258,7 +258,7 @@ export default function ProfileEditorSlideOver({
                     placeholder="e.g. Nigerian"
                     value={form.nationality}
                     onChange={(e) => setForm({ ...form, nationality: e.target.value })}
-                    className="w-full px-3 py-2 text-base sm:text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+                    className="w-full px-3 py-2 text-base sm:text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C]"
                   />
                 </div>
               </div>
@@ -278,7 +278,7 @@ export default function ProfileEditorSlideOver({
                   placeholder="e.g. Senior Financial Analyst"
                   value={form.occupation}
                   onChange={(e) => setForm({ ...form, occupation: e.target.value })}
-                  className="w-full px-3 py-2 text-base sm:text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+                  className="w-full px-3 py-2 text-base sm:text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C]"
                 />
               </div>
 
@@ -289,7 +289,7 @@ export default function ProfileEditorSlideOver({
                   placeholder="Brief personal background, expertise, or responsibilities..."
                   value={form.bio}
                   onChange={(e) => setForm({ ...form, bio: e.target.value })}
-                  className="w-full px-3 py-2 text-base sm:text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+                  className="w-full px-3 py-2 text-base sm:text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C]"
                 />
               </div>
             </div>

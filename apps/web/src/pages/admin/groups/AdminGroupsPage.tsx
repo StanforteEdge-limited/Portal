@@ -208,14 +208,14 @@ export default function AdminGroupsPage() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search groups"
-                  className="w-full h-9 pl-9 pr-3 rounded-lg border border-neutral-900/[0.12] bg-white text-sm text-neutral-900 placeholder:text-neutral-400 outline-none transition-[border-color,box-shadow] duration-150 focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
+                  className="w-full h-9 pl-9 pr-3 rounded-lg border border-neutral-900/[0.12] bg-white text-sm text-neutral-900 placeholder:text-neutral-400 outline-none transition-[border-color,box-shadow] duration-150 focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/15"
                 />
               </div>
 
               <SelectBox
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value)}
-                className="h-9 px-3 rounded-lg border border-neutral-900/[0.12] bg-white text-sm text-neutral-700 outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
+                className="h-9 px-3 rounded-lg border border-neutral-900/[0.12] bg-white text-sm text-neutral-700 outline-none focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/15"
               >
                 <option value="all">All types</option>
                 {groupTypes.map((t) => (
@@ -228,7 +228,7 @@ export default function AdminGroupsPage() {
               <SelectBox
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="h-9 px-3 rounded-lg border border-neutral-900/[0.12] bg-white text-sm text-neutral-700 outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
+                className="h-9 px-3 rounded-lg border border-neutral-900/[0.12] bg-white text-sm text-neutral-700 outline-none focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/15"
               >
                 <option value="all">All statuses</option>
                 <option value="active">Active</option>
@@ -264,7 +264,7 @@ export default function AdminGroupsPage() {
                   {groupsLoading ? (
                     <tr>
                       <td colSpan={4} className="py-12 text-center text-sm text-neutral-500">
-                        <div className="w-5 h-5 border-2 border-[#ff6900] border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                        <div className="w-5 h-5 border-2 border-[#C2410C] border-t-transparent rounded-full animate-spin mx-auto mb-2" />
                         Loading groups directory
                       </td>
                     </tr>

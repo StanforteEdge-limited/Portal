@@ -762,7 +762,7 @@ export default function DocumentEditorPage() {
             <ArrowLeft className="h-4 w-4" />
           </Link>
 
-          <div className="w-9 h-9 rounded-xl bg-orange-50 border border-orange-200/60 text-[#ff6900] flex items-center justify-center shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-orange-50 border border-orange-200/60 text-[#C2410C] flex items-center justify-center shrink-0">
             <FileText className="h-4 w-4" strokeWidth={1.75} />
           </div>
 
@@ -776,7 +776,7 @@ export default function DocumentEditorPage() {
                   setIsDirty(true);
                 }}
                 placeholder="Untitled document"
-                className="w-full max-w-md px-2 py-0.5 text-base font-medium font-headline text-neutral-900 bg-transparent border border-transparent hover:border-neutral-300 focus:border-[#ff6900] focus:bg-white rounded-md outline-none transition truncate"
+                className="w-full max-w-md px-2 py-0.5 text-base font-medium font-headline text-neutral-900 bg-transparent border border-transparent hover:border-neutral-300 focus:border-[#C2410C] focus:bg-white rounded-md outline-none transition truncate"
               />
               <select
                 value={category}
@@ -816,7 +816,7 @@ export default function DocumentEditorPage() {
                       setRequireAcknowledgement(e.target.checked);
                       setIsDirty(true);
                     }}
-                    className="h-3 w-3 rounded border-neutral-300 text-[#ff6900] focus:ring-[#ff6900]"
+                    className="h-3 w-3 rounded border-neutral-300 text-[#C2410C] focus:ring-[#C2410C]"
                   />
                   <span>Require sign-off</span>
                 </label>
@@ -851,7 +851,7 @@ export default function DocumentEditorPage() {
             onClick={() => setRightPanel((p) => (p === "history" ? "none" : "history"))}
             className={`p-2 rounded-full transition-colors ${
               rightPanel === "history"
-                ? "bg-orange-50 text-[#ff6900]"
+                ? "bg-orange-50 text-[#C2410C]"
                 : "text-neutral-600 hover:bg-neutral-100"
             }`}
             title="Version history"
@@ -866,7 +866,7 @@ export default function DocumentEditorPage() {
             onClick={() => setRightPanel((p) => (p === "comments" ? "none" : "comments"))}
             className={`relative p-2 rounded-full transition-colors ${
               rightPanel === "comments"
-                ? "bg-orange-50 text-[#ff6900]"
+                ? "bg-orange-50 text-[#C2410C]"
                 : "text-neutral-600 hover:bg-neutral-100"
             }`}
             title="Open comments"
@@ -962,7 +962,7 @@ export default function DocumentEditorPage() {
             onClick={() => setShowOutline((p) => !p)}
             title="Toggle document outline"
             className={`p-1.5 rounded-full transition-colors ${
-              showOutline ? "bg-orange-50 text-[#ff6900]" : "text-neutral-600 hover:bg-neutral-100"
+              showOutline ? "bg-orange-50 text-[#C2410C]" : "text-neutral-600 hover:bg-neutral-100"
             }`}
           >
             <PanelLeft className="h-3.5 w-3.5" />
@@ -984,7 +984,7 @@ export default function DocumentEditorPage() {
             }}
             title="Find & Replace (Ctrl+F)"
             className={`p-1.5 rounded-full transition-colors ${
-              findOpen ? "bg-orange-50 text-[#ff6900]" : "text-neutral-600 hover:bg-neutral-100"
+              findOpen ? "bg-orange-50 text-[#C2410C]" : "text-neutral-600 hover:bg-neutral-100"
             }`}
           >
             <Search className="h-3.5 w-3.5" />
@@ -1233,7 +1233,7 @@ export default function DocumentEditorPage() {
                     onChange={(e) => setMentionQuery(e.target.value)}
                     placeholder="Search colleague..."
                     autoFocus
-                    className="w-full px-2.5 py-1.5 text-xs bg-white border border-neutral-200 rounded-lg outline-none focus:border-[#ff6900]"
+                    className="w-full px-2.5 py-1.5 text-xs bg-white border border-neutral-200 rounded-lg outline-none focus:border-[#C2410C]"
                   />
                 </div>
                 <div className="max-h-48 overflow-y-auto py-1">
@@ -1280,7 +1280,7 @@ export default function DocumentEditorPage() {
             title="Attach supporting file"
           >
             {uploading ? (
-              <Hourglass className="h-3.5 w-3.5 animate-spin text-[#ff6900]" />
+              <Hourglass className="h-3.5 w-3.5 animate-spin text-[#C2410C]" />
             ) : (
               <Paperclip className="h-3.5 w-3.5" />
             )}
@@ -1301,7 +1301,7 @@ export default function DocumentEditorPage() {
 
         {attachedFile && (
           <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-orange-50/80 border border-orange-200/70 text-xs">
-            <Paperclip className="h-3 w-3 text-[#ff6900]" />
+            <Paperclip className="h-3 w-3 text-[#C2410C]" />
             <span className="font-medium text-neutral-800 max-w-[180px] truncate">
               {attachedFile.file_name}
             </span>
@@ -1350,7 +1350,7 @@ export default function DocumentEditorPage() {
                 value={findQuery}
                 onChange={(e) => setFindQuery(e.target.value)}
                 placeholder="Find in document..."
-                className="w-full pl-2.5 pr-16 py-1.5 text-xs bg-neutral-50 border border-neutral-200 rounded-lg outline-none focus:bg-white focus:border-[#ff6900]"
+                className="w-full pl-2.5 pr-16 py-1.5 text-xs bg-neutral-50 border border-neutral-200 rounded-lg outline-none focus:bg-white focus:border-[#C2410C]"
               />
               {findQuery && (
                 <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-mono text-neutral-400">
@@ -1364,7 +1364,7 @@ export default function DocumentEditorPage() {
                 value={replaceText}
                 onChange={(e) => setReplaceText(e.target.value)}
                 placeholder="Replace with..."
-                className="flex-1 px-2.5 py-1.5 text-xs bg-neutral-50 border border-neutral-200 rounded-lg outline-none focus:bg-white focus:border-[#ff6900]"
+                className="flex-1 px-2.5 py-1.5 text-xs bg-neutral-50 border border-neutral-200 rounded-lg outline-none focus:bg-white focus:border-[#C2410C]"
               />
               <button
                 type="button"
@@ -1393,7 +1393,7 @@ export default function DocumentEditorPage() {
                     key={`${item.text}-${idx}`}
                     type="button"
                     onClick={() => scrollToHeading(idx)}
-                    className={`w-full text-left text-xs text-neutral-700 hover:text-[#ff6900] hover:bg-neutral-200/50 rounded-md px-2 py-1.5 truncate transition-colors ${
+                    className={`w-full text-left text-xs text-neutral-700 hover:text-[#C2410C] hover:bg-neutral-200/50 rounded-md px-2 py-1.5 truncate transition-colors ${
                       item.level === 1
                         ? "font-semibold"
                         : item.level === 2
@@ -1432,7 +1432,7 @@ export default function DocumentEditorPage() {
                 }
               }}
               data-placeholder="Start typing your document, or press @ to mention a colleague..."
-              className="min-h-[900px] outline-none text-[15px] leading-7 text-neutral-800 font-sans empty:before:content-[attr(data-placeholder)] empty:before:text-neutral-400 empty:before:pointer-events-none [&_h1]:text-2xl [&_h1]:font-semibold [&_h1]:font-headline [&_h1]:text-neutral-900 [&_h1]:mb-4 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:font-headline [&_h2]:text-neutral-900 [&_h2]:mt-6 [&_h2]:mb-2 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:text-neutral-900 [&_h3]:mt-5 [&_h3]:mb-1.5 [&_p]:mb-3 [&_blockquote]:border-l-2 [&_blockquote]:border-[#ff6900] [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-neutral-600 [&_blockquote]:my-4 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:mb-3 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:mb-3 [&_pre]:bg-neutral-100 [&_pre]:p-4 [&_pre]:rounded-lg [&_pre]:text-xs [&_pre]:font-mono [&_pre]:my-4 [&_hr]:my-6 [&_hr]:border-neutral-200 [&_a]:text-[#ff6900] [&_a]:underline"
+              className="min-h-[900px] outline-none text-[15px] leading-7 text-neutral-800 font-sans empty:before:content-[attr(data-placeholder)] empty:before:text-neutral-400 empty:before:pointer-events-none [&_h1]:text-2xl [&_h1]:font-semibold [&_h1]:font-headline [&_h1]:text-neutral-900 [&_h1]:mb-4 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:font-headline [&_h2]:text-neutral-900 [&_h2]:mt-6 [&_h2]:mb-2 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:text-neutral-900 [&_h3]:mt-5 [&_h3]:mb-1.5 [&_p]:mb-3 [&_blockquote]:border-l-2 [&_blockquote]:border-[#C2410C] [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-neutral-600 [&_blockquote]:my-4 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:mb-3 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:mb-3 [&_pre]:bg-neutral-100 [&_pre]:p-4 [&_pre]:rounded-lg [&_pre]:text-xs [&_pre]:font-mono [&_pre]:my-4 [&_hr]:my-6 [&_hr]:border-neutral-200 [&_a]:text-[#C2410C] [&_a]:underline"
             />
           </div>
         </main>
@@ -1513,7 +1513,7 @@ export default function DocumentEditorPage() {
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
                 placeholder="Add a comment..."
-                className="flex-1 px-3 py-2 text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#ff6900]"
+                className="flex-1 px-3 py-2 text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#C2410C]"
               />
               <button
                 type="submit"

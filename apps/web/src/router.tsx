@@ -119,8 +119,12 @@ const HrEmployeesPage = lazy(() => import("@/pages/hr/employees/HrEmployeesPage"
 const HrEmployeeCreatePage = lazy(() => import("@/pages/hr/employees/HrEmployeeCreatePage"));
 const HrEmployeeDetailPage = lazy(() => import("@/pages/hr/employees/HrEmployeeDetailPage"));
 const HrEmployeeEditPage = lazy(() => import("@/pages/hr/employees/HrEmployeeEditPage"));
+const HrPayrollPage = lazy(() => import("@/pages/hr/payroll/HrPayrollPage"));
+const HrPayrollRunFormPage = lazy(() => import("@/pages/hr/payroll/HrPayrollRunFormPage"));
+const HrPayrollRunDetailPage = lazy(() => import("@/pages/hr/payroll/HrPayrollRunDetailPage"));
 const HrPayrollLoansPage = lazy(() => import("@/pages/hr/payroll/HrPayrollLoansPage"));
 const HrPayrollWorkersPage = lazy(() => import("@/pages/hr/payroll/HrPayrollWorkersPage"));
+const HrPayrollWorkerDetailPage = lazy(() => import("@/pages/hr/payroll/HrPayrollWorkerDetailPage"));
 const HrSettingsPage = lazy(() => import("@/pages/hr/settings/HrSettingsPage"));
 
 // Account Self-Service
@@ -250,7 +254,6 @@ function AnalyticsAdminGatedPage() {
 const FinanceCustomersPage = () => <FinanceContactsPage defaultType="customer" />;
 const FinanceVendorsPage = () => <FinanceContactsPage defaultType="vendor" />;
 const RedirectToHrEmployees = () => <Navigate to="/hr/employees" replace />;
-const RedirectToFinancePayroll = () => <Navigate to="/finance/payroll" replace />;
 
 // 4. Declarative Route Tables (Single Source of Truth)
 const PUBLIC_ROUTES: readonly RouteDef[] = [
@@ -300,9 +303,12 @@ const PROTECTED_ROUTES: readonly RouteDef[] = [
   ["/hr/employees/create", HrEmployeeCreatePage],
   ["/hr/employees/$id", HrEmployeeDetailPage],
   ["/hr/employees/$id/edit", HrEmployeeEditPage],
-  ["/hr/payroll", RedirectToFinancePayroll],
+  ["/hr/payroll", HrPayrollPage],
+  ["/hr/payroll/runs/new", HrPayrollRunFormPage],
+  ["/hr/payroll/runs/$id", HrPayrollRunDetailPage],
   ["/hr/payroll/loans", HrPayrollLoansPage],
   ["/hr/payroll/workers", HrPayrollWorkersPage],
+  ["/hr/payroll/workers/$id", HrPayrollWorkerDetailPage],
   ["/hr/settings", HrSettingsPage],
   ["/teams", TeamsPage],
   ["/teams/$id", TeamDetailPage],

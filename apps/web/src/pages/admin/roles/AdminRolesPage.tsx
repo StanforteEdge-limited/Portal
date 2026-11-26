@@ -210,7 +210,7 @@ export default function AdminRolesPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search roles"
-                className="w-full h-9 pl-9 pr-3 rounded-lg bg-white border border-neutral-900/[0.12] text-sm text-neutral-900 placeholder:text-neutral-400 outline-none transition-[border-color,box-shadow] duration-150 focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
+                className="w-full h-9 pl-9 pr-3 rounded-lg bg-white border border-neutral-900/[0.12] text-sm text-neutral-900 placeholder:text-neutral-400 outline-none transition-[border-color,box-shadow] duration-150 focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/15"
               />
             </div>
           )}

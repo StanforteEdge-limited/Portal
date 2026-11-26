@@ -583,7 +583,7 @@ export default function AdminSettingsPage() {
                       <SelectBox
                         value={categoryForm.group_id}
                         onChange={(e) => setCategoryForm((p) => ({ ...p, group_id: e.target.value }))}
-                        className="w-full h-9 px-3 rounded-lg bg-white border border-neutral-900/[0.12] text-sm text-neutral-900 outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
+                        className="w-full h-9 px-3 rounded-lg bg-white border border-neutral-900/[0.12] text-sm text-neutral-900 outline-none focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/15"
                       >
                         <option value="">Select module</option>
                         {groups.map((g) => (
@@ -599,7 +599,7 @@ export default function AdminSettingsPage() {
                       value={categoryForm.name}
                       onChange={(e) => setCategoryForm((p) => ({ ...p, name: e.target.value }))}
                       placeholder="Office supplies"
-                      className="w-full h-9 px-3 rounded-lg bg-white border border-neutral-900/[0.12] text-sm text-neutral-900 outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
+                      className="w-full h-9 px-3 rounded-lg bg-white border border-neutral-900/[0.12] text-sm text-neutral-900 outline-none focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/15"
                     />
                   </div>
                   <div>
@@ -610,7 +610,7 @@ export default function AdminSettingsPage() {
                       onChange={(e) => setCategoryForm((p) => ({ ...p, code: e.target.value }))}
                       placeholder="OFFICE"
                       disabled={typeof editingCategory === "object"}
-                      className="w-full h-9 px-3 rounded-lg bg-white border border-neutral-900/[0.12] text-sm font-mono text-neutral-900 outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15 disabled:opacity-50"
+                      className="w-full h-9 px-3 rounded-lg bg-white border border-neutral-900/[0.12] text-sm font-mono text-neutral-900 outline-none focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/15 disabled:opacity-50"
                     />
                   </div>
                   <div className="md:col-span-2">
@@ -620,7 +620,7 @@ export default function AdminSettingsPage() {
                       value={categoryForm.description}
                       onChange={(e) => setCategoryForm((p) => ({ ...p, description: e.target.value }))}
                       placeholder="Optional description"
-                      className="w-full h-9 px-3 rounded-lg bg-white border border-neutral-900/[0.12] text-sm text-neutral-900 outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
+                      className="w-full h-9 px-3 rounded-lg bg-white border border-neutral-900/[0.12] text-sm text-neutral-900 outline-none focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/15"
                     />
                   </div>
                 </div>
@@ -655,7 +655,7 @@ export default function AdminSettingsPage() {
                   <SelectBox
                     value={categoryFilter}
                     onChange={(e) => setCategoryFilter(e.target.value)}
-                    className="h-9 px-3 rounded-lg bg-white border border-neutral-900/[0.12] text-sm text-neutral-700 outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
+                    className="h-9 px-3 rounded-lg bg-white border border-neutral-900/[0.12] text-sm text-neutral-700 outline-none focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/15"
                   >
                     <option value="">All modules</option>
                     {groups.map((g) => (
@@ -825,7 +825,7 @@ export default function AdminSettingsPage() {
                   type="text"
                   value={tenantForm.name}
                   onChange={(e) => setTenantForm((p) => ({ ...p, name: e.target.value }))}
-                  className="w-full h-9 px-3 rounded-lg bg-white border border-neutral-900/[0.12] text-sm text-neutral-900 outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
+                  className="w-full h-9 px-3 rounded-lg bg-white border border-neutral-900/[0.12] text-sm text-neutral-900 outline-none focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/15"
                 />
               </div>
 
@@ -834,7 +834,7 @@ export default function AdminSettingsPage() {
                 <SelectBox
                   value={tenantForm.plan}
                   onChange={(e) => setTenantForm((p) => ({ ...p, plan: e.target.value }))}
-                  className="w-full h-9 px-3 rounded-lg bg-white border border-neutral-900/[0.12] text-sm text-neutral-900 outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
+                  className="w-full h-9 px-3 rounded-lg bg-white border border-neutral-900/[0.12] text-sm text-neutral-900 outline-none focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/15"
                 >
                   <option value="trial">Trial plan (14 days free)</option>
                   <option value="standard">Standard growth plan</option>
@@ -854,7 +854,7 @@ export default function AdminSettingsPage() {
                       default_theme_mode: e.target.value as ThemeMode,
                     }))
                   }
-                  className="w-full md:max-w-xs h-9 px-3 rounded-lg bg-white border border-neutral-900/[0.12] text-sm text-neutral-900 outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
+                  className="w-full md:max-w-xs h-9 px-3 rounded-lg bg-white border border-neutral-900/[0.12] text-sm text-neutral-900 outline-none focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/15"
                 >
                   <option value="light">Light (default)</option>
                   <option value="dark">Dark</option>
@@ -975,7 +975,7 @@ export default function AdminSettingsPage() {
                         }
                         placeholder="#ff6900"
                         maxLength={7}
-                        className="w-full h-9 pl-8 pr-3 rounded-lg bg-white border border-neutral-900/[0.12] font-mono text-sm text-neutral-900 outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
+                        className="w-full h-9 pl-8 pr-3 rounded-lg bg-white border border-neutral-900/[0.12] font-mono text-sm text-neutral-900 outline-none focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/15"
                       />
                     </div>
                   </div>
@@ -1092,7 +1092,7 @@ export default function AdminSettingsPage() {
                   <SelectBox
                     value={localSettingsForm.timezone}
                     onChange={(e) => setLocalSettingsForm((p) => ({ ...p, timezone: e.target.value }))}
-                    className="w-full h-9 px-3 rounded-lg bg-white border border-neutral-900/[0.12] text-sm text-neutral-900 outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
+                    className="w-full h-9 px-3 rounded-lg bg-white border border-neutral-900/[0.12] text-sm text-neutral-900 outline-none focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/15"
                   >
                     {COMMON_TIMEZONES.map((tz) => (
                       <option key={tz.value} value={tz.value}>
@@ -1118,7 +1118,7 @@ export default function AdminSettingsPage() {
                           onClick={() => setLocalSettingsForm((p) => ({ ...p, timeFormat: opt.value }))}
                           className={`flex items-start justify-between p-3 rounded-xl border cursor-pointer transition-colors duration-150 ${
                             isSelected
-                              ? "border-[#ff6900] bg-orange-50/30"
+                              ? "border-[#C2410C] bg-orange-50/30"
                               : "border-neutral-900/[0.10] bg-white hover:bg-neutral-50"
                           }`}
                         >
@@ -1128,7 +1128,7 @@ export default function AdminSettingsPage() {
                               name="timeFormat"
                               checked={isSelected}
                               onChange={() => {}}
-                              className="mt-0.5 h-4 w-4 text-[#ff6900] focus:ring-[#ff6900]"
+                              className="mt-0.5 h-4 w-4 text-[#C2410C] focus:ring-[#C2410C]"
                             />
                             <div>
                               <div className="text-sm font-medium text-neutral-900">{opt.label}</div>
@@ -1157,7 +1157,7 @@ export default function AdminSettingsPage() {
                           onClick={() => setLocalSettingsForm((p) => ({ ...p, dateFormat: opt.value }))}
                           className={`flex items-start justify-between p-3 rounded-xl border cursor-pointer transition-colors duration-150 ${
                             isSelected
-                              ? "border-[#ff6900] bg-orange-50/30"
+                              ? "border-[#C2410C] bg-orange-50/30"
                               : "border-neutral-900/[0.10] bg-white hover:bg-neutral-50"
                           }`}
                         >
@@ -1167,7 +1167,7 @@ export default function AdminSettingsPage() {
                               name="dateFormat"
                               checked={isSelected}
                               onChange={() => {}}
-                              className="mt-0.5 h-4 w-4 text-[#ff6900] focus:ring-[#ff6900]"
+                              className="mt-0.5 h-4 w-4 text-[#C2410C] focus:ring-[#C2410C]"
                             />
                             <div>
                               <div className="text-sm font-medium text-neutral-900">{opt.label}</div>
@@ -1192,7 +1192,7 @@ export default function AdminSettingsPage() {
                     onChange={(e) =>
                       setLocalSettingsForm((p) => ({ ...p, weekStartsOn: e.target.value as any }))
                     }
-                    className="w-full h-9 px-3 rounded-lg bg-white border border-neutral-900/[0.12] text-sm text-neutral-900 outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
+                    className="w-full h-9 px-3 rounded-lg bg-white border border-neutral-900/[0.12] text-sm text-neutral-900 outline-none focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/15"
                   >
                     <option value="monday">Monday (Nigeria / International standard)</option>
                     <option value="sunday">Sunday (US standard)</option>
@@ -1206,7 +1206,7 @@ export default function AdminSettingsPage() {
                   <SelectBox
                     value={localSettingsForm.currency}
                     onChange={(e) => setLocalSettingsForm((p) => ({ ...p, currency: e.target.value }))}
-                    className="w-full h-9 px-3 rounded-lg bg-white border border-neutral-900/[0.12] text-sm text-neutral-900 outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
+                    className="w-full h-9 px-3 rounded-lg bg-white border border-neutral-900/[0.12] text-sm text-neutral-900 outline-none focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/15"
                   >
                     <option value="NGN">NGN (₦) — Nigerian Naira (Default)</option>
                     <option value="USD">USD ($) — US Dollar</option>

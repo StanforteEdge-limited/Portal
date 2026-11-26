@@ -146,7 +146,7 @@ export default function AdminRoleSlideOver({ role, onClose, onSaved }: Props) {
           {/* Section 1: Basic Info */}
           <div className="space-y-4">
             <div className="flex items-center gap-2 pb-2 border-b border-neutral-100 text-xs font-medium text-neutral-900">
-              <Shield className="h-4 w-4 text-[#ff6900]" />
+              <Shield className="h-4 w-4 text-[#C2410C]" />
               Role Identity
             </div>
 
@@ -161,7 +161,7 @@ export default function AdminRoleSlideOver({ role, onClose, onSaved }: Props) {
                   onChange={(e) => handleNameChange(e.target.value)}
                   placeholder="e.g., Finance Controller"
                   required
-                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#C2410C]/20 focus:border-[#C2410C]"
                 />
               </div>
 
@@ -175,7 +175,7 @@ export default function AdminRoleSlideOver({ role, onClose, onSaved }: Props) {
                   onChange={(e) => setSlug(e.target.value)}
                   placeholder="e.g., finance_controller"
                   disabled={!!role}
-                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-mono text-neutral-800 placeholder-neutral-400 disabled:bg-neutral-50 disabled:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-mono text-neutral-800 placeholder-neutral-400 disabled:bg-neutral-50 disabled:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-[#C2410C]/20 focus:border-[#C2410C]"
                 />
               </div>
             </div>
@@ -199,7 +199,7 @@ export default function AdminRoleSlideOver({ role, onClose, onSaved }: Props) {
                   type="checkbox"
                   checked={isActive}
                   onChange={(e) => setIsActive(e.target.checked)}
-                  className="w-4 h-4 rounded text-[#ff6900] border-neutral-300 focus:ring-[#ff6900]"
+                  className="w-4 h-4 rounded text-[#C2410C] border-neutral-300 focus:ring-[#C2410C]"
                 />
                 <span className="text-xs font-medium text-neutral-700">
                   {isActive ? "Active Role Assignment" : "Disabled / Inactive Role"}
@@ -234,7 +234,7 @@ export default function AdminRoleSlideOver({ role, onClose, onSaved }: Props) {
                             type="checkbox"
                             checked={selectedPermissions.includes(perm.slug)}
                             onChange={() => togglePermission(perm.slug)}
-                            className="mt-0.5 w-4 h-4 rounded text-[#ff6900] border-neutral-300 focus:ring-[#ff6900]"
+                            className="mt-0.5 w-4 h-4 rounded text-[#C2410C] border-neutral-300 focus:ring-[#C2410C]"
                           />
                           <div className="min-w-0">
                             <span className="text-xs font-medium text-neutral-800 block truncate">

@@ -248,7 +248,7 @@ export default function LoginPage() {
                   placeholder="name@company.com"
                   required
                   autoComplete="email"
-                  className="w-full h-10 pl-10 pr-3 text-sm bg-white border border-neutral-900/[0.12] rounded-lg outline-none transition-[border-color,box-shadow] focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15 placeholder:text-neutral-400"
+                  className="w-full h-10 pl-10 pr-3 text-sm bg-white border border-neutral-900/[0.12] rounded-lg outline-none transition-[border-color,box-shadow] focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/15 placeholder:text-neutral-400"
                 />
               </div>
             </div>
@@ -265,7 +265,7 @@ export default function LoginPage() {
                   placeholder="Password"
                   required
                   autoComplete="current-password"
-                  className="w-full h-10 pl-10 pr-10 text-sm bg-white border border-neutral-900/[0.12] rounded-lg outline-none transition-[border-color,box-shadow] focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15 placeholder:text-neutral-400"
+                  className="w-full h-10 pl-10 pr-10 text-sm bg-white border border-neutral-900/[0.12] rounded-lg outline-none transition-[border-color,box-shadow] focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/15 placeholder:text-neutral-400"
                 />
                 <button
                   type="button"
@@ -285,7 +285,7 @@ export default function LoginPage() {
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 rounded border-neutral-300 text-[#ff6900] focus:ring-[#ff6900]"
+                  className="w-4 h-4 rounded border-neutral-300 text-[#C2410C] focus:ring-[#C2410C]"
                 />
                 <span>Remember me</span>
               </label>
@@ -315,7 +315,7 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowWorkspacePrompt(true)}
-                    className="text-xs text-neutral-500 hover:text-[#ff6900] font-semibold inline-flex items-center gap-1.5 transition-colors"
+                    className="text-xs text-neutral-500 hover:text-[#C2410C] font-semibold inline-flex items-center gap-1.5 transition-colors"
                   >
                     <Globe className="h-3.5 w-3.5 text-neutral-400" />
                     <span>Sign in with your organization workspace URL</span>
@@ -340,7 +340,7 @@ export default function LoginPage() {
                         value={customWorkspaceSlug}
                         onChange={(e) => setCustomWorkspaceSlug(formatWorkspaceSlug(e.target.value))}
                         placeholder="your-company"
-                        className="w-full px-3 py-2 text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#ff6900] font-medium"
+                        className="w-full px-3 py-2 text-xs bg-white border border-neutral-200 rounded-xl outline-none focus:border-[#C2410C] font-medium"
                       />
                       <span className="absolute right-3 text-xs text-neutral-400 pointer-events-none">
                         .{baseDomain}

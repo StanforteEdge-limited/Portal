@@ -265,7 +265,7 @@ export function AttendancePage() {
         title="Time & Attendance"
         description="Real-time check-in terminal, geofence verification, shift tracking, and monthly reconciliation."
         icon={Clock}
-        iconColor="bg-orange-50 text-[#ff6900]"
+        iconColor="bg-orange-50 text-[#C2410C]"
         actions={
           <>
             <button
@@ -308,7 +308,7 @@ export function AttendancePage() {
                       timeZone: localization.settings.timezone,
                     })}
                   </span>
-                  <span className="rounded-lg bg-orange-50 px-2 py-0.5 text-xs font-medium text-[#ff6900] border border-orange-200/60">
+                  <span className="rounded-lg bg-orange-50 px-2 py-0.5 text-xs font-medium text-[#C2410C] border border-orange-200/60">
                     {localization.settings.timezone.includes("Lagos") ? "WAT (Nigeria)" : localization.settings.timezone}
                   </span>
                 </div>
@@ -350,7 +350,7 @@ export function AttendancePage() {
                   onClick={() => setSelectedMode("onsite")}
                   className={`p-3 rounded-xl border text-xs font-medium transition flex flex-col items-center gap-1.5 ${
                     selectedMode === "onsite"
-                      ? "border-[#ff6900] bg-orange-50/60 text-[#ff6900] shadow-2xs"
+                      ? "border-[#C2410C] bg-orange-50/60 text-[#C2410C] shadow-2xs"
                       : "border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-600"
                   }`}
                 >
@@ -363,7 +363,7 @@ export function AttendancePage() {
                   onClick={() => setSelectedMode("remote")}
                   className={`p-3 rounded-xl border text-xs font-medium transition flex flex-col items-center gap-1.5 ${
                     selectedMode === "remote"
-                      ? "border-[#ff6900] bg-orange-50/60 text-[#ff6900] shadow-2xs"
+                      ? "border-[#C2410C] bg-orange-50/60 text-[#C2410C] shadow-2xs"
                       : "border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-600"
                   }`}
                 >
@@ -376,7 +376,7 @@ export function AttendancePage() {
                   onClick={() => setSelectedMode("field")}
                   className={`p-3 rounded-xl border text-xs font-medium transition flex flex-col items-center gap-1.5 ${
                     selectedMode === "field"
-                      ? "border-[#ff6900] bg-orange-50/60 text-[#ff6900] shadow-2xs"
+                      ? "border-[#C2410C] bg-orange-50/60 text-[#C2410C] shadow-2xs"
                       : "border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-600"
                   }`}
                 >
@@ -395,7 +395,7 @@ export function AttendancePage() {
                 <SelectBox
                   value={selectedOfficeLocationId}
                   onChange={(e) => setSelectedOfficeLocationId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-xs bg-white border border-neutral-200 rounded-xl outline-none text-neutral-800 font-semibold focus:border-[#ff6900]"
+                  className="w-full px-3.5 py-2.5 text-xs bg-white border border-neutral-200 rounded-xl outline-none text-neutral-800 font-semibold focus:border-[#C2410C]"
                 >
                   {officeLocations.map((loc) => (
                     <option key={loc.id} value={loc.id}>
@@ -452,14 +452,14 @@ export function AttendancePage() {
           <div className="space-y-5">
             <div className="flex items-center justify-between pb-3 border-b border-neutral-100">
               <div>
-                <span className="text-xs font-medium text-[#ff6900]">
+                <span className="text-xs font-medium text-[#C2410C]">
                   Daily Work Session
                 </span>
                 <h3 className="text-xl font-medium text-neutral-900 font-headline mt-0.5">
                   Shift & Schedule
                 </h3>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-orange-50 text-[#C2410C] flex items-center justify-center">
                 <Clock className="h-5 w-5" />
               </div>
             </div>
@@ -474,7 +474,7 @@ export function AttendancePage() {
               </div>
               <div className="text-right">
                 <div className="text-xs text-neutral-400 font-medium">Total Hours</div>
-                <div className="text-sm font-medium text-[#ff6900] mt-0.5">8h Standard</div>
+                <div className="text-sm font-medium text-[#C2410C] mt-0.5">8h Standard</div>
               </div>
             </div>
 
@@ -724,7 +724,7 @@ export function AttendancePage() {
                               setCorrectionForm((prev) => ({ ...prev, work_date: row.work_date }));
                               setShowCorrectionForm(true);
                             }}
-                            className="text-xs font-semibold text-[#ff6900] hover:text-[#ea580c]"
+                            className="text-xs font-semibold text-[#C2410C] hover:text-[#ea580c]"
                           >
                             Correct
                           </button>
@@ -877,7 +877,7 @@ export function AttendancePage() {
                     required
                     value={correctionForm.work_date}
                     onChange={(e) => setCorrectionForm((prev) => ({ ...prev, work_date: e.target.value }))}
-                    className="w-full px-3.5 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:bg-white focus:border-[#ff6900]"
+                    className="w-full px-3.5 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:bg-white focus:border-[#C2410C]"
                   />
                 </div>
 
@@ -888,7 +888,7 @@ export function AttendancePage() {
                   <SelectBox
                     value={correctionForm.request_type}
                     onChange={(e) => setCorrectionForm((prev) => ({ ...prev, request_type: e.target.value }))}
-                    className="w-full px-3.5 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:bg-white focus:border-[#ff6900]"
+                    className="w-full px-3.5 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:bg-white focus:border-[#C2410C]"
                   >
                     <option value="clock_in">Clock In Time</option>
                     <option value="clock_out">Clock Out Time</option>
@@ -905,7 +905,7 @@ export function AttendancePage() {
                     required
                     value={correctionForm.proposed_at}
                     onChange={(e) => setCorrectionForm((prev) => ({ ...prev, proposed_at: e.target.value }))}
-                    className="w-full px-3.5 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:bg-white focus:border-[#ff6900]"
+                    className="w-full px-3.5 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:bg-white focus:border-[#C2410C]"
                   />
                 </div>
 
@@ -916,7 +916,7 @@ export function AttendancePage() {
                   <SelectBox
                     value={correctionForm.proposed_mode}
                     onChange={(e) => setCorrectionForm((prev) => ({ ...prev, proposed_mode: e.target.value }))}
-                    className="w-full px-3.5 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:bg-white focus:border-[#ff6900]"
+                    className="w-full px-3.5 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:bg-white focus:border-[#C2410C]"
                   >
                     <option value="onsite">Onsite</option>
                     <option value="remote">Remote</option>
@@ -934,7 +934,7 @@ export function AttendancePage() {
                     placeholder="Describe why the correction is needed (e.g. system downtime, client meeting)..."
                     value={correctionForm.reason}
                     onChange={(e) => setCorrectionForm((prev) => ({ ...prev, reason: e.target.value }))}
-                    className="w-full px-3.5 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:bg-white focus:border-[#ff6900]"
+                    className="w-full px-3.5 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:bg-white focus:border-[#C2410C]"
                   />
                 </div>
               </form>

@@ -402,7 +402,7 @@ export default function HrAttendancePage() {
           title="Time & Attendance Management"
           description="Monitor real-time clock-in records, shift coverage, worked hours, and review correction requests."
           icon={Clock}
-          iconColor="bg-orange-50 text-[#ff6900]"
+          iconColor="bg-orange-50 text-[#C2410C]"
           actions={
             <button
               type="button"

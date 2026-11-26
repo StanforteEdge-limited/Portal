@@ -302,7 +302,7 @@ export default function LeavePage() {
         {/* Policy Snapshot Card - Clean White Theme */}
         <div className="p-5 rounded-2xl bg-white border border-neutral-100 shadow-2xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-orange-50 text-[#C2410C] flex items-center justify-center shrink-0">
               <Info className="h-5 w-5" />
             </div>
             <div>
@@ -427,7 +427,7 @@ export default function LeavePage() {
                   <div className="flex items-center justify-end pt-1">
                     <Link
                       to={`/requests/${row.requestId}`}
-                      className="min-h-[40px] px-3 inline-flex items-center gap-1 text-xs font-medium text-[#ff6900] hover:text-[#e05d00] transition"
+                      className="min-h-[40px] px-3 inline-flex items-center gap-1 text-xs font-medium text-[#C2410C] hover:text-[#e05d00] transition"
                     >
                       <span>View Request Details</span>
                       <ChevronRight className="h-3.5 w-3.5" />
@@ -467,7 +467,7 @@ export default function LeavePage() {
                       <td className="py-3.5 px-5 font-medium text-neutral-900">
                         <Link
                           to={`/requests/${row.requestId}`}
-                          className="hover:text-[#ff6900] transition flex items-center gap-1.5"
+                          className="hover:text-[#C2410C] transition flex items-center gap-1.5"
                         >
                           <FileText className="h-3.5 w-3.5 text-neutral-400" />
                           <span>{row.id}</span>
@@ -514,7 +514,7 @@ export default function LeavePage() {
                       <td className="py-3.5 px-5 text-right">
                         <Link
                           to={`/requests/${row.requestId}`}
-                          className="inline-flex items-center gap-1 text-xs font-medium text-[#ff6900] hover:text-[#e05d00] transition"
+                          className="inline-flex items-center gap-1 text-xs font-medium text-[#C2410C] hover:text-[#e05d00] transition"
                         >
                           <span>Details</span>
                           <ChevronRight className="h-3 w-3" />

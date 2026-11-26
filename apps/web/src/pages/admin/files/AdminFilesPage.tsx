@@ -191,7 +191,7 @@ export default function AdminFilesPage() {
                   setPage(1);
                 }}
                 placeholder="Search files"
-                className="w-full h-9 pl-9 pr-3 rounded-lg border border-neutral-900/[0.12] bg-white text-sm text-neutral-900 placeholder:text-neutral-400 outline-none transition-[border-color,box-shadow] duration-150 focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
+                className="w-full h-9 pl-9 pr-3 rounded-lg border border-neutral-900/[0.12] bg-white text-sm text-neutral-900 placeholder:text-neutral-400 outline-none transition-[border-color,box-shadow] duration-150 focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/15"
               />
             </div>
 
@@ -201,7 +201,7 @@ export default function AdminFilesPage() {
                 setFileType(e.target.value);
                 setPage(1);
               }}
-              className="h-9 px-3 rounded-lg border border-neutral-900/[0.12] bg-white text-sm text-neutral-700 outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
+              className="h-9 px-3 rounded-lg border border-neutral-900/[0.12] bg-white text-sm text-neutral-700 outline-none focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/15"
             >
               <option value="">All file types</option>
               <option value="images">Images</option>
@@ -247,7 +247,7 @@ export default function AdminFilesPage() {
         {/* Content Area */}
         {loading ? (
           <div className="bg-white border border-neutral-900/[0.08] rounded-2xl p-14 text-center text-neutral-500 shadow-xs">
-            <div className="w-5 h-5 border-2 border-[#ff6900] border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+            <div className="w-5 h-5 border-2 border-[#C2410C] border-t-transparent rounded-full animate-spin mx-auto mb-2" />
             <p className="text-sm">Loading media assets</p>
           </div>
         ) : files.length === 0 ? (

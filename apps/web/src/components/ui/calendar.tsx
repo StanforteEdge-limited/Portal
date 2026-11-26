@@ -126,7 +126,7 @@ export function Calendar({
                 isSelected
                   ? "bg-[#C2410C] text-white shadow-sm "
                   : isCurrentDay
-                  ? "bg-orange-50 text-[#ff6900] font-semibold border border-orange-200/60"
+                  ? "bg-orange-50 text-[#C2410C] font-semibold border border-orange-200/60"
                   : "text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900"
               )}
             >

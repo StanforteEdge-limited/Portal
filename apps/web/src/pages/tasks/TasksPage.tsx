@@ -257,7 +257,7 @@ export default function TasksPage() {
               : "Manage your personal to-dos and assigned deliverables. Update your progress and log daily standups."
           }
           icon={CheckSquare}
-          iconColor="bg-orange-50 text-[#ff6900]"
+          iconColor="bg-orange-50 text-[#C2410C]"
           actions={
             <button
               type="button"
@@ -275,7 +275,7 @@ export default function TasksPage() {
           {/* Total Tasks */}
           <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2 sm:gap-3">
             <div className="flex items-center justify-between gap-1.5">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-orange-50 text-[#C2410C] flex items-center justify-center shrink-0">
                 <CheckSquare className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
               <span className="text-[10px] sm:text-xs font-medium px-1.5 py-0.5 rounded-full bg-neutral-100 text-neutral-600 truncate max-w-[80px] sm:max-w-none">
@@ -353,7 +353,7 @@ export default function TasksPage() {
                     : "text-neutral-600 hover:text-neutral-900"
                 }`}
               >
-                <LayoutGrid className={`h-4 w-4 ${viewMode === "kanban" ? "text-[#ff6900]" : "text-neutral-400"}`} />
+                <LayoutGrid className={`h-4 w-4 ${viewMode === "kanban" ? "text-[#C2410C]" : "text-neutral-400"}`} />
                 <span>Kanban<span className="hidden sm:inline"> Board</span></span>
               </button>
 
@@ -366,7 +366,7 @@ export default function TasksPage() {
                     : "text-neutral-600 hover:text-neutral-900"
                 }`}
               >
-                <TableIcon className={`h-4 w-4 ${viewMode === "table" ? "text-[#ff6900]" : "text-neutral-400"}`} />
+                <TableIcon className={`h-4 w-4 ${viewMode === "table" ? "text-[#C2410C]" : "text-neutral-400"}`} />
                 <span>Table<span className="hidden sm:inline"> View</span></span>
               </button>
 
@@ -380,7 +380,7 @@ export default function TasksPage() {
                       : "text-neutral-600 hover:text-neutral-900"
                   }`}
                 >
-                  <Clock className={`h-4 w-4 ${viewMode === "log" ? "text-[#ff6900]" : "text-neutral-400"}`} />
+                  <Clock className={`h-4 w-4 ${viewMode === "log" ? "text-[#C2410C]" : "text-neutral-400"}`} />
                   <span>Daily Log<span className="hidden sm:inline"> &amp; Standup</span></span>
                 </button>
               )}
@@ -431,7 +431,7 @@ export default function TasksPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder={isAdminView ? "Search staff tasks..." : "Search my tasks or tags..."}
-                  className="w-full pl-9 pr-3 py-1.5 text-xs bg-neutral-50 border border-neutral-200 rounded-xl text-neutral-800 placeholder-neutral-400 focus:outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+                  className="w-full pl-9 pr-3 py-1.5 text-xs bg-neutral-50 border border-neutral-200 rounded-xl text-neutral-800 placeholder-neutral-400 focus:outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C]"
                 />
               </div>
 

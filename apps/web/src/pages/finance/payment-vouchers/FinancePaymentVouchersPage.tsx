@@ -179,7 +179,7 @@ export default function FinancePaymentVouchersPage() {
                 Finance & Treasury
               </Link>
               <span>/</span>
-              <span className="text-[#ff6900] font-medium">Payment Vouchers</span>
+              <span className="text-[#C2410C] font-medium">Payment Vouchers</span>
             </div>
             <h1 className="text-2xl font-semibold text-neutral-900 tracking-tight font-headline">
               Payment Vouchers
@@ -197,7 +197,7 @@ export default function FinancePaymentVouchersPage() {
               className="px-3.5 py-2 text-xs font-medium text-neutral-700 bg-white border border-neutral-200 rounded-xl hover:bg-neutral-50 shadow-sm transition flex items-center gap-2 disabled:opacity-50"
               title="Refresh register"
             >
-              <RotateCcw className={`h-3.5 w-3.5 ${loading ? "animate-spin text-[#ff6900]" : ""}`} />
+              <RotateCcw className={`h-3.5 w-3.5 ${loading ? "animate-spin text-[#C2410C]" : ""}`} />
               <span className="hidden sm:inline">Refresh</span>
             </button>
 
@@ -319,7 +319,7 @@ export default function FinancePaymentVouchersPage() {
                 placeholder="Search voucher # (e.g. PV-2026-001)..."
                 value={filters.voucher_number}
                 onChange={(e) => updateFilter("voucher_number", e.target.value)}
-                className="w-full pl-9 pr-4 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:bg-white focus:border-[#ff6900] transition"
+                className="w-full pl-9 pr-4 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:bg-white focus:border-[#C2410C] transition"
               />
             </div>
 
@@ -328,7 +328,7 @@ export default function FinancePaymentVouchersPage() {
               <SelectBox
                 value={filters.method}
                 onChange={(e) => updateFilter("method", e.target.value)}
-                className="w-full px-3.5 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:bg-white focus:border-[#ff6900] transition"
+                className="w-full px-3.5 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:bg-white focus:border-[#C2410C] transition"
               >
                 <option value="">All Payment Methods</option>
                 <option value="bank_transfer">Bank Transfer</option>
@@ -343,7 +343,7 @@ export default function FinancePaymentVouchersPage() {
                 
                 value={filters.from}
                 onChange={(e) => updateFilter("from", e.target.value)}
-                className="w-full px-3 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:bg-white focus:border-[#ff6900] transition text-neutral-600"
+                className="w-full px-3 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:bg-white focus:border-[#C2410C] transition text-neutral-600"
                 placeholder="From date"
                 title="Disbursed from"
               />
@@ -355,7 +355,7 @@ export default function FinancePaymentVouchersPage() {
                 
                 value={filters.to}
                 onChange={(e) => updateFilter("to", e.target.value)}
-                className="w-full px-3 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:bg-white focus:border-[#ff6900] transition text-neutral-600"
+                className="w-full px-3 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:bg-white focus:border-[#C2410C] transition text-neutral-600"
                 placeholder="To date"
                 title="Disbursed to"
               />
@@ -382,7 +382,7 @@ export default function FinancePaymentVouchersPage() {
         <div className="bg-white rounded-2xl border border-neutral-200/80 shadow-sm overflow-hidden">
           {loading ? (
             <div className="p-16 text-center space-y-3">
-              <div className="w-8 h-8 border-3 border-[#ff6900] border-t-transparent rounded-full animate-spin mx-auto" />
+              <div className="w-8 h-8 border-3 border-[#C2410C] border-t-transparent rounded-full animate-spin mx-auto" />
               <p className="text-xs font-semibold text-neutral-500">
                 Loading payment vouchers from treasury...
               </p>
@@ -450,11 +450,11 @@ export default function FinancePaymentVouchersPage() {
                       {/* Column 1: Voucher & Source */}
                       <td className="py-4 px-4 pl-6">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl bg-orange-50 text-[#ff6900] font-medium flex items-center justify-center shrink-0 border border-orange-100 shadow-sm">
+                          <div className="w-9 h-9 rounded-xl bg-orange-50 text-[#C2410C] font-medium flex items-center justify-center shrink-0 border border-orange-100 shadow-sm">
                             <Receipt className="h-4 w-4" />
                           </div>
                           <div>
-                            <span className="font-medium text-neutral-900 group-hover:text-[#ff6900] transition block font-headline">
+                            <span className="font-medium text-neutral-900 group-hover:text-[#C2410C] transition block font-headline">
                               {row.voucher_number}
                             </span>
                             <div className="flex items-center gap-1.5 mt-0.5 text-xs text-neutral-500">
@@ -478,7 +478,7 @@ export default function FinancePaymentVouchersPage() {
                       <td className="py-4 px-4" onClick={(e) => e.stopPropagation()}>
                         <Link
                           to={`/finance/requests/${row.request_id}`}
-                          className="font-medium text-neutral-900 hover:text-[#ff6900] hover:underline transition font-headline block"
+                          className="font-medium text-neutral-900 hover:text-[#C2410C] hover:underline transition font-headline block"
                         >
                           {row.request_number}
                         </Link>
@@ -535,7 +535,7 @@ export default function FinancePaymentVouchersPage() {
 
                           <Link
                             to={`/finance/requests/${row.request_id}`}
-                            className="p-1.5 text-neutral-400 hover:text-[#ff6900] transition"
+                            className="p-1.5 text-neutral-400 hover:text-[#C2410C] transition"
                             title="Open Request"
                           >
                             <ExternalLink className="h-3.5 w-3.5" />
@@ -569,7 +569,7 @@ export default function FinancePaymentVouchersPage() {
                       setPerPage(Number(e.target.value));
                       setPage(1);
                     }}
-                    className="px-2 py-1 bg-white border border-neutral-200 rounded-lg text-xs outline-none focus:border-[#ff6900]"
+                    className="px-2 py-1 bg-white border border-neutral-200 rounded-lg text-xs outline-none focus:border-[#C2410C]"
                   >
                     <option value={10}>10</option>
                     <option value={20}>20</option>

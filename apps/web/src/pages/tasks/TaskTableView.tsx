@@ -29,7 +29,7 @@ const STATUS_SELECT_STYLES: Record<TaskStatus, { bg: string; label: string }> = 
 const PRIORITY_BADGES: Record<TaskPriority, { text: string; bg: string }> = {
   low: { text: "Low", bg: "bg-neutral-100 text-neutral-600 border-neutral-200" },
   medium: { text: "Medium", bg: "bg-neutral-100 text-neutral-700 border-neutral-200" },
-  high: { text: "High", bg: "bg-orange-50 text-[#ff6900] border-orange-200 font-medium" },
+  high: { text: "High", bg: "bg-orange-50 text-[#C2410C] border-orange-200 font-medium" },
   critical: { text: "Critical", bg: "bg-rose-50 text-rose-700 border-rose-200 font-semibold" },
 };
 
@@ -201,7 +201,7 @@ export function TaskTableView({
                 >
                   {/* Task Deliverable */}
                   <td className="py-3.5 px-4 min-w-[260px] max-w-[340px]">
-                    <div className="font-medium text-neutral-900 group-hover:text-[#ff6900] transition-colors leading-snug">
+                    <div className="font-medium text-neutral-900 group-hover:text-[#C2410C] transition-colors leading-snug">
                       {task.title}
                     </div>
                     {task.project_name && (

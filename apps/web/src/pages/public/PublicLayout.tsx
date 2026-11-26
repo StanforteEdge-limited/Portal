@@ -196,7 +196,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
               onClick={closeAll}
               className={`px-3 py-2 rounded-xl transition-colors ${
                 activePath === "/pricing"
-                  ? "text-[#ff6900] font-semibold bg-orange-50/60"
+                  ? "text-[#C2410C] font-semibold bg-orange-50/60"
                   : "hover:text-neutral-900 hover:bg-neutral-50"
               }`}
             >
@@ -260,7 +260,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                     <Link
                       to="/features"
                       onClick={closeAll}
-                      className="text-xs font-semibold text-[#ff6900] hover:underline flex items-center gap-1"
+                      className="text-xs font-semibold text-[#C2410C] hover:underline flex items-center gap-1"
                     >
                       View all capabilities <ChevronRight className="h-3.5 w-3.5" />
                     </Link>
@@ -277,7 +277,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                         <Users className="h-5 w-5" />
                       </div>
                       <div className="space-y-0.5">
-                        <div className="text-sm font-medium text-neutral-900 group-hover:text-[#ff6900] transition-colors flex items-center gap-1.5">
+                        <div className="text-sm font-medium text-neutral-900 group-hover:text-[#C2410C] transition-colors flex items-center gap-1.5">
                           HR & Workforce Directory
                         </div>
                         <p className="text-xs text-neutral-500 line-clamp-2">
@@ -296,7 +296,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                         <Clock className="h-5 w-5" />
                       </div>
                       <div className="space-y-0.5">
-                        <div className="text-sm font-medium text-neutral-900 group-hover:text-[#ff6900] transition-colors flex items-center gap-1.5">
+                        <div className="text-sm font-medium text-neutral-900 group-hover:text-[#C2410C] transition-colors flex items-center gap-1.5">
                           Time, Shifts & Attendance
                         </div>
                         <p className="text-xs text-neutral-500 line-clamp-2">
@@ -311,11 +311,11 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                       onClick={closeAll}
                       className="p-3.5 rounded-2xl border border-transparent hover:border-neutral-200 hover:bg-neutral-50/80 transition-colors flex items-start gap-3.5 group"
                     >
-                      <div className="w-10 h-10 rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0 transition-transform">
+                      <div className="w-10 h-10 rounded-xl bg-orange-50 text-[#C2410C] flex items-center justify-center shrink-0 transition-transform">
                         <CreditCard className="h-5 w-5" />
                       </div>
                       <div className="space-y-0.5">
-                        <div className="text-sm font-medium text-neutral-900 group-hover:text-[#ff6900] transition-colors flex items-center gap-1.5">
+                        <div className="text-sm font-medium text-neutral-900 group-hover:text-[#C2410C] transition-colors flex items-center gap-1.5">
                           Automated Payroll & Tax
                         </div>
                         <p className="text-xs text-neutral-500 line-clamp-2">
@@ -334,7 +334,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                         <FileCheck className="h-5 w-5" />
                       </div>
                       <div className="space-y-0.5">
-                        <div className="text-sm font-medium text-neutral-900 group-hover:text-[#ff6900] transition-colors flex items-center gap-1.5">
+                        <div className="text-sm font-medium text-neutral-900 group-hover:text-[#C2410C] transition-colors flex items-center gap-1.5">
                           Multi-Tier Approval Matrix
                         </div>
                         <p className="text-xs text-neutral-500 line-clamp-2">
@@ -353,7 +353,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                         <Smartphone className="h-5 w-5" />
                       </div>
                       <div className="space-y-0.5">
-                        <div className="text-sm font-medium text-neutral-900 group-hover:text-[#ff6900] transition-colors flex items-center gap-1.5">
+                        <div className="text-sm font-medium text-neutral-900 group-hover:text-[#C2410C] transition-colors flex items-center gap-1.5">
                           Employee Self-Service Portal
                         </div>
                         <p className="text-xs text-neutral-500 line-clamp-2">
@@ -372,7 +372,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                         <FolderOpen className="h-5 w-5" />
                       </div>
                       <div className="space-y-0.5">
-                        <div className="text-sm font-medium text-neutral-900 group-hover:text-[#ff6900] transition-colors flex items-center gap-1.5">
+                        <div className="text-sm font-medium text-neutral-900 group-hover:text-[#C2410C] transition-colors flex items-center gap-1.5">
                           Knowledge & Document Hub
                         </div>
                         <p className="text-xs text-neutral-500 line-clamp-2">
@@ -386,7 +386,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                 {/* Right Promo / Demo Card (4 cols) */}
                 <div className="col-span-4 pl-6 border-l border-neutral-100 flex flex-col justify-between">
                   <div className="p-6 rounded-2xl bg-gradient-to-br from-orange-50/80 via-amber-50/40 to-neutral-50 border border-orange-200/60 space-y-4">
-                    <div className="text-xs font-medium text-[#ff6900]">
+                    <div className="text-xs font-medium text-[#C2410C]">
                       Interactive Demo
                     </div>
                     <div className="space-y-1">
@@ -408,7 +408,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
 
                   <div className="pt-4 flex items-center justify-between text-xs text-neutral-500">
                     <span>15-day free organizational trial</span>
-                    <Link to="/register" onClick={closeAll} className="font-medium text-[#ff6900] hover:underline flex items-center gap-1">
+                    <Link to="/register" onClick={closeAll} className="font-medium text-[#C2410C] hover:underline flex items-center gap-1">
                       <span>Create Workspace</span>
                       <ArrowRight className="h-3.5 w-3.5" />
                     </Link>
@@ -438,7 +438,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                       onClick={closeAll}
                       className="p-3 rounded-2xl hover:bg-neutral-50 border border-transparent hover:border-neutral-200 transition-colors block group"
                     >
-                      <div className="text-xs font-medium text-neutral-900 group-hover:text-[#ff6900] transition-colors flex items-center justify-between">
+                      <div className="text-xs font-medium text-neutral-900 group-hover:text-[#C2410C] transition-colors flex items-center justify-between">
                         <span>Startups & Emerging Teams</span>
                         <span className="text-xs text-neutral-400 font-medium">1 - 25 Staff</span>
                       </div>
@@ -452,7 +452,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                       onClick={closeAll}
                       className="p-3 rounded-2xl hover:bg-neutral-50 border border-transparent hover:border-neutral-200 transition-colors block group"
                     >
-                      <div className="text-xs font-medium text-neutral-900 group-hover:text-[#ff6900] transition-colors flex items-center justify-between">
+                      <div className="text-xs font-medium text-neutral-900 group-hover:text-[#C2410C] transition-colors flex items-center justify-between">
                         <span>Growing Mid-Market</span>
                         <span className="text-xs text-neutral-400 font-medium">25 - 250 Staff</span>
                       </div>
@@ -466,7 +466,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                       onClick={closeAll}
                       className="p-3 rounded-2xl hover:bg-neutral-50 border border-transparent hover:border-neutral-200 transition-colors block group"
                     >
-                      <div className="text-xs font-medium text-neutral-900 group-hover:text-[#ff6900] transition-colors flex items-center justify-between">
+                      <div className="text-xs font-medium text-neutral-900 group-hover:text-[#C2410C] transition-colors flex items-center justify-between">
                         <span>Large Corporate Enterprises</span>
                         <span className="text-xs text-neutral-400 font-medium">250+ Staff</span>
                       </div>
@@ -488,7 +488,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                       onClick={closeAll}
                       className="p-3 rounded-2xl hover:bg-neutral-50 border border-transparent hover:border-neutral-200 transition-colors block group"
                     >
-                      <div className="text-xs font-medium text-neutral-900 group-hover:text-[#ff6900] transition-colors">
+                      <div className="text-xs font-medium text-neutral-900 group-hover:text-[#C2410C] transition-colors">
                         For HR & People Operations
                       </div>
                       <p className="text-xs text-neutral-500 mt-1">
@@ -501,7 +501,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                       onClick={closeAll}
                       className="p-3 rounded-2xl hover:bg-neutral-50 border border-transparent hover:border-neutral-200 transition-colors block group"
                     >
-                      <div className="text-xs font-medium text-neutral-900 group-hover:text-[#ff6900] transition-colors">
+                      <div className="text-xs font-medium text-neutral-900 group-hover:text-[#C2410C] transition-colors">
                         For Finance & Accounts
                       </div>
                       <p className="text-xs text-neutral-500 mt-1">
@@ -514,7 +514,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                       onClick={closeAll}
                       className="p-3 rounded-2xl hover:bg-neutral-50 border border-transparent hover:border-neutral-200 transition-colors block group"
                     >
-                      <div className="text-xs font-medium text-neutral-900 group-hover:text-[#ff6900] transition-colors">
+                      <div className="text-xs font-medium text-neutral-900 group-hover:text-[#C2410C] transition-colors">
                         For Department Heads & Executives
                       </div>
                       <p className="text-xs text-neutral-500 mt-1">
@@ -550,7 +550,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
 
                   <div className="pt-4 flex items-center justify-between text-xs text-neutral-500">
                     <span>99.9% Platform Availability</span>
-                    <Link to="/features" onClick={closeAll} className="font-medium text-[#ff6900] hover:underline flex items-center gap-1">
+                    <Link to="/features" onClick={closeAll} className="font-medium text-[#C2410C] hover:underline flex items-center gap-1">
                       <span>Explore Full Stack</span>
                       <ArrowRight className="h-3.5 w-3.5" />
                     </Link>
@@ -586,7 +586,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                         <Shield className="h-5 w-5" />
                       </div>
                       <div className="space-y-0.5">
-                        <div className="text-sm font-medium text-neutral-900 group-hover:text-[#ff6900] transition-colors">
+                        <div className="text-sm font-medium text-neutral-900 group-hover:text-[#C2410C] transition-colors">
                           Security & Compliance Guide
                         </div>
                         <p className="text-xs text-neutral-500 line-clamp-2">
@@ -601,11 +601,11 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                       onClick={closeAll}
                       className="p-3.5 rounded-2xl border border-transparent hover:border-neutral-200 hover:bg-neutral-50 transition-colors flex items-start gap-3.5 group"
                     >
-                      <div className="w-10 h-10 rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0 transition-transform">
+                      <div className="w-10 h-10 rounded-xl bg-orange-50 text-[#C2410C] flex items-center justify-center shrink-0 transition-transform">
                         <CreditCard className="h-5 w-5" />
                       </div>
                       <div className="space-y-0.5">
-                        <div className="text-sm font-medium text-neutral-900 group-hover:text-[#ff6900] transition-colors">
+                        <div className="text-sm font-medium text-neutral-900 group-hover:text-[#C2410C] transition-colors">
                           Headcount Pricing & Tiers
                         </div>
                         <p className="text-xs text-neutral-500 line-clamp-2">
@@ -624,7 +624,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                         <FileText className="h-5 w-5" />
                       </div>
                       <div className="space-y-0.5">
-                        <div className="text-sm font-medium text-neutral-900 group-hover:text-[#ff6900] transition-colors">
+                        <div className="text-sm font-medium text-neutral-900 group-hover:text-[#C2410C] transition-colors">
                           Organizational Documents & Policies
                         </div>
                         <p className="text-xs text-neutral-500 line-clamp-2">
@@ -643,7 +643,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                         <HelpCircle className="h-5 w-5" />
                       </div>
                       <div className="space-y-0.5">
-                        <div className="text-sm font-medium text-neutral-900 group-hover:text-[#ff6900] transition-colors">
+                        <div className="text-sm font-medium text-neutral-900 group-hover:text-[#C2410C] transition-colors">
                           Help Center & Support Desk
                         </div>
                         <p className="text-xs text-neutral-500 line-clamp-2">
@@ -669,7 +669,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                     <Link
                       to="/register"
                       onClick={closeAll}
-                      className="inline-flex items-center gap-1.5 text-xs font-medium text-[#ff6900] hover:underline pt-1"
+                      className="inline-flex items-center gap-1.5 text-xs font-medium text-[#C2410C] hover:underline pt-1"
                     >
                       Start Free Trial <ArrowRight className="h-3.5 w-3.5" />
                     </Link>
@@ -710,7 +710,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                   <Link
                     to="/features#workforce"
                     onClick={closeAll}
-                    className="flex items-center gap-2.5 py-1 text-neutral-700 hover:text-[#ff6900]"
+                    className="flex items-center gap-2.5 py-1 text-neutral-700 hover:text-[#C2410C]"
                   >
                     <Users className="h-4 w-4 text-neutral-700" />
                     <span>HR & Workforce Directory</span>
@@ -718,7 +718,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                   <Link
                     to="/features#attendance"
                     onClick={closeAll}
-                    className="flex items-center gap-2.5 py-1 text-neutral-700 hover:text-[#ff6900]"
+                    className="flex items-center gap-2.5 py-1 text-neutral-700 hover:text-[#C2410C]"
                   >
                     <Clock className="h-4 w-4 text-amber-600" />
                     <span>Time & Attendance Tracking</span>
@@ -726,15 +726,15 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                   <Link
                     to="/features#payroll"
                     onClick={closeAll}
-                    className="flex items-center gap-2.5 py-1 text-neutral-700 hover:text-[#ff6900]"
+                    className="flex items-center gap-2.5 py-1 text-neutral-700 hover:text-[#C2410C]"
                   >
-                    <CreditCard className="h-4 w-4 text-[#ff6900]" />
+                    <CreditCard className="h-4 w-4 text-[#C2410C]" />
                     <span>Automated Payroll & Tax</span>
                   </Link>
                   <Link
                     to="/features#approvals"
                     onClick={closeAll}
-                    className="flex items-center gap-2.5 py-1 text-neutral-700 hover:text-[#ff6900]"
+                    className="flex items-center gap-2.5 py-1 text-neutral-700 hover:text-[#C2410C]"
                   >
                     <FileCheck className="h-4 w-4 text-neutral-700" />
                     <span>Multi-Tier Approvals</span>
@@ -742,7 +742,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                   <Link
                     to="/features#selfservice"
                     onClick={closeAll}
-                    className="flex items-center gap-2.5 py-1 text-neutral-700 hover:text-[#ff6900]"
+                    className="flex items-center gap-2.5 py-1 text-neutral-700 hover:text-[#C2410C]"
                   >
                     <Smartphone className="h-4 w-4 text-emerald-600" />
                     <span>Staff Self-Service & Tasks</span>
@@ -750,7 +750,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                   <Link
                     to="/help#documents"
                     onClick={closeAll}
-                    className="flex items-center gap-2.5 py-1 text-neutral-700 hover:text-[#ff6900]"
+                    className="flex items-center gap-2.5 py-1 text-neutral-700 hover:text-[#C2410C]"
                   >
                     <FolderOpen className="h-4 w-4 text-neutral-700" />
                     <span>Knowledge & Document Hub</span>
@@ -780,7 +780,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                   <Link
                     to="/pricing"
                     onClick={closeAll}
-                    className="flex items-center gap-2.5 py-1 text-neutral-700 hover:text-[#ff6900]"
+                    className="flex items-center gap-2.5 py-1 text-neutral-700 hover:text-[#C2410C]"
                   >
                     <Building className="h-4 w-4 text-neutral-600" />
                     <span>Startups & Growing Teams (1-25)</span>
@@ -788,7 +788,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                   <Link
                     to="/pricing"
                     onClick={closeAll}
-                    className="flex items-center gap-2.5 py-1 text-neutral-700 hover:text-[#ff6900]"
+                    className="flex items-center gap-2.5 py-1 text-neutral-700 hover:text-[#C2410C]"
                   >
                     <Layers className="h-4 w-4 text-neutral-600" />
                     <span>Mid-Market Organizations (25-250)</span>
@@ -796,7 +796,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                   <Link
                     to="/pricing"
                     onClick={closeAll}
-                    className="flex items-center gap-2.5 py-1 text-neutral-700 hover:text-[#ff6900]"
+                    className="flex items-center gap-2.5 py-1 text-neutral-700 hover:text-[#C2410C]"
                   >
                     <Briefcase className="h-4 w-4 text-neutral-600" />
                     <span>Large Corporate Enterprises (250+)</span>
@@ -804,7 +804,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                   <Link
                     to="/security"
                     onClick={closeAll}
-                    className="flex items-center gap-2.5 py-1 text-neutral-700 hover:text-[#ff6900]"
+                    className="flex items-center gap-2.5 py-1 text-neutral-700 hover:text-[#C2410C]"
                   >
                     <ShieldCheck className="h-4 w-4 text-emerald-600" />
                     <span>Security & Compliance</span>
@@ -834,7 +834,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                   <Link
                     to="/security"
                     onClick={closeAll}
-                    className="flex items-center gap-2.5 py-1 text-neutral-700 hover:text-[#ff6900]"
+                    className="flex items-center gap-2.5 py-1 text-neutral-700 hover:text-[#C2410C]"
                   >
                     <Shield className="h-4 w-4 text-emerald-600" />
                     <span>Security Architecture</span>
@@ -842,7 +842,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                   <Link
                     to="/pricing"
                     onClick={closeAll}
-                    className="flex items-center gap-2.5 py-1 text-neutral-700 hover:text-[#ff6900]"
+                    className="flex items-center gap-2.5 py-1 text-neutral-700 hover:text-[#C2410C]"
                   >
                     <BadgePercent className="h-4 w-4 text-orange-600" />
                     <span>Plans & Pricing</span>
@@ -850,7 +850,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                   <Link
                     to="/help#documents"
                     onClick={closeAll}
-                    className="flex items-center gap-2.5 py-1 text-neutral-700 hover:text-[#ff6900]"
+                    className="flex items-center gap-2.5 py-1 text-neutral-700 hover:text-[#C2410C]"
                   >
                     <FileText className="h-4 w-4 text-neutral-700" />
                     <span>Company Policies & Documents</span>
@@ -858,7 +858,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
                   <Link
                     to="/help"
                     onClick={closeAll}
-                    className="flex items-center gap-2.5 py-1 text-neutral-700 hover:text-[#ff6900]"
+                    className="flex items-center gap-2.5 py-1 text-neutral-700 hover:text-[#C2410C]"
                   >
                     <HelpCircle className="h-4 w-4 text-neutral-700" />
                     <span>Help Center & FAQs</span>
@@ -871,7 +871,7 @@ export function PublicLayout({ children, activePath }: PublicLayoutProps) {
             <Link
               to="/pricing"
               onClick={closeAll}
-              className="block py-2 text-sm font-medium text-neutral-900 hover:text-[#ff6900]"
+              className="block py-2 text-sm font-medium text-neutral-900 hover:text-[#C2410C]"
             >
               Pricing
             </Link>

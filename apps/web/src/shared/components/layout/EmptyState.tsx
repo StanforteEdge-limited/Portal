@@ -16,7 +16,7 @@ export function EmptyState({
 }: EmptyStateProps) {
   return (
     <div className="shell-panel flex flex-col items-center justify-center gap-3 px-6 py-10 text-center">
-      <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-orange-200/60 bg-orange-50 text-[#ff6900]">
+      <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-orange-200/60 bg-orange-50 text-[#C2410C]">
         {icon ?? <Inbox className="h-5 w-5" strokeWidth={1.75} />}
       </div>
       <div className="max-w-md">

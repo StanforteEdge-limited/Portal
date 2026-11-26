@@ -206,7 +206,7 @@ export function RequestsListPage() {
                 onClick={() => refetchRequests()}
                 className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-xs font-semibold shadow-xs transition"
               >
-                <RefreshCw className={`h-3.5 w-3.5 ${loadingRequests ? "animate-spin text-[#ff6900]" : ""}`} />
+                <RefreshCw className={`h-3.5 w-3.5 ${loadingRequests ? "animate-spin text-[#C2410C]" : ""}`} />
                 <span>Refresh</span>
               </button>
               <Link
@@ -306,7 +306,7 @@ export function RequestsListPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search request ID, reason, team..."
-              className="w-full pl-9 pr-4 py-2 rounded-xl bg-white border border-neutral-200 text-xs font-semibold text-neutral-800 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900] shadow-2xs"
+              className="w-full pl-9 pr-4 py-2 rounded-xl bg-white border border-neutral-200 text-xs font-semibold text-neutral-800 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#C2410C]/20 focus:border-[#C2410C] shadow-2xs"
             />
           </div>
         </div>
@@ -361,7 +361,7 @@ export function RequestsListPage() {
                       <td className="py-3.5 px-5 font-medium text-neutral-900">
                         <Link
                           to={`/requests/${row.requestId}`}
-                          className="hover:text-[#ff6900] transition flex items-center gap-1.5"
+                          className="hover:text-[#C2410C] transition flex items-center gap-1.5"
                         >
                           <FileText className="h-3.5 w-3.5 text-neutral-400" />
                           <span>{row.id}</span>
@@ -417,7 +417,7 @@ export function RequestsListPage() {
                       <td className="py-3.5 px-5 text-right">
                         <Link
                           to={`/requests/${row.requestId}`}
-                          className="inline-flex items-center gap-1 text-xs font-medium text-[#ff6900] hover:text-[#e05d00] transition"
+                          className="inline-flex items-center gap-1 text-xs font-medium text-[#C2410C] hover:text-[#e05d00] transition"
                         >
                           <span>Details</span>
                           <ArrowRight className="h-3 w-3" />

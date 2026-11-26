@@ -161,7 +161,7 @@ export default function RequestTypeSlideOver({
           {/* Basic Info */}
           <div className="space-y-4">
             <div className="flex items-center gap-2 pb-2 border-b border-neutral-100 text-xs font-medium text-neutral-900">
-              <FileText className="h-4 w-4 text-[#ff6900]" />
+              <FileText className="h-4 w-4 text-[#C2410C]" />
               Basic Identification
             </div>
 
@@ -176,7 +176,7 @@ export default function RequestTypeSlideOver({
                   onChange={(e) => handleNameChange(e.target.value)}
                   placeholder="e.g., Equipment Requisition"
                   required
-                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#C2410C]/20 focus:border-[#C2410C]"
                 />
               </div>
 
@@ -190,7 +190,7 @@ export default function RequestTypeSlideOver({
                   onChange={(e) => setSlug(e.target.value)}
                   placeholder="e.g., equipment_requisition"
                   disabled={!!requestType}
-                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-mono text-neutral-800 placeholder-neutral-400 disabled:bg-neutral-50 disabled:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-mono text-neutral-800 placeholder-neutral-400 disabled:bg-neutral-50 disabled:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-[#C2410C]/20 focus:border-[#C2410C]"
                 />
               </div>
             </div>
@@ -204,7 +204,7 @@ export default function RequestTypeSlideOver({
                   value={categoryId}
                   onChange={(e) => setCategoryId(e.target.value)}
                   required
-                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#C2410C]/20 focus:border-[#C2410C]"
                 >
                   <option value="">Select category...</option>
                   {categories.map((c) => (
@@ -227,7 +227,7 @@ export default function RequestTypeSlideOver({
                 <SelectBox
                   value={workflowType}
                   onChange={(e) => setWorkflowType(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#C2410C]/20 focus:border-[#C2410C]"
                 >
                   <option value="">Auto-detect from schema</option>
                   <option value="payment">Payment & Cash Advance</option>
@@ -248,7 +248,7 @@ export default function RequestTypeSlideOver({
                   value={handlerRoleLabel}
                   onChange={(e) => setHandlerRoleLabel(e.target.value)}
                   placeholder="e.g., Senior Accountant, HR Business Partner"
-                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#C2410C]/20 focus:border-[#C2410C]"
                 />
               </div>
 
@@ -258,7 +258,7 @@ export default function RequestTypeSlideOver({
                     type="checkbox"
                     checked={isActive}
                     onChange={(e) => setIsActive(e.target.checked)}
-                    className="w-4 h-4 rounded text-[#ff6900] border-neutral-300 focus:ring-[#ff6900]"
+                    className="w-4 h-4 rounded text-[#C2410C] border-neutral-300 focus:ring-[#C2410C]"
                   />
                   <span className="text-xs font-medium text-neutral-700">
                     Active & Available in Requisitions Menu
@@ -289,7 +289,7 @@ export default function RequestTypeSlideOver({
                               setTaxonomyKeys(taxonomyKeys.filter((k) => k !== t.key));
                             }
                           }}
-                          className="w-3.5 h-3.5 rounded text-[#ff6900] border-neutral-300 focus:ring-[#ff6900]"
+                          className="w-3.5 h-3.5 rounded text-[#C2410C] border-neutral-300 focus:ring-[#C2410C]"
                         />
                         <span>{t.name}</span>
                       </label>
@@ -318,7 +318,7 @@ export default function RequestTypeSlideOver({
                               setVisibleToRoles(visibleToRoles.filter((s) => s !== r.slug));
                             }
                           }}
-                          className="w-3.5 h-3.5 rounded text-[#ff6900] border-neutral-300 focus:ring-[#ff6900]"
+                          className="w-3.5 h-3.5 rounded text-[#C2410C] border-neutral-300 focus:ring-[#C2410C]"
                         />
                         <span>{r.name}</span>
                       </label>

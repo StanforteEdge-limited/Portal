@@ -68,7 +68,7 @@ export default function ProjectsPage() {
           title="Project Workspaces"
           description="Discover active projects, track governance status, and collaborate with initiative teams."
           icon={FolderKanban}
-          iconColor="bg-orange-50 text-[#ff6900]"
+          iconColor="bg-orange-50 text-[#C2410C]"
           actions={
             isAdmin ? (
               <div className="flex items-center gap-2">
@@ -76,7 +76,7 @@ export default function ProjectsPage() {
                   to="/admin/projects"
                   className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-neutral-200/80 bg-white hover:bg-neutral-50 text-neutral-700 text-xs font-medium transition shadow-xs"
                 >
-                  <Layers className="h-4 w-4 text-[#ff6900]" />
+                  <Layers className="h-4 w-4 text-[#C2410C]" />
                   <span>Admin Management</span>
                 </Link>
               </div>
@@ -89,7 +89,7 @@ export default function ProjectsPage() {
           {/* Card 1: Active Projects */}
           <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2 sm:gap-3">
             <div className="flex items-center justify-between gap-1.5">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-orange-50 text-[#C2410C] flex items-center justify-center shrink-0">
                 <FolderKanban className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
               <div className="text-[10px] sm:text-xs font-medium text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
@@ -149,7 +149,7 @@ export default function ProjectsPage() {
               placeholder="Search projects or code..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-xs bg-neutral-50 rounded-xl border border-neutral-200 text-neutral-800 placeholder-neutral-400 focus:outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+              className="w-full pl-9 pr-3 py-1.5 text-xs bg-neutral-50 rounded-xl border border-neutral-200 text-neutral-800 placeholder-neutral-400 focus:outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C]"
             />
           </div>
 
@@ -222,11 +222,11 @@ export default function ProjectsPage() {
                       >
                         <td className="py-3.5 px-5">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-orange-50 text-[#ff6900] flex items-center justify-center font-medium text-xs shrink-0 group-hover:bg-[#C2410C] group-hover:text-white transition-colors">
+                            <div className="w-8 h-8 rounded-lg bg-orange-50 text-[#C2410C] flex items-center justify-center font-medium text-xs shrink-0 group-hover:bg-[#C2410C] group-hover:text-white transition-colors">
                               <FolderKanban className="h-4 w-4" />
                             </div>
                             <div className="min-w-0">
-                              <p className="font-medium text-neutral-900 group-hover:text-[#ff6900] transition-colors truncate">
+                              <p className="font-medium text-neutral-900 group-hover:text-[#C2410C] transition-colors truncate">
                                 {project.name}
                               </p>
                               {project.description && (
@@ -270,7 +270,7 @@ export default function ProjectsPage() {
                           <Link
                             to={`/projects/${project.id}`}
                             onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-neutral-700 hover:text-white hover:bg-[#C2410C] border border-neutral-200 hover:border-[#ff6900] transition shadow-sm"
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-neutral-700 hover:text-white hover:bg-[#C2410C] border border-neutral-200 hover:border-[#C2410C] transition shadow-sm"
                           >
                             <span>Open</span>
                             <ArrowRight className="h-3 w-3" />

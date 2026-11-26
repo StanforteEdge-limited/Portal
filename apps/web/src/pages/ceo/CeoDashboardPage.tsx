@@ -140,7 +140,7 @@ export default function CeoDashboardPage() {
   if (loading && !data) {
     return (
       <div className="min-h-screen bg-[#fafafa] flex items-center justify-center">
-        <div className="w-8 h-8 rounded-full border-2 border-[#ff6900] border-t-transparent animate-spin" />
+        <div className="w-8 h-8 rounded-full border-2 border-[#C2410C] border-t-transparent animate-spin" />
       </div>
     );
   }
@@ -168,7 +168,7 @@ export default function CeoDashboardPage() {
       <aside className="w-full lg:w-64 bg-[#141415] text-[#ededed] border-b lg:border-b-0 lg:border-r border-white/[0.08] flex flex-col shrink-0">
         <div className="p-5 border-b border-white/[0.08] flex items-center justify-between">
           <StanforteLogo variant="dark" className="h-7" />
-          <span className="px-2 py-0.5 rounded bg-[#C2410C]/15 text-[#ff6900] text-[10px] font-mono border border-[#ff6900]/30">
+          <span className="px-2 py-0.5 rounded bg-[#C2410C]/15 text-[#C2410C] text-[10px] font-mono border border-[#C2410C]/30">
             CEO
           </span>
         </div>
@@ -231,19 +231,16 @@ export default function CeoDashboardPage() {
       {/* Main Executive Canvas */}
       <main className="flex-1 min-w-0 p-6 sm:p-8 max-w-[1440px] mx-auto w-full space-y-6">
         {/* Top Bar */}
-        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-[#E2E8F0]">
           <div>
-            <p className="text-xs font-mono text-[#ff6900] uppercase tracking-wider">
-              Platform Executive Console
-            </p>
-            <h1 className="text-2xl font-semibold text-neutral-900 tracking-tight font-headline">
+            <h1 className="text-[26px] sm:text-[32px] font-semibold text-[#0F172A] tracking-[-0.01em] font-headline leading-[1.2]">
               {tabs.find((t) => t.id === activeTab)?.label}
             </h1>
           </div>
           <div className="flex items-center gap-2.5">
             {lastDep && (
-              <div className="px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-600/15 text-emerald-800 text-xs font-mono inline-flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              <div className="min-h-[44px] px-3.5 rounded-lg bg-[#DCFCE7] text-[#15803D] text-[13px] font-mono inline-flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-[#15803D]" />
                 <span>
                   Live {lastDep.version} ({lastDep.commit_sha})
                 </span>
@@ -252,9 +249,9 @@ export default function CeoDashboardPage() {
             <button
               type="button"
               onClick={() => void loadData()}
-              className="h-9 px-3.5 rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50 text-xs font-medium text-neutral-700 inline-flex items-center gap-1.5 cursor-pointer"
+              className="min-h-[44px] px-4 rounded-lg border border-[#E2E8F0] bg-white hover:bg-[#F1F5F9] text-[14px] font-semibold text-[#0F172A] inline-flex items-center gap-2 cursor-pointer transition-colors"
             >
-              <RefreshCw className="h-3.5 w-3.5" />
+              <RefreshCw className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
               <span>Refresh</span>
             </button>
           </div>
@@ -272,7 +269,7 @@ export default function CeoDashboardPage() {
           <div className="bg-white rounded-2xl border border-neutral-200/80 p-5 shadow-xs space-y-2">
             <div className="flex items-center justify-between text-xs text-neutral-500">
               <span>Monthly Recurring Revenue</span>
-              <TrendingUp className="h-4 w-4 text-[#ff6900]" />
+              <TrendingUp className="h-4 w-4 text-[#C2410C]" />
             </div>
             <div className="text-2xl font-semibold text-neutral-900 tabular-nums">
               {formatNgn(kpis.mrrNgn)}
@@ -285,7 +282,7 @@ export default function CeoDashboardPage() {
           <div className="bg-white rounded-2xl border border-neutral-200/80 p-5 shadow-xs space-y-2">
             <div className="flex items-center justify-between text-xs text-neutral-500">
               <span>Active Organizations</span>
-              <Building2 className="h-4 w-4 text-[#ff6900]" />
+              <Building2 className="h-4 w-4 text-[#C2410C]" />
             </div>
             <div className="text-2xl font-semibold text-neutral-900 tabular-nums">
               {kpis.activeOrganizations ?? 0}{" "}
@@ -315,7 +312,7 @@ export default function CeoDashboardPage() {
           <div className="bg-white rounded-2xl border border-neutral-200/80 p-5 shadow-xs space-y-2">
             <div className="flex items-center justify-between text-xs text-neutral-500">
               <span>Security &amp; Support Queue</span>
-              <Shield className="h-4 w-4 text-[#ff6900]" />
+              <Shield className="h-4 w-4 text-[#C2410C]" />
             </div>
             <div className="text-2xl font-semibold text-neutral-900 tabular-nums">
               {kpis.openInquiries ?? 0}{" "}
@@ -341,7 +338,7 @@ export default function CeoDashboardPage() {
                     6-month recurring revenue growth across active subscriptions
                   </p>
                 </div>
-                <span className="text-xs font-mono text-[#ff6900] bg-orange-50 px-2.5 py-1 rounded-md">
+                <span className="text-xs font-mono text-[#C2410C] bg-orange-50 px-2.5 py-1 rounded-md">
                   Paystack Live
                 </span>
               </div>
@@ -497,7 +494,7 @@ export default function CeoDashboardPage() {
               <h2 className="text-base font-semibold text-neutral-900">
                 Active Subscriptions &amp; Paystack Billing
               </h2>
-              <span className="text-xs font-mono text-[#ff6900]">
+              <span className="text-xs font-mono text-[#C2410C]">
                 MRR: {formatNgn(kpis.mrrNgn)}
               </span>
             </div>
@@ -599,7 +596,7 @@ export default function CeoDashboardPage() {
             <div className="bg-white rounded-2xl border border-neutral-200/80 shadow-xs overflow-hidden">
               <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between">
                 <h2 className="text-base font-semibold text-neutral-900 flex items-center gap-2">
-                  <ShieldAlert className="h-4 w-4 text-[#ff6900]" />
+                  <ShieldAlert className="h-4 w-4 text-[#C2410C]" />
                   <span>Flagged Accounts &amp; Failed Logins</span>
                 </h2>
                 <span className="text-xs font-mono text-neutral-500">
@@ -647,7 +644,7 @@ export default function CeoDashboardPage() {
             <div className="bg-white rounded-2xl border border-neutral-200/80 shadow-xs overflow-hidden">
               <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between">
                 <h2 className="text-base font-semibold text-neutral-900 flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-[#ff6900]" />
+                  <Activity className="h-4 w-4 text-[#C2410C]" />
                   <span>Recent Audit Trail</span>
                 </h2>
                 <span className="text-xs font-mono text-neutral-500">

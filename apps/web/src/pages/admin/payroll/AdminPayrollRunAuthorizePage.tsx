@@ -120,7 +120,7 @@ export default function AdminPayrollRunAuthorizePage() {
     return (
       <PortalLayout activeNav="Payroll">
         <div className="py-24 text-center">
-          <div className="w-5 h-5 border-2 border-[#ff6900] border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+          <div className="w-5 h-5 border-2 border-[#C2410C] border-t-transparent rounded-full animate-spin mx-auto mb-2" />
           <p className="text-sm text-neutral-500">Loading payroll authorization docket</p>
         </div>
       </PortalLayout>
@@ -252,7 +252,7 @@ export default function AdminPayrollRunAuthorizePage() {
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Add audit sign-off remarks or reasons for return"
                 rows={2}
-                className="w-full px-3 py-2 rounded-lg border border-neutral-900/[0.12] bg-white text-sm text-neutral-900 placeholder:text-neutral-400 outline-none transition-[border-color,box-shadow] duration-150 focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
+                className="w-full px-3 py-2 rounded-lg border border-neutral-900/[0.12] bg-white text-sm text-neutral-900 placeholder:text-neutral-400 outline-none transition-[border-color,box-shadow] duration-150 focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/15"
               />
             </div>
           </div>

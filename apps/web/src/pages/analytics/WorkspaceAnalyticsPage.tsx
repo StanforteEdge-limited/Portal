@@ -125,7 +125,7 @@ export default function WorkspaceAnalyticsPage() {
         {/* Page Header */}
         <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-5 border-b border-neutral-900/[0.08]">
           <div className="space-y-1">
-            <h1 className="text-2xl sm:text-[28px] leading-tight font-medium text-neutral-900 tracking-tight font-headline">
+            <h1 className="text-[28px] sm:text-[32px] leading-[1.2] font-semibold text-[#0F172A] tracking-[-0.01em] font-headline">
               Organization analytics
             </h1>
             <p className="text-sm text-neutral-500 max-w-2xl">
@@ -133,8 +133,8 @@ export default function WorkspaceAnalyticsPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="inline-flex items-center bg-neutral-100 p-1 rounded-lg border border-neutral-900/[0.06]">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <div className="inline-flex items-center bg-[#F1F5F9] p-1 rounded-lg border border-[#E2E8F0]">
               {(
                 [
                   { id: "week", label: "7 days" },
@@ -145,11 +145,12 @@ export default function WorkspaceAnalyticsPage() {
                 <button
                   key={option.id}
                   type="button"
+                  aria-pressed={timeRange === option.id}
                   onClick={() => setTimeRange(option.id)}
-                  className={`px-3 h-7 rounded-md text-xs font-medium transition-colors duration-150 ${
+                  className={`min-h-[38px] px-3.5 rounded-md text-[13px] font-semibold transition-colors duration-150 ${
                     timeRange === option.id
-                      ? "bg-white text-neutral-900 shadow-2xs"
-                      : "text-neutral-500 hover:text-neutral-900"
+                      ? "bg-[#0F172A] text-white"
+                      : "text-[#475569] hover:text-[#0F172A]"
                   }`}
                 >
                   {option.label}
@@ -160,9 +161,9 @@ export default function WorkspaceAnalyticsPage() {
             <button
               type="button"
               onClick={() => window.print()}
-              className="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg border border-neutral-900/[0.10] bg-white hover:bg-neutral-50 text-neutral-900 text-sm font-medium transition-colors duration-150"
+              className="inline-flex items-center gap-2 min-h-[44px] px-4 rounded-lg border border-[#E2E8F0] bg-white hover:bg-[#F1F5F9] text-[#0F172A] text-[14px] font-semibold transition-colors duration-150"
             >
-              <Download className="h-4 w-4 text-neutral-500" strokeWidth={1.5} />
+              <Download className="h-4 w-4 text-[#475569]" strokeWidth={1.75} aria-hidden="true" />
               <span>Export summary</span>
             </button>
           </div>

@@ -48,7 +48,7 @@ export default function ForgotPasswordPage() {
 
           <div className="relative z-10 pt-4 border-t border-white/10 flex items-center justify-between text-xs text-neutral-400">
             <span>Enterprise Account Security</span>
-            <div className="w-8 h-8 rounded-full border-2 border-[#ff6900]/40 -mr-4 -mb-4 opacity-50" />
+            <div className="w-8 h-8 rounded-full border-2 border-[#C2410C]/40 -mr-4 -mb-4 opacity-50" />
           </div>
         </div>
 
@@ -77,7 +77,7 @@ export default function ForgotPasswordPage() {
                 </div>
                 <Link
                   to="/login"
-                  className="inline-block pt-2 text-xs font-medium text-[#ff6900] hover:underline"
+                  className="inline-block pt-2 text-xs font-medium text-[#C2410C] hover:underline"
                 >
                   Return to Sign In
                 </Link>
@@ -100,7 +100,7 @@ export default function ForgotPasswordPage() {
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="name@company.com"
                       required
-                      className="w-full pl-10 pr-4 py-2.5 text-xs bg-white border border-neutral-200 rounded-xl outline-none transition focus:border-[#ff6900] focus:ring-2 focus:ring-orange-500/10"
+                      className="w-full pl-10 pr-4 py-2.5 text-xs bg-white border border-neutral-200 rounded-xl outline-none transition focus:border-[#C2410C] focus:ring-2 focus:ring-orange-500/10"
                     />
                   </div>
                 </div>

@@ -123,7 +123,7 @@ export default function DocumentsListPage() {
           title="Documents & Knowledge Hub"
           description="Browse company policies, operating manuals, department wikis, and governance templates."
           icon={FileText}
-          iconColor="bg-orange-50 text-[#ff6900]"
+          iconColor="bg-orange-50 text-[#C2410C]"
           actions={
             <Link
               to="/documents/new"
@@ -139,7 +139,7 @@ export default function DocumentsListPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
           <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2 sm:gap-3">
             <div className="flex items-center justify-between gap-1.5">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-orange-50 text-[#C2410C] flex items-center justify-center shrink-0">
                 <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
               <div className="text-[10px] sm:text-xs font-medium text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded-full">
@@ -192,7 +192,7 @@ export default function DocumentsListPage() {
               placeholder="Search by title or topic..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-xs bg-neutral-50 rounded-xl border border-neutral-200 text-neutral-800 placeholder-neutral-400 focus:outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+              className="w-full pl-9 pr-3 py-1.5 text-xs bg-neutral-50 rounded-xl border border-neutral-200 text-neutral-800 placeholder-neutral-400 focus:outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C]"
             />
           </div>
 
@@ -263,11 +263,11 @@ export default function DocumentsListPage() {
                       >
                         <td className="py-3.5 px-5">
                           <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center font-medium text-xs shrink-0 group-hover:bg-[#C2410C] group-hover:text-white transition-colors">
+                            <div className="w-9 h-9 rounded-xl bg-orange-50 text-[#C2410C] flex items-center justify-center font-medium text-xs shrink-0 group-hover:bg-[#C2410C] group-hover:text-white transition-colors">
                               <FileText className="h-4 w-4" />
                             </div>
                             <div className="min-w-0">
-                              <p className="font-medium text-neutral-900 group-hover:text-[#ff6900] transition-colors truncate">
+                              <p className="font-medium text-neutral-900 group-hover:text-[#C2410C] transition-colors truncate">
                                 {doc.title}
                               </p>
                               {doc.file && (
@@ -318,7 +318,7 @@ export default function DocumentsListPage() {
                             <button
                               type="button"
                               onClick={() => setSharingDoc(doc)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-orange-50 hover:bg-[#C2410C] text-[#ff6900] hover:text-white border border-orange-200/80 hover:border-[#ff6900] text-xs font-medium transition shadow-xs active:scale-[0.98]"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-orange-50 hover:bg-[#C2410C] text-[#C2410C] hover:text-white border border-orange-200/80 hover:border-[#C2410C] text-xs font-medium transition shadow-xs active:scale-[0.98]"
                               title="Share document with colleague via Email and Chat"
                             >
                               <Share2 className="h-3.5 w-3.5" />

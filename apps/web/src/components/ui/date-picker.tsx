@@ -67,7 +67,7 @@ export function DatePicker({
         <button
           type="button"
           className={cn(
-            "flex h-10 w-full items-center justify-between rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-left text-sm font-medium transition hover:border-neutral-300 focus:outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15 disabled:cursor-not-allowed disabled:opacity-50",
+            "flex h-10 w-full items-center justify-between rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-left text-sm font-medium transition hover:border-neutral-300 focus:outline-none focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/15 disabled:cursor-not-allowed disabled:opacity-50",
             !selectedDate ? "text-neutral-400" : "text-neutral-900",
             className
           )}

@@ -165,7 +165,7 @@ export function NewTaskSlideOver({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder={isAdmin ? "e.g., Implement Fastify authentication token rotation..." : "e.g., Review project documentation, test staging build..."}
-                className="w-full text-xs font-medium text-neutral-900 border border-neutral-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+                className="w-full text-xs font-medium text-neutral-900 border border-neutral-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C]"
               />
             </div>
 
@@ -178,7 +178,7 @@ export function NewTaskSlideOver({
                 <SelectBox
                   value={status}
                   onChange={(e) => setStatus(e.target.value as TaskStatus)}
-                  className="w-full text-xs font-medium bg-white border border-neutral-200 rounded-xl px-2.5 py-2 text-neutral-800 outline-none focus:border-[#ff6900]"
+                  className="w-full text-xs font-medium bg-white border border-neutral-200 rounded-xl px-2.5 py-2 text-neutral-800 outline-none focus:border-[#C2410C]"
                 >
                   <option value="planned">● Planned / Backlog</option>
                   <option value="in_progress">● In Progress</option>
@@ -194,7 +194,7 @@ export function NewTaskSlideOver({
                 <SelectBox
                   value={priority}
                   onChange={(e) => setPriority(e.target.value as TaskPriority)}
-                  className="w-full text-xs font-medium bg-white border border-neutral-200 rounded-xl px-2.5 py-2 text-neutral-800 outline-none focus:border-[#ff6900]"
+                  className="w-full text-xs font-medium bg-white border border-neutral-200 rounded-xl px-2.5 py-2 text-neutral-800 outline-none focus:border-[#C2410C]"
                 >
                   <option value="low">Low Priority</option>
                   <option value="medium">Medium</option>
@@ -211,7 +211,7 @@ export function NewTaskSlideOver({
 
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
-                  className="w-full text-xs font-medium bg-white border border-neutral-200 rounded-xl px-2.5 py-2 text-neutral-800 outline-none focus:border-[#ff6900]"
+                  className="w-full text-xs font-medium bg-white border border-neutral-200 rounded-xl px-2.5 py-2 text-neutral-800 outline-none focus:border-[#C2410C]"
                 />
               </div>
             </div>
@@ -233,7 +233,7 @@ export function NewTaskSlideOver({
             {isAdmin ? (
               <div className="space-y-2 pt-2 border-t border-neutral-100">
                 <label className="text-xs font-medium text-neutral-700 flex items-center gap-1.5">
-                  <Users className="h-3.5 w-3.5 text-[#ff6900]" />
+                  <Users className="h-3.5 w-3.5 text-[#C2410C]" />
                   <span>Assign Teammates &amp; Tag Staff</span>
                 </label>
                 <ColleagueMultiSelect
@@ -260,7 +260,7 @@ export function NewTaskSlideOver({
                       <div className="text-xs text-neutral-400">Assigned to self</div>
                     </div>
                   </div>
-                  <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-orange-50 text-[#ff6900] border border-orange-200">
+                  <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-orange-50 text-[#C2410C] border border-orange-200">
                     Personal Task
                   </span>
                 </div>
@@ -276,7 +276,7 @@ export function NewTaskSlideOver({
                 <SelectBox
                   value={selectedProjectId}
                   onChange={(e) => setSelectedProjectId(e.target.value)}
-                  className="w-full text-xs font-medium bg-white border border-neutral-200 rounded-xl px-2.5 py-2 text-neutral-800 outline-none focus:border-[#ff6900]"
+                  className="w-full text-xs font-medium bg-white border border-neutral-200 rounded-xl px-2.5 py-2 text-neutral-800 outline-none focus:border-[#C2410C]"
                 >
                   <option value="">No project</option>
                   {projects.map((proj) => (
@@ -296,7 +296,7 @@ export function NewTaskSlideOver({
                   value={tagsInput}
                   onChange={(e) => setTagsInput(e.target.value)}
                   placeholder="Backend, Security, Sprint 44"
-                  className="w-full text-xs font-semibold text-neutral-800 border border-neutral-200 rounded-xl px-3 py-2 outline-none focus:border-[#ff6900]"
+                  className="w-full text-xs font-semibold text-neutral-800 border border-neutral-200 rounded-xl px-3 py-2 outline-none focus:border-[#C2410C]"
                 />
               </div>
             </div>

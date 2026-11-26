@@ -32,7 +32,7 @@ export function AccountShellPage({
                       {b.label}
                     </Link>
                   ) : (
-                    <span className={i === breadcrumbs.length - 1 ? "text-[#ff6900]" : ""}>
+                    <span className={i === breadcrumbs.length - 1 ? "text-[#C2410C]" : ""}>
                       {b.label}
                     </span>
                   )}

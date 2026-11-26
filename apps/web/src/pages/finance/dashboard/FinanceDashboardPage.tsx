@@ -201,7 +201,7 @@ export default function FinanceDashboardPage() {
             </div>
             <Link
               to="/finance/requests"
-              className="text-xs font-medium text-[#ff6900] hover:text-[#ea580c] flex items-center gap-1"
+              className="text-xs font-medium text-[#C2410C] hover:text-[#ea580c] flex items-center gap-1"
             >
               <span>View all ({totalCount})</span>
               <ArrowRight className="h-3 w-3" />
@@ -223,7 +223,7 @@ export default function FinanceDashboardPage() {
                 {loading ? (
                   <tr>
                     <td colSpan={5} className="px-6 py-12 text-center text-neutral-400">
-                      <div className="inline-block w-5 h-5 border-2 border-[#ff6900] border-t-transparent rounded-full animate-spin mb-2" />
+                      <div className="inline-block w-5 h-5 border-2 border-[#C2410C] border-t-transparent rounded-full animate-spin mb-2" />
                       <div>Loading finance queue...</div>
                     </td>
                   </tr>
@@ -251,7 +251,7 @@ export default function FinanceDashboardPage() {
                         onClick={() => navigate(`/finance/requests/${entry.id}`)}
                         className="hover:bg-neutral-50/70 transition-colors cursor-pointer group"
                       >
-                        <td className="px-6 py-4 font-medium text-neutral-900 group-hover:text-[#ff6900] transition-colors">
+                        <td className="px-6 py-4 font-medium text-neutral-900 group-hover:text-[#C2410C] transition-colors">
                           {entry.request_number || entry.id}
                         </td>
                         <td className="px-6 py-4 text-neutral-700 capitalize font-medium">
@@ -282,7 +282,7 @@ export default function FinanceDashboardPage() {
                           <Link
                             to={`/finance/requests/${entry.id}`}
                             onClick={(e: MouseEvent) => e.stopPropagation()}
-                            className="inline-flex items-center gap-1 text-xs font-semibold text-[#ff6900] hover:text-[#ea580c]"
+                            className="inline-flex items-center gap-1 text-xs font-semibold text-[#C2410C] hover:text-[#ea580c]"
                           >
                             <span>{isCleared ? "Disburse" : "View"}</span>
                             <ArrowRight className="h-3 w-3" />

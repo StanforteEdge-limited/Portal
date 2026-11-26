@@ -59,7 +59,7 @@ export default function CeoLoginPage() {
           <Link to="/" className="inline-block hover:opacity-90 transition-opacity">
             <StanforteLogo variant="dark" className="h-8" />
           </Link>
-          <span className="px-2.5 py-1 rounded-md bg-[#C2410C]/15 text-[#ff6900] text-xs font-mono border border-[#ff6900]/30">
+          <span className="px-2.5 py-1 rounded-md bg-[#C2410C]/15 text-[#C2410C] text-xs font-mono border border-[#C2410C]/30">
             EXECUTIVE CONSOLE
           </span>
         </div>
@@ -78,25 +78,25 @@ export default function CeoLoginPage() {
 
           <div className="divide-y divide-white/[0.08] border-y border-white/[0.08]">
             <div className="flex items-center gap-3 py-3.5">
-              <TrendingUp className="h-4 w-4 text-[#ff6900] shrink-0" strokeWidth={1.5} />
+              <TrendingUp className="h-4 w-4 text-[#C2410C] shrink-0" strokeWidth={1.5} />
               <span className="text-sm text-[#ededed]">
                 Live MRR, Paystack subscriptions &amp; tenant growth charts
               </span>
             </div>
             <div className="flex items-center gap-3 py-3.5">
-              <Server className="h-4 w-4 text-[#ff6900] shrink-0" strokeWidth={1.5} />
+              <Server className="h-4 w-4 text-[#C2410C] shrink-0" strokeWidth={1.5} />
               <span className="text-sm text-[#ededed]">
                 Deployment history, last release status &amp; runtime health
               </span>
             </div>
             <div className="flex items-center gap-3 py-3.5">
-              <Shield className="h-4 w-4 text-[#ff6900] shrink-0" strokeWidth={1.5} />
+              <Shield className="h-4 w-4 text-[#C2410C] shrink-0" strokeWidth={1.5} />
               <span className="text-sm text-[#ededed]">
                 Dedicated `sta_platform_admins` auth &amp; live security logs
               </span>
             </div>
             <div className="flex items-center gap-3 py-3.5">
-              <Activity className="h-4 w-4 text-[#ff6900] shrink-0" strokeWidth={1.5} />
+              <Activity className="h-4 w-4 text-[#C2410C] shrink-0" strokeWidth={1.5} />
               <span className="text-sm text-[#ededed]">
                 Organization suspension controls &amp; support report triage
               </span>
@@ -152,7 +152,7 @@ export default function CeoLoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="ceo@stanforteedge.com"
-                  className="w-full h-10 pl-10 pr-3 text-sm bg-white border border-neutral-900/[0.12] rounded-lg outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
+                  className="w-full h-10 pl-10 pr-3 text-sm bg-white border border-neutral-900/[0.12] rounded-lg outline-none focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/15"
                 />
               </div>
             </div>
@@ -177,7 +177,7 @@ export default function CeoLoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Executive password"
-                  className="w-full h-10 pl-10 pr-10 text-sm bg-white border border-neutral-900/[0.12] rounded-lg outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15"
+                  className="w-full h-10 pl-10 pr-10 text-sm bg-white border border-neutral-900/[0.12] rounded-lg outline-none focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/15"
                 />
                 <button
                   type="button"

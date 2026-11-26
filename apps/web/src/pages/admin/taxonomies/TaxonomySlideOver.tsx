@@ -113,7 +113,7 @@ export default function TaxonomySlideOver({ taxonomy, onClose, onSaved }: Props)
           {/* Basic Info */}
           <div className="space-y-4">
             <div className="flex items-center gap-2 pb-2 border-b border-neutral-100 text-xs font-medium text-neutral-900">
-              <Tags className="h-4 w-4 text-[#ff6900]" />
+              <Tags className="h-4 w-4 text-[#C2410C]" />
               Taxonomy Metadata
             </div>
 
@@ -127,7 +127,7 @@ export default function TaxonomySlideOver({ taxonomy, onClose, onSaved }: Props)
                 onChange={(e) => handleNameChange(e.target.value)}
                 placeholder="e.g., Expense Category"
                 required
-                className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#C2410C]/20 focus:border-[#C2410C]"
               />
             </div>
 
@@ -142,7 +142,7 @@ export default function TaxonomySlideOver({ taxonomy, onClose, onSaved }: Props)
                   onChange={(e) => setKey(e.target.value)}
                   placeholder="e.g., expense_category"
                   disabled={!!taxonomy}
-                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-mono text-neutral-800 placeholder-neutral-400 disabled:bg-neutral-50 disabled:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-mono text-neutral-800 placeholder-neutral-400 disabled:bg-neutral-50 disabled:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-[#C2410C]/20 focus:border-[#C2410C]"
                 />
               </div>
 
@@ -153,7 +153,7 @@ export default function TaxonomySlideOver({ taxonomy, onClose, onSaved }: Props)
                 <SelectBox
                   value={renderType}
                   onChange={(e) => setRenderType(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#C2410C]/20 focus:border-[#C2410C]"
                 >
                   <option value="select">Dropdown Select</option>
                   <option value="radio">Radio Buttons</option>
@@ -172,7 +172,7 @@ export default function TaxonomySlideOver({ taxonomy, onClose, onSaved }: Props)
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Brief explanation of how this classification is utilized..."
                 rows={2}
-                className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#C2410C]/20 focus:border-[#C2410C]"
               />
             </div>
           </div>
@@ -198,7 +198,7 @@ export default function TaxonomySlideOver({ taxonomy, onClose, onSaved }: Props)
                   }
                 }}
                 placeholder="Type new option label and press Add..."
-                className="flex-1 px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+                className="flex-1 px-3.5 py-2 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#C2410C]/20 focus:border-[#C2410C]"
               />
               <button
                 type="button"

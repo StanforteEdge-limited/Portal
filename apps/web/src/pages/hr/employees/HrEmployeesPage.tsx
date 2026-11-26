@@ -182,7 +182,7 @@ export default function HrEmployeesPage() {
           title="Workforce Directory"
           description="Browse staff profiles, departmental assignments, employment contracts, and contact directories."
           icon={Users}
-          iconColor="bg-orange-50 text-[#ff6900]"
+          iconColor="bg-orange-50 text-[#C2410C]"
           actions={
             canManage ? (
               <Link
@@ -275,7 +275,7 @@ export default function HrEmployeesPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Name or email"
-              className="rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-neutral-700 focus:outline-none focus:ring-2 focus:ring-[#ff6900]/20 focus:border-[#ff6900]"
+              className="rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-neutral-700 focus:outline-none focus:ring-2 focus:ring-[#C2410C]/20 focus:border-[#C2410C]"
             />
           </label>
 

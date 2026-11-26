@@ -455,8 +455,35 @@ html.dark .border-white {
 }
 
 html.dark .text-\[\#c2410c\],
+html.dark .text-\[\#C2410C\],
 html.dark .section-kicker {
-  color: color-mix(in srgb, var(--primary-color) 82%, white) !important;
+  color: #fb923c !important;
+}
+
+/* Quiet token dark-mode parity across dashboards & sub-pages */
+html.dark .text-\[\#0F172A\],
+html.dark .text-\[\#0f172a\] {
+  color: #f8fafc !important;
+}
+
+html.dark .text-\[\#475569\] {
+  color: #94a3b8 !important;
+}
+
+html.dark .border-\[\#E2E8F0\],
+html.dark .border-\[\#e2e8f0\] {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html.dark .bg-\[\#FAFAFA\],
+html.dark .bg-\[\#fafafa\] {
+  background-color: #09090b !important;
+}
+
+/* Tabular numbers across all HR, payroll, finance, and procurement tables */
+table td,
+table th {
+  font-variant-numeric: tabular-nums;
 }
 
 /* Text colors */
@@ -619,4 +646,77 @@ html.dark .chip-danger {
 .border-\[\#ff6900\]\/30,
 .border-\[\#ff6900\]\/20 {
   border-color: color-mix(in srgb, var(--primary-color) 30%, transparent) !important;
+}
+
+/* Quiet token dark-mode harmony across all tenant dashboards & sub-pages */
+html.dark .text-\[\#c2410c\],
+html.dark .text-\[\#C2410C\] {
+  color: #fb923c !important;
+}
+
+html.dark .text-\[\#0F172A\],
+html.dark .text-\[\#0f172a\] {
+  color: #f8fafc !important;
+}
+
+html.dark .text-\[\#475569\] {
+  color: #94a3b8 !important;
+}
+
+html.dark .bg-\[\#FAFAFA\],
+html.dark .bg-\[\#fafafa\] {
+  background-color: #09090b !important;
+}
+
+html.dark .bg-\[\#F1F5F9\],
+html.dark .bg-\[\#f1f5f9\] {
+  background-color: #18181b !important;
+}
+
+html.dark .border-\[\#E2E8F0\],
+html.dark .border-\[\#e2e8f0\],
+html.dark .border-\[\#CBD5E1\] {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Tabular numerals across all HR, Payroll, Finance, Procurement & Admin tables */
+table th,
+table td {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Quiet token dark-mode harmony across all tenant admin & staff dashboards and sub-pages */
+html.dark .text-\[\#C2410C\] {
+  color: #fb923c !important;
+}
+
+html.dark .text-\[\#0F172A\],
+html.dark .text-\[\#0f172a\] {
+  color: #f8fafc !important;
+}
+
+html.dark .text-\[\#475569\] {
+  color: #94a3b8 !important;
+}
+
+html.dark .bg-\[\#FAFAFA\],
+html.dark .bg-\[\#fafafa\] {
+  background-color: #09090b !important;
+}
+
+html.dark .bg-\[\#F1F5F9\],
+html.dark .bg-\[\#f1f5f9\] {
+  background-color: #18181b !important;
+}
+
+html.dark .border-\[\#E2E8F0\],
+html.dark .border-\[\#e2e8f0\],
+html.dark .border-\[\#CBD5E1\] {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Tabular numerals across all HR, Payroll, Finance, Procurement & Admin tables */
+table th,
+table td {
+  font-variant-numeric: tabular-nums;
 }

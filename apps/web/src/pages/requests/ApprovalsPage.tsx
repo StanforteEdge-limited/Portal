@@ -254,7 +254,7 @@ export function ApprovalsPage() {
               onClick={() => refetch()}
               className="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg bg-white border border-neutral-900/[0.10] hover:bg-neutral-50 text-neutral-900 text-sm font-medium transition-colors"
             >
-              <RefreshCw className={`h-4 w-4 text-neutral-500 ${loading ? "animate-spin text-[#ff6900]" : ""}`} strokeWidth={1.5} />
+              <RefreshCw className={`h-4 w-4 text-neutral-500 ${loading ? "animate-spin text-[#C2410C]" : ""}`} strokeWidth={1.5} />
               <span>Refresh</span>
             </button>
             <Link
@@ -311,7 +311,7 @@ export function ApprovalsPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search request #, submitter, or department"
-              className="w-full h-9 pl-9 pr-3 rounded-lg bg-white border border-neutral-900/[0.12] text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-[#ff6900]"
+              className="w-full h-9 pl-9 pr-3 rounded-lg bg-white border border-neutral-900/[0.12] text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-[#C2410C]"
             />
           </div>
 
@@ -398,7 +398,7 @@ export function ApprovalsPage() {
                       <td className="py-3.5 px-5 font-medium text-neutral-900">
                         <Link
                           to={`/requests/approvals/${row.requestId}`}
-                          className="hover:text-[#ff6900] transition"
+                          className="hover:text-[#C2410C] transition"
                         >
                           {row.requestNo}
                         </Link>

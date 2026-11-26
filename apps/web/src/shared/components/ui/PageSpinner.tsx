@@ -3,7 +3,7 @@ export function PageSpinner({ size = "md" }: { size?: "sm" | "md" }) {
   return (
     <div className="min-h-screen bg-[#fafafa] flex items-center justify-center">
       <div
-        className={`${dims} rounded-full border-2 border-[#ff6900] border-t-transparent animate-spin`}
+        className={`${dims} rounded-full border-2 border-[#C2410C] border-t-transparent animate-spin`}
       />
     </div>
   );

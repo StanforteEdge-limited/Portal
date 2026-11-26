@@ -121,7 +121,7 @@ const SelectTrigger = React.forwardRef<
         type="button"
         disabled={isDisabled}
         className={cn(
-          "flex h-10 w-full items-center justify-between gap-2 rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-left text-sm font-medium text-neutral-900 shadow-2xs transition hover:border-neutral-300 focus:outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+          "flex h-10 w-full items-center justify-between gap-2 rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-left text-sm font-medium text-neutral-900 shadow-2xs transition hover:border-neutral-300 focus:outline-none focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/15 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
           className
         )}
         {...props}
@@ -130,7 +130,7 @@ const SelectTrigger = React.forwardRef<
         <ChevronDown
           className={cn(
             "h-4 w-4 text-neutral-400 shrink-0 ml-1 transition-transform duration-150",
-            ctx?.open && "rotate-180 text-[#ff6900]"
+            ctx?.open && "rotate-180 text-[#C2410C]"
           )}
         />
       </button>
@@ -207,14 +207,14 @@ const SelectItem = React.forwardRef<
       className={cn(
         "relative flex w-full cursor-pointer select-none items-center justify-between gap-3 rounded-xl py-2 pl-3 pr-2.5 text-left text-xs font-semibold outline-none transition-colors disabled:pointer-events-none disabled:opacity-50",
         isSelected
-          ? "bg-orange-50/80 text-[#ff6900] font-medium"
+          ? "bg-orange-50/80 text-[#C2410C] font-medium"
           : "text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900",
         className
       )}
       {...props}
     >
       <span className="truncate">{children}</span>
-      {isSelected && <Check className="h-3.5 w-3.5 text-[#ff6900] shrink-0" />}
+      {isSelected && <Check className="h-3.5 w-3.5 text-[#C2410C] shrink-0" />}
     </button>
   );
 });
@@ -350,7 +350,7 @@ const SelectBox = React.forwardRef<HTMLButtonElement, SelectBoxProps>(
               onClick?.(e as any);
             }}
             className={cn(
-              "flex h-10 w-full items-center justify-between gap-2 rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-left text-sm font-medium text-neutral-900 shadow-2xs transition hover:border-neutral-300 focus:outline-none focus:border-[#ff6900] focus:ring-2 focus:ring-[#ff6900]/15 disabled:cursor-not-allowed disabled:opacity-50",
+              "flex h-10 w-full items-center justify-between gap-2 rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-left text-sm font-medium text-neutral-900 shadow-2xs transition hover:border-neutral-300 focus:outline-none focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/15 disabled:cursor-not-allowed disabled:opacity-50",
               className
             )}
           >
@@ -360,7 +360,7 @@ const SelectBox = React.forwardRef<HTMLButtonElement, SelectBoxProps>(
             <ChevronDown
               className={cn(
                 "h-4 w-4 text-neutral-400 shrink-0 transition-transform duration-150",
-                open && "rotate-180 text-[#ff6900]"
+                open && "rotate-180 text-[#C2410C]"
               )}
             />
           </button>
@@ -391,12 +391,12 @@ const SelectBox = React.forwardRef<HTMLButtonElement, SelectBoxProps>(
                     className={cn(
                       "relative flex w-full cursor-pointer select-none items-center justify-between gap-3 rounded-xl py-2 pl-3 pr-2.5 text-left text-xs font-semibold outline-none transition-colors disabled:pointer-events-none disabled:opacity-50",
                       isSelected
-                        ? "bg-orange-50/80 text-[#ff6900] font-medium"
+                        ? "bg-orange-50/80 text-[#C2410C] font-medium"
                         : "text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900"
                     )}
                   >
                     <span className="truncate">{opt.label}</span>
-                    {isSelected && <Check className="h-3.5 w-3.5 text-[#ff6900] shrink-0" />}
+                    {isSelected && <Check className="h-3.5 w-3.5 text-[#C2410C] shrink-0" />}
                   </button>
                 );
               })}

@@ -66,7 +66,7 @@ export default function PoliciesListPage() {
           title="Policies & Handbooks"
           description="Review and acknowledge organizational regulations, compliance policies, and staff code of conduct."
           icon={FileCheck}
-          iconColor="bg-orange-50 text-[#ff6900]"
+          iconColor="bg-orange-50 text-[#C2410C]"
         />
 
         {/* 4 KPI Metric Cards */}
@@ -122,7 +122,7 @@ export default function PoliciesListPage() {
           {/* Card 4: Compliance Rate */}
           <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-neutral-200/80 shadow-sm flex flex-col justify-between gap-2.5 sm:gap-3">
             <div className="flex items-center justify-between gap-1.5">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-orange-50 text-[#ff6900] flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-orange-50 text-[#C2410C] flex items-center justify-center shrink-0">
                 <ShieldCheck className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
               <span
@@ -151,7 +151,7 @@ export default function PoliciesListPage() {
               placeholder="Filter policies..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-xs bg-neutral-50 rounded-xl border border-neutral-200 text-neutral-800 placeholder-neutral-400 focus:outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+              className="w-full pl-9 pr-3 py-1.5 text-xs bg-neutral-50 rounded-xl border border-neutral-200 text-neutral-800 placeholder-neutral-400 focus:outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C]"
             />
           </div>
 
@@ -227,11 +227,11 @@ export default function PoliciesListPage() {
                       >
                         <td className="py-3.5 px-5">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-orange-50 text-[#ff6900] flex items-center justify-center font-medium text-xs shrink-0 group-hover:bg-[#C2410C] group-hover:text-white transition-colors">
+                            <div className="w-8 h-8 rounded-lg bg-orange-50 text-[#C2410C] flex items-center justify-center font-medium text-xs shrink-0 group-hover:bg-[#C2410C] group-hover:text-white transition-colors">
                               <ShieldCheck className="h-4 w-4" />
                             </div>
                             <div className="min-w-0">
-                              <p className="font-medium text-neutral-900 group-hover:text-[#ff6900] transition-colors truncate">
+                              <p className="font-medium text-neutral-900 group-hover:text-[#C2410C] transition-colors truncate">
                                 {doc.title}
                               </p>
                               {doc.description && (

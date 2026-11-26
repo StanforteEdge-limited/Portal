@@ -160,7 +160,7 @@ export function TaskDetailSlideOver({
               type="text"
               value={currentTask.title}
               onChange={(e) => setCurrentTask({ ...currentTask, title: e.target.value })}
-              className="w-full text-base font-medium text-neutral-900 border border-neutral-200 rounded-xl px-3 py-2 focus:outline-none focus:border-[#ff6900] focus:ring-1 focus:ring-[#ff6900]"
+              className="w-full text-base font-medium text-neutral-900 border border-neutral-200 rounded-xl px-3 py-2 focus:outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C]"
             />
           </div>
 
@@ -179,7 +179,7 @@ export function TaskDetailSlideOver({
                   if (onSaveTask) onSaveTask(updated);
                   if (onUpdated) onUpdated();
                 }}
-                className="w-full text-xs font-medium bg-white border border-neutral-200 rounded-xl px-2.5 py-2 text-neutral-800 outline-none focus:border-[#ff6900]"
+                className="w-full text-xs font-medium bg-white border border-neutral-200 rounded-xl px-2.5 py-2 text-neutral-800 outline-none focus:border-[#C2410C]"
               >
                 <option value="planned">● Planned / Backlog</option>
                 <option value="in_progress">● In Progress</option>
@@ -201,7 +201,7 @@ export function TaskDetailSlideOver({
                   if (onSaveTask) onSaveTask(updated);
                   if (onUpdated) onUpdated();
                 }}
-                className="w-full text-xs font-medium bg-white border border-neutral-200 rounded-xl px-2.5 py-2 text-neutral-800 outline-none focus:border-[#ff6900]"
+                className="w-full text-xs font-medium bg-white border border-neutral-200 rounded-xl px-2.5 py-2 text-neutral-800 outline-none focus:border-[#C2410C]"
               >
                 <option value="low">Low Priority</option>
                 <option value="medium">Medium</option>
@@ -224,7 +224,7 @@ export function TaskDetailSlideOver({
                   if (onSaveTask) onSaveTask(updated);
                   if (onUpdated) onUpdated();
                 }}
-                className="w-full text-xs font-medium bg-white border border-neutral-200 rounded-xl px-2.5 py-2 text-neutral-800 outline-none focus:border-[#ff6900]"
+                className="w-full text-xs font-medium bg-white border border-neutral-200 rounded-xl px-2.5 py-2 text-neutral-800 outline-none focus:border-[#C2410C]"
               />
             </div>
           </div>
@@ -246,7 +246,7 @@ export function TaskDetailSlideOver({
           <div className="space-y-3 pt-2 border-t border-neutral-100">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-[#ff6900]" />
+                <Users className="h-4 w-4 text-[#C2410C]" />
                 <h4 className="text-xs font-medium text-neutral-900">
                   Tagged Colleagues &amp; Assignees ({currentTask.assignees.length})
                 </h4>

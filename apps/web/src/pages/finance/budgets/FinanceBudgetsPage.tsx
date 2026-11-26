@@ -25,7 +25,7 @@ export default function FinanceBudgetsPage() {
           title="Budgets & Fiscal Envelopes"
           description="Track approved departmental budgets, capital expenditure plans, and variance analyses."
           icon={PieChart}
-          iconColor="bg-orange-50 text-[#ff6900]"
+          iconColor="bg-orange-50 text-[#C2410C]"
           actions={
             <button
               type="button"
