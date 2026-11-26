@@ -37,67 +37,60 @@ export interface AppRoute {
   plugin: FastifyPluginAsync;
 }
 
+/** Mount a single plugin under one or more URL prefixes without repeating definitions. */
+function mount(plugin: FastifyPluginAsync, ...prefixes: string[]): AppRoute[] {
+  return prefixes.map((prefix) => ({ prefix, plugin }));
+}
+
+/**
+ * HR & Workforce modules exposed at both root (`/employees`, `/leave`, ...)
+ * and `/hr/*` aliases (`/hr/employees`, `/hr/leave`, ...) for web/desktop clients.
+ */
+const hrModules: Array<[string, FastifyPluginAsync]> = [
+  ['/employees', EmployeesRoutes],
+  ['/attendance', AttendanceRoutes],
+  ['/designations', DesignationsRoutes],
+  ['/leave', LeaveRoutes],
+  ['/acknowledgements', AcknowledgementsRoutes],
+  ['/notifications', NotificationsRoutes],
+  ['/onboarding', OnboardingRoutes],
+  ['/policies', PoliciesRoutes],
+  ['/organizations', OrganizationsRoutes],
+  ['/projects', ProjectsRoutes],
+  ['/tasks', TasksRoutes],
+  ['/timesheets', TimesheetRoutes],
+  ['/documents', DocumentsRoutes],
+  ['/forms', FormsRoutes],
+  ['/taxonomy', TaxonomyRoutes],
+  ['/workflow', WorkflowRoutes],
+  ['/departments', DepartmentsRoutes],
+  ['/payroll', PayrollRoutes],
+  ['/requests', RequestsRoutes],
+];
+
 /** Fastify route plugins mounted under the global `/v1` prefix. */
 export const appRoutes: AppRoute[] = [
-  { prefix: '/health', plugin: HealthRoutes },
-  { prefix: '/auth', plugin: AuthRoutes },
-  { prefix: '', plugin: UsersRoutes },
-  { prefix: '/admin/users', plugin: AdminRoutes },
-  { prefix: '/admin/rbac', plugin: RbacRoutes },
-  { prefix: '/audit', plugin: AuditRoutes },
-  { prefix: '/employees', plugin: EmployeesRoutes },
-  { prefix: '/attendance', plugin: AttendanceRoutes },
-  { prefix: '/designations', plugin: DesignationsRoutes },
-  { prefix: '/leave', plugin: LeaveRoutes },
-  { prefix: '/acknowledgements', plugin: AcknowledgementsRoutes },
-  { prefix: '/notifications', plugin: NotificationsRoutes },
-  { prefix: '/onboarding', plugin: OnboardingRoutes },
-  { prefix: '/policies', plugin: PoliciesRoutes },
-  { prefix: '/organizations', plugin: OrganizationsRoutes },
-  { prefix: '/projects', plugin: ProjectsRoutes },
-  { prefix: '/tasks', plugin: TasksRoutes },
-  { prefix: '/timesheets', plugin: TimesheetRoutes },
-  { prefix: '/documents', plugin: DocumentsRoutes },
-  { prefix: '/forms', plugin: FormsRoutes },
-  { prefix: '/taxonomy', plugin: TaxonomyRoutes },
-  { prefix: '/workflow', plugin: WorkflowRoutes },
-  { prefix: '/departments', plugin: DepartmentsRoutes },
-  { prefix: '/payroll', plugin: PayrollRoutes },
-  { prefix: '/requests', plugin: RequestsRoutes },
-  // Files / Storage
-  { prefix: '/files', plugin: StorageRoutes },
-  { prefix: '/storage', plugin: StorageRoutes },
-  // Communication
-  { prefix: '/chat', plugin: ChatRoutes },
-  { prefix: '/communication/chat', plugin: ChatRoutes },
-  { prefix: '/groups', plugin: GroupsRoutes },
-  // HR-prefixed aliases used by the web and desktop clients. Keep the
-  // existing root routes above for backwards compatibility.
-  { prefix: '/hr', plugin: EmployeesRoutes },
-  { prefix: '/hr/employees', plugin: EmployeesRoutes },
-  { prefix: '/hr/attendance', plugin: AttendanceRoutes },
-  { prefix: '/hr/designations', plugin: DesignationsRoutes },
-  { prefix: '/hr/leave', plugin: LeaveRoutes },
-  { prefix: '/hr/acknowledgements', plugin: AcknowledgementsRoutes },
-  { prefix: '/hr/notifications', plugin: NotificationsRoutes },
-  { prefix: '/hr/onboarding', plugin: OnboardingRoutes },
-  { prefix: '/hr/policies', plugin: PoliciesRoutes },
-  { prefix: '/hr/organizations', plugin: OrganizationsRoutes },
-  { prefix: '/hr/projects', plugin: ProjectsRoutes },
-  { prefix: '/hr/tasks', plugin: TasksRoutes },
-  { prefix: '/hr/timesheets', plugin: TimesheetRoutes },
-  { prefix: '/hr/documents', plugin: DocumentsRoutes },
-  { prefix: '/hr/forms', plugin: FormsRoutes },
-  { prefix: '/hr/taxonomy', plugin: TaxonomyRoutes },
-  { prefix: '/hr/workflow', plugin: WorkflowRoutes },
-  { prefix: '/hr/departments', plugin: DepartmentsRoutes },
-  { prefix: '/hr/payroll', plugin: PayrollRoutes },
-  { prefix: '/hr/requests', plugin: RequestsRoutes },
-  { prefix: '/tenancy', plugin: TenancyRoutes },
-  { prefix: '/tenants', plugin: TenancyRoutes },
-  { prefix: '/finance', plugin: FinanceRoutes },
-  { prefix: '/procurement', plugin: ProcurementRoutes },
-  { prefix: '/billing', plugin: BillingRoutes },
-  { prefix: '/mail', plugin: MailRoutes },
-  { prefix: '/auth/roles', plugin: RbacRoutes },
+  // Platform & Identity
+  ...mount(HealthRoutes, '/health'),
+  ...mount(BillingRoutes, '/billing'),
+  ...mount(AuthRoutes, '/auth'),
+  ...mount(UsersRoutes, ''),
+  ...mount(AdminRoutes, '/admin/users'),
+  ...mount(RbacRoutes, '/admin/rbac', '/auth/roles'),
+  ...mount(AuditRoutes, '/audit'),
+  ...mount(TenancyRoutes, '/tenancy', '/tenants'),
+
+  // HR & Workforce (root + /hr/* aliases generated from a single source of truth)
+  ...mount(EmployeesRoutes, '/hr'),
+  ...hrModules.flatMap(([path, plugin]) => mount(plugin, path, `/hr${path}`)),
+
+  // Finance & Procurement
+  ...mount(FinanceRoutes, '/finance'),
+  ...mount(ProcurementRoutes, '/procurement'),
+
+  // Storage & Communication
+  ...mount(StorageRoutes, '/files', '/storage'),
+  ...mount(ChatRoutes, '/chat', '/communication/chat'),
+  ...mount(GroupsRoutes, '/groups'),
+  ...mount(MailRoutes, '/mail'),
 ];

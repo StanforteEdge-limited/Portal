@@ -26,6 +26,9 @@ export { Button } from "./components/ui/Button";
 export { Chip } from "./components/ui/Chip";
 export { Icon } from "./components/ui/Icon";
 export { PaginationControls } from "./components/ui/PaginationControls";
+export { PageSpinner } from "./components/ui/PageSpinner";
+export { RequestNudgeCard } from "./components/ui/RequestNudgeCard";
+export type { RequestNudgeCardProps } from "./components/ui/RequestNudgeCard";
 export { StatCard } from "./components/ui/StatCard";
 export { StatsGrid } from "./components/ui/StatsGrid";
 export {
